@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import {
   ArrowLeft, Users, Lock, Unlock,
-  ScrollText, ArrowRight, Eye, EyeOff, Loader2
+  ScrollText, ArrowRight, Eye, EyeOff, Loader2, Type, UserPlus
 } from 'lucide-react';
 import { GameState, Player } from '@/types/coup';
 
@@ -60,11 +60,28 @@ export default function CreatePage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // New Settings
+  const [lobbyName, setLobbyName] = useState('');
+  const [maxPlayers, setMaxPlayers] = useState(6);
+
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUser(data.user));
     const savedLang = localStorage.getItem('dg_lang') as Lang;
     if (savedLang) setLang(savedLang);
   }, []);
+
+  // Set defaults when game or user changes
+  useEffect(() => {
+    if (selectedGame) {
+        setMaxPlayers(selectedGame.maxPlayers);
+        // Default name if empty
+        if (!lobbyName && user) {
+            const userName = user.user_metadata?.username || user.email?.split('@')[0] || 'Host';
+            const suffix = lang === 'ru' ? 'Лобби' : 'Lobby';
+            setLobbyName(`${selectedGame.name} ${suffix} - ${userName}`);
+        }
+    }
+  }, [selectedGame, user, lang]);
 
   const t = {
     ru: {
@@ -78,7 +95,10 @@ export default function CreatePage() {
       comingSoon: 'Скоро',
       error: 'Ошибка при создании: ',
       lobbySuffix: 'Лобби',
-      enterPass: 'Придумайте пароль'
+      enterPass: 'Придумайте пароль',
+      lobbyName: 'Название комнаты',
+      playersCount: 'Количество игроков',
+      enterName: 'Введите название',
     },
     en: {
       select: 'Select Game',
@@ -91,7 +111,10 @@ export default function CreatePage() {
       comingSoon: 'Coming Soon',
       error: 'Error creating lobby: ',
       lobbySuffix: 'Lobby',
-      enterPass: 'Set password'
+      enterPass: 'Set password',
+      lobbyName: 'Room Name',
+      playersCount: 'Max Players',
+      enterName: 'Enter room name',
     }
   }[lang];
 
@@ -123,15 +146,18 @@ export default function CreatePage() {
         phase: 'choosing_action',
         currentAction: null,
         lastActionTime: Date.now(),
-        version: 1
+        version: 1,
       };
 
-      // Локализованное название комнаты
-      const lobbyName = `${selectedGame.name} ${t.lobbySuffix} - ${initialHost.name}`;
+      // Сохраняем maxPlayers и gameType внутри game_state
+      const gameStateWithSettings = {
+          ...initialState,
+          gameType: selectedGame.id,
+          settings: {
+              maxPlayers: maxPlayers
+          }
+      };
 
-      // ИСПРАВЛЕНИЕ:
-      // 1. Убрано поле 'game_type' из корневого объекта insert, так как такой колонки нет в БД.
-      // 2. Тип игры 'gameType' добавлен внутрь JSON поля 'game_state'.
       const { data, error } = await supabase.from('lobbies').insert({
         code,
         name: lobbyName,
@@ -139,12 +165,13 @@ export default function CreatePage() {
         is_private: isPrivate,
         password: isPrivate ? password : null,
         status: 'waiting',
-        game_state: { ...initialState, gameType: selectedGame.id },
+        game_state: gameStateWithSettings,
       }).select().single();
 
       if (error) throw error;
 
-      router.push(`/play?id=${data.id}`);
+      // ИСПРАВЛЕНИЕ: Редирект на /game вместо /play
+      router.push(`/game?id=${data.id}`);
     } catch (error: any) {
       alert(t.error + error.message);
       setLoading(false);
@@ -186,14 +213,50 @@ export default function CreatePage() {
 
   const renderSettings = () => (
     <form onSubmit={handleCreate} className="w-full max-w-md bg-white border border-[#E6E1DC] rounded-[32px] p-8 shadow-xl animate-in slide-in-from-right-8 duration-300">
-       <div className="flex items-center justify-center mb-8">
+       <div className="flex items-center justify-center mb-6">
           <div className="w-20 h-20 bg-[#F5F5F0] rounded-full flex items-center justify-center text-[#9e1316]">
              {selectedGame?.icon}
           </div>
        </div>
 
        <div className="space-y-6">
-          <div className="flex items-center justify-between p-4 bg-[#F5F5F0] rounded-2xl cursor-pointer" onClick={() => setIsPrivate(!isPrivate)}>
+          {/* Lobby Name */}
+          <div className="space-y-2">
+               <label className="text-[10px] font-bold text-[#8A9099] uppercase tracking-wider ml-1 flex items-center gap-1"><Type className="w-3 h-3"/> {t.lobbyName}</label>
+               <input
+                   type="text"
+                   value={lobbyName}
+                   onChange={e => setLobbyName(e.target.value)}
+                   placeholder={t.enterName}
+                   className="w-full bg-[#F5F5F0] border border-transparent focus:bg-white focus:border-[#9e1316] rounded-xl py-3 px-4 font-bold text-[#1A1F26] outline-none transition-all placeholder:text-[#8A9099]/40"
+                   required
+               />
+          </div>
+
+          {/* Max Players Slider */}
+          <div className="space-y-3">
+               <div className="flex justify-between items-center">
+                    <label className="text-[10px] font-bold text-[#8A9099] uppercase tracking-wider ml-1 flex items-center gap-1"><UserPlus className="w-3 h-3"/> {t.playersCount}</label>
+                    <span className="text-sm font-black text-[#1A1F26] bg-[#F5F5F0] px-2 py-0.5 rounded-lg">{maxPlayers}</span>
+               </div>
+               <input
+                   type="range"
+                   min={selectedGame?.minPlayers}
+                   max={selectedGame?.maxPlayers}
+                   step={1}
+                   value={maxPlayers}
+                   onChange={e => setMaxPlayers(Number(e.target.value))}
+                   className="w-full h-2 bg-[#F5F5F0] rounded-full appearance-none cursor-pointer accent-[#9e1316]"
+               />
+               <div className="flex justify-between text-[10px] font-bold text-[#8A9099] px-1">
+                   <span>{selectedGame?.minPlayers}</span>
+                   <span>{selectedGame?.maxPlayers}</span>
+               </div>
+          </div>
+
+          <div className="h-px bg-[#F5F5F0] w-full" />
+
+          <div className="flex items-center justify-between p-4 bg-[#F5F5F0] rounded-2xl cursor-pointer hover:bg-[#E6E1DC]/50 transition-colors" onClick={() => setIsPrivate(!isPrivate)}>
              <div className="flex items-center gap-3">
                {isPrivate ? <Lock className="w-5 h-5 text-[#9e1316]" /> : <Unlock className="w-5 h-5 text-[#8A9099]" />}
                <span className="font-bold text-[#1A1F26] text-sm uppercase tracking-wide">{t.private}</span>
