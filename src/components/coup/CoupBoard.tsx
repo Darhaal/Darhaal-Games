@@ -1,16 +1,34 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import {
   Loader2, ArrowLeft, Coins, Clock, Crown, X, Shield, History,
   Copy, CheckCircle, Users, Play, LogOut, Book, HelpCircle,
-  Swords, Skull, RefreshCw, AlertTriangle
+  Swords, Skull, RefreshCw, AlertTriangle, Ban
 } from 'lucide-react';
 import { useCoupGame } from '@/hooks/useCoupGame';
 import { ROLE_CONFIG, DICTIONARY } from '@/constants/coup';
 import { Role, Lang } from '@/types/coup';
+
+// --- HELPERS FOR ROLE INFO ---
+const ROLE_DETAILS: Record<Lang, Record<Role, { action: string; block: string }>> = {
+  ru: {
+    duke: { action: 'Налог (+3)', block: 'Помощь' },
+    assassin: { action: 'Убийство (-3)', block: '-' },
+    captain: { action: 'Кража (+2)', block: 'Кража' },
+    ambassador: { action: 'Обмен', block: 'Кража' },
+    contessa: { action: '-', block: 'Убийство' }
+  },
+  en: {
+    duke: { action: 'Tax (+3)', block: 'Foreign Aid' },
+    assassin: { action: 'Assassinate (-3)', block: '-' },
+    captain: { action: 'Steal (+2)', block: 'Stealing' },
+    ambassador: { action: 'Exchange', block: 'Stealing' },
+    contessa: { action: '-', block: 'Assassination' }
+  }
+};
 
 // --- TEXT CONTENT (RULES) ---
 const RULES_CONTENT = {
@@ -24,37 +42,23 @@ const RULES_CONTENT = {
       </section>
 
       <section>
-        <h3 className="font-black text-[#1A1F26] uppercase mb-2">🧑‍🤝‍🧑 Игроки</h3>
-        <p>2–6 игроков. Каждый начинает с <strong>2 карт влияния</strong> (в закрытую) и <strong>2 монет</strong>.</p>
-      </section>
-
-      <section>
         <h3 className="font-black text-[#1A1F26] uppercase mb-2">💰 Базовые действия</h3>
-        <ul className="space-y-2">
-          <li className="flex gap-2"><div className="w-1 h-full bg-emerald-500 rounded-full"></div><div><strong>Income:</strong> +1 монета. Нельзя блокировать.</div></li>
-          <li className="flex gap-2"><div className="w-1 h-full bg-emerald-500 rounded-full"></div><div><strong>Foreign Aid:</strong> +2 монеты. Блокируется <span className="text-purple-700 font-bold">Герцогом</span>.</div></li>
-          <li className="flex gap-2"><div className="w-1 h-full bg-red-500 rounded-full"></div><div><strong>Coup:</strong> -7 монет. Выбери игрока → он теряет карту. Нельзя блокировать. (Обязательно при 10+ монетах).</div></li>
+        <ul className="space-y-2 text-xs font-medium">
+          <li className="flex gap-2 items-start"><div className="w-1.5 h-1.5 mt-1.5 bg-emerald-500 rounded-full shrink-0"></div><div><strong>Income:</strong> +1 монета. Нельзя блокировать.</div></li>
+          <li className="flex gap-2 items-start"><div className="w-1.5 h-1.5 mt-1.5 bg-emerald-500 rounded-full shrink-0"></div><div><strong>Foreign Aid:</strong> +2 монеты. Блокируется <span className="text-purple-700 font-bold">Герцогом</span>.</div></li>
+          <li className="flex gap-2 items-start"><div className="w-1.5 h-1.5 mt-1.5 bg-red-500 rounded-full shrink-0"></div><div><strong>Coup:</strong> -7 монет. Выбери игрока → он теряет карту. Нельзя блокировать. (Обязательно при 10+ монетах).</div></li>
         </ul>
-      </section>
-
-      <section>
-        <h3 className="font-black text-[#1A1F26] uppercase mb-2">👑 Действия карт</h3>
-        <div className="grid gap-2 text-xs">
-          <div className="p-2 bg-purple-50 rounded border border-purple-100"><strong>Duke:</strong> +3 монеты. Блокирует Помощь.</div>
-          <div className="p-2 bg-red-50 rounded border border-red-100"><strong>Assassin:</strong> -3 монеты → убить карту. Блокируется Графиней.</div>
-          <div className="p-2 bg-blue-50 rounded border border-blue-100"><strong>Captain:</strong> Украсть 2 монеты. Блокируется Капитаном/Послом.</div>
-          <div className="p-2 bg-green-50 rounded border border-green-100"><strong>Ambassador:</strong> Обмен карт. Блокирует Кражу.</div>
-          <div className="p-2 bg-gray-100 rounded border border-gray-200"><strong>Contessa:</strong> Блокирует Убийство.</div>
-        </div>
       </section>
 
       <section>
         <h3 className="font-black text-[#1A1F26] uppercase mb-2 text-red-600">❗ Блеф и Вызов</h3>
-        <p className="mb-2">Любое действие карты можно оспорить.</p>
-        <ul className="list-disc pl-4 space-y-1">
-          <li><strong>Игрок соврал:</strong> Он теряет 1 карту.</li>
-          <li><strong>Игрок доказал:</strong> Оспоривший теряет 1 карту. (Карта меняется).</li>
-        </ul>
+        <div className="bg-red-50 p-3 rounded-xl border border-red-100 text-red-900 text-xs font-medium space-y-1">
+          <p>Любое действие карты можно оспорить.</p>
+          <ul className="list-disc pl-4">
+            <li><strong>Игрок соврал:</strong> Он теряет 1 карту.</li>
+            <li><strong>Игрок доказал:</strong> Оспоривший теряет 1 карту.</li>
+          </ul>
+        </div>
       </section>
     </div>
   ),
@@ -68,21 +72,11 @@ const RULES_CONTENT = {
       </section>
       <section>
         <h3 className="font-black text-[#1A1F26] uppercase mb-2">💰 Basic Actions</h3>
-        <ul className="space-y-2">
+        <ul className="space-y-2 text-xs font-medium">
           <li><strong>Income:</strong> +1 coin. Cannot be blocked.</li>
           <li><strong>Foreign Aid:</strong> +2 coins. Blocked by <span className="text-purple-700 font-bold">Duke</span>.</li>
           <li><strong>Coup:</strong> -7 coins. Target loses a card. Unblockable. (Mandatory at 10+ coins).</li>
         </ul>
-      </section>
-      <section>
-        <h3 className="font-black text-[#1A1F26] uppercase mb-2">👑 Character Actions</h3>
-        <div className="grid gap-2 text-xs">
-          <div className="p-2 bg-purple-50 rounded"><strong>Duke:</strong> Tax +3. Blocks Foreign Aid.</div>
-          <div className="p-2 bg-red-50 rounded"><strong>Assassin:</strong> Pay 3 → Assassinate. Blocked by Contessa.</div>
-          <div className="p-2 bg-blue-50 rounded"><strong>Captain:</strong> Steal 2. Blocked by Captain/Ambassador.</div>
-          <div className="p-2 bg-green-50 rounded"><strong>Ambassador:</strong> Exchange cards. Blocks Stealing.</div>
-          <div className="p-2 bg-gray-100 rounded"><strong>Contessa:</strong> Blocks Assassination.</div>
-        </div>
       </section>
     </div>
   )
@@ -93,77 +87,92 @@ const GameCard = ({ role, revealed, isMe, onClick, selected, lang, small = false
   if (!role || !ROLE_CONFIG[role]) return null;
   const config = ROLE_CONFIG[role];
   const info = DICTIONARY[lang].roles[role];
+  const details = ROLE_DETAILS[lang][role];
 
   // Base dimensions
-  const dims = small ? 'w-20 h-32' : 'w-24 h-36 sm:w-28 sm:h-44';
+  const dims = small ? 'w-24 h-36' : 'w-28 h-44 sm:w-32 sm:h-48';
 
   return (
     <div
       onClick={!disabled ? onClick : undefined}
       className={`
         relative ${dims} perspective-1000 group transition-all duration-300
-        ${selected ? '-translate-y-4 z-20' : 'hover:-translate-y-2'}
-        ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+        ${selected ? '-translate-y-4 z-30' : 'hover:-translate-y-2 z-10'}
+        ${disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}
       `}
     >
       <div className={`
-        relative w-full h-full duration-500 preserve-3d transition-transform shadow-xl rounded-xl
+        relative w-full h-full duration-500 preserve-3d transition-transform shadow-xl rounded-2xl
         ${(isMe || revealed) ? 'rotate-y-0' : ''}
       `}>
 
         {/* FACE SIDE (Role) */}
         <div className={`
-          absolute inset-0 backface-hidden rounded-xl border-4 overflow-hidden bg-white flex flex-col items-center justify-between p-2
-          ${revealed ? 'grayscale brightness-75' : ''}
+          absolute inset-0 backface-hidden rounded-2xl border-[3px] overflow-hidden bg-white flex flex-col p-2.5
+          ${revealed ? 'grayscale brightness-90' : ''}
         `}
         style={{ borderColor: config.color }}
         >
            {/* Background Pattern */}
-           <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundColor: config.color }} />
+           <div className="absolute inset-0 opacity-5 pointer-events-none bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-black via-transparent to-transparent" />
 
            {/* Header */}
-           <div className="w-full flex justify-between items-start z-10">
-              <span className="font-black text-[10px] uppercase" style={{ color: config.color }}>{info.name}</span>
-              <config.icon className="w-4 h-4" style={{ color: config.color }} />
+           <div className="w-full flex justify-between items-start z-10 mb-1">
+              <span className="font-black text-[10px] uppercase tracking-wider" style={{ color: config.color }}>{info.name}</span>
+              <config.icon className="w-4 h-4 opacity-50" style={{ color: config.color }} />
            </div>
 
            {/* Central Art (Icon) */}
-           <div className="flex-1 flex items-center justify-center z-10">
-              <div className="p-3 rounded-full bg-white border-2 shadow-sm" style={{ borderColor: config.color }}>
-                 <config.icon className={`${small ? 'w-6 h-6' : 'w-10 h-10'}`} style={{ color: config.color }} />
+           <div className="flex-1 flex flex-col items-center justify-center z-10 gap-2">
+              <div className="p-3 rounded-full bg-white border-2 shadow-sm relative" style={{ borderColor: config.color }}>
+                 <div className="absolute inset-0 rounded-full opacity-10" style={{ backgroundColor: config.color }} />
+                 <config.icon className={`${small ? 'w-8 h-8' : 'w-10 h-10'}`} style={{ color: config.color }} />
               </div>
            </div>
 
-           {/* Footer / Description */}
-           {!small && (
-             <div className="text-[8px] text-center font-medium leading-tight text-gray-500 z-10 bg-white/80 p-1 rounded-lg w-full">
-               {info.desc}
+           {/* Footer / Stats on Card */}
+           <div className="z-10 w-full space-y-1 mt-auto">
+             <div className="flex items-center gap-1.5 bg-gray-50 rounded-lg p-1 border border-gray-100">
+               <div className="w-4 h-4 rounded-md bg-emerald-100 flex items-center justify-center shrink-0">
+                 <Swords className="w-2.5 h-2.5 text-emerald-700" />
+               </div>
+               <span className="text-[9px] font-bold text-gray-600 leading-none truncate">{details.action}</span>
              </div>
-           )}
+             {details.block !== '-' && (
+               <div className="flex items-center gap-1.5 bg-gray-50 rounded-lg p-1 border border-gray-100">
+                 <div className="w-4 h-4 rounded-md bg-red-100 flex items-center justify-center shrink-0">
+                   <Shield className="w-2.5 h-2.5 text-red-700" />
+                 </div>
+                 <span className="text-[9px] font-bold text-gray-600 leading-none truncate">{details.block}</span>
+               </div>
+             )}
+           </div>
 
            {/* Dead Overlay */}
            {revealed && (
-             <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-50">
-               <Skull className="w-12 h-12 text-white drop-shadow-lg animate-in zoom-in duration-300" />
+             <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center z-50 backdrop-blur-[1px]">
+               <Skull className="w-10 h-10 text-white drop-shadow-lg mb-1" />
+               <span className="text-white font-black uppercase text-[10px] tracking-widest border-2 border-white px-2 py-0.5 rounded">Dead</span>
              </div>
            )}
         </div>
 
         {/* BACK SIDE (Cover) */}
         {!revealed && !isMe && (
-          <div className="absolute inset-0 backface-hidden rounded-xl bg-[#1A1F26] border-4 border-[#E6E1DC] flex flex-col items-center justify-center relative overflow-hidden">
-             <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white via-transparent to-transparent" />
-             <div className="w-16 h-16 rounded-full border-2 border-[#E6E1DC]/20 flex items-center justify-center">
-                <Crown className="w-8 h-8 text-[#E6E1DC]" />
+          <div className="absolute inset-0 backface-hidden rounded-2xl bg-[#1A1F26] border-4 border-[#333] flex flex-col items-center justify-center relative overflow-hidden shadow-inner">
+             <div className="absolute inset-0 opacity-10 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay" />
+             <div className="absolute inset-4 border border-[#E6E1DC]/20 rounded-xl" />
+             <div className="w-16 h-16 rounded-full border-2 border-[#E6E1DC]/20 flex items-center justify-center bg-[#E6E1DC]/5 backdrop-blur-sm">
+                <Crown className="w-8 h-8 text-[#E6E1DC] drop-shadow-md" />
              </div>
-             <div className="mt-2 text-[8px] font-bold text-[#E6E1DC] tracking-[0.2em] uppercase">COUP</div>
+             <div className="mt-3 text-[9px] font-black text-[#E6E1DC] tracking-[0.3em] uppercase">COUP</div>
           </div>
         )}
       </div>
 
       {/* Selection Glow */}
       {selected && (
-        <div className="absolute -inset-2 rounded-2xl bg-[#9e1316]/20 blur-md -z-10 animate-pulse" />
+        <div className="absolute -inset-3 rounded-[20px] bg-[#9e1316]/20 blur-xl -z-10 animate-pulse pointer-events-none" />
       )}
     </div>
   );
@@ -175,14 +184,14 @@ const ActionBtn = ({ label, onClick, disabled, color = 'bg-white', icon: Icon }:
     onClick={onClick}
     disabled={disabled}
     className={`
-      flex flex-col items-center justify-center gap-1 p-2 sm:p-3 rounded-xl border-b-4 transition-all active:translate-y-1 active:border-b-0 h-full
+      flex flex-col items-center justify-center gap-1.5 p-2 sm:p-3 rounded-xl border-b-[3px] transition-all active:translate-y-0.5 active:border-b-0 h-full relative overflow-hidden
       ${disabled
         ? 'opacity-40 cursor-not-allowed bg-gray-100 border-gray-200 text-gray-400'
         : `${color} hover:brightness-95 text-[#1A1F26] shadow-sm`
       }
     `}
   >
-    {Icon && <Icon className="w-4 h-4 sm:w-5 sm:h-5 mb-1" />}
+    {Icon && <Icon className="w-4 h-4 sm:w-5 sm:h-5 mb-0.5" />}
     <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-tight leading-none text-center">{label}</span>
   </button>
 );
@@ -253,32 +262,55 @@ export default function CoupBoard() {
     const closeModal = () => setActiveModal(null);
 
     return (
-      <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-        <div className="bg-white rounded-[32px] w-full max-w-lg max-h-[85vh] flex flex-col shadow-2xl relative overflow-hidden animate-in zoom-in-95">
+      <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
+        <div className="bg-white rounded-[32px] w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl relative overflow-hidden animate-in zoom-in-95 border border-white/20">
           {/* Header */}
           <div className="p-6 border-b border-[#E6E1DC] flex justify-between items-center bg-white sticky top-0 z-10">
-            <h2 className="text-xl font-black uppercase tracking-tight flex items-center gap-2">
-              {activeModal === 'rules' ? <HelpCircle className="w-6 h-6 text-[#9e1316]" /> : <Book className="w-6 h-6 text-[#9e1316]" />}
+            <h2 className="text-2xl font-black uppercase tracking-tight flex items-center gap-3 text-[#1A1F26]">
+              {activeModal === 'rules' ? <HelpCircle className="w-8 h-8 text-[#9e1316]" /> : <Book className="w-8 h-8 text-[#9e1316]" />}
               {activeModal === 'rules' ? (lang === 'ru' ? 'Правила' : 'Rules') : (lang === 'ru' ? 'Справочник' : 'Guide')}
             </h2>
-            <button onClick={closeModal} className="p-2 hover:bg-gray-100 rounded-full transition-colors"><X className="w-5 h-5" /></button>
+            <button onClick={closeModal} className="p-2 hover:bg-gray-100 rounded-full transition-colors"><X className="w-6 h-6 text-[#8A9099]" /></button>
           </div>
 
           {/* Content */}
-          <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+          <div className="flex-1 overflow-y-auto p-6 custom-scrollbar bg-[#F8FAFC]">
             {activeModal === 'rules' ? RULES_CONTENT[lang] : (
-              <div className="grid grid-cols-2 gap-4">
-                {(['duke', 'assassin', 'captain', 'ambassador', 'contessa'] as Role[]).map(role => (
-                  <div key={role} className="flex flex-col items-center text-center p-3 bg-[#F8FAFC] rounded-2xl border border-[#E6E1DC]">
-                    <div className="scale-75 origin-top -mb-4">
-                      <GameCard role={role} revealed={false} isMe={true} lang={lang} small={true} />
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {(['duke', 'assassin', 'captain', 'ambassador', 'contessa'] as Role[]).map(role => {
+                  const info = ROLE_DETAILS[lang][role];
+                  const config = ROLE_CONFIG[role];
+                  return (
+                    <div key={role} className="flex flex-col items-center bg-white rounded-3xl p-4 border border-[#E6E1DC] shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+                      <div className="absolute top-0 left-0 w-full h-1" style={{ backgroundColor: config.color }} />
+                      <div className="scale-90 origin-top -mb-2">
+                        <GameCard role={role} revealed={false} isMe={true} lang={lang} small={true} />
+                      </div>
+                      <div className="mt-4 w-full space-y-2">
+                        <div className="flex items-center gap-2 bg-gray-50 p-2 rounded-xl border border-gray-100">
+                           <div className="w-6 h-6 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">
+                             <Swords className="w-3 h-3 text-emerald-700" />
+                           </div>
+                           <div className="flex-1">
+                             <div className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">Action</div>
+                             <div className="text-[10px] font-bold text-[#1A1F26] leading-tight">{info.action}</div>
+                           </div>
+                        </div>
+                        {info.block !== '-' && (
+                          <div className="flex items-center gap-2 bg-gray-50 p-2 rounded-xl border border-gray-100">
+                             <div className="w-6 h-6 rounded-lg bg-red-100 flex items-center justify-center shrink-0">
+                               <Ban className="w-3 h-3 text-red-700" />
+                             </div>
+                             <div className="flex-1">
+                               <div className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">Block</div>
+                               <div className="text-[10px] font-bold text-[#1A1F26] leading-tight">{info.block}</div>
+                             </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <div className="mt-2">
-                      <div className="font-bold text-xs uppercase" style={{ color: ROLE_CONFIG[role].color }}>{DICTIONARY[lang].roles[role].name}</div>
-                      <div className="text-[10px] text-gray-500 leading-tight mt-1">{DICTIONARY[lang].roles[role].desc}</div>
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </div>
@@ -402,10 +434,11 @@ export default function CoupBoard() {
       {renderModals()}
       {renderHeader('COUP', gameState.status === 'playing' ? `${lang === 'ru' ? 'Ход' : 'Turn'}: ${players[gameState.turnIndex]?.name || '...'}` : 'End')}
 
-      <main className="flex-1 relative z-10 p-4 flex flex-col max-w-6xl mx-auto w-full h-full">
+      {/* Main Game Area with more bottom padding for the fixed control panel */}
+      <main className="flex-1 relative z-10 p-4 pb-48 flex flex-col max-w-6xl mx-auto w-full h-full overflow-y-auto custom-scrollbar">
 
         {/* Opponents Grid */}
-        <div className="flex flex-wrap justify-center gap-4 mb-auto pt-4 pb-32">
+        <div className="flex flex-wrap justify-center gap-4 pt-4">
           {players.map(player => {
             if (player.id === userId) return null;
             const isTargetable = !!targetMode && !player.isDead;
@@ -440,9 +473,9 @@ export default function CoupBoard() {
           })}
         </div>
 
-        {/* Logs Overlay */}
+        {/* Logs Overlay - Moved to top left to avoid obscuring center content */}
         {gameState.status === 'playing' && (
-           <div className="absolute top-24 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur px-4 py-2 rounded-full border border-[#E6E1DC] shadow-sm text-[10px] font-bold text-gray-500 flex items-center gap-2 z-0 max-w-[90%] truncate">
+           <div className="absolute top-2 left-2 sm:left-auto sm:right-2 sm:top-2 bg-white/90 backdrop-blur px-4 py-2 rounded-full border border-[#E6E1DC] shadow-sm text-[10px] font-bold text-gray-500 flex items-center gap-2 z-0 max-w-[200px] truncate">
               <History className="w-3 h-3 shrink-0" />
               {gameState.logs?.[0] ? (
                  <span className="flex gap-1 truncate">
@@ -453,10 +486,10 @@ export default function CoupBoard() {
            </div>
         )}
 
-        {/* Player Zone */}
+        {/* Player Zone (Fixed Bottom) */}
         {me && (
-          <div className="fixed bottom-0 left-0 right-0 p-4 pb-6 z-50">
-            <div className="max-w-4xl mx-auto bg-white/95 backdrop-blur-xl border border-[#E6E1DC] rounded-[32px] p-4 sm:p-6 shadow-2xl relative">
+          <div className="fixed bottom-0 left-0 right-0 p-2 sm:p-4 z-50 pointer-events-none">
+            <div className="max-w-4xl mx-auto bg-white/95 backdrop-blur-xl border border-[#E6E1DC] rounded-[32px] p-4 sm:p-6 shadow-2xl relative pointer-events-auto">
               {isMyTurn && (
                 <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-[#9e1316] text-white px-4 py-1.5 rounded-full text-xs font-black uppercase flex items-center gap-2 shadow-lg animate-bounce z-20">
                   <Clock className="w-3 h-3" /> {t.yourTurn}
@@ -466,7 +499,7 @@ export default function CoupBoard() {
               <div className="flex flex-col md:flex-row items-center justify-between gap-6">
 
                 {/* Hand */}
-                <div className="flex justify-center gap-4 relative">
+                <div className="flex justify-center gap-3 sm:gap-4 relative shrink-0">
                   {(me.cards || []).map((card, i) => (
                     <GameCard
                         key={i}
