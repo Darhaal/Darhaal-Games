@@ -4,7 +4,7 @@ import React from 'react';
 import {
   Crown, Shield, History,
   Book, HelpCircle,
-  Swords, Skull
+  Swords, Skull, X // Added X here
 } from 'lucide-react';
 import { ROLE_CONFIG, DICTIONARY } from '@/constants/coup';
 import { Role, Lang } from '@/types/coup';
