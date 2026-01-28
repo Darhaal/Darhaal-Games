@@ -45,7 +45,7 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
     }
   };
 
-  // --- Улучшенные Логи ---
+  // --- Logs ---
   const addLog = (state: GameState, user: string, action: string) => {
     const time = new Date().toLocaleTimeString('ru-RU', { hour12: false, hour: '2-digit', minute:'2-digit' });
     state.logs.unshift({ user, action, time });
@@ -96,7 +96,6 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
     const action = { type: actionType, player: userId, target: targetId };
     newState.currentAction = action;
 
-    // Логи действий
     switch (actionType) {
         case 'income': addLog(newState, player.name, 'Взял Доход (+1)'); break;
         case 'foreign_aid': addLog(newState, player.name, 'Хочет взять Помощь (+2)'); break;
@@ -127,16 +126,21 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
     const newState: GameState = JSON.parse(JSON.stringify(gameState));
     if (!newState.currentAction) return;
 
+    // Если пропускаем челендж действия
     if (newState.phase === 'waiting_for_challenges') {
       if (['steal', 'assassinate'].includes(newState.currentAction.type)) {
-        newState.phase = 'waiting_for_blocks';
+        newState.phase = 'waiting_for_blocks'; // Переход к фазе блоков
       } else {
-        applyActionEffect(newState);
+        applyActionEffect(newState); // Выполнение действия (Tax, Exchange)
       }
-    } else if (newState.phase === 'waiting_for_blocks') {
+    }
+    // Если пропускаем блок (никто не блокирует)
+    else if (newState.phase === 'waiting_for_blocks') {
        applyActionEffect(newState);
-    } else if (newState.phase === 'waiting_for_block_challenges') {
-       addLog(newState, 'Система', 'Блок прошел успешно');
+    }
+    // Если пропускаем челендж блока (блок успешен)
+    else if (newState.phase === 'waiting_for_block_challenges') {
+       addLog(newState, 'Система', 'Блок успешен, действие отменено');
        nextTurn(newState);
     }
 
@@ -160,23 +164,31 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
     const hasRole = accused.cards.some(c => !c.revealed && c.role === requiredRole);
 
     if (hasRole) {
-      addLog(newState, accused.name, `Показал карту: ${getRoleName(requiredRole)}! (Замешивает)`);
+      // Обвиняемый доказал правоту
+      addLog(newState, accused.name, `Показал карту: ${getRoleName(requiredRole)}!`);
 
+      // Замена карты
       const cardIdx = accused.cards.findIndex(c => !c.revealed && c.role === requiredRole);
       const oldRole = accused.cards[cardIdx].role;
       newState.deck.push(oldRole);
       newState.deck.sort(() => Math.random() - 0.5);
       accused.cards[cardIdx].role = newState.deck.pop() as Role;
 
+      // Наказание челленджера
       newState.phase = 'losing_influence';
       newState.pendingPlayerId = challenger.id;
+      // Если это был блок и он устоял -> действие отменено (blocked_end)
+      // Если это было действие и оно устояло -> продолжаем (continue_action)
       newState.currentAction.nextPhase = isBlockChallenge ? 'blocked_end' : 'continue_action';
 
     } else {
+      // Обвиняемый блефовал
       addLog(newState, accused.name, `БЛЕФОВАЛ! (Нет карты ${getRoleName(requiredRole)})`);
 
       newState.phase = 'losing_influence';
       newState.pendingPlayerId = accused.id;
+      // Если блок был блефом -> действие продолжается (continue_action)
+      // Если действие было блефом -> действие отменяется (action_cancelled)
       newState.currentAction.nextPhase = isBlockChallenge ? 'continue_action' : 'action_cancelled';
     }
 
@@ -190,8 +202,10 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
 
     newState.currentAction.blockedBy = userId;
     newState.phase = 'waiting_for_block_challenges';
+
     const blockerName = newState.players.find(p => p.id === userId)?.name || '?';
     addLog(newState, blockerName, `БЛОКИРУЕТ действие`);
+
     await updateState(newState);
   };
 
@@ -204,7 +218,7 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
     const player = newState.players.find(p => p.id === userId);
     if (!player || player.cards[cardIndex].revealed) return;
 
-    // Вскрываем карту
+    // Вскрытие карты
     player.cards[cardIndex].revealed = true;
     const lostRole = getRoleName(player.cards[cardIndex].role);
     addLog(newState, player.name, `СБРОСИЛ КАРТУ: ${lostRole}`);
@@ -219,24 +233,34 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
     if (!action) {
        nextTurn(newState);
     } else {
+        // Если это был Coup или Assassinate (обычный, не челендж)
         if (action.type === 'coup' || (action.type === 'assassinate' && newState.phase === 'losing_influence' && !action.nextPhase)) {
             nextTurn(newState);
         }
+        // Обработка результатов челенджа
         else if (action.nextPhase) {
              const next = action.nextPhase;
              delete action.nextPhase;
 
              if (next === 'action_cancelled') {
-                 addLog(newState, 'Система', 'Действие отменено из-за блефа');
+                 addLog(newState, 'Система', 'Действие отменено');
                  nextTurn(newState);
              } else if (next === 'blocked_end') {
-                 addLog(newState, 'Система', 'Блок доказан, действие отменено');
+                 addLog(newState, 'Система', 'Блок успешен, действие отменено');
                  nextTurn(newState);
              } else if (next === 'continue_action') {
-                 if (['steal', 'assassinate'].includes(action.type) && !action.blockedBy) {
-                     newState.phase = 'waiting_for_blocks';
-                 } else {
+                 // Если продолжаем после провала блока -> блок снят, выполняем действие
+                 // Если продолжаем после победы над челенджем действия -> идем к блокам или выполняем
+                 if (action.blockedBy) {
+                     // Блок был пробит (блеф), выполняем действие
                      applyActionEffect(newState);
+                 } else {
+                     // Действие устояло, теперь можно блокировать
+                     if (['steal', 'assassinate'].includes(action.type)) {
+                         newState.phase = 'waiting_for_blocks';
+                     } else {
+                         applyActionEffect(newState);
+                     }
                  }
              }
         } else {
@@ -317,7 +341,7 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
               if (target) {
                   state.phase = 'losing_influence';
                   state.pendingPlayerId = target.id;
-                  addLog(state, 'Система', `Покушение успешно! ${target.name} теряет влияние`);
+                  addLog(state, 'Система', `Покушение успешно! ${target.name} теряет карту`);
               } else {
                   nextTurn(state);
               }
