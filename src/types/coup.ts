@@ -2,12 +2,12 @@ export type Lang = 'ru' | 'en';
 export type Role = 'duke' | 'assassin' | 'captain' | 'ambassador' | 'contessa';
 
 export type GamePhase = 
-  | 'choosing_action' 
-  | 'waiting_for_challenges' 
-  | 'waiting_for_blocks'     
-  | 'waiting_for_block_challenges' 
-  | 'resolving_exchange'     
-  | 'losing_influence';      
+  | 'choosing_action'              // Игрок выбирает действие
+  | 'waiting_for_challenges'       // Ждем, оспорит ли кто-то действие
+  | 'waiting_for_blocks'           // Ждем, заблокирует ли кто-то (для Foreign Aid, Steal, Assassinate)
+  | 'waiting_for_block_challenges' // Ждем, оспорят ли блок
+  | 'resolving_exchange'           // Посол выбирает карты
+  | 'losing_influence';            // Игрок выбирает карту для сброса
 
 export interface Card {
   role: Role;
@@ -26,10 +26,12 @@ export interface Player {
 }
 
 export interface PendingAction {
-  type: string; 
-  player: string; 
-  target?: string; 
-  blockedBy?: string; 
+  type: string;
+  player: string;
+  target?: string;
+  blockedBy?: string;
+  // Контекст для возврата после резолюции челенджа/потери карты
+  nextPhase?: GamePhase;
 }
 
 export interface GameLog {
@@ -45,9 +47,14 @@ export interface GameState {
   logs: GameLog[];
   status: 'waiting' | 'playing' | 'finished';
   winner?: string;
-  
+
   // State Machine
   phase: GamePhase;
   currentAction: PendingAction | null;
-  pendingLoserId?: string; // ID игрока, который должен сбросить карту
+
+  // Кто сейчас должен совершить действие (сбросить карту или выбрать при обмене)
+  pendingPlayerId?: string;
+
+  // Временный буфер карт для Посла (Ambassador)
+  exchangeBuffer?: Role[];
 }
