@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Coins, Crown, Shield,
   LogOut, Book, HelpCircle,
-  Swords, Skull, RefreshCw, AlertTriangle, ThumbsUp, AlertOctagon, CheckCircle
+  Swords, Skull, RefreshCw, AlertTriangle, ThumbsUp, AlertOctagon, CheckCircle, Timer
 } from 'lucide-react';
 import { DICTIONARY } from '@/constants/coup';
 import { Role, Lang, GameState, Player } from '@/types/coup';
@@ -20,19 +20,26 @@ interface CoupGameProps {
   resolveLoss: (cardIndex: number) => Promise<void>;
   resolveExchange: (selectedIndices: number[]) => Promise<void>;
   leaveGame: () => Promise<void>;
+  skipTurn?: () => Promise<void>; // Новая функция для пропуска
   lang: Lang;
 }
 
 export default function CoupGame({
-  gameState, userId, performAction, challenge, block, pass, resolveLoss, resolveExchange, leaveGame, lang
+  gameState, userId, performAction, challenge, block, pass, resolveLoss, resolveExchange, leaveGame, skipTurn, lang
 }: CoupGameProps) {
   const [targetMode, setTargetMode] = useState<'coup' | 'steal' | 'assassinate' | null>(null);
   const [activeModal, setActiveModal] = useState<'rules' | 'guide' | null>(null);
   const [selectedExchangeIndices, setSelectedExchangeIndices] = useState<number[]>([]);
 
+  // AFK Timer Display
+  const [timeLeft, setTimeLeft] = useState(60);
+
   const players = gameState.players || [];
   const me = players.find(p => p.id === userId);
-  const isMyTurn = players[gameState.turnIndex]?.id === userId;
+  const currentPlayer = players[gameState.turnIndex];
+  const isMyTurn = currentPlayer?.id === userId;
+  const isHost = players.find(p => p.id === userId)?.isHost;
+
   const t = DICTIONARY[lang].ui;
   const actionsT = DICTIONARY[lang].actions;
 
@@ -44,12 +51,26 @@ export default function CoupGame({
 
   const isForeignAid = gameState.currentAction?.type === 'foreign_aid';
   const isActionWithBlockAndChallenge = ['steal', 'assassinate'].includes(gameState.currentAction?.type || '');
-  const isActionWithOnlyChallenge = ['tax', 'exchange'].includes(gameState.currentAction?.type || '');
 
   const isReactionPhase = phase === 'waiting_for_challenges' || phase === 'waiting_for_blocks' || phase === 'waiting_for_block_challenges';
   const isBlocker = gameState.currentAction?.blockedBy === userId;
 
-  // Logic for buttons
+  // --- AFK Logic (Fix Issue 6) ---
+  useEffect(() => {
+      // Сбрасываем таймер при каждом обновлении lastActionTime
+      const now = Date.now();
+      const elapsed = Math.floor((now - (gameState.lastActionTime || now)) / 1000);
+      setTimeLeft(Math.max(0, 60 - elapsed));
+
+      const interval = setInterval(() => {
+          const currentElapsed = Math.floor((Date.now() - (gameState.lastActionTime || Date.now())) / 1000);
+          const remaining = 60 - currentElapsed;
+          setTimeLeft(Math.max(0, remaining));
+      }, 1000);
+
+      return () => clearInterval(interval);
+  }, [gameState.lastActionTime]);
+
   const showChallengeBtn =
       (phase === 'waiting_for_challenges' && !isActor && !isForeignAid) ||
       (phase === 'waiting_for_block_challenges' && !isBlocker) ||
@@ -73,6 +94,10 @@ export default function CoupGame({
   };
 
   const handleTarget = (targetId: string) => {
+    // Fix Issue 5: Проверка на мертвого игрока перед отправкой действия
+    const targetPlayer = players.find(p => p.id === targetId);
+    if (!targetPlayer || targetPlayer.isDead) return;
+
     if (targetMode) { performAction(targetMode, targetId); setTargetMode(null); }
   };
 
@@ -104,7 +129,21 @@ export default function CoupGame({
           <button onClick={leaveGame}><LogOut className="w-5 h-5 text-gray-500" /></button>
           <div className="text-center">
              <h1 className="font-black text-xl">COUP</h1>
-             <div className="text-[10px] font-bold text-[#9e1316] uppercase">{isLosing ? 'LOSE INFLUENCE!' : (gameState.status === 'playing' ? `Turn: ${players[gameState.turnIndex]?.name}` : 'End')}</div>
+             <div className="text-[10px] font-bold text-[#9e1316] uppercase flex items-center justify-center gap-2">
+                 {isLosing ? 'LOSE INFLUENCE!' : (gameState.status === 'playing' ? `Turn: ${currentPlayer?.name}` : 'End')}
+                 {/* AFK Timer Indicator */}
+                 {gameState.status === 'playing' && (
+                     <span className={`flex items-center gap-1 ${timeLeft < 15 ? 'text-red-600 animate-pulse' : 'text-gray-400'}`}>
+                         <Timer className="w-3 h-3" /> {timeLeft}s
+                     </span>
+                 )}
+             </div>
+             {/* Host Kick Button */}
+             {isHost && timeLeft === 0 && gameState.status === 'playing' && skipTurn && (
+                 <button onClick={skipTurn} className="mt-1 text-[9px] bg-red-100 text-red-600 px-2 py-0.5 rounded border border-red-200 uppercase font-bold hover:bg-red-200">
+                     Force Skip AFK
+                 </button>
+             )}
           </div>
           <div className="flex gap-2">
               <button onClick={() => setActiveModal('guide')} className="p-2 bg-white border rounded-xl shadow-sm"><Book className="w-5 h-5" /></button>
@@ -120,7 +159,16 @@ export default function CoupGame({
             if (p.id === userId) return null;
             const isCurr = gameState.turnIndex === players.findIndex(pl => pl.id === p.id);
             return (
-              <div key={p.id} onClick={() => targetMode && handleTarget(p.id)} className={`relative flex flex-col items-center p-3 bg-white border rounded-2xl transition-all ${isCurr ? 'ring-4 ring-[#9e1316] scale-105 z-20' : 'opacity-90'} ${targetMode ? 'cursor-pointer animate-pulse ring-4 ring-blue-400' : ''} ${p.isDead ? 'grayscale opacity-50' : ''}`}>
+              <div
+                  key={p.id}
+                  onClick={() => targetMode && !p.isDead && handleTarget(p.id)}
+                  className={`
+                      relative flex flex-col items-center p-3 bg-white border rounded-2xl transition-all
+                      ${isCurr ? 'ring-4 ring-[#9e1316] scale-105 z-20' : 'opacity-90'}
+                      ${targetMode && !p.isDead ? 'cursor-pointer animate-pulse ring-4 ring-blue-400 hover:scale-110' : ''}
+                      ${p.isDead ? 'grayscale opacity-50 cursor-not-allowed' : ''}
+                  `}
+              >
                 <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-white shadow-sm mb-2"><img src={p.avatarUrl} className="w-full h-full object-cover" /></div>
                 <div className="text-xs font-bold mb-1 truncate max-w-[80px]">{p.name}</div>
                 <div className="flex gap-1 mb-2">{p.cards.map((c, i) => <div key={i} className={`w-3 h-5 rounded-sm border ${c.revealed ? 'bg-red-200' : 'bg-[#1A1F26]'}`} />)}</div>
