@@ -25,7 +25,6 @@ function HomeContent() {
   const [lang, setLang] = useState<Lang>('ru');
 
   useEffect(() => {
-    // Load lang from local storage
     const savedLang = localStorage.getItem('dg_lang') as Lang;
     if (savedLang) setLang(savedLang);
   }, []);
@@ -56,14 +55,17 @@ function HomeContent() {
   useEffect(() => {
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (session) updateLocalUser(session.user);
+      if (session?.user) {
+        updateLocalUser(session.user);
+      } else {
+        setUser(null);
+      }
       setLoading(false);
     };
-
     checkUser();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) updateLocalUser(session.user);
+      if (session?.user) updateLocalUser(session.user);
       else setUser(null);
     });
 
@@ -71,19 +73,35 @@ function HomeContent() {
   }, []);
 
   const updateLocalUser = (authUser: any) => {
-      const name = authUser.user_metadata?.username || authUser.email?.split('@')[0] || 'Player';
+      const name = authUser.user_metadata?.username || authUser.user_metadata?.full_name || authUser.email?.split('@')[0] || 'Player';
       const avatar = authUser.user_metadata?.avatar_url || null;
       setUser({
         id: authUser.id,
         email: authUser.email,
         name: name,
         avatarUrl: avatar,
-        isAnonymous: authUser.is_anonymous
+        isAnonymous: authUser.is_anonymous,
+        user_metadata: authUser.user_metadata
       });
   };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
+  };
+
+  // Обработчик обновления профиля из настроек
+  const handleProfileUpdate = (updates: { name?: string; avatarUrl?: string }) => {
+    if (!user) return;
+    setUser((prev: any) => ({
+      ...prev,
+      name: updates.name || prev.name,
+      avatarUrl: updates.avatarUrl || prev.avatarUrl,
+      user_metadata: {
+        ...prev.user_metadata,
+        username: updates.name || prev.user_metadata?.username,
+        avatar_url: updates.avatarUrl || prev.user_metadata?.avatar_url
+      }
+    }));
   };
 
   const menuItems = [
@@ -145,7 +163,7 @@ function HomeContent() {
         user={user}
         currentLang={lang}
         setLang={setLang}
-        updateUserAvatar={(url) => setUser({...user, avatarUrl: url})}
+        onProfileUpdate={handleProfileUpdate}
       />
 
       {/* Header */}
@@ -154,7 +172,7 @@ function HomeContent() {
             onClick={() => setShowSettings(true)}
             className="flex items-center gap-4 bg-white/80 backdrop-blur-md border border-[#E6E1DC] p-2 pr-6 rounded-full hover:border-[#9e1316]/50 hover:shadow-lg hover:shadow-[#9e1316]/5 transition-all cursor-pointer group"
         >
-          <div className="w-12 h-12 bg-[#F5F5F0] border border-[#E6E1DC] rounded-full flex items-center justify-center overflow-hidden relative">
+          <div className="w-12 h-12 bg-[#F5F5F0] border border-[#E6E1DC] rounded-full flex items-center justify-center overflow-hidden relative group-hover:border-[#9e1316] transition-colors">
             {user.avatarUrl ? (
               <img src={user.avatarUrl} alt="Avatar" className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity" />
             ) : (
@@ -162,7 +180,7 @@ function HomeContent() {
             )}
           </div>
           <div className="flex flex-col items-start">
-            <span className="font-bold text-sm text-[#1A1F26] group-hover:text-[#9e1316] transition-colors tracking-wide">
+            <span className="font-bold text-sm text-[#1A1F26] group-hover:text-[#9e1316] transition-colors tracking-wide max-w-[120px] truncate">
                 {user.name}
             </span>
             <span className="text-[10px] font-medium text-[#8A9099] uppercase tracking-wider">
@@ -172,8 +190,8 @@ function HomeContent() {
         </button>
 
         {/* Desktop Logo */}
-        <div className="hidden md:flex flex-col items-center absolute left-1/2 -translate-x-1/2">
-           <div className="flex items-center gap-3 opacity-90 hover:opacity-100 transition-opacity bg-white/50 backdrop-blur-sm px-6 py-2 rounded-full border border-transparent hover:border-[#E6E1DC]">
+        <div className="hidden md:flex flex-col items-center absolute left-1/2 -translate-x-1/2 pointer-events-none">
+           <div className="flex items-center gap-3 opacity-90 bg-white/50 backdrop-blur-sm px-6 py-2 rounded-full border border-transparent">
              <img src="/logo512.png" alt="Logo" className="w-8 h-8 object-contain" onError={(e) => e.currentTarget.style.display = 'none'} />
              <span className="text-xl font-black tracking-widest font-sans text-[#1A1F26]">DARHAAL GAMES</span>
            </div>
@@ -187,8 +205,8 @@ function HomeContent() {
         </button>
       </header>
 
-      {/* Main Content with adjusted spacing */}
-      <div className="flex-1 flex flex-col items-center justify-center w-full max-w-6xl px-4 z-10 py-10">
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col items-center justify-center w-full max-w-6xl px-4 z-10 py-12">
         <div className="text-center mb-12 animate-in slide-in-from-bottom-8 duration-700 fade-in">
           <h1 className="text-5xl md:text-7xl font-black mb-4 tracking-tight text-[#1A1F26]">
             {t.welcome} <span className="text-[#9e1316]">{user.name}</span>

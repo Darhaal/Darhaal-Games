@@ -32,7 +32,7 @@ export default function Settings({ isOpen, onClose, user, currentLang, setLang, 
   const [isEditingName, setIsEditingName] = useState(false);
   const [savingName, setSavingName] = useState(false);
 
-  // Синхронизация локального стейта при открытии или изменении юзера
+  // Синхронизация локального стейта
   useEffect(() => {
     if (user && user.name) {
       setUsername(user.name);
@@ -117,14 +117,11 @@ export default function Settings({ isOpen, onClose, user, currentLang, setLang, 
 
     setSavingName(true);
     try {
-      // 1. Обновляем метаданные Auth (это главное)
       const { error: authError } = await supabase.auth.updateUser({ data: { username: username } });
       if (authError) throw authError;
 
-      // 2. Обновляем публичный профиль
       await supabase.from('profiles').update({ username: username }).eq('id', user.id);
 
-      // 3. Обновляем состояние в родителе
       onProfileUpdate({ name: username });
       setIsEditingName(false);
     } catch (e: any) {
@@ -199,6 +196,7 @@ export default function Settings({ isOpen, onClose, user, currentLang, setLang, 
         {/* Sidebar */}
         <div className="w-full md:w-64 bg-[#F5F5F0] p-8 border-b md:border-b-0 md:border-r border-[#E6E1DC] flex flex-row md:flex-col gap-3">
           <div className="hidden md:flex items-center gap-2 text-lg font-black text-[#1A1F26] mb-8 px-2 tracking-tight">
+            <img src="/logo512.png" alt="Logo" className="w-6 h-6 object-contain" onError={(e) => e.currentTarget.style.display = 'none'} />
             Darhaal<span className="text-[#9e1316]">System</span>
           </div>
 
@@ -283,8 +281,6 @@ export default function Settings({ isOpen, onClose, user, currentLang, setLang, 
           {/* PROFILE */}
           {activeTab === 'profile' && (
             <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500">
-
-              {/* Смена ника */}
               {!user.isAnonymous && (
                 <div className="bg-[#F5F5F0] p-4 rounded-2xl border border-[#E6E1DC] flex flex-col gap-2">
                   <div className="flex justify-between items-center">
@@ -326,7 +322,7 @@ export default function Settings({ isOpen, onClose, user, currentLang, setLang, 
                 </div>
               )}
 
-              {/* Загрузка аватара */}
+              {/* ... (остальной код аватаров) ... */}
               {!user.isAnonymous && (
                 <div className="flex items-center justify-between mb-6">
                   <span className="text-xs text-[#8A9099] font-bold uppercase tracking-wider pl-1">{t.deleteHint}</span>
