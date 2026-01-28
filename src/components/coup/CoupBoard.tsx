@@ -6,193 +6,186 @@ import { supabase } from '@/lib/supabase';
 import {
   Loader2, ArrowLeft, Coins, Clock, Crown, X, Shield, History,
   Copy, CheckCircle, Users, Play, LogOut, Book, HelpCircle,
-  Swords, Skull, RefreshCw
+  Swords, Skull, RefreshCw, AlertTriangle
 } from 'lucide-react';
 import { useCoupGame } from '@/hooks/useCoupGame';
 import { ROLE_CONFIG, DICTIONARY } from '@/constants/coup';
 import { Role, Lang } from '@/types/coup';
 
-// --- Sub-components ---
-const CardView = ({ role, revealed, isMe, onClick, selected, lang, small = false }: { role: Role, revealed: boolean, isMe: boolean, onClick?: () => void, selected?: boolean, lang: Lang, small?: boolean }) => {
+// --- TEXT CONTENT (RULES) ---
+const RULES_CONTENT = {
+  ru: (
+    <div className="space-y-6 text-sm text-[#334155]">
+      <section>
+        <h3 className="font-black text-[#1A1F26] uppercase mb-2 flex items-center gap-2"><Crown className="w-4 h-4 text-yellow-600" /> Цель игры</h3>
+        <p className="bg-yellow-50 p-3 rounded-xl border border-yellow-100 text-yellow-900 font-medium">
+          Остаться последним игроком с хотя бы 1 влиянием.
+        </p>
+      </section>
+
+      <section>
+        <h3 className="font-black text-[#1A1F26] uppercase mb-2">🧑‍🤝‍🧑 Игроки</h3>
+        <p>2–6 игроков. Каждый начинает с <strong>2 карт влияния</strong> (в закрытую) и <strong>2 монет</strong>.</p>
+      </section>
+
+      <section>
+        <h3 className="font-black text-[#1A1F26] uppercase mb-2">💰 Базовые действия</h3>
+        <ul className="space-y-2">
+          <li className="flex gap-2"><div className="w-1 h-full bg-emerald-500 rounded-full"></div><div><strong>Income:</strong> +1 монета. Нельзя блокировать.</div></li>
+          <li className="flex gap-2"><div className="w-1 h-full bg-emerald-500 rounded-full"></div><div><strong>Foreign Aid:</strong> +2 монеты. Блокируется <span className="text-purple-700 font-bold">Герцогом</span>.</div></li>
+          <li className="flex gap-2"><div className="w-1 h-full bg-red-500 rounded-full"></div><div><strong>Coup:</strong> -7 монет. Выбери игрока → он теряет карту. Нельзя блокировать. (Обязательно при 10+ монетах).</div></li>
+        </ul>
+      </section>
+
+      <section>
+        <h3 className="font-black text-[#1A1F26] uppercase mb-2">👑 Действия карт</h3>
+        <div className="grid gap-2 text-xs">
+          <div className="p-2 bg-purple-50 rounded border border-purple-100"><strong>Duke:</strong> +3 монеты. Блокирует Помощь.</div>
+          <div className="p-2 bg-red-50 rounded border border-red-100"><strong>Assassin:</strong> -3 монеты → убить карту. Блокируется Графиней.</div>
+          <div className="p-2 bg-blue-50 rounded border border-blue-100"><strong>Captain:</strong> Украсть 2 монеты. Блокируется Капитаном/Послом.</div>
+          <div className="p-2 bg-green-50 rounded border border-green-100"><strong>Ambassador:</strong> Обмен карт. Блокирует Кражу.</div>
+          <div className="p-2 bg-gray-100 rounded border border-gray-200"><strong>Contessa:</strong> Блокирует Убийство.</div>
+        </div>
+      </section>
+
+      <section>
+        <h3 className="font-black text-[#1A1F26] uppercase mb-2 text-red-600">❗ Блеф и Вызов</h3>
+        <p className="mb-2">Любое действие карты можно оспорить.</p>
+        <ul className="list-disc pl-4 space-y-1">
+          <li><strong>Игрок соврал:</strong> Он теряет 1 карту.</li>
+          <li><strong>Игрок доказал:</strong> Оспоривший теряет 1 карту. (Карта меняется).</li>
+        </ul>
+      </section>
+    </div>
+  ),
+  en: (
+    <div className="space-y-6 text-sm text-[#334155]">
+      <section>
+        <h3 className="font-black text-[#1A1F26] uppercase mb-2 flex items-center gap-2"><Crown className="w-4 h-4 text-yellow-600" /> Objective</h3>
+        <p className="bg-yellow-50 p-3 rounded-xl border border-yellow-100 text-yellow-900 font-medium">
+          To be the last player with at least 1 influence.
+        </p>
+      </section>
+      <section>
+        <h3 className="font-black text-[#1A1F26] uppercase mb-2">💰 Basic Actions</h3>
+        <ul className="space-y-2">
+          <li><strong>Income:</strong> +1 coin. Cannot be blocked.</li>
+          <li><strong>Foreign Aid:</strong> +2 coins. Blocked by <span className="text-purple-700 font-bold">Duke</span>.</li>
+          <li><strong>Coup:</strong> -7 coins. Target loses a card. Unblockable. (Mandatory at 10+ coins).</li>
+        </ul>
+      </section>
+      <section>
+        <h3 className="font-black text-[#1A1F26] uppercase mb-2">👑 Character Actions</h3>
+        <div className="grid gap-2 text-xs">
+          <div className="p-2 bg-purple-50 rounded"><strong>Duke:</strong> Tax +3. Blocks Foreign Aid.</div>
+          <div className="p-2 bg-red-50 rounded"><strong>Assassin:</strong> Pay 3 → Assassinate. Blocked by Contessa.</div>
+          <div className="p-2 bg-blue-50 rounded"><strong>Captain:</strong> Steal 2. Blocked by Captain/Ambassador.</div>
+          <div className="p-2 bg-green-50 rounded"><strong>Ambassador:</strong> Exchange cards. Blocks Stealing.</div>
+          <div className="p-2 bg-gray-100 rounded"><strong>Contessa:</strong> Blocks Assassination.</div>
+        </div>
+      </section>
+    </div>
+  )
+};
+
+// --- NEW COMPONENT: Beautiful Game Card ---
+const GameCard = ({ role, revealed, isMe, onClick, selected, lang, small = false, disabled = false }: { role: Role, revealed: boolean, isMe: boolean, onClick?: () => void, selected?: boolean, lang: Lang, small?: boolean, disabled?: boolean }) => {
   if (!role || !ROLE_CONFIG[role]) return null;
   const config = ROLE_CONFIG[role];
   const info = DICTIONARY[lang].roles[role];
 
+  // Base dimensions
+  const dims = small ? 'w-20 h-32' : 'w-24 h-36 sm:w-28 sm:h-44';
+
   return (
     <div
-      onClick={onClick}
+      onClick={!disabled ? onClick : undefined}
       className={`
-        relative ${small ? 'w-16 h-24' : 'w-20 h-32 sm:w-28 sm:h-44'} rounded-xl border-2 transition-all duration-300
-        ${revealed ? 'bg-gray-200 grayscale opacity-60 border-gray-300' : 'bg-white border-[#E6E1DC] shadow-lg'}
-        ${selected ? 'ring-4 ring-[#9e1316] -translate-y-2' : ''}
-        ${!isMe && !revealed ? 'bg-[#1A1F26] border-white' : ''}
-        cursor-pointer overflow-hidden group
+        relative ${dims} perspective-1000 group transition-all duration-300
+        ${selected ? '-translate-y-4 z-20' : 'hover:-translate-y-2'}
+        ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
       `}
     >
-      {(isMe || revealed) ? (
-        <div className={`flex flex-col items-center justify-between h-full ${small ? 'p-1' : 'p-2 sm:p-3'} text-center`}>
-          <div className={`${small ? 'w-6 h-6' : 'w-8 h-8 sm:w-10 sm:h-10'} rounded-full flex items-center justify-center mb-1`} style={{ backgroundColor: config.color + '20' }}>
-            <config.icon className={`${small ? 'w-3 h-3' : 'w-5 h-5 sm:w-6 sm:h-6'}`} style={{ color: config.color }} />
+      <div className={`
+        relative w-full h-full duration-500 preserve-3d transition-transform shadow-xl rounded-xl
+        ${(isMe || revealed) ? 'rotate-y-0' : ''}
+      `}>
+
+        {/* FACE SIDE (Role) */}
+        <div className={`
+          absolute inset-0 backface-hidden rounded-xl border-4 overflow-hidden bg-white flex flex-col items-center justify-between p-2
+          ${revealed ? 'grayscale brightness-75' : ''}
+        `}
+        style={{ borderColor: config.color }}
+        >
+           {/* Background Pattern */}
+           <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundColor: config.color }} />
+
+           {/* Header */}
+           <div className="w-full flex justify-between items-start z-10">
+              <span className="font-black text-[10px] uppercase" style={{ color: config.color }}>{info.name}</span>
+              <config.icon className="w-4 h-4" style={{ color: config.color }} />
+           </div>
+
+           {/* Central Art (Icon) */}
+           <div className="flex-1 flex items-center justify-center z-10">
+              <div className="p-3 rounded-full bg-white border-2 shadow-sm" style={{ borderColor: config.color }}>
+                 <config.icon className={`${small ? 'w-6 h-6' : 'w-10 h-10'}`} style={{ color: config.color }} />
+              </div>
+           </div>
+
+           {/* Footer / Description */}
+           {!small && (
+             <div className="text-[8px] text-center font-medium leading-tight text-gray-500 z-10 bg-white/80 p-1 rounded-lg w-full">
+               {info.desc}
+             </div>
+           )}
+
+           {/* Dead Overlay */}
+           {revealed && (
+             <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-50">
+               <Skull className="w-12 h-12 text-white drop-shadow-lg animate-in zoom-in duration-300" />
+             </div>
+           )}
+        </div>
+
+        {/* BACK SIDE (Cover) */}
+        {!revealed && !isMe && (
+          <div className="absolute inset-0 backface-hidden rounded-xl bg-[#1A1F26] border-4 border-[#E6E1DC] flex flex-col items-center justify-center relative overflow-hidden">
+             <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white via-transparent to-transparent" />
+             <div className="w-16 h-16 rounded-full border-2 border-[#E6E1DC]/20 flex items-center justify-center">
+                <Crown className="w-8 h-8 text-[#E6E1DC]" />
+             </div>
+             <div className="mt-2 text-[8px] font-bold text-[#E6E1DC] tracking-[0.2em] uppercase">COUP</div>
           </div>
-          <div className="font-black text-[10px] sm:text-xs uppercase leading-tight" style={{ color: config.color }}>{info.name}</div>
-          {!small && <div className="text-[8px] sm:text-[9px] leading-tight text-gray-500 hidden sm:block">{info.desc}</div>}
-          {revealed && <div className="absolute inset-0 flex items-center justify-center bg-black/10"><X className="w-12 h-12 text-[#9e1316]" /></div>}
-        </div>
-      ) : (
-        <div className="w-full h-full flex items-center justify-center relative bg-[#1A1F26]">
-           <div className="absolute inset-2 border-2 border-white/10 rounded-lg"></div>
-           <Shield className="text-white/20 w-8 h-8" />
-        </div>
+        )}
+      </div>
+
+      {/* Selection Glow */}
+      {selected && (
+        <div className="absolute -inset-2 rounded-2xl bg-[#9e1316]/20 blur-md -z-10 animate-pulse" />
       )}
     </div>
   );
 };
 
-const ActionButton = ({ label, onClick, disabled, color = 'bg-white', borderColor = 'border-gray-200' }: any) => (
+// --- ACTION BUTTON ---
+const ActionBtn = ({ label, onClick, disabled, color = 'bg-white', icon: Icon }: any) => (
   <button
     onClick={onClick}
     disabled={disabled}
     className={`
-      p-2 sm:p-3 rounded-xl border-b-4 font-bold text-[10px] sm:text-xs uppercase transition-all active:translate-y-1 active:border-b-0
-      ${disabled ? 'opacity-40 cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400' : `${color} ${borderColor} hover:brightness-95 text-[#1A1F26]`}
+      flex flex-col items-center justify-center gap-1 p-2 sm:p-3 rounded-xl border-b-4 transition-all active:translate-y-1 active:border-b-0 h-full
+      ${disabled
+        ? 'opacity-40 cursor-not-allowed bg-gray-100 border-gray-200 text-gray-400'
+        : `${color} hover:brightness-95 text-[#1A1F26] shadow-sm`
+      }
     `}
   >
-    {label}
+    {Icon && <Icon className="w-4 h-4 sm:w-5 sm:h-5 mb-1" />}
+    <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-tight leading-none text-center">{label}</span>
   </button>
 );
-
-// --- MODALS ---
-
-const GuideModal = ({ onClose, lang }: { onClose: () => void, lang: Lang }) => {
-  const roles: Role[] = ['duke', 'assassin', 'captain', 'ambassador', 'contessa'];
-
-  return (
-    <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-      <div className="bg-white rounded-[32px] w-full max-w-lg h-[80vh] flex flex-col shadow-2xl relative overflow-hidden">
-        <div className="p-6 border-b border-[#E6E1DC] flex justify-between items-center bg-white sticky top-0 z-10">
-          <h2 className="text-xl font-black uppercase tracking-tight flex items-center gap-2">
-            <Book className="w-5 h-5 text-[#9e1316]" /> {lang === 'ru' ? 'Карты' : 'Cards'}
-          </h2>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors"><X className="w-5 h-5" /></button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
-          {roles.map(role => {
-             const info = DICTIONARY[lang].roles[role];
-             const config = ROLE_CONFIG[role];
-             return (
-               <div key={role} className="flex gap-4 p-4 rounded-2xl bg-[#F8FAFC] border border-[#E6E1DC]">
-                 <div className="shrink-0">
-                    <CardView role={role} revealed={false} isMe={true} lang={lang} small={true} />
-                 </div>
-                 <div className="flex-1 space-y-1">
-                    <div className="flex items-center gap-2 mb-1">
-                       <config.icon className="w-4 h-4" style={{ color: config.color }} />
-                       <h3 className="font-black uppercase text-sm" style={{ color: config.color }}>{info.name}</h3>
-                    </div>
-                    <div className="text-xs text-[#1A1F26] font-medium leading-relaxed">
-                       {info.desc}
-                    </div>
-                    {/* Дополнительные детали если есть в словаре или хардкод для красоты */}
-                    <div className="flex flex-wrap gap-2 mt-2">
-                       {role === 'duke' && <span className="text-[9px] font-bold uppercase bg-purple-100 text-purple-700 px-2 py-1 rounded">Блок: Помощь</span>}
-                       {role === 'contessa' && <span className="text-[9px] font-bold uppercase bg-orange-100 text-orange-700 px-2 py-1 rounded">Блок: Убийца</span>}
-                       {(role === 'captain' || role === 'ambassador') && <span className="text-[9px] font-bold uppercase bg-blue-100 text-blue-700 px-2 py-1 rounded">Блок: Кража</span>}
-                    </div>
-                 </div>
-               </div>
-             );
-          })}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const RulesModal = ({ onClose }: { onClose: () => void }) => {
-  return (
-    <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-      <div className="bg-white rounded-[32px] w-full max-w-lg h-[80vh] flex flex-col shadow-2xl relative overflow-hidden">
-        <div className="p-6 border-b border-[#E6E1DC] flex justify-between items-center bg-white sticky top-0 z-10">
-          <h2 className="text-xl font-black uppercase tracking-tight flex items-center gap-2">
-            <HelpCircle className="w-5 h-5 text-[#9e1316]" /> Правила
-          </h2>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors"><X className="w-5 h-5" /></button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar text-sm text-[#334155] leading-relaxed">
-
-          <section>
-            <h3 className="font-black text-[#1A1F26] uppercase mb-3 flex items-center gap-2"><Crown className="w-4 h-4 text-yellow-600" /> Цель игры</h3>
-            <p className="bg-yellow-50 p-3 rounded-xl border border-yellow-100 text-yellow-900 font-medium">
-              Остаться последним игроком с хотя бы <strong>1 картой влияния</strong>.
-            </p>
-          </section>
-
-          <section>
-            <h3 className="font-black text-[#1A1F26] uppercase mb-3 flex items-center gap-2"><Coins className="w-4 h-4" /> Базовые действия</h3>
-            <ul className="space-y-3">
-              <li className="flex gap-3 items-start">
-                <div className="w-1.5 h-1.5 rounded-full bg-[#1A1F26] mt-2 shrink-0" />
-                <div>
-                  <span className="font-bold text-[#1A1F26]">Income (Доход):</span> <span className="text-emerald-600 font-bold">+1 монета</span>. Нельзя заблокировать.
-                </div>
-              </li>
-              <li className="flex gap-3 items-start">
-                <div className="w-1.5 h-1.5 rounded-full bg-[#1A1F26] mt-2 shrink-0" />
-                <div>
-                  <span className="font-bold text-[#1A1F26]">Foreign Aid (Помощь):</span> <span className="text-emerald-600 font-bold">+2 монеты</span>. Блокируется <span className="text-purple-700 font-bold">Герцогом</span>.
-                </div>
-              </li>
-              <li className="flex gap-3 items-start">
-                <div className="w-1.5 h-1.5 rounded-full bg-[#1A1F26] mt-2 shrink-0" />
-                <div>
-                  <span className="font-bold text-[#9e1316]">Coup (Переворот):</span> Платишь <span className="text-red-600 font-bold">7 монет</span>. Выбираешь жертву -> она теряет карту. Нельзя заблокировать. <span className="text-xs uppercase font-bold text-gray-400 block mt-1">(При 10+ монетах обязан делать Coup)</span>
-                </div>
-              </li>
-            </ul>
-          </section>
-
-          <section>
-            <h3 className="font-black text-[#1A1F26] uppercase mb-3 flex items-center gap-2"><Shield className="w-4 h-4" /> Действия карт</h3>
-            <div className="grid gap-3">
-               <div className="p-3 rounded-xl bg-purple-50 border border-purple-100">
-                 <div className="font-bold text-purple-900">Герцог (Duke)</div>
-                 <div className="text-xs mt-1">Берет <strong>3 монеты</strong>. Блокирует Помощь.</div>
-               </div>
-               <div className="p-3 rounded-xl bg-red-50 border border-red-100">
-                 <div className="font-bold text-red-900">Ассасин (Assassin)</div>
-                 <div className="text-xs mt-1">Платит <strong>3 монеты</strong> чтобы убить карту. Блокируется Графиней.</div>
-               </div>
-               <div className="p-3 rounded-xl bg-blue-50 border border-blue-100">
-                 <div className="font-bold text-blue-900">Капитан (Captain)</div>
-                 <div className="text-xs mt-1">Крадет <strong>2 монеты</strong>. Блокируется Капитаном или Послом.</div>
-               </div>
-               <div className="p-3 rounded-xl bg-green-50 border border-green-100">
-                 <div className="font-bold text-green-900">Посол (Ambassador)</div>
-                 <div className="text-xs mt-1">Меняет карты из колоды. Блокирует кражу.</div>
-               </div>
-               <div className="p-3 rounded-xl bg-gray-100 border border-gray-200">
-                 <div className="font-bold text-gray-900">Графиня (Contessa)</div>
-                 <div className="text-xs mt-1">Не имеет активного действия. Блокирует Ассасина.</div>
-               </div>
-            </div>
-          </section>
-
-          <section>
-            <h3 className="font-black text-[#1A1F26] uppercase mb-3 text-red-600">❗ Блеф и Вызов</h3>
-            <p className="mb-2">Любое действие карты или блокировку можно <strong>ОСПОРИТЬ</strong>.</p>
-            <ul className="space-y-2 text-xs font-bold text-gray-600 bg-gray-50 p-4 rounded-xl">
-               <li>1. Если игрок соврал (нет карты) -> он теряет карту.</li>
-               <li>2. Если игрок доказал (показал карту) -> оспоривший теряет карту. (Показанная карта замешивается и берется новая).</li>
-            </ul>
-          </section>
-
-        </div>
-      </div>
-    </div>
-  );
-};
 
 // --- MAIN BOARD ---
 
@@ -207,9 +200,8 @@ export default function CoupBoard() {
   const [lang, setLang] = useState<Lang>('ru');
   const [isLeaving, setIsLeaving] = useState(false);
 
-  // Modals state
-  const [showRules, setShowRules] = useState(false);
-  const [showGuide, setShowGuide] = useState(false);
+  // Modals
+  const [activeModal, setActiveModal] = useState<'rules' | 'guide' | null>(null);
 
   const { gameState, roomMeta, loading, performAction, startGame, leaveGame } = useCoupGame(lobbyId, userId);
 
@@ -243,8 +235,8 @@ export default function CoupBoard() {
   if (!gameState) {
       return (
           <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-[#F8FAFC]">
-              <div className="text-xl font-bold text-gray-400">Лобби не найдено или игра завершена</div>
-              <button onClick={() => router.push('/play')} className="px-6 py-2 bg-[#1A1F26] text-white rounded-xl font-bold uppercase text-xs">Найти другую игру</button>
+              <div className="text-xl font-bold text-gray-400">Лобби не найдено</div>
+              <button onClick={() => router.push('/play')} className="px-6 py-2 bg-[#1A1F26] text-white rounded-xl font-bold uppercase text-xs">Выйти</button>
           </div>
       );
   }
@@ -255,42 +247,81 @@ export default function CoupBoard() {
   const t = DICTIONARY[lang].ui;
   const actionsT = DICTIONARY[lang].actions;
 
-  // Header Logic (Shared)
+  // --- MODALS RENDER ---
+  const renderModals = () => {
+    if (!activeModal) return null;
+    const closeModal = () => setActiveModal(null);
+
+    return (
+      <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+        <div className="bg-white rounded-[32px] w-full max-w-lg max-h-[85vh] flex flex-col shadow-2xl relative overflow-hidden animate-in zoom-in-95">
+          {/* Header */}
+          <div className="p-6 border-b border-[#E6E1DC] flex justify-between items-center bg-white sticky top-0 z-10">
+            <h2 className="text-xl font-black uppercase tracking-tight flex items-center gap-2">
+              {activeModal === 'rules' ? <HelpCircle className="w-6 h-6 text-[#9e1316]" /> : <Book className="w-6 h-6 text-[#9e1316]" />}
+              {activeModal === 'rules' ? (lang === 'ru' ? 'Правила' : 'Rules') : (lang === 'ru' ? 'Справочник' : 'Guide')}
+            </h2>
+            <button onClick={closeModal} className="p-2 hover:bg-gray-100 rounded-full transition-colors"><X className="w-5 h-5" /></button>
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+            {activeModal === 'rules' ? RULES_CONTENT[lang] : (
+              <div className="grid grid-cols-2 gap-4">
+                {(['duke', 'assassin', 'captain', 'ambassador', 'contessa'] as Role[]).map(role => (
+                  <div key={role} className="flex flex-col items-center text-center p-3 bg-[#F8FAFC] rounded-2xl border border-[#E6E1DC]">
+                    <div className="scale-75 origin-top -mb-4">
+                      <GameCard role={role} revealed={false} isMe={true} lang={lang} small={true} />
+                    </div>
+                    <div className="mt-2">
+                      <div className="font-bold text-xs uppercase" style={{ color: ROLE_CONFIG[role].color }}>{DICTIONARY[lang].roles[role].name}</div>
+                      <div className="text-[10px] text-gray-500 leading-tight mt-1">{DICTIONARY[lang].roles[role].desc}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // --- LOBBY HEADER ---
   const renderHeader = (title: string, sub: string) => (
-    <header className="w-full max-w-5xl mx-auto p-4 sm:p-6 flex justify-between items-center z-10 relative">
+    <header className="w-full max-w-6xl mx-auto p-4 flex justify-between items-center z-10 relative">
         <button onClick={handleLeave} className="flex items-center gap-2 text-[#8A9099] hover:text-[#9e1316] transition-colors group">
-            <div className="p-2 sm:p-3 bg-white border border-[#E6E1DC] rounded-xl shadow-sm group-hover:border-[#9e1316]/50 transition-all"><LogOut className="w-4 h-4 sm:w-5 sm:h-5" /></div>
+            <div className="p-2 bg-white border border-[#E6E1DC] rounded-xl shadow-sm group-hover:border-[#9e1316]/50 transition-all"><LogOut className="w-5 h-5" /></div>
             <span className="text-xs font-bold uppercase tracking-widest hidden sm:block">{t.leave}</span>
         </button>
 
         <div className="text-center">
-            <h1 className="text-xl sm:text-3xl font-black text-[#1A1F26] tracking-tight">{title}</h1>
-            <div className="text-[10px] sm:text-xs font-bold text-[#9e1316] uppercase tracking-[0.2em]">{sub}</div>
+            <h1 className="text-2xl font-black text-[#1A1F26] tracking-tight">{title}</h1>
+            <div className="text-[10px] font-bold text-[#9e1316] uppercase tracking-[0.2em]">{sub}</div>
         </div>
 
         <div className="flex gap-2">
-            <button onClick={() => setShowGuide(true)} className="p-2 sm:p-3 bg-white border border-[#E6E1DC] rounded-xl shadow-sm hover:text-[#9e1316] hover:border-[#9e1316]/50 transition-all">
-                <Book className="w-4 h-4 sm:w-5 sm:h-5" />
+            <button onClick={() => setActiveModal('guide')} className="p-2 bg-white border border-[#E6E1DC] rounded-xl shadow-sm hover:text-[#9e1316] hover:border-[#9e1316]/50 transition-all">
+                <Book className="w-5 h-5" />
             </button>
-            <button onClick={() => setShowRules(true)} className="p-2 sm:p-3 bg-white border border-[#E6E1DC] rounded-xl shadow-sm hover:text-[#9e1316] hover:border-[#9e1316]/50 transition-all">
-                <HelpCircle className="w-4 h-4 sm:w-5 sm:h-5" />
+            <button onClick={() => setActiveModal('rules')} className="p-2 bg-white border border-[#E6E1DC] rounded-xl shadow-sm hover:text-[#9e1316] hover:border-[#9e1316]/50 transition-all">
+                <HelpCircle className="w-5 h-5" />
             </button>
         </div>
     </header>
   );
 
-  // === 1. LOBBY VIEW (WAITING) ===
+  // === 1. LOBBY VIEW ===
   if (gameState.status === 'waiting') {
     return (
         <div className="min-h-screen bg-[#F8FAFC] text-[#1A1F26] flex flex-col font-sans relative overflow-hidden">
             <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-50 brightness-100 contrast-150 mix-blend-overlay pointer-events-none"></div>
-            {showGuide && <GuideModal onClose={() => setShowGuide(false)} lang={lang} />}
-            {showRules && <RulesModal onClose={() => setShowRules(false)} />}
-
+            {renderModals()}
             {renderHeader(roomMeta?.name || 'Lobby', `Coup • ${t.waiting}`)}
 
-            <main className="flex-1 w-full max-w-5xl mx-auto p-4 z-10 flex flex-col lg:flex-row gap-8 items-start justify-center mt-4 sm:mt-8">
-                <div className="w-full lg:w-2/3 bg-white border border-[#E6E1DC] rounded-[32px] p-6 sm:p-8 shadow-sm">
+            <main className="flex-1 w-full max-w-5xl mx-auto p-4 z-10 flex flex-col lg:flex-row gap-8 items-start justify-center mt-8">
+                {/* Players List */}
+                <div className="w-full lg:w-2/3 bg-white border border-[#E6E1DC] rounded-[32px] p-8 shadow-sm">
                     <div className="flex justify-between items-center mb-6">
                         <h2 className="text-xl font-black uppercase flex items-center gap-2">
                           {lang === 'ru' ? 'Игроки' : 'Players'} <span className="bg-[#F5F5F0] px-2 py-1 rounded-lg text-sm text-[#8A9099]">{players.length}/6</span>
@@ -303,7 +334,7 @@ export default function CoupBoard() {
                                 <img src={p.avatarUrl} className="w-12 h-12 rounded-full border border-white shadow-sm object-cover" />
                                 <div>
                                     <div className="font-bold text-[#1A1F26]">{p.name}</div>
-                                    <div className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">{lang === 'ru' ? 'В лобби' : 'In Lobby'}</div>
+                                    <div className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">{lang === 'ru' ? 'В лобби' : 'Ready'}</div>
                                 </div>
                             </div>
                         ))}
@@ -316,16 +347,16 @@ export default function CoupBoard() {
                     </div>
                 </div>
 
+                {/* Right Panel */}
                 <div className="w-full lg:w-1/3 space-y-6">
                     <div className="bg-white border border-[#E6E1DC] p-6 rounded-[32px] shadow-sm">
-                        <div className="text-xs font-bold text-[#8A9099] uppercase tracking-wider mb-2 text-center">{lang === 'ru' ? 'Код комнаты' : 'Room Code'}</div>
+                        <div className="text-xs font-bold text-[#8A9099] uppercase tracking-wider mb-2 text-center">{lang === 'ru' ? 'Код' : 'Code'}</div>
                         <button onClick={handleCopyCode} className="w-full bg-[#1A1F26] hover:bg-[#9e1316] transition-colors p-6 rounded-2xl group relative overflow-hidden">
                             <div className="text-4xl font-black text-white font-mono tracking-widest text-center relative z-10">{roomMeta?.code}</div>
                             <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity z-20">
                                 {copied ? <CheckCircle className="text-white w-8 h-8" /> : <Copy className="text-white w-8 h-8" />}
                             </div>
                         </button>
-                        <p className="text-[10px] text-center text-[#8A9099] font-bold mt-4">{lang === 'ru' ? 'Нажми, чтобы скопировать' : 'Click to copy'}</p>
                     </div>
 
                     {me?.isHost ? (
@@ -339,7 +370,7 @@ export default function CoupBoard() {
                     ) : (
                         <div className="bg-[#F5F5F0] p-6 rounded-[24px] border border-[#E6E1DC] text-center">
                             <Loader2 className="w-8 h-8 text-[#9e1316] animate-spin mx-auto mb-3" />
-                            <div className="font-bold text-[#1A1F26] uppercase">{lang === 'ru' ? 'Ожидание хоста...' : 'Waiting for host...'}</div>
+                            <div className="font-bold text-[#1A1F26] uppercase">{lang === 'ru' ? 'Ожидание...' : 'Waiting...'}</div>
                         </div>
                     )}
                 </div>
@@ -348,9 +379,9 @@ export default function CoupBoard() {
     );
   }
 
-  // === 2. GAME VIEW (PLAYING) ===
+  // === 2. GAME VIEW ===
 
-  const handleActionClick = (action: string) => {
+  const handleAction = (action: string) => {
     if (['coup', 'steal', 'assassinate'].includes(action)) {
       setTargetMode(action as any);
     } else {
@@ -358,7 +389,7 @@ export default function CoupBoard() {
     }
   };
 
-  const handleTargetSelect = (targetId: string) => {
+  const handleTarget = (targetId: string) => {
     if (targetMode) {
       performAction(targetMode, targetId);
       setTargetMode(null);
@@ -368,13 +399,13 @@ export default function CoupBoard() {
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-[#1A1F26] flex flex-col font-sans overflow-hidden relative">
       <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-50 mix-blend-overlay pointer-events-none" />
-      {showGuide && <GuideModal onClose={() => setShowGuide(false)} lang={lang} />}
-      {showRules && <RulesModal onClose={() => setShowRules(false)} />}
+      {renderModals()}
+      {renderHeader('COUP', gameState.status === 'playing' ? `${lang === 'ru' ? 'Ход' : 'Turn'}: ${players[gameState.turnIndex]?.name || '...'}` : 'End')}
 
-      {renderHeader('COUP', gameState.status === 'playing' ? `${lang === 'ru' ? 'Ход' : 'Turn'}: ${players[gameState.turnIndex]?.name || '...'}` : (lang === 'ru' ? 'Конец' : 'End'))}
+      <main className="flex-1 relative z-10 p-4 flex flex-col max-w-6xl mx-auto w-full h-full">
 
-      <main className="flex-1 relative z-10 p-4 flex flex-col max-w-5xl mx-auto w-full h-full">
-        <div className="flex flex-wrap justify-center gap-4 mb-auto pt-4 pb-20">
+        {/* Opponents Grid */}
+        <div className="flex flex-wrap justify-center gap-4 mb-auto pt-4 pb-32">
           {players.map(player => {
             if (player.id === userId) return null;
             const isTargetable = !!targetMode && !player.isDead;
@@ -383,7 +414,7 @@ export default function CoupBoard() {
             return (
               <div
                 key={player.id}
-                onClick={() => isTargetable && handleTargetSelect(player.id)}
+                onClick={() => isTargetable && handleTarget(player.id)}
                 className={`
                   relative flex flex-col items-center p-3 bg-white border rounded-2xl transition-all duration-300
                   ${isCurrent ? 'ring-4 ring-[#9e1316] scale-105 shadow-xl z-20' : 'border-[#E6E1DC] opacity-90'}
@@ -409,31 +440,42 @@ export default function CoupBoard() {
           })}
         </div>
 
+        {/* Logs Overlay */}
         {gameState.status === 'playing' && (
-           <div className="absolute top-20 left-1/2 -translate-x-1/2 bg-white/80 backdrop-blur px-4 py-2 rounded-full border border-[#E6E1DC] shadow-sm text-[10px] font-bold text-gray-500 flex items-center gap-2 z-0 max-w-[90%] truncate">
+           <div className="absolute top-24 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur px-4 py-2 rounded-full border border-[#E6E1DC] shadow-sm text-[10px] font-bold text-gray-500 flex items-center gap-2 z-0 max-w-[90%] truncate">
               <History className="w-3 h-3 shrink-0" />
               {gameState.logs?.[0] ? (
                  <span className="flex gap-1 truncate">
                    <span className="text-[#1A1F26]">{gameState.logs[0].user}</span>
                    <span>{gameState.logs[0].action}</span>
                  </span>
-               ) : (lang === 'ru' ? 'Игра началась' : 'Game Started')}
+               ) : 'Game Started'}
            </div>
         )}
 
+        {/* Player Zone */}
         {me && (
-          <div className="fixed bottom-0 left-0 right-0 p-4 pb-8">
-            <div className="max-w-3xl mx-auto bg-white/95 backdrop-blur-md border border-[#E6E1DC] rounded-[32px] p-4 sm:p-6 shadow-2xl relative">
+          <div className="fixed bottom-0 left-0 right-0 p-4 pb-6 z-50">
+            <div className="max-w-4xl mx-auto bg-white/95 backdrop-blur-xl border border-[#E6E1DC] rounded-[32px] p-4 sm:p-6 shadow-2xl relative">
               {isMyTurn && (
                 <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-[#9e1316] text-white px-4 py-1.5 rounded-full text-xs font-black uppercase flex items-center gap-2 shadow-lg animate-bounce z-20">
                   <Clock className="w-3 h-3" /> {t.yourTurn}
                 </div>
               )}
 
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
-                <div className="flex justify-center gap-2 sm:gap-4 relative">
+              <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+
+                {/* Hand */}
+                <div className="flex justify-center gap-4 relative">
                   {(me.cards || []).map((card, i) => (
-                    <CardView key={i} role={card.role} revealed={card.revealed} isMe={true} lang={lang} />
+                    <GameCard
+                        key={i}
+                        role={card.role}
+                        revealed={card.revealed}
+                        isMe={true}
+                        lang={lang}
+                        disabled={me.isDead}
+                    />
                   ))}
                   {me.isDead && (
                     <div className="absolute inset-0 flex items-center justify-center bg-white/80 backdrop-blur-sm rounded-xl z-10 font-black text-red-600 uppercase tracking-widest border-2 border-red-100">
@@ -442,8 +484,9 @@ export default function CoupBoard() {
                   )}
                 </div>
 
-                <div className="flex-1 w-full max-w-md">
-                  <div className="flex items-center gap-3 mb-4 justify-center sm:justify-start bg-[#F8FAFC] p-2 rounded-xl border border-[#E6E1DC] w-fit">
+                {/* Controls */}
+                <div className="flex-1 w-full max-w-lg">
+                  <div className="flex items-center gap-3 mb-4 justify-center md:justify-start bg-[#F8FAFC] p-2 px-4 rounded-xl border border-[#E6E1DC] w-fit mx-auto md:mx-0">
                     <div className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center"><Coins className="w-4 h-4 text-yellow-600" /></div>
                     <div className="text-2xl font-black text-[#1A1F26]">{me.coins}</div>
                   </div>
@@ -457,21 +500,23 @@ export default function CoupBoard() {
                         </div>
                       ) : (
                         <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                          <ActionButton label={actionsT.income} onClick={() => handleActionClick('income')} disabled={!isMyTurn} />
-                          <ActionButton label={actionsT.aid} onClick={() => handleActionClick('aid')} disabled={!isMyTurn} />
-                          <ActionButton label={actionsT.tax} onClick={() => handleActionClick('tax')} disabled={!isMyTurn} color="bg-purple-50" borderColor="border-purple-200" />
-                          <ActionButton label={actionsT.steal} onClick={() => handleActionClick('steal')} disabled={!isMyTurn} color="bg-blue-50" borderColor="border-blue-200" />
-                          <ActionButton label={actionsT.exchange} onClick={() => handleActionClick('exchange')} disabled={!isMyTurn} color="bg-green-50" borderColor="border-green-200" />
-                          <ActionButton label={actionsT.assassinate} onClick={() => handleActionClick('assassinate')} disabled={!isMyTurn || me.coins < 3} color="bg-gray-800" borderColor="border-black" />
+                          <ActionBtn label={actionsT.income} onClick={() => handleAction('income')} disabled={!isMyTurn} color="bg-gray-50 border-gray-200" />
+                          <ActionBtn label={actionsT.aid} onClick={() => handleAction('aid')} disabled={!isMyTurn} color="bg-gray-50 border-gray-200" />
+                          <ActionBtn label={actionsT.tax} onClick={() => handleAction('tax')} disabled={!isMyTurn} color="bg-purple-50 border-purple-200" icon={Crown} />
+
+                          <ActionBtn label={actionsT.steal} onClick={() => handleAction('steal')} disabled={!isMyTurn} color="bg-blue-50 border-blue-200" icon={Swords} />
+                          <ActionBtn label={actionsT.exchange} onClick={() => handleAction('exchange')} disabled={!isMyTurn} color="bg-green-50 border-green-200" icon={RefreshCw} />
+                          <ActionBtn label={actionsT.assassinate} onClick={() => handleAction('assassinate')} disabled={!isMyTurn || me.coins < 3} color="bg-gray-800 border-black text-white" icon={Skull} />
+
                           <button
-                            onClick={() => handleActionClick('coup')}
+                            onClick={() => handleAction('coup')}
                             disabled={!isMyTurn || me.coins < 7}
                             className={`
-                               col-span-3 sm:col-span-2 p-3 bg-[#9e1316] text-white font-bold uppercase rounded-xl border-b-4 border-[#7a0f11] shadow-lg hover:shadow-xl hover:translate-y-[-2px] active:translate-y-[1px] active:border-b-0 transition-all disabled:opacity-50 disabled:shadow-none disabled:translate-y-0
+                               col-span-3 sm:col-span-2 p-3 bg-[#9e1316] text-white font-bold uppercase rounded-xl border-b-4 border-[#7a0f11] shadow-lg hover:shadow-xl hover:translate-y-[-2px] active:translate-y-[1px] active:border-b-0 transition-all disabled:opacity-50 disabled:shadow-none disabled:translate-y-0 flex items-center justify-center gap-2
                                ${me.coins >= 10 ? 'animate-pulse ring-2 ring-offset-2 ring-[#9e1316]' : ''}
                             `}
                           >
-                            {actionsT.coup}
+                            <AlertTriangle className="w-4 h-4" /> {actionsT.coup} (-7)
                           </button>
                         </div>
                       )}
@@ -484,8 +529,9 @@ export default function CoupBoard() {
         )}
       </main>
 
+      {/* Winner Overlay */}
       {gameState.winner && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white p-10 rounded-[32px] text-center animate-in zoom-in duration-300 border-4 border-[#9e1316] shadow-2xl max-w-sm w-full relative overflow-hidden">
             <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20" />
             <div className="relative z-10">
