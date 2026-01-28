@@ -124,7 +124,8 @@ export default function CreatePage() {
     setLoading(true);
 
     try {
-      const code = Math.floor(1000 + Math.random() * 9000).toString();
+      // ИСПРАВЛЕНИЕ 1: Более сложный и уникальный код (6 символов, буквы и цифры)
+      const code = Math.random().toString(36).substring(2, 8).toUpperCase();
 
       const initialHost: Player = {
         id: user.id,
@@ -170,9 +171,9 @@ export default function CreatePage() {
 
       if (error) throw error;
 
-      // ИСПРАВЛЕНИЕ: Динамический редирект на /{gameId}?id={lobbyId}
-      // Для Coup это будет /coup?id=...
-      router.push(`/${selectedGame.id}?id=${data.id}`);
+      // ИСПРАВЛЕНИЕ 2: Редирект на /game/{gameId}?id={lobbyId}
+      // Теперь это будет /game/coup?id=...
+      router.push(`/game/${selectedGame.id}?id=${data.id}`);
     } catch (error: any) {
       alert(t.error + error.message);
       setLoading(false);
