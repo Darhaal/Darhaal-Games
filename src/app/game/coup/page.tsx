@@ -370,8 +370,8 @@ function CoupGameContent() {
         setTimeLeft((prev) => {
             if (prev <= 1) {
                 if (isMyTurn && !selectionMode.active && !exchangeMode.active) {
-                     // Auto-action if my turn
-                     handleIncome();
+                    // Auto-action if my turn
+                    handleIncome();
                 }
                 return 0;
             }
@@ -416,19 +416,37 @@ function CoupGameContent() {
   // --- Game Lifecycle ---
 
   const joinLobby = async () => {
-    if (!user || gameState.players.some(p => p.id === user.id)) return;
+    if (!user) return;
+
+    // Получаем свежие данные лобби напрямую, чтобы узнать истинного хоста
+    const { data: lobbyData } = await supabase
+      .from('lobbies')
+      .select('host_id, game_state')
+      .eq('id', lobbyId)
+      .single();
+
+    if (!lobbyData) return;
+
+    const currentPlayers = lobbyData.game_state?.players || [];
+    if (currentPlayers.some((p: any) => p.id === user.id)) return;
 
     const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
     const name = profile?.username || user.email?.split('@')[0] || 'Player';
     const avatar = profile?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`;
 
     const newPlayer: Player = {
-      id: user.id, name, avatarUrl: avatar,
-      coins: 2, cards: [], isDead: false,
-      isHost: gameState.players.length === 0, isReady: false
+      id: user.id,
+      name,
+      avatarUrl: avatar,
+      coins: 2,
+      cards: [],
+      isDead: false,
+      // Исправлено: игрок становится хостом только если он указан как создатель лобби в БД
+      isHost: user.id === lobbyData.host_id,
+      isReady: false
     };
 
-    await updateGameState({ ...gameState, players: [...gameState.players, newPlayer] });
+    await updateGameState({ ...gameState, players: [...currentPlayers, newPlayer] });
   };
 
   const startGame = async () => {
@@ -643,24 +661,24 @@ function CoupGameContent() {
           <ArrowLeft className="w-5 h-5" />
         </button>
         <div className="flex flex-col items-center">
-             <h1 className="font-black text-xl uppercase flex items-center gap-2 tracking-tight"><ScrollText className="w-6 h-6 text-[#9e1316]" /> COUP</h1>
-             {gameState.status === 'waiting' && <span className="text-[10px] font-bold text-[#9e1316] uppercase tracking-widest">{t.ui.waiting}</span>}
+            <h1 className="font-black text-xl uppercase flex items-center gap-2 tracking-tight"><ScrollText className="w-6 h-6 text-[#9e1316]" /> COUP</h1>
+            {gameState.status === 'waiting' && <span className="text-[10px] font-bold text-[#9e1316] uppercase tracking-widest">{t.ui.waiting}</span>}
 
-             {selectionMode.active && <span className="text-xs font-bold text-white bg-[#9e1316] px-3 py-1 rounded-full animate-pulse mt-1">{t.ui.target}</span>}
+            {selectionMode.active && <span className="text-xs font-bold text-white bg-[#9e1316] px-3 py-1 rounded-full animate-pulse mt-1">{t.ui.target}</span>}
 
-             {isMyTurn && !selectionMode.active && !exchangeMode.active && gameState.status === 'playing' && (
-                 <div className="flex flex-col items-center mt-1 w-32">
+            {isMyTurn && !selectionMode.active && !exchangeMode.active && gameState.status === 'playing' && (
+                <div className="flex flex-col items-center mt-1 w-32">
                     <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
                         <Clock className="w-3 h-3" /> {t.ui.yourTurn}
                     </span>
                     <div className="w-full h-1 bg-gray-200 rounded-full mt-1 overflow-hidden">
                         <div
-                           className={`h-full transition-all duration-1000 ease-linear ${timeLeft < 10 ? 'bg-red-500' : 'bg-emerald-500'}`}
-                           style={{ width: `${(timeLeft / 30) * 100}%` }}
+                          className={`h-full transition-all duration-1000 ease-linear ${timeLeft < 10 ? 'bg-red-500' : 'bg-emerald-500'}`}
+                          style={{ width: `${(timeLeft / 30) * 100}%` }}
                         />
                     </div>
-                 </div>
-             )}
+                </div>
+            )}
         </div>
         <div className="flex gap-2">
             <button onClick={() => setLang(lang === 'ru' ? 'en' : 'ru')} className="p-2 text-[#8A9099] hover:text-[#1A1F26]">
@@ -673,7 +691,7 @@ function CoupGameContent() {
       {/* LOBBY AREA */}
       {gameState.status === 'waiting' && (
         <div className="flex-1 flex flex-col items-center justify-center p-6 z-10 animate-in fade-in zoom-in-95 duration-500">
-           <div className="bg-white p-8 rounded-[32px] border border-[#E6E1DC] shadow-xl max-w-2xl w-full">
+          <div className="bg-white p-8 rounded-[32px] border border-[#E6E1DC] shadow-xl max-w-2xl w-full">
               <h2 className="text-2xl font-black mb-6 text-center">{t.ui.waiting} ({gameState.players.length})</h2>
               <div className="space-y-3 mb-8">
                   {gameState.players.map(p => (
@@ -688,8 +706,8 @@ function CoupGameContent() {
                   <div className="flex items-center justify-between p-4 bg-[#1A1F26] rounded-xl text-white group cursor-pointer active:scale-95 transition-transform" onClick={copyLobbyCode}>
                       <span className="font-mono font-bold tracking-widest text-lg">CODE: {lobbyId?.slice(0, 4).toUpperCase() || '...'}</span>
                       <div className="flex items-center gap-2">
-                         <span className="text-[10px] uppercase font-bold text-gray-400 group-hover:text-white transition-colors">{copied ? t.ui.copied : t.ui.copy}</span>
-                         {copied ? <Check className="w-5 h-5 text-emerald-400" /> : <Copy className="w-5 h-5 group-hover:text-[#9e1316] transition-colors" />}
+                        <span className="text-[10px] uppercase font-bold text-gray-400 group-hover:text-white transition-colors">{copied ? t.ui.copied : t.ui.copy}</span>
+                        {copied ? <Check className="w-5 h-5 text-emerald-400" /> : <Copy className="w-5 h-5 group-hover:text-[#9e1316] transition-colors" />}
                       </div>
                   </div>
                   {isHost ? (
@@ -704,7 +722,7 @@ function CoupGameContent() {
                       <div className="text-center text-xs font-bold text-[#8A9099] uppercase tracking-widest mt-2 animate-pulse">{t.ui.waitHost}</div>
                   )}
               </div>
-           </div>
+          </div>
         </div>
       )}
 
@@ -719,13 +737,13 @@ function CoupGameContent() {
                     const isSelectable = selectionMode.active && !p.isDead;
                     return (
                         <div
-                           key={p.id}
-                           onClick={() => isSelectable && handleTargetClick(p.id)}
-                           className={`flex flex-col items-center gap-2 transition-all duration-300 relative
-                             ${isTurn ? 'scale-110 z-10' : 'opacity-80'}
-                             ${p.isDead ? 'grayscale opacity-60' : ''}
-                             ${isSelectable ? 'cursor-pointer hover:scale-105' : ''}
-                           `}
+                          key={p.id}
+                          onClick={() => isSelectable && handleTargetClick(p.id)}
+                          className={`flex flex-col items-center gap-2 transition-all duration-300 relative
+                            ${isTurn ? 'scale-110 z-10' : 'opacity-80'}
+                            ${p.isDead ? 'grayscale opacity-60' : ''}
+                            ${isSelectable ? 'cursor-pointer hover:scale-105' : ''}
+                          `}
                         >
                             <div className="relative">
                                 <PlayerAvatar
@@ -759,24 +777,24 @@ function CoupGameContent() {
 
             {/* LOGS & DECK */}
             <div className="flex justify-between items-center px-2 md:px-20 h-28 sm:h-32 mb-2">
-                 <div className="hidden md:block w-64 h-full bg-white/70 backdrop-blur border border-[#E6E1DC] rounded-xl overflow-hidden shadow-sm">
+                <div className="hidden md:block w-64 h-full bg-white/70 backdrop-blur border border-[#E6E1DC] rounded-xl overflow-hidden shadow-sm">
                     <div className="bg-[#F5F5F0] px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[#8A9099]">{t.ui.log}</div>
                     <div ref={logRef} className="h-full overflow-y-auto p-2 text-xs space-y-1 pb-8">
                         {gameState.logs.map((log, i) => (
                             <div key={i}><span className="font-bold text-[#1A1F26]">{log.user}:</span> <span className="text-[#555]">{log.action}</span></div>
                         ))}
                     </div>
-                 </div>
+                </div>
 
-                 {/* Таймер для всех (визуальный) */}
-                 <div className="flex flex-col items-center justify-center mx-auto md:mx-0">
-                     <div className="w-16 h-24 sm:w-20 sm:h-28 bg-[#1A1F26] rounded-xl border-4 border-white shadow-xl flex items-center justify-center text-white/20 font-black relative overflow-hidden">
+                {/* Таймер для всех (визуальный) */}
+                <div className="flex flex-col items-center justify-center mx-auto md:mx-0">
+                    <div className="w-16 h-24 sm:w-20 sm:h-28 bg-[#1A1F26] rounded-xl border-4 border-white shadow-xl flex items-center justify-center text-white/20 font-black relative overflow-hidden">
                         <span className="relative z-10 text-xs sm:text-base">{t.ui.deck}</span>
                         <span className="absolute bottom-2 text-[10px] sm:text-xs opacity-50">{gameState.deck.length}</span>
-                     </div>
-                 </div>
+                    </div>
+                </div>
 
-                 <div className="hidden md:block w-64"></div>
+                <div className="hidden md:block w-64"></div>
             </div>
 
             {/* ME */}
@@ -835,10 +853,10 @@ function CoupGameContent() {
       {/* Info Modal */}
       {showInfo && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
-             <div className="bg-white p-8 rounded-3xl max-w-lg w-full relative">
-                 <button onClick={() => setShowInfo(false)} className="absolute top-4 right-4 text-gray-400 hover:text-black"><X /></button>
-                 <h2 className="text-2xl font-black mb-4">{t.ui.rules}</h2>
-                 <div className="space-y-3 text-sm text-gray-600">
+            <div className="bg-white p-8 rounded-3xl max-w-lg w-full relative">
+                <button onClick={() => setShowInfo(false)} className="absolute top-4 right-4 text-gray-400 hover:text-black"><X /></button>
+                <h2 className="text-2xl font-black mb-4">{t.ui.rules}</h2>
+                <div className="space-y-3 text-sm text-gray-600">
                     {Object.entries(t.roles).map(([key, val]) => (
                         <div key={key} className="flex justify-between border-b border-gray-100 pb-2">
                             <span className="font-bold uppercase text-[#1A1F26]">{(val as any).name}</span>
@@ -846,8 +864,8 @@ function CoupGameContent() {
                             <span className="text-gray-400">{(val as any).desc}</span>
                         </div>
                     ))}
-                 </div>
-             </div>
+                </div>
+            </div>
         </div>
       )}
 
@@ -857,18 +875,18 @@ function CoupGameContent() {
               <div className="bg-white p-8 rounded-[32px] max-w-3xl w-full border border-[#E6E1DC] shadow-2xl">
                   <h2 className="text-2xl font-black mb-2 text-center uppercase">{t.ui.exchangeTitle}</h2>
                   <p className="text-center text-[#8A9099] font-bold mb-8">
-                     {t.ui.exchangeDesc(gameState.players[gameState.turnIndex].cards.filter(c => !c.revealed).length)}
+                    {t.ui.exchangeDesc(gameState.players[gameState.turnIndex].cards.filter(c => !c.revealed).length)}
                   </p>
 
                   <div className="flex justify-center gap-4 mb-8 flex-wrap">
                       {exchangeMode.tempHand.map((card, idx) => (
                           <GameCard
-                             key={idx}
-                             card={card}
-                             lang={lang}
-                             selectable={true}
-                             selected={exchangeMode.keptIndices.includes(idx)}
-                             onClick={() => {
+                            key={idx}
+                            card={card}
+                            lang={lang}
+                            selectable={true}
+                            selected={exchangeMode.keptIndices.includes(idx)}
+                            onClick={() => {
                                 const currentKept = exchangeMode.keptIndices;
                                 const currentPlayerIdx = gameState.turnIndex;
                                 const requiredCount = gameState.players[currentPlayerIdx].cards.filter(c => !c.revealed).length;
@@ -880,7 +898,7 @@ function CoupGameContent() {
                                         setExchangeMode({ ...exchangeMode, keptIndices: [...currentKept, idx] });
                                     }
                                 }
-                             }}
+                            }}
                           />
                       ))}
                   </div>
@@ -908,7 +926,7 @@ function CoupGameContent() {
                   <div className="space-y-3">
                       {isHost && (
                           <button onClick={restartGame} className="w-full py-4 bg-[#1A1F26] hover:bg-[#9e1316] text-white font-bold rounded-xl uppercase tracking-widest transition-colors flex items-center justify-center gap-2">
-                             <RotateCcw className="w-4 h-4" /> {t.ui.playAgain}
+                            <RotateCcw className="w-4 h-4" /> {t.ui.playAgain}
                           </button>
                       )}
                       <button onClick={() => router.push('/play')} className="w-full py-4 bg-white border border-[#E6E1DC] hover:border-[#1A1F26] text-[#1A1F26] font-bold rounded-xl uppercase tracking-widest transition-colors flex items-center justify-center gap-2">
