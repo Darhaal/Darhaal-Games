@@ -25,7 +25,6 @@ export interface Player {
   isReady: boolean;
 }
 
-// Добавляем этот тип, чтобы TS не ругался на nextPhase
 export type ActionResolution = 'blocked_end' | 'continue_action' | 'action_cancelled';
 
 export interface PendingAction {
@@ -33,7 +32,6 @@ export interface PendingAction {
   player: string;
   target?: string;
   blockedBy?: string;
-  // Разрешаем и фазы, и статусы резолюции
   nextPhase?: GamePhase | ActionResolution;
 }
 
@@ -55,9 +53,11 @@ export interface GameState {
   phase: GamePhase;
   currentAction: PendingAction | null;
 
-  // Кто сейчас должен совершить действие (сбросить карту или выбрать при обмене)
+  // Кто сейчас должен совершить действие
   pendingPlayerId?: string;
-
-  // Временный буфер карт для Посла (Ambassador)
   exchangeBuffer?: Role[];
+
+  // Anti-AFK & Sync
+  lastActionTime: number; // Timestamp последнего действия
+  version: number; // Для предотвращения Race Conditions
 }
