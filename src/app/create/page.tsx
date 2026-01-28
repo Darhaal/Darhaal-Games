@@ -170,8 +170,9 @@ export default function CreatePage() {
 
       if (error) throw error;
 
-      // ИСПРАВЛЕНИЕ: Редирект на /game вместо /play
-      router.push(`/game?id=${data.id}`);
+      // ИСПРАВЛЕНИЕ: Динамический редирект на /{gameId}?id={lobbyId}
+      // Для Coup это будет /coup?id=...
+      router.push(`/${selectedGame.id}?id=${data.id}`);
     } catch (error: any) {
       alert(t.error + error.message);
       setLoading(false);
