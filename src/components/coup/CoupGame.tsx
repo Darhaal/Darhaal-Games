@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { GameState, Player, Role } from '@/types/coup';
 import { DICTIONARY } from '@/constants/coup';
 
-export function useCoupGame(lobbyId: string | null, userId: string | undefined) {
+export function CoupGame(lobbyId: string | null, userId: string | undefined) {
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [roomMeta, setRoomMeta] = useState<{ name: string; code: string; isHost: boolean } | null>(null);
   const [loading, setLoading] = useState(true);
