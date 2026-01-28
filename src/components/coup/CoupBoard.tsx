@@ -35,7 +35,7 @@ const GameCard = ({ role, revealed, isMe, onClick, selected, lang, small = false
 
   return (
     <div className="flex flex-col items-center gap-2 group relative z-0">
-        {/* Added gap-2 and z-0 to manage spacing and stacking context */}
+        {/* Card Itself */}
         <div
         onClick={!disabled ? onClick : undefined}
         className={`
@@ -45,7 +45,7 @@ const GameCard = ({ role, revealed, isMe, onClick, selected, lang, small = false
             ${isLosing ? 'ring-4 ring-red-500 rounded-2xl animate-pulse' : ''}
         `}
         >
-        <div className={`relative w-full h-full duration-500 preserve-3d transition-transform shadow-2xl rounded-2xl ${(isMe || revealed) ? 'rotate-y-0' : ''}`}>
+        <div className={`relative w-full h-full duration-500 preserve-3d transition-transform shadow-xl rounded-2xl ${(isMe || revealed) ? 'rotate-y-0' : ''}`}>
 
             {/* FACE */}
             <div className={`absolute inset-0 backface-hidden rounded-2xl border-[3px] overflow-hidden bg-white flex flex-col p-1.5 sm:p-2 ${revealed ? 'grayscale brightness-90' : ''}`} style={{ borderColor: config.color }}>
@@ -97,8 +97,7 @@ const GameCard = ({ role, revealed, isMe, onClick, selected, lang, small = false
         </div>
 
         {/* EXTERNAL STATS - Visible ONLY on mobile, under the card */}
-        {/* Using absolute positioning wrapper with z-20 to ensure it sits on top of any overlapping elements below,
-            but adding margin to the container (in parent) helps too */}
+        {/* RELATIVE positioning ensures it takes up space and pushes content below it */}
         {!small && !revealed && (
             <div className="block sm:hidden text-center space-y-1 w-full max-w-[80px] z-20 relative">
                 <div className="flex items-center justify-center gap-1 bg-white/95 backdrop-blur-md rounded-lg px-2 py-1 border border-gray-300 shadow-md">
