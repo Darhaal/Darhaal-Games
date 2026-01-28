@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import {
   ArrowLeft, Users, Lock, Unlock,
-  ScrollText, ArrowRight, Eye, EyeOff, Loader2
+  ScrollText, ArrowRight, Eye, EyeOff, Loader2, Gamepad2
 } from 'lucide-react';
 import { GameState, Player } from '@/types/coup';
 
@@ -102,13 +102,12 @@ function CreateLobbyContent() {
     }
 
     const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
-
-    // ИСПРАВЛЕНО: Более надежное определение имени
     const hostName = profile?.username || user.user_metadata?.username || user.user_metadata?.full_name || user.email?.split('@')[0] || 'Host';
     const hostAvatar = user.user_metadata?.avatar_url || profile?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`;
 
     const code = Math.random().toString(36).substring(2, 8).toUpperCase();
 
+    // Начальное состояние игры
     const initialHost: Player = {
         id: user.id,
         name: hostName,
@@ -120,13 +119,15 @@ function CreateLobbyContent() {
         isReady: true
     };
 
+    // ИСПРАВЛЕНО: Инициализация соответствует типу GameState из src/types/coup.ts
     const initialState: GameState = {
         players: [initialHost],
         deck: [],
         turnIndex: 0,
         logs: [],
         status: 'waiting',
-        lastActionTime: Date.now()
+        phase: 'choosing_action', // Начальная фаза
+        currentAction: null
     };
 
     const { data, error } = await supabase.from('lobbies').insert({
@@ -209,7 +210,7 @@ function CreateLobbyContent() {
             type="text"
             value={roomName}
             onChange={(e) => setRoomName(e.target.value)}
-            className="w-full bg-[#F5F5F0] border border-transparent rounded-xl py-3 px-4 text-[#1A1F26] font-bold text-sm focus:outline-none focus:bg-white focus:border-[#9e1316] focus:ring-4 focus:ring-[#9e1316]/5 transition-all"
+            className="w-full bg-[#F5F5F0] border border-transparent rounded-xl py-3 px-4 text-[#1A1F26] font-bold text-sm focus:outline-none focus:bg-white focus:border-[#9e1316] focus:ring-4 focus:ring-[#9e1316]/5 transition-all placeholder:text-[#E6E1DC]"
           />
         </div>
 
@@ -247,7 +248,7 @@ function CreateLobbyContent() {
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-[#F5F5F0] border border-transparent rounded-xl py-3 px-4 pr-10 text-[#1A1F26] font-bold text-sm focus:outline-none focus:bg-white focus:border-[#9e1316] focus:ring-4 focus:ring-[#9e1316]/5 transition-all"
+                className="w-full bg-[#F5F5F0] border border-transparent rounded-xl py-3 px-4 pr-10 text-[#1A1F26] font-bold text-sm focus:outline-none focus:bg-white focus:border-[#9e1316] focus:ring-4 focus:ring-[#9e1316]/5 transition-all placeholder:text-[#E6E1DC]"
                 required={isPrivate}
               />
               <button onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-3 text-[#8A9099] hover:text-[#1A1F26]">
@@ -260,7 +261,7 @@ function CreateLobbyContent() {
         <button
             onClick={createLobby}
             disabled={loading}
-            className="w-full bg-[#1A1F26] hover:bg-[#9e1316] text-white font-bold py-4 rounded-xl transition-all shadow-xl shadow-[#1A1F26]/20 hover:shadow-[#9e1316]/30 active:scale-[0.98] flex justify-center items-center gap-2 text-xs uppercase tracking-widest mt-4"
+            className="w-full bg-[#1A1F26] hover:bg-[#9e1316] text-white font-bold py-4 rounded-xl transition-all shadow-xl shadow-[#1A1F26]/20 hover:shadow-[#9e1316]/30 active:scale-[0.98] flex justify-center items-center gap-2 text-xs uppercase tracking-widest mt-4 disabled:opacity-50"
         >
           {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>{t.create} <ArrowRight className="w-4 h-4" /></>}
         </button>
@@ -269,19 +270,26 @@ function CreateLobbyContent() {
   );
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center p-4 font-sans text-[#1A1F26] relative overflow-hidden">
+    <div className="min-h-screen bg-[#F8FAFC] text-[#1A1F26] flex flex-col items-center font-sans relative overflow-hidden">
       <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-50 brightness-100 contrast-150 mix-blend-overlay pointer-events-none"></div>
 
-      <header className="w-full max-w-7xl p-6 flex items-center justify-between z-10 relative mb-8">
+      <header className="w-full max-w-7xl p-6 flex justify-between items-center z-10 relative">
         <button onClick={() => { if (step === 'selection') router.push('/'); else setStep('selection'); }} className="flex items-center gap-2 text-[#8A9099] hover:text-[#9e1316] transition-colors group">
-          <div className="p-3 bg-white border border-[#E6E1DC] rounded-xl group-hover:border-[#9e1316]/50 shadow-sm transition-all"><ArrowLeft className="w-5 h-5" /></div><span className="text-xs font-bold uppercase tracking-widest hidden sm:block">{t.back}</span>
+          <div className="p-3 bg-white border border-[#E6E1DC] rounded-xl group-hover:border-[#9e1316]/50 shadow-sm transition-all"><ArrowLeft className="w-5 h-5" /></div>
+          <span className="text-xs font-bold uppercase tracking-widest hidden sm:block">{t.back}</span>
         </button>
-        <div className="flex flex-col items-center">
-           <h1 className="text-xl font-black tracking-tight text-[#1A1F26] uppercase">{step === 'selection' ? t.select : t.settings}</h1>
+
+        <div className="text-xl font-black text-[#1A1F26] uppercase tracking-tight flex flex-col items-center">
+           {step === 'selection' ? t.select : t.settings}
+           {step === 'settings' && selectedGame && (
+             <span className="text-[10px] text-[#9e1316] tracking-widest mt-1">{selectedGame.name}</span>
+           )}
         </div>
+
         <div className="w-12"></div>
       </header>
-      <div className="flex-1 w-full flex flex-col items-center justify-center relative z-10 pb-10">
+
+      <div className="flex-1 w-full flex flex-col items-center justify-center relative z-10 pb-10 px-4">
         {step === 'selection' && renderSelection()}
         {step === 'settings' && renderSettings()}
       </div>
