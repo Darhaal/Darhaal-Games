@@ -34,7 +34,7 @@ const GameCard = ({ role, revealed, isMe, onClick, selected, lang, small = false
   const dims = small ? 'w-16 h-24 sm:w-20 sm:h-28' : 'w-20 h-32 sm:w-24 sm:h-36 md:w-28 md:h-44';
 
   return (
-    <div className="flex flex-col items-center gap-2 group relative z-0">
+    <div className="flex flex-col items-center gap-1.5 group relative z-0">
         {/* Card Itself */}
         <div
         onClick={!disabled ? onClick : undefined}
@@ -97,17 +97,17 @@ const GameCard = ({ role, revealed, isMe, onClick, selected, lang, small = false
         </div>
 
         {/* EXTERNAL STATS - Visible ONLY on mobile, under the card */}
-        {/* Added pointer-events-none so touches pass through to buttons if they overlap */}
+        {/* Changed style to DARK and HIGH CONTRAST */}
         {!small && !revealed && (
             <div className="block sm:hidden text-center space-y-1 w-full max-w-[80px] z-20 relative pointer-events-none">
-                <div className="flex items-center justify-center gap-1 bg-white/95 backdrop-blur-md rounded-lg px-2 py-1 border border-gray-300 shadow-md">
-                    <Swords className="w-2.5 h-2.5 text-emerald-600 shrink-0" />
-                    <span className="text-[8px] font-black text-gray-800 uppercase tracking-tight leading-none truncate">{info.action}</span>
+                <div className="flex items-center justify-center gap-1 bg-[#1A1F26] text-white rounded-lg px-2 py-1.5 shadow-md border border-gray-700">
+                    <Swords className="w-2.5 h-2.5 text-emerald-400 shrink-0" />
+                    <span className="text-[8px] font-black uppercase tracking-tight leading-none truncate">{info.action}</span>
                 </div>
                 {info.block !== '-' && (
-                    <div className="flex items-center justify-center gap-1 bg-white/95 backdrop-blur-md rounded-lg px-2 py-1 border border-gray-300 shadow-md">
-                        <Shield className="w-2.5 h-2.5 text-red-600 shrink-0" />
-                        <span className="text-[8px] font-black text-gray-800 uppercase tracking-tight leading-none truncate">{info.block}</span>
+                    <div className="flex items-center justify-center gap-1 bg-[#1A1F26] text-white rounded-lg px-2 py-1.5 shadow-md border border-gray-700">
+                        <Shield className="w-2.5 h-2.5 text-red-400 shrink-0" />
+                        <span className="text-[8px] font-black uppercase tracking-tight leading-none truncate">{info.block}</span>
                     </div>
                 )}
             </div>
@@ -124,7 +124,7 @@ const ActionBtn = ({ label, onClick, disabled, color = 'bg-white', icon: Icon }:
   </button>
 );
 
-// --- MODALS (Original Style) ---
+// --- MODALS ---
 const RulesModal = ({ onClose, lang }: { onClose: () => void, lang: Lang }) => {
   const content = DICTIONARY[lang].rules;
   return (
@@ -423,10 +423,8 @@ export default function CoupBoard() {
               {isExchanging && <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-emerald-600 text-white px-6 py-2 rounded-full text-xs font-black uppercase shadow-lg z-30">{t.exchange}</div>}
 
               <div className="flex flex-col md:flex-row items-center justify-between gap-6 sm:gap-8">
-                {/* Added mb-12 to the card container on mobile to create vertical space.
-                    This prevents the 'external stats' pill (from GameCard) from overlapping the action buttons below.
-                */}
-                <div className="flex justify-center gap-3 sm:gap-4 relative shrink-0 mb-12 sm:mb-0 z-0">
+                {/* Changed gap to gap-6 and added bottom margin on mobile to separate cards from actions */}
+                <div className="flex justify-center gap-3 sm:gap-4 relative shrink-0 mb-4 sm:mb-0 z-0">
                   {me.cards.map((card, i) => <GameCard key={i} role={card.role} revealed={card.revealed} isMe={true} lang={lang} disabled={me.isDead} isLosing={isLosing && !card.revealed} onClick={() => resolveLoss(i)} />)}
                 </div>
 
