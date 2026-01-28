@@ -1,10 +1,10 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Crown, Shield, History,
   Book, HelpCircle,
-  Swords, Skull, X // Added X here
+  Swords, Skull, X
 } from 'lucide-react';
 import { ROLE_CONFIG, DICTIONARY } from '@/constants/coup';
 import { Role, Lang } from '@/types/coup';
@@ -159,8 +159,8 @@ export const GuideModal = ({ onClose, lang }: { onClose: () => void, lang: Lang 
                       <div className="font-black text-sm uppercase truncate" style={{ color: config.color }}>{info.name}</div>
                       <p className="text-[10px] text-gray-500 leading-tight mt-1 mb-2 line-clamp-3">{info.desc}</p>
                       <div className="flex flex-wrap gap-1">
-                         <span className="text-[9px] font-bold bg-gray-100 px-2 py-1 rounded text-gray-600 border border-gray-200 truncate max-w-full">{info.action}</span>
-                         {info.block !== '-' && <span className="text-[9px] font-bold bg-red-50 text-red-600 px-2 py-1 rounded border border-red-100 truncate max-w-full">Block: {info.block}</span>}
+                          <span className="text-[9px] font-bold bg-gray-100 px-2 py-1 rounded text-gray-600 border border-gray-200 truncate max-w-full">{info.action}</span>
+                          {info.block !== '-' && <span className="text-[9px] font-bold bg-red-50 text-red-600 px-2 py-1 rounded border border-red-100 truncate max-w-full">Block: {info.block}</span>}
                       </div>
                    </div>
                 </div>
