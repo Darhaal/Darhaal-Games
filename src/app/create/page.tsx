@@ -75,7 +75,10 @@ export default function CreatePage() {
       private: 'Приватная комната',
       password: 'Пароль',
       players: 'Игроков',
-      comingSoon: 'Скоро'
+      comingSoon: 'Скоро',
+      error: 'Ошибка при создании: ',
+      lobbySuffix: 'Лобби',
+      enterPass: 'Придумайте пароль'
     },
     en: {
       select: 'Select Game',
@@ -85,7 +88,10 @@ export default function CreatePage() {
       private: 'Private Room',
       password: 'Password',
       players: 'Players',
-      comingSoon: 'Coming Soon'
+      comingSoon: 'Coming Soon',
+      error: 'Error creating lobby: ',
+      lobbySuffix: 'Lobby',
+      enterPass: 'Set password'
     }
   }[lang];
 
@@ -108,7 +114,6 @@ export default function CreatePage() {
         isReady: true
       };
 
-      // ИСПРАВЛЕНИЕ: Добавлены поля lastActionTime и version
       const initialState: GameState = {
         players: [initialHost],
         deck: [],
@@ -121,22 +126,27 @@ export default function CreatePage() {
         version: 1
       };
 
+      // Локализованное название комнаты
+      const lobbyName = `${selectedGame.name} ${t.lobbySuffix} - ${initialHost.name}`;
+
+      // ИСПРАВЛЕНИЕ:
+      // 1. Убрано поле 'game_type' из корневого объекта insert, так как такой колонки нет в БД.
+      // 2. Тип игры 'gameType' добавлен внутрь JSON поля 'game_state'.
       const { data, error } = await supabase.from('lobbies').insert({
         code,
-        name: `${selectedGame.name} Lobby`,
+        name: lobbyName,
         host_id: user.id,
         is_private: isPrivate,
         password: isPrivate ? password : null,
-        game_type: selectedGame.id,
         status: 'waiting',
-        game_state: initialState,
+        game_state: { ...initialState, gameType: selectedGame.id },
       }).select().single();
 
       if (error) throw error;
 
       router.push(`/play?id=${data.id}`);
     } catch (error: any) {
-      alert('Error creating lobby: ' + error.message);
+      alert(t.error + error.message);
       setLoading(false);
     }
   };
@@ -201,7 +211,8 @@ export default function CreatePage() {
                    type={showPassword ? "text" : "password"}
                    value={password}
                    onChange={e => setPassword(e.target.value)}
-                   className="w-full bg-[#F5F5F0] border border-transparent focus:bg-white focus:border-[#9e1316] rounded-xl py-3 pl-4 pr-10 font-bold text-[#1A1F26] outline-none transition-all"
+                   placeholder={t.enterPass}
+                   className="w-full bg-[#F5F5F0] border border-transparent focus:bg-white focus:border-[#9e1316] rounded-xl py-3 pl-4 pr-10 font-bold text-[#1A1F26] outline-none transition-all placeholder:text-[#8A9099]/40"
                    required={isPrivate}
                  />
                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-3.5 text-[#8A9099] hover:text-[#1A1F26]">
