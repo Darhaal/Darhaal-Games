@@ -30,21 +30,22 @@ const GameCard = ({ role, revealed, isMe, onClick, selected, lang, small = false
   const config = ROLE_CONFIG[role];
   const info = DICTIONARY[lang].roles[role];
 
-  // Адаптивные размеры: на мобилках чуть меньше, чтобы влезало 4 карты в ряд при обмене
+  // Адаптивные размеры
   const dims = small ? 'w-16 h-24 sm:w-20 sm:h-28' : 'w-20 h-32 sm:w-24 sm:h-36 md:w-28 md:h-44';
 
   return (
-    <div className="flex flex-col items-center gap-1 group">
+    <div className="flex flex-col items-center gap-2 group relative z-0">
+        {/* Added gap-2 and z-0 to manage spacing and stacking context */}
         <div
         onClick={!disabled ? onClick : undefined}
         className={`
-            relative ${dims} perspective-1000 transition-all duration-300 flex-shrink-0
-            ${selected ? '-translate-y-4 z-30 scale-105' : 'hover:-translate-y-2 z-10'}
+            relative ${dims} perspective-1000 transition-all duration-300 flex-shrink-0 z-10
+            ${selected ? '-translate-y-4 z-30 scale-105' : 'hover:-translate-y-2'}
             ${disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}
             ${isLosing ? 'ring-4 ring-red-500 rounded-2xl animate-pulse' : ''}
         `}
         >
-        <div className={`relative w-full h-full duration-500 preserve-3d transition-transform shadow-xl rounded-2xl ${(isMe || revealed) ? 'rotate-y-0' : ''}`}>
+        <div className={`relative w-full h-full duration-500 preserve-3d transition-transform shadow-2xl rounded-2xl ${(isMe || revealed) ? 'rotate-y-0' : ''}`}>
 
             {/* FACE */}
             <div className={`absolute inset-0 backface-hidden rounded-2xl border-[3px] overflow-hidden bg-white flex flex-col p-1.5 sm:p-2 ${revealed ? 'grayscale brightness-90' : ''}`} style={{ borderColor: config.color }}>
@@ -62,7 +63,7 @@ const GameCard = ({ role, revealed, isMe, onClick, selected, lang, small = false
                 </div>
             </div>
 
-            {/* Stats - Скрываем на совсем маленьких картах и на телефонах (где они вынесены наружу) */}
+            {/* Stats - Скрываем на телефонах (они вынесены вниз) */}
             {!small && (
                 <div className="z-10 w-full space-y-0.5 sm:space-y-1 mt-auto hidden sm:block">
                 <div className="flex items-center gap-1 bg-gray-50 rounded p-0.5 sm:p-1 border border-gray-100">
@@ -96,16 +97,18 @@ const GameCard = ({ role, revealed, isMe, onClick, selected, lang, small = false
         </div>
 
         {/* EXTERNAL STATS - Visible ONLY on mobile, under the card */}
+        {/* Using absolute positioning wrapper with z-20 to ensure it sits on top of any overlapping elements below,
+            but adding margin to the container (in parent) helps too */}
         {!small && !revealed && (
-            <div className="block sm:hidden text-center space-y-1 mt-1 animate-in fade-in w-full max-w-[80px]">
-                <div className="flex items-center justify-center gap-1 bg-white/90 backdrop-blur-sm rounded px-1.5 py-1 border border-gray-200 shadow-sm">
-                    <Swords className="w-2 h-2 text-emerald-600 shrink-0" />
-                    <span className="text-[7px] font-black text-gray-700 uppercase tracking-tight leading-none truncate">{info.action}</span>
+            <div className="block sm:hidden text-center space-y-1 w-full max-w-[80px] z-20 relative">
+                <div className="flex items-center justify-center gap-1 bg-white/95 backdrop-blur-md rounded-lg px-2 py-1 border border-gray-300 shadow-md">
+                    <Swords className="w-2.5 h-2.5 text-emerald-600 shrink-0" />
+                    <span className="text-[8px] font-black text-gray-800 uppercase tracking-tight leading-none truncate">{info.action}</span>
                 </div>
                 {info.block !== '-' && (
-                    <div className="flex items-center justify-center gap-1 bg-white/90 backdrop-blur-sm rounded px-1.5 py-1 border border-gray-200 shadow-sm">
-                        <Shield className="w-2 h-2 text-red-600 shrink-0" />
-                        <span className="text-[7px] font-black text-gray-700 uppercase tracking-tight leading-none truncate">{info.block}</span>
+                    <div className="flex items-center justify-center gap-1 bg-white/95 backdrop-blur-md rounded-lg px-2 py-1 border border-gray-300 shadow-md">
+                        <Shield className="w-2.5 h-2.5 text-red-600 shrink-0" />
+                        <span className="text-[8px] font-black text-gray-800 uppercase tracking-tight leading-none truncate">{info.block}</span>
                     </div>
                 )}
             </div>
@@ -424,8 +427,9 @@ export default function CoupBoard() {
               {isLosing && <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-red-600 text-white px-6 py-2 rounded-full text-xs font-black uppercase shadow-lg animate-pulse z-30">{t.loseInfluence}</div>}
               {isExchanging && <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-emerald-600 text-white px-6 py-2 rounded-full text-xs font-black uppercase shadow-lg z-30">{t.exchange}</div>}
 
-              <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-                <div className="flex justify-center gap-3 sm:gap-4 relative shrink-0">
+              <div className="flex flex-col md:flex-row items-center justify-between gap-6 sm:gap-8">
+                {/* Changed gap to gap-6 and added bottom margin on mobile to separate cards from actions */}
+                <div className="flex justify-center gap-3 sm:gap-4 relative shrink-0 mb-8 sm:mb-0">
                   {me.cards.map((card, i) => <GameCard key={i} role={card.role} revealed={card.revealed} isMe={true} lang={lang} disabled={me.isDead} isLosing={isLosing && !card.revealed} onClick={() => resolveLoss(i)} />)}
                 </div>
 
