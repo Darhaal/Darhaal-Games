@@ -30,12 +30,10 @@ const GameCard = ({ role, revealed, isMe, onClick, selected, lang, small = false
   const config = ROLE_CONFIG[role];
   const info = DICTIONARY[lang].roles[role];
 
-  // Адаптивные размеры
   const dims = small ? 'w-16 h-24 sm:w-20 sm:h-28' : 'w-24 h-36 sm:w-28 sm:h-44';
 
   return (
     <div className="flex flex-col items-center gap-1.5 group relative z-0">
-        {/* Card Itself */}
         <div
         onClick={!disabled ? onClick : undefined}
         className={`
@@ -46,24 +44,20 @@ const GameCard = ({ role, revealed, isMe, onClick, selected, lang, small = false
         `}
         >
         <div className={`relative w-full h-full duration-500 preserve-3d transition-transform shadow-xl rounded-2xl ${(isMe || revealed) ? 'rotate-y-0' : ''}`}>
-
             {/* FACE */}
             <div className={`absolute inset-0 backface-hidden rounded-2xl border-[3px] overflow-hidden bg-white flex flex-col p-1.5 sm:p-2 ${revealed ? 'grayscale brightness-90' : ''}`} style={{ borderColor: config.color }}>
             <div className="absolute inset-0 opacity-5 pointer-events-none bg-black" />
-
             <div className="w-full flex justify-between items-start z-10 mb-1">
                 <span className="font-black text-[8px] sm:text-[10px] uppercase tracking-wider truncate" style={{ color: config.color }}>{info.name}</span>
                 <config.icon className="w-3 h-3 sm:w-4 sm:h-4 opacity-50" style={{ color: config.color }} />
             </div>
-
             <div className="flex-1 flex flex-col items-center justify-center z-10">
                 <div className="p-2 sm:p-3 rounded-full bg-white border-2 shadow-sm relative" style={{ borderColor: config.color }}>
                     <div className="absolute inset-0 rounded-full opacity-10" style={{ backgroundColor: config.color }} />
                     <config.icon className={`${small ? 'w-5 h-5 sm:w-6 sm:h-6' : 'w-8 h-8 sm:w-10 sm:h-10'}`} style={{ color: config.color }} />
                 </div>
             </div>
-
-            {/* Stats - INTERNAL (Inside card) for all screens - FIXED VISIBILITY */}
+            {/* Stats - INTERNAL */}
             {!small && (
                 <div className="z-10 w-full space-y-1 mt-auto">
                     <div className="flex items-center gap-1 bg-gray-50/90 backdrop-blur-sm rounded p-1 border border-gray-100 shadow-sm">
@@ -78,14 +72,12 @@ const GameCard = ({ role, revealed, isMe, onClick, selected, lang, small = false
                     )}
                 </div>
             )}
-
             {revealed && (
                 <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center z-50 backdrop-blur-[1px]">
                 <Skull className="w-8 h-8 text-white drop-shadow-lg mb-1" />
                 </div>
             )}
             </div>
-
             {/* BACK */}
             {!revealed && !isMe && (
             <div className="absolute inset-0 backface-hidden rounded-2xl bg-[#1A1F26] border-4 border-[#333] flex flex-col items-center justify-center shadow-inner">
@@ -350,16 +342,44 @@ export default function CoupBoard() {
   const isLosing = phase === 'losing_influence' && gameState.pendingPlayerId === userId;
   const isExchanging = phase === 'resolving_exchange' && gameState.pendingPlayerId === userId;
 
-  // Determine which actions are available
-  // Foreign Aid (Action) -> Can be Blocked (Duke). Cannot be Challenged.
-  // Steal/Assassinate (Action) -> Can be Blocked OR Challenged.
-  // Tax/Exchange (Action) -> Can be Challenged. Cannot be Blocked.
+  // Actions
   const isForeignAid = gameState.currentAction?.type === 'foreign_aid';
   const isActionWithBlockAndChallenge = ['steal', 'assassinate'].includes(gameState.currentAction?.type || '');
   const isActionWithOnlyChallenge = ['tax', 'exchange'].includes(gameState.currentAction?.type || '');
 
-  // Only show buttons if it is the correct phase
-  const isReactionPhase = phase === 'waiting_for_challenges' || phase === 'waiting_for_blocks';
+  // 1. Reaction Phase?
+  const isReactionPhase = phase === 'waiting_for_challenges' || phase === 'waiting_for_blocks' || phase === 'waiting_for_block_challenges';
+
+  // 2. Are we the blocker?
+  const isBlocker = gameState.currentAction?.blockedBy === userId;
+
+  // 3. SHOW CHALLENGE?
+  // - Show if:
+  //    (a) Action phase: NOT the actor AND (action allows challenge).
+  //    (b) Block phase: NOT the blocker.
+  const showChallengeBtn =
+      (phase === 'waiting_for_challenges' && !isActor && !isForeignAid) ||
+      (phase === 'waiting_for_block_challenges' && !isBlocker);
+
+  // 4. SHOW BLOCK?
+  // - Show if:
+  //    (a) We are target (or Duke vs Foreign Aid).
+  //    (b) Action can be blocked.
+  //    (c) Not already blocked.
+  //    (d) Phase is challenge/block.
+  const showBlockBtn =
+      !isActor &&
+      canBlock &&
+      !isBlocker &&
+      (isForeignAid || isActionWithBlockAndChallenge) &&
+      (phase === 'waiting_for_challenges' || phase === 'waiting_for_blocks');
+
+  // 5. PASS?
+  const showPassBtn =
+      (phase === 'waiting_for_challenges' && !isActor) ||
+      (phase === 'waiting_for_blocks' && !isActor) ||
+      (phase === 'waiting_for_block_challenges' && !isBlocker);
+
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-[#1A1F26] flex flex-col font-sans overflow-hidden relative">
@@ -397,24 +417,24 @@ export default function CoupBoard() {
           })}
         </div>
 
-        {/* Reaction Bar - MOVED TO TOP ON MOBILE (top-20) to prevent overlap with cards */}
+        {/* Reaction Bar - MOVED TO TOP ON MOBILE (top-20) */}
         {!isMyTurn && isReactionPhase && !me?.isDead && !isLosing && !isExchanging && (
             <div className="fixed top-20 sm:top-auto sm:bottom-64 left-0 right-0 z-[60] flex justify-center px-4 pointer-events-none">
                 <div className="bg-white/95 backdrop-blur-xl border border-[#9e1316] p-4 rounded-2xl shadow-2xl flex flex-col sm:flex-row items-center gap-4 pointer-events-auto animate-in slide-in-from-top-10 sm:slide-in-from-bottom-10 fade-in">
                     <div className="text-xs font-bold uppercase text-[#1A1F26] text-center">{gameState.currentAction?.player === userId ? t.waitingForResponse : `${gameState.currentAction?.type.toUpperCase()}!`}</div>
                     <div className="flex gap-2">
-                        {/* CHALLENGE BUTTON - Visible for Tax/Exchange OR if can't block */}
-                        {/* Logic: Show challenge if it's a character action AND I am not the actor */}
-                        {!isActor && (isActionWithBlockAndChallenge || isActionWithOnlyChallenge) &&
+                        {/* CHALLENGE BUTTON */}
+                        {showChallengeBtn &&
                             <button onClick={challenge} className="bg-red-100 text-red-700 px-4 py-2 rounded-lg font-bold text-xs hover:bg-red-200 flex gap-2"><AlertOctagon className="w-4 h-4"/> {t.challenge}</button>
                         }
 
-                        {/* BLOCK BUTTON - Visible if I can block */}
-                        {(canBlock && (isForeignAid || isActionWithBlockAndChallenge)) &&
+                        {/* BLOCK BUTTON */}
+                        {showBlockBtn &&
                             <button onClick={block} className="bg-purple-100 text-purple-700 px-4 py-2 rounded-lg font-bold text-xs hover:bg-purple-200 flex gap-2"><Shield className="w-4 h-4"/> {t.block}</button>
                         }
 
-                        {!isActor && <button onClick={pass} className="bg-emerald-100 text-emerald-700 px-4 py-2 rounded-lg font-bold text-xs hover:bg-emerald-200 flex gap-2"><ThumbsUp className="w-4 h-4"/> {t.pass}</button>}
+                        {/* PASS BUTTON */}
+                        {showPassBtn && <button onClick={pass} className="bg-emerald-100 text-emerald-700 px-4 py-2 rounded-lg font-bold text-xs hover:bg-emerald-200 flex gap-2"><ThumbsUp className="w-4 h-4"/> {t.pass}</button>}
                     </div>
                 </div>
             </div>
@@ -487,7 +507,7 @@ export default function CoupBoard() {
                          ))}
                      </div>
                      <button
-                        onClick={() => resolveExchange(selectedExchangeIndices.map(i => gameState.exchangeBuffer![i]))}
+                        onClick={() => resolveExchange(selectedExchangeIndices)}
                         disabled={selectedExchangeIndices.length !== (me?.cards.filter(c => !c.revealed).length)}
                         className="w-full max-w-xs py-4 bg-[#059669] text-white rounded-xl font-black uppercase disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#047857] transition-colors shadow-lg"
                      >
