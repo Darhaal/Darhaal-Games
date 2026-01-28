@@ -12,7 +12,7 @@ import { useCoupGame } from '@/hooks/useCoupGame';
 import { ROLE_CONFIG, DICTIONARY } from '@/constants/coup';
 import { Role, Lang } from '@/types/coup';
 
-// --- GAME CARD COMPONENT (3D Flip Style) ---
+// --- GAME CARD COMPONENT ---
 interface GameCardProps {
   role: Role;
   revealed: boolean;
@@ -30,12 +30,10 @@ const GameCard = ({ role, revealed, isMe, onClick, selected, lang, small = false
   const config = ROLE_CONFIG[role];
   const info = DICTIONARY[lang].roles[role];
 
-  // Адаптивные размеры
   const dims = small ? 'w-16 h-24 sm:w-20 sm:h-28' : 'w-24 h-36 sm:w-28 sm:h-44';
 
   return (
     <div className="flex flex-col items-center gap-1.5 group relative z-0">
-        {/* Card Itself */}
         <div
         onClick={!disabled ? onClick : undefined}
         className={`
@@ -46,24 +44,20 @@ const GameCard = ({ role, revealed, isMe, onClick, selected, lang, small = false
         `}
         >
         <div className={`relative w-full h-full duration-500 preserve-3d transition-transform shadow-xl rounded-2xl ${(isMe || revealed) ? 'rotate-y-0' : ''}`}>
-
             {/* FACE */}
             <div className={`absolute inset-0 backface-hidden rounded-2xl border-[3px] overflow-hidden bg-white flex flex-col p-1.5 sm:p-2 ${revealed ? 'grayscale brightness-90' : ''}`} style={{ borderColor: config.color }}>
             <div className="absolute inset-0 opacity-5 pointer-events-none bg-black" />
-
             <div className="w-full flex justify-between items-start z-10 mb-1">
                 <span className="font-black text-[8px] sm:text-[10px] uppercase tracking-wider truncate" style={{ color: config.color }}>{info.name}</span>
                 <config.icon className="w-3 h-3 sm:w-4 sm:h-4 opacity-50" style={{ color: config.color }} />
             </div>
-
             <div className="flex-1 flex flex-col items-center justify-center z-10">
                 <div className="p-2 sm:p-3 rounded-full bg-white border-2 shadow-sm relative" style={{ borderColor: config.color }}>
                     <div className="absolute inset-0 rounded-full opacity-10" style={{ backgroundColor: config.color }} />
                     <config.icon className={`${small ? 'w-5 h-5 sm:w-6 sm:h-6' : 'w-8 h-8 sm:w-10 sm:h-10'}`} style={{ color: config.color }} />
                 </div>
             </div>
-
-            {/* Stats - INTERNAL (Inside card) for all screens */}
+            {/* Stats - INTERNAL */}
             {!small && (
                 <div className="z-10 w-full space-y-1 mt-auto">
                     <div className="flex items-center gap-1 bg-gray-50/90 backdrop-blur-sm rounded p-1 border border-gray-100 shadow-sm">
@@ -78,14 +72,12 @@ const GameCard = ({ role, revealed, isMe, onClick, selected, lang, small = false
                     )}
                 </div>
             )}
-
             {revealed && (
                 <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center z-50 backdrop-blur-[1px]">
                 <Skull className="w-8 h-8 text-white drop-shadow-lg mb-1" />
                 </div>
             )}
             </div>
-
             {/* BACK */}
             {!revealed && !isMe && (
             <div className="absolute inset-0 backface-hidden rounded-2xl bg-[#1A1F26] border-4 border-[#333] flex flex-col items-center justify-center shadow-inner">
@@ -229,7 +221,7 @@ export default function CoupBoard() {
   const [activeModal, setActiveModal] = useState<'rules' | 'guide' | null>(null);
   const [copied, setCopied] = useState(false);
 
-  // Exchange state - сохраняем ИНДЕКСЫ, а не роли, чтобы различать одинаковые карты
+  // Exchange state
   const [selectedExchangeIndices, setSelectedExchangeIndices] = useState<number[]>([]);
 
   const { gameState, roomMeta, loading, performAction, startGame, leaveGame, pass, challenge, block, resolveLoss, resolveExchange } = useCoupGame(lobbyId, userId);
@@ -350,6 +342,11 @@ export default function CoupBoard() {
   const isLosing = phase === 'losing_influence' && gameState.pendingPlayerId === userId;
   const isExchanging = phase === 'resolving_exchange' && gameState.pendingPlayerId === userId;
 
+  // Can Block Logic for Button:
+  // Can block if I am target OR if action is foreign_aid (Duke blocks).
+  // AND phase is waiting_for_blocks OR waiting_for_challenges (steal/assassinate/aid).
+  const showBlockBtn = canBlock && (phase === 'waiting_for_blocks' || (phase === 'waiting_for_challenges' && ['steal', 'assassinate', 'foreign_aid'].includes(gameState.currentAction?.type || '')));
+
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-[#1A1F26] flex flex-col font-sans overflow-hidden relative">
       <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-50 mix-blend-overlay pointer-events-none" />
@@ -386,14 +383,18 @@ export default function CoupBoard() {
           })}
         </div>
 
-        {/* Reaction Bar - MOVED TO TOP ON MOBILE (top-24) to avoid overlapping cards at bottom */}
+        {/* Reaction Bar - MOVED TO TOP ON MOBILE (top-20) to prevent overlap with cards */}
         {!isMyTurn && phase !== 'choosing_action' && phase !== 'losing_influence' && phase !== 'resolving_exchange' && !me?.isDead && (
-            <div className="fixed top-24 sm:top-auto sm:bottom-64 left-0 right-0 z-[60] flex justify-center px-4 pointer-events-none">
+            <div className="fixed top-20 sm:top-auto sm:bottom-64 left-0 right-0 z-[60] flex justify-center px-4 pointer-events-none">
                 <div className="bg-white/95 backdrop-blur-xl border border-[#9e1316] p-4 rounded-2xl shadow-2xl flex flex-col sm:flex-row items-center gap-4 pointer-events-auto animate-in slide-in-from-top-10 sm:slide-in-from-bottom-10 fade-in">
                     <div className="text-xs font-bold uppercase text-[#1A1F26] text-center">{gameState.currentAction?.player === userId ? t.waitingForResponse : `${gameState.currentAction?.type.toUpperCase()}!`}</div>
                     <div className="flex gap-2">
-                        {!isActor && (phase.includes('challenges')) && <button onClick={challenge} className="bg-red-100 text-red-700 px-4 py-2 rounded-lg font-bold text-xs hover:bg-red-200 flex gap-2"><AlertOctagon className="w-4 h-4"/> {t.challenge}</button>}
-                        {canBlock && phase === 'waiting_for_blocks' && <button onClick={block} className="bg-purple-100 text-purple-700 px-4 py-2 rounded-lg font-bold text-xs hover:bg-purple-200 flex gap-2"><Shield className="w-4 h-4"/> {t.block}</button>}
+                        {/* Hide challenge if user can block (per user request) */}
+                        {!isActor && (phase.includes('challenges')) && !showBlockBtn && <button onClick={challenge} className="bg-red-100 text-red-700 px-4 py-2 rounded-lg font-bold text-xs hover:bg-red-200 flex gap-2"><AlertOctagon className="w-4 h-4"/> {t.challenge}</button>}
+
+                        {/* Improved Block Button Visibility */}
+                        {showBlockBtn && <button onClick={block} className="bg-purple-100 text-purple-700 px-4 py-2 rounded-lg font-bold text-xs hover:bg-purple-200 flex gap-2"><Shield className="w-4 h-4"/> {t.block}</button>}
+
                         {!isActor && <button onClick={pass} className="bg-emerald-100 text-emerald-700 px-4 py-2 rounded-lg font-bold text-xs hover:bg-emerald-200 flex gap-2"><ThumbsUp className="w-4 h-4"/> {t.pass}</button>}
                     </div>
                 </div>
