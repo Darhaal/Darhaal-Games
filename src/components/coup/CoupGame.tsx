@@ -1,238 +1,395 @@
-'use client';
-
-import React, { useState } from 'react';
-import {
-  Coins, Crown, Shield,
-  LogOut, Book, HelpCircle,
-  Swords, Skull, RefreshCw, AlertTriangle, ThumbsUp, AlertOctagon, CheckCircle
-} from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { supabase } from '@/lib/supabase';
+import { GameState, Player, Role } from '@/types/coup';
 import { DICTIONARY } from '@/constants/coup';
-import { Role, Lang, GameState, Player } from '@/types/coup';
-import { GameCard, ActionBtn, RulesModal, GuideModal, LogPanel } from './CoupComponents';
 
-interface CoupGameProps {
-  gameState: GameState;
-  userId: string | undefined;
-  performAction: (actionType: string, targetId?: string) => Promise<void>;
-  challenge: () => Promise<void>;
-  block: () => Promise<void>;
-  pass: () => Promise<void>;
-  resolveLoss: (cardIndex: number) => Promise<void>;
-  resolveExchange: (selectedIndices: number[]) => Promise<void>;
-  leaveGame: () => Promise<void>;
-  lang: Lang;
-}
+export function useCoupGame(lobbyId: string | null, userId: string | undefined) {
+  const [gameState, setGameState] = useState<GameState | null>(null);
+  const [roomMeta, setRoomMeta] = useState<{ name: string; code: string; isHost: boolean } | null>(null);
+  const [loading, setLoading] = useState(true);
 
-export default function CoupGame({
-  gameState, userId, performAction, challenge, block, pass, resolveLoss, resolveExchange, leaveGame, lang
-}: CoupGameProps) {
-  const [targetMode, setTargetMode] = useState<'coup' | 'steal' | 'assassinate' | null>(null);
-  const [activeModal, setActiveModal] = useState<'rules' | 'guide' | null>(null);
-  const [selectedExchangeIndices, setSelectedExchangeIndices] = useState<number[]>([]);
+  const stateRef = useRef<{ lobbyId: string | null; userId: string | undefined }>({
+    lobbyId, userId
+  });
 
-  const players = gameState.players || [];
-  const me = players.find(p => p.id === userId);
-  const isMyTurn = players[gameState.turnIndex]?.id === userId;
-  const t = DICTIONARY[lang].ui;
-  const actionsT = DICTIONARY[lang].actions;
+  useEffect(() => {
+    stateRef.current = { lobbyId, userId };
+  }, [lobbyId, userId]);
 
-  const phase = gameState.phase;
-  const isActor = gameState.currentAction?.player === userId;
-  const canBlock = (gameState.currentAction?.target === userId) || (gameState.currentAction?.type === 'foreign_aid');
-  const isLosing = phase === 'losing_influence' && gameState.pendingPlayerId === userId;
-  const isExchanging = phase === 'resolving_exchange' && gameState.pendingPlayerId === userId;
+  // --- 1. Sync ---
+  const fetchLobbyState = useCallback(async () => {
+    if (!lobbyId) return;
+    try {
+      const { data } = await supabase.from('lobbies').select('name, code, host_id, game_state').eq('id', lobbyId).single();
+      if (data) {
+        setRoomMeta({ name: data.name, code: data.code, isHost: data.host_id === userId });
+        if (data.game_state) setGameState(data.game_state);
+      }
+    } catch (e) { console.error(e); } finally { setLoading(false); }
+  }, [lobbyId, userId]);
 
-  const isForeignAid = gameState.currentAction?.type === 'foreign_aid';
-  const isActionWithBlockAndChallenge = ['steal', 'assassinate'].includes(gameState.currentAction?.type || '');
-  const isActionWithOnlyChallenge = ['tax', 'exchange'].includes(gameState.currentAction?.type || '');
+  useEffect(() => {
+    if (!lobbyId) return;
+    fetchLobbyState();
+    const ch = supabase.channel(`lobby:${lobbyId}`)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'lobbies', filter: `id=eq.${lobbyId}` },
+      (payload) => { if (payload.new.game_state) setGameState(payload.new.game_state); })
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [lobbyId, fetchLobbyState]);
 
-  const isReactionPhase = phase === 'waiting_for_challenges' || phase === 'waiting_for_blocks' || phase === 'waiting_for_block_challenges';
-  const isBlocker = gameState.currentAction?.blockedBy === userId;
-
-  const showChallengeBtn =
-      (phase === 'waiting_for_challenges' && !isActor && !isForeignAid) ||
-      (phase === 'waiting_for_block_challenges' && !isBlocker) ||
-      (phase === 'waiting_for_blocks' && !isActor && !isForeignAid);
-
-  const showBlockBtn =
-      !isActor &&
-      canBlock &&
-      !isBlocker &&
-      (isForeignAid || isActionWithBlockAndChallenge) &&
-      (phase === 'waiting_for_challenges' || phase === 'waiting_for_blocks');
-
-  const showPassBtn =
-      (phase === 'waiting_for_challenges' && !isActor) ||
-      (phase === 'waiting_for_blocks' && !isActor) ||
-      (phase === 'waiting_for_block_challenges' && !isBlocker);
-
-  const handleAction = (action: string) => {
-    if (['coup', 'steal', 'assassinate'].includes(action)) setTargetMode(action as any);
-    else performAction(action);
+  const updateState = async (newState: GameState) => {
+    setGameState(newState);
+    if (stateRef.current.lobbyId) {
+       await supabase.from('lobbies').update({ game_state: newState }).eq('id', stateRef.current.lobbyId);
+    }
   };
 
-  const handleTarget = (targetId: string) => {
-    if (targetMode) { performAction(targetMode, targetId); setTargetMode(null); }
+  // --- Logs ---
+  const addLog = (state: GameState, user: string, action: string) => {
+    const time = new Date().toLocaleTimeString('ru-RU', { hour12: false, hour: '2-digit', minute:'2-digit' });
+    state.logs.unshift({ user, action, time });
+    state.logs = state.logs.slice(0, 50);
   };
 
-  const handleExchangeToggle = (index: number) => {
-      if (selectedExchangeIndices.includes(index)) {
-          setSelectedExchangeIndices(prev => prev.filter(i => i !== index));
+  const getRoleName = (role: Role) => DICTIONARY['ru'].roles[role]?.name || role;
+
+  const nextTurn = (state: GameState) => {
+    const alivePlayers = state.players.filter(p => !p.isDead);
+    if (alivePlayers.length === 1) {
+      state.status = 'finished';
+      state.winner = alivePlayers[0].name;
+      state.phase = 'choosing_action';
+      addLog(state, '🏆', `Победитель: ${state.winner}!`);
+      return;
+    }
+
+    let next = (state.turnIndex + 1) % state.players.length;
+    while (state.players[next].isDead) {
+      next = (next + 1) % state.players.length;
+    }
+
+    state.turnIndex = next;
+    state.phase = 'choosing_action';
+    state.currentAction = null;
+    state.pendingPlayerId = undefined;
+    state.exchangeBuffer = undefined;
+  };
+
+  // --- ACTIONS ---
+  const performAction = async (actionType: string, targetId?: string) => {
+    if (!gameState || !userId) return;
+    const newState: GameState = JSON.parse(JSON.stringify(gameState));
+    const player = newState.players.find(p => p.id === userId);
+    if (!player) return;
+
+    const targetName = targetId ? newState.players.find(p => p.id === targetId)?.name : '';
+
+    if (actionType === 'coup') {
+      if (player.coins < 7) return;
+      player.coins -= 7;
+    } else if (actionType === 'assassinate') {
+      if (player.coins < 3) return;
+      player.coins -= 3;
+    }
+
+    const action = { type: actionType, player: userId, target: targetId };
+    newState.currentAction = action;
+
+    switch (actionType) {
+        case 'income': addLog(newState, player.name, 'Взял Доход (+1)'); break;
+        case 'foreign_aid': addLog(newState, player.name, 'Хочет взять Помощь (+2)'); break;
+        case 'tax': addLog(newState, player.name, 'Объявил Налог (+3) (Герцог)'); break;
+        case 'steal': addLog(newState, player.name, `Хочет украсть у ${targetName} (Капитан)`); break;
+        case 'exchange': addLog(newState, player.name, 'Хочет сменить карты (Посол)'); break;
+        case 'assassinate': addLog(newState, player.name, `Платит убийце за ${targetName} (-3)`); break;
+        case 'coup': addLog(newState, player.name, `УСТРАИВАЕТ ПЕРЕВОРОТ против ${targetName}!`); break;
+    }
+
+    if (actionType === 'income') {
+      player.coins++;
+      nextTurn(newState);
+    } else if (actionType === 'coup') {
+      newState.phase = 'losing_influence';
+      newState.pendingPlayerId = targetId;
+    } else if (actionType === 'foreign_aid') {
+      newState.phase = 'waiting_for_blocks';
+    } else {
+      newState.phase = 'waiting_for_challenges';
+    }
+
+    await updateState(newState);
+  };
+
+  const pass = async () => {
+    if (!gameState) return;
+    const newState: GameState = JSON.parse(JSON.stringify(gameState));
+    if (!newState.currentAction) return;
+
+    if (newState.phase === 'waiting_for_challenges') {
+      if (['steal', 'assassinate'].includes(newState.currentAction.type)) {
+        newState.phase = 'waiting_for_blocks';
       } else {
-          const lives = gameState?.players.find(p => p.id === userId)?.cards.filter(c => !c.revealed).length || 2;
-          if (selectedExchangeIndices.length < lives) {
-              setSelectedExchangeIndices(prev => [...prev, index]);
+        applyActionEffect(newState);
+      }
+    }
+    else if (newState.phase === 'waiting_for_blocks') {
+       applyActionEffect(newState);
+    }
+    else if (newState.phase === 'waiting_for_block_challenges') {
+       addLog(newState, 'Система', 'Блок успешен, действие отменено');
+       nextTurn(newState);
+    }
+
+    await updateState(newState);
+  };
+
+  const challenge = async () => {
+    if (!gameState || !userId) return;
+    const newState: GameState = JSON.parse(JSON.stringify(gameState));
+    const challenger = newState.players.find(p => p.id === userId);
+    if (!challenger || !newState.currentAction) return;
+
+    const isBlockChallenge = newState.phase === 'waiting_for_block_challenges';
+
+    // Определяем обвиняемого.
+    // Если фаза блока - обвиняем блокера.
+    // Если фаза действия (или блоков действия) - обвиняем актора.
+    const accusedId = isBlockChallenge ? newState.currentAction.blockedBy : newState.currentAction.player;
+
+    // Нельзя оспорить самого себя
+    if (challenger.id === accusedId) return;
+
+    const accused = newState.players.find(p => p.id === accusedId);
+    if (!accused) return;
+
+    addLog(newState, challenger.name, `НЕ ВЕРИТ игроку ${accused.name}!`);
+
+    // Проверяем роль
+    const requiredRole = getRequiredRole(newState.currentAction.type, isBlockChallenge);
+    const hasRole = accused.cards.some(c => !c.revealed && c.role === requiredRole);
+
+    if (hasRole) {
+      // ПРАВДА
+      addLog(newState, accused.name, `Показал карту: ${getRoleName(requiredRole)}!`);
+
+      // Замена карты
+      const cardIdx = accused.cards.findIndex(c => !c.revealed && c.role === requiredRole);
+      const oldRole = accused.cards[cardIdx].role;
+      newState.deck.push(oldRole);
+      newState.deck.sort(() => Math.random() - 0.5);
+      accused.cards[cardIdx].role = newState.deck.pop() as Role;
+
+      // Наказание челленджера
+      newState.phase = 'losing_influence';
+      newState.pendingPlayerId = challenger.id;
+      newState.currentAction.nextPhase = isBlockChallenge ? 'blocked_end' : 'continue_action';
+
+    } else {
+      // ЛОЖЬ
+      addLog(newState, accused.name, `БЛЕФОВАЛ! (Нет карты ${getRoleName(requiredRole)})`);
+
+      // Наказание лжеца
+      newState.phase = 'losing_influence';
+      newState.pendingPlayerId = accused.id;
+      newState.currentAction.nextPhase = isBlockChallenge ? 'continue_action' : 'action_cancelled';
+    }
+
+    await updateState(newState);
+  };
+
+  const block = async () => {
+    if (!gameState || !userId) return;
+    const newState: GameState = JSON.parse(JSON.stringify(gameState));
+    if (!newState.currentAction) return;
+
+    // Защита от повторного блока
+    if (newState.currentAction.blockedBy) return;
+
+    newState.currentAction.blockedBy = userId;
+    newState.phase = 'waiting_for_block_challenges';
+
+    const blockerName = newState.players.find(p => p.id === userId)?.name || '?';
+    addLog(newState, blockerName, `БЛОКИРУЕТ действие`);
+
+    await updateState(newState);
+  };
+
+  const resolveLoss = async (cardIndex: number) => {
+    if (!gameState || !userId) return;
+    const newState: GameState = JSON.parse(JSON.stringify(gameState));
+
+    if (newState.pendingPlayerId !== userId) return;
+
+    const player = newState.players.find(p => p.id === userId);
+    if (!player || player.cards[cardIndex].revealed) return;
+
+    player.cards[cardIndex].revealed = true;
+    const lostRole = getRoleName(player.cards[cardIndex].role);
+    addLog(newState, player.name, `СБРОСИЛ КАРТУ: ${lostRole}`);
+
+    if (player.cards.every(c => c.revealed)) {
+       player.isDead = true;
+       player.coins = 0;
+       addLog(newState, player.name, 'Выбывает из игры ☠️');
+    }
+
+    const action = newState.currentAction;
+    if (!action) {
+       nextTurn(newState);
+    } else {
+        if (action.type === 'coup' || (action.type === 'assassinate' && newState.phase === 'losing_influence' && !action.nextPhase)) {
+            nextTurn(newState);
+        }
+        else if (action.nextPhase) {
+             const next = action.nextPhase;
+             delete action.nextPhase;
+
+             if (next === 'action_cancelled') {
+                 addLog(newState, 'Система', 'Действие отменено');
+                 nextTurn(newState);
+             } else if (next === 'blocked_end') {
+                 addLog(newState, 'Система', 'Блок успешен, действие отменено');
+                 nextTurn(newState);
+             } else if (next === 'continue_action') {
+                 if (action.blockedBy) {
+                     // Блок был блефом -> Выполняем действие
+                     applyActionEffect(newState);
+                 } else {
+                     // Челендж действия провалился -> Можно блочить (если Steal/Assassinate) или Выполнять
+                     if (['steal', 'assassinate'].includes(action.type)) {
+                         newState.phase = 'waiting_for_blocks';
+                     } else {
+                         applyActionEffect(newState);
+                     }
+                 }
+             }
+        } else {
+          nextTurn(newState);
+        }
+    }
+
+    await updateState(newState);
+  };
+
+  const resolveExchange = async (selectedIndices: number[]) => {
+      if (!gameState || !userId) return;
+      const newState: GameState = JSON.parse(JSON.stringify(gameState));
+      if (newState.phase !== 'resolving_exchange' || newState.pendingPlayerId !== userId) return;
+
+      const player = newState.players.find(p => p.id === userId);
+      if (!player || !newState.exchangeBuffer) return;
+
+      const buffer = newState.exchangeBuffer;
+      let selectionPtr = 0;
+
+      // Назначаем новые карты в слоты
+      for (let i = 0; i < player.cards.length; i++) {
+          if (!player.cards[i].revealed) {
+              if (selectionPtr < selectedIndices.length) {
+                  const bufferIndex = selectedIndices[selectionPtr];
+                  player.cards[i].role = buffer[bufferIndex];
+                  selectionPtr++;
+              }
           }
+      }
+
+      // Возврат остальных в колоду
+      const remainingRoles = buffer.filter((_, idx) => !selectedIndices.includes(idx));
+      newState.deck.push(...remainingRoles);
+      newState.deck.sort(() => Math.random() - 0.5);
+
+      newState.exchangeBuffer = undefined;
+      addLog(newState, player.name, 'Обменял карты');
+      nextTurn(newState);
+
+      await updateState(newState);
+  };
+
+  const applyActionEffect = (state: GameState) => {
+      const action = state.currentAction;
+      if (!action) return;
+      const actor = state.players.find(p => p.id === action.player);
+      const target = state.players.find(p => p.id === action.target);
+      if (!actor) return;
+
+      switch(action.type) {
+          case 'tax':
+              actor.coins += 3;
+              addLog(state, actor.name, 'Получил налог (+3)');
+              nextTurn(state);
+              break;
+          case 'foreign_aid':
+              actor.coins += 2;
+              addLog(state, actor.name, 'Получил помощь (+2)');
+              nextTurn(state);
+              break;
+          case 'steal':
+              if (target) {
+                  const amount = Math.min(2, target.coins);
+                  target.coins -= amount;
+                  actor.coins += amount;
+                  addLog(state, actor.name, `Украл ${amount} у ${target.name}`);
+              }
+              nextTurn(state);
+              break;
+          case 'assassinate':
+              if (target) {
+                  state.phase = 'losing_influence';
+                  state.pendingPlayerId = target.id;
+                  addLog(state, 'Система', `Покушение успешно! ${target.name} теряет карту`);
+              } else {
+                  nextTurn(state);
+              }
+              break;
+          case 'exchange':
+              const drawn = [state.deck.pop()!, state.deck.pop()!];
+              const currentHand = actor.cards.filter(c => !c.revealed).map(c => c.role);
+              state.exchangeBuffer = [...currentHand, ...drawn];
+              state.phase = 'resolving_exchange';
+              state.pendingPlayerId = actor.id;
+              break;
+          default:
+              nextTurn(state);
       }
   };
 
-  return (
-    <div className="min-h-screen bg-[#F8FAFC] text-[#1A1F26] flex flex-col font-sans overflow-hidden relative">
-      <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-50 mix-blend-overlay pointer-events-none" />
-      {activeModal === 'rules' && <RulesModal onClose={() => setActiveModal(null)} lang={lang} />}
-      {activeModal === 'guide' && <GuideModal onClose={() => setActiveModal(null)} lang={lang} />}
+  const getRequiredRole = (action: string, isBlock: boolean): Role => {
+    if (isBlock) {
+        if (action === 'foreign_aid') return 'duke';
+        if (action === 'assassinate') return 'contessa';
+        if (action === 'steal') return 'captain';
+        return 'duke';
+    } else {
+        if (action === 'tax') return 'duke';
+        if (action === 'steal') return 'captain';
+        if (action === 'assassinate') return 'assassin';
+        if (action === 'exchange') return 'ambassador';
+        return 'duke';
+    }
+  };
 
-      <header className="w-full max-w-6xl mx-auto p-4 flex justify-between items-center z-10 relative">
-          <button onClick={leaveGame}><LogOut className="w-5 h-5 text-gray-500" /></button>
-          <div className="text-center">
-             <h1 className="font-black text-xl">COUP</h1>
-             <div className="text-[10px] font-bold text-[#9e1316] uppercase">{isLosing ? 'LOSE INFLUENCE!' : (gameState.status === 'playing' ? `Turn: ${players[gameState.turnIndex]?.name}` : 'End')}</div>
-          </div>
-          <div className="flex gap-2">
-              <button onClick={() => setActiveModal('guide')} className="p-2 bg-white border rounded-xl shadow-sm"><Book className="w-5 h-5" /></button>
-              <button onClick={() => setActiveModal('rules')} className="p-2 bg-white border rounded-xl shadow-sm"><HelpCircle className="w-5 h-5" /></button>
-          </div>
-      </header>
+  const startGame = async () => {
+    if (!gameState) return;
+    const roles: Role[] = ['duke', 'duke', 'duke', 'assassin', 'assassin', 'assassin', 'captain', 'captain', 'captain', 'ambassador', 'ambassador', 'ambassador', 'contessa', 'contessa', 'contessa'];
+    const shuffled = roles.sort(() => Math.random() - 0.5);
 
-      <LogPanel logs={gameState.logs} lang={lang} />
+    const newPlayers = gameState.players.map(p => ({
+      ...p, coins: 2, isDead: false,
+      cards: [{ role: shuffled.pop()!, revealed: false }, { role: shuffled.pop()!, revealed: false }]
+    }));
 
-      <main className="flex-1 relative z-10 p-4 pb-60 flex flex-col max-w-6xl mx-auto w-full h-full overflow-y-auto custom-scrollbar">
-        <div className="flex flex-wrap justify-center gap-4 pt-4">
-          {players.map(p => {
-            if (p.id === userId) return null;
-            const isCurr = gameState.turnIndex === players.findIndex(pl => pl.id === p.id);
-            return (
-              <div key={p.id} onClick={() => targetMode && handleTarget(p.id)} className={`relative flex flex-col items-center p-3 bg-white border rounded-2xl transition-all ${isCurr ? 'ring-4 ring-[#9e1316] scale-105 z-20' : 'opacity-90'} ${targetMode ? 'cursor-pointer animate-pulse ring-4 ring-blue-400' : ''} ${p.isDead ? 'grayscale opacity-50' : ''}`}>
-                <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-white shadow-sm mb-2"><img src={p.avatarUrl} className="w-full h-full object-cover" /></div>
-                <div className="text-xs font-bold mb-1 truncate max-w-[80px]">{p.name}</div>
-                <div className="flex gap-1 mb-2">{p.cards.map((c, i) => <div key={i} className={`w-3 h-5 rounded-sm border ${c.revealed ? 'bg-red-200' : 'bg-[#1A1F26]'}`} />)}</div>
-                <div className="flex items-center gap-1 text-[10px] font-bold text-yellow-600 bg-yellow-50 px-2 rounded-full"><Coins className="w-3 h-3" /> {p.coins}</div>
-              </div>
-            );
-          })}
-        </div>
+    const newState: GameState = {
+      ...gameState, status: 'playing', players: newPlayers, deck: shuffled, turnIndex: 0,
+      phase: 'choosing_action', currentAction: null, logs: [], winner: undefined
+    };
+    addLog(newState, 'Система', 'Игра началась! Всем удачи.');
+    await updateState(newState);
+  };
 
-        {/* Reaction Bar */}
-        {!isMyTurn && isReactionPhase && !me?.isDead && !isLosing && !isExchanging && (
-            <div className="fixed top-20 sm:top-auto sm:bottom-64 left-0 right-0 z-[60] flex justify-center px-4 pointer-events-none">
-                <div className="bg-white/95 backdrop-blur-xl border border-[#9e1316] p-4 rounded-2xl shadow-2xl flex flex-col sm:flex-row items-center gap-4 pointer-events-auto animate-in slide-in-from-top-10 sm:slide-in-from-bottom-10 fade-in">
-                    <div className="text-xs font-bold uppercase text-[#1A1F26] text-center">{gameState.currentAction?.player === userId ? t.waitingForResponse : `${gameState.currentAction?.type.toUpperCase()}!`}</div>
-                    <div className="flex gap-2">
-                        {showChallengeBtn && <button onClick={challenge} className="bg-red-100 text-red-700 px-4 py-2 rounded-lg font-bold text-xs hover:bg-red-200 flex gap-2"><AlertOctagon className="w-4 h-4"/> {t.challenge}</button>}
-                        {showBlockBtn && <button onClick={block} className="bg-purple-100 text-purple-700 px-4 py-2 rounded-lg font-bold text-xs hover:bg-purple-200 flex gap-2"><Shield className="w-4 h-4"/> {t.block}</button>}
-                        {showPassBtn && <button onClick={pass} className="bg-emerald-100 text-emerald-700 px-4 py-2 rounded-lg font-bold text-xs hover:bg-emerald-200 flex gap-2"><ThumbsUp className="w-4 h-4"/> {t.pass}</button>}
-                    </div>
-                </div>
-            </div>
-        )}
+  const leaveGame = async () => {
+     if (lobbyId) await supabase.from('lobbies').delete().eq('id', lobbyId);
+  };
 
-        {me && (
-          <div className="fixed bottom-0 left-0 right-0 p-2 sm:p-4 z-50">
-            <div className="max-w-4xl mx-auto bg-white/95 backdrop-blur-xl border border-[#E6E1DC] rounded-[32px] p-4 sm:p-6 shadow-2xl relative">
-              {isMyTurn && !isLosing && !isExchanging && <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-[#9e1316] text-white px-4 py-1.5 rounded-full text-xs font-black uppercase shadow-lg animate-bounce z-20">{t.yourTurn}</div>}
-              {isLosing && <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-red-600 text-white px-6 py-2 rounded-full text-xs font-black uppercase shadow-lg animate-pulse z-30">{t.loseInfluence}</div>}
-              {isExchanging && <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-emerald-600 text-white px-6 py-2 rounded-full text-xs font-black uppercase shadow-lg z-30">{t.exchange}</div>}
-
-              <div className="flex flex-col md:flex-row items-center justify-between gap-6 sm:gap-8">
-                <div className="flex justify-center gap-3 sm:gap-4 relative shrink-0 mb-4 sm:mb-0 z-0">
-                  {me.cards.map((card, i) => <GameCard key={i} role={card.role} revealed={card.revealed} isMe={true} lang={lang} disabled={me.isDead} isLosing={isLosing && !card.revealed} onClick={() => resolveLoss(i)} />)}
-                </div>
-
-                <div className="flex-1 w-full max-w-lg z-10 relative">
-                  <div className="flex items-center gap-3 mb-4 justify-center md:justify-start bg-[#F8FAFC] p-2 px-4 rounded-xl border border-[#E6E1DC] w-fit mx-auto md:mx-0"><Coins className="w-4 h-4 text-yellow-600" /><div className="text-2xl font-black text-[#1A1F26]">{me.coins}</div></div>
-
-                  {!me.isDead && isMyTurn && phase === 'choosing_action' && (
-                    <>
-                      {targetMode ? (
-                        <div className="text-center p-4 bg-gray-50 rounded-2xl border border-dashed border-gray-300">
-                          <div className="text-sm font-bold mb-3 uppercase animate-pulse text-[#9e1316]">{t.targetSelect}: {targetMode}</div>
-                          <button onClick={() => setTargetMode(null)} className="px-6 py-2 bg-white border border-gray-300 rounded-full text-xs font-bold hover:bg-gray-100 shadow-sm">{t.cancel}</button>
-                        </div>
-                      ) : (
-                        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                          <ActionBtn label={actionsT.income} onClick={() => handleAction('income')} color="bg-gray-50 border-gray-200" />
-                          <ActionBtn label={actionsT.aid} onClick={() => handleAction('foreign_aid')} color="bg-gray-50 border-gray-200" />
-                          <ActionBtn label={actionsT.tax} onClick={() => handleAction('tax')} color="bg-purple-50 border-purple-200" icon={Crown} />
-                          <ActionBtn label={actionsT.steal} onClick={() => handleAction('steal')} color="bg-blue-50 border-blue-200" icon={Swords} />
-                          <ActionBtn label={actionsT.exchange} onClick={() => handleAction('exchange')} color="bg-green-50 border-green-200" icon={RefreshCw} />
-                          <ActionBtn label={actionsT.assassinate} onClick={() => handleAction('assassinate')} disabled={me.coins < 3} color="bg-gray-800 border-black text-white" icon={Skull} />
-                          <button onClick={() => handleAction('coup')} disabled={me.coins < 7} className="col-span-3 sm:col-span-2 p-3 bg-[#9e1316] text-white font-bold uppercase rounded-xl border-b-4 border-[#7a0f11] shadow-lg hover:shadow-xl active:translate-y-[1px] active:border-b-0 transition-all disabled:opacity-50 flex items-center justify-center gap-2">
-                            <AlertTriangle className="w-4 h-4" /> {actionsT.coup} (-7)
-                          </button>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* EXCHANGE MODAL */}
-        {isExchanging && gameState.exchangeBuffer && (
-             <div className="fixed inset-0 z-[150] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-                 <div className="bg-white rounded-[32px] p-6 w-full max-w-2xl flex flex-col items-center shadow-2xl animate-in zoom-in-95 border-4 border-[#059669]">
-                     <h2 className="text-xl font-black uppercase mb-6 flex items-center gap-2 text-[#059669]"><RefreshCw className="w-6 h-6"/> {t.exchange}</h2>
-                     <div className="flex flex-wrap justify-center gap-2 sm:gap-4 mb-8">
-                         {gameState.exchangeBuffer.map((role, i) => (
-                             <div key={i} className={`relative transition-all duration-300 ${selectedExchangeIndices.includes(i) ? 'ring-4 ring-[#059669] rounded-2xl transform scale-105 z-10 shadow-xl' : 'opacity-80 hover:opacity-100'}`}>
-                                <GameCard
-                                   role={role}
-                                   revealed={false}
-                                   isMe={true}
-                                   lang={lang}
-                                   onClick={() => handleExchangeToggle(i)}
-                                />
-                                {selectedExchangeIndices.includes(i) && (
-                                    <div className="absolute -top-2 -right-2 bg-[#059669] text-white rounded-full p-1 shadow-lg">
-                                        <CheckCircle className="w-4 h-4" />
-                                    </div>
-                                )}
-                             </div>
-                         ))}
-                     </div>
-                     <button
-                        onClick={() => resolveExchange(selectedExchangeIndices)}
-                        disabled={selectedExchangeIndices.length !== (me?.cards.filter(c => !c.revealed).length)}
-                        className="w-full max-w-xs py-4 bg-[#059669] text-white rounded-xl font-black uppercase disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#047857] transition-colors shadow-lg"
-                     >
-                        {t.confirm} ({selectedExchangeIndices.length}/{me?.cards.filter(c => !c.revealed).length})
-                     </button>
-                 </div>
-             </div>
-        )}
-      </main>
-
-      {/* Winner Overlay */}
-      {gameState.winner && (
-        <div className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white p-10 rounded-[32px] text-center animate-in zoom-in duration-300 border-4 border-[#9e1316] shadow-2xl max-w-sm w-full relative overflow-hidden">
-            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20" />
-            <div className="relative z-10">
-                <Crown className="w-24 h-24 text-yellow-500 mx-auto mb-6 animate-bounce drop-shadow-md" />
-                <h2 className="text-xs font-black uppercase tracking-[0.2em] text-gray-400 mb-2">{t.winner}</h2>
-                <p className="text-3xl font-black text-[#1A1F26] mb-8">{gameState.winner}</p>
-                <button
-                    onClick={leaveGame}
-                    className="w-full py-4 bg-[#1A1F26] text-white rounded-xl font-black uppercase tracking-widest hover:bg-[#9e1316] transition-colors shadow-lg"
-                >
-                    {t.leave}
-                </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
+  return { gameState, roomMeta, loading, performAction, startGame, leaveGame, pass, challenge, block, resolveLoss, resolveExchange };
 }
