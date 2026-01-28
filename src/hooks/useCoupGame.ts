@@ -8,16 +8,23 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
   const [roomMeta, setRoomMeta] = useState<{ name: string; code: string; isHost: boolean } | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Храним актуальное состояние в рефе, чтобы доступ к нему был внутри cleanup-функции
-  const stateRef = useRef<{ lobbyId: string | null; userId: string | undefined; status: string }>({
-    lobbyId, userId, status: 'waiting'
+  // Рефы для доступа внутри cleanup и beforeunload
+  const stateRef = useRef<{ lobbyId: string | null; userId: string | undefined; status: string; token: string | null }>({
+    lobbyId, userId, status: 'waiting', token: null
   });
 
+  // Сохраняем токен и состояние в ref для доступа при закрытии вкладки
   useEffect(() => {
-    stateRef.current = { lobbyId, userId, status: gameState?.status || 'waiting' };
+    supabase.auth.getSession().then(({ data }) => {
+        if (data.session) stateRef.current.token = data.session.access_token;
+    });
+  }, []);
+
+  useEffect(() => {
+    stateRef.current = { ...stateRef.current, lobbyId, userId, status: gameState?.status || 'waiting' };
   }, [lobbyId, userId, gameState?.status]);
 
-  // --- 1. Синхронизация с Supabase ---
+  // --- 1. Синхронизация ---
 
   const fetchLobbyState = useCallback(async () => {
     if (!lobbyId) return;
@@ -71,88 +78,105 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
              if (roomMeta && payload.new.host_id !== undefined) {
                  setRoomMeta(prev => prev ? ({ ...prev, isHost: payload.new.host_id === userId }) : null);
              }
+          } else {
+             // Лобби удалено
+             setGameState(null);
           }
         }
       )
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'lobbies', filter: `id=eq.${lobbyId}` }, () => {
+          setGameState(null); // Выкидываем игрока в UI, если лобби удалено
+      })
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
   }, [lobbyId, userId, fetchLobbyState]);
 
-  // --- 2. УМНЫЙ АВТО-ВЫХОД И ОЧИСТКА ---
+  // --- 2. ЛОГИКА ВЫХОДА (LEAVE & CLEANUP) ---
 
-  useEffect(() => {
-    const handleUnload = async () => {
-      const { lobbyId: lid, userId: uid, status } = stateRef.current;
+  // Функция для "жесткого" выхода (при закрытии вкладки)
+  const processDisconnect = async () => {
+      const { lobbyId: lid, userId: uid, status, token } = stateRef.current;
       if (!lid || !uid) return;
 
-      // Читаем актуальное состояние из БД перед выходом
+      // Получаем актуальные данные
+      // Внимание: при закрытии вкладки supabase.js может не успеть.
+      // Пытаемся стандартным путем, если это обычный выход
       const { data } = await supabase.from('lobbies').select('game_state').eq('id', lid).single();
-      if (!data?.game_state) return; // Лобби уже удалено
+
+      // Если лобби уже нет, ничего не делаем
+      if (!data?.game_state) return;
 
       let newState = { ...data.game_state };
+      let players = newState.players || [];
       let shouldDelete = false;
 
+      // Логика удаления
       if (status === 'playing') {
-        // Сценарий: Игрок выходит во время игры (Сдается)
-        newState.players = newState.players.map((p: Player) => {
-            if (p.id === uid) {
-                return {
-                    ...p,
-                    isDead: true,
-                    coins: 0,
-                    cards: p.cards.map(c => ({ ...c, revealed: true }))
-                };
-            }
-            return p;
-        });
+          // Если игра идет, помечаем мертвым
+          let playerDied = false;
+          players = players.map((p: Player) => {
+              if (p.id === uid && !p.isDead) {
+                  playerDied = true;
+                  return {
+                      ...p,
+                      isDead: true,
+                      coins: 0,
+                      cards: p.cards.map(c => ({ ...c, revealed: true }))
+                  };
+              }
+              return p;
+          });
 
-        const alivePlayers = newState.players.filter((p: Player) => !p.isDead);
-        const activePlayers = newState.players.filter((p: Player) => p.id !== uid); // Те, кто физически не вышел (для проверки на пустоту)
-
-        // Если вообще никого не осталось в комнате (все вышли) - удаляем
-        // Но так как мы здесь не удаляем игрока из массива, проверяем по логике:
-        // Если это был последний активный коннект - удалим.
-        // В рамках MVP упростим: если все "мертвы" и прошло время - удалять.
-        // Но для надежности лучше так:
-
-        if (alivePlayers.length === 0) {
-            shouldDelete = true; // Все мертвы, игра окончена, удаляем мусор
-        } else if (alivePlayers.length === 1) {
-            // Техническая победа
-            newState.status = 'finished';
-            newState.winner = alivePlayers[0].name;
-            newState.logs.unshift({
-                user: 'System',
-                action: 'Opponent disconnected. Winner determined.',
-                time: new Date().toLocaleTimeString()
-            });
-        }
+          // Проверяем условия победы или удаления
+          const alive = players.filter((p: Player) => !p.isDead);
+          // Если никого живого (все вышли) -> удаляем лобби
+          // Если 1 живой -> он победил
+          if (alive.length === 0) {
+              shouldDelete = true;
+          } else if (alive.length === 1 && playerDied) {
+              newState.status = 'finished';
+              newState.winner = alive[0].name;
+              newState.logs.unshift({
+                  user: 'System',
+                  action: `${alive[0].name} победил (противник вышел)`,
+                  time: new Date().toLocaleTimeString()
+              });
+          }
       } else {
-        // Сценарий: waiting (Лобби) ИЛИ finished (Конец игры)
-        // В обоих случаях игрока можно просто удалить из списка
-        newState.players = newState.players.filter((p: Player) => p.id !== uid);
-
-        // Если игроков не осталось — удаляем комнату, чтобы не плодить мусор
-        if (newState.players.length === 0) {
-            shouldDelete = true;
-        }
+          // Если lobby/finished -> просто удаляем из списка
+          players = players.filter((p: Player) => p.id !== uid);
+          if (players.length === 0) shouldDelete = true;
       }
+
+      newState.players = players;
 
       if (shouldDelete) {
-        await supabase.from('lobbies').delete().eq('id', lid);
+          await supabase.from('lobbies').delete().eq('id', lid);
       } else {
-        await supabase.from('lobbies').update({ game_state: newState }).eq('id', lid);
+          await supabase.from('lobbies').update({ game_state: newState }).eq('id', lid);
       }
+  };
+
+  // Ручной выход (кнопка "Выйти")
+  const leaveGame = async () => {
+      await processDisconnect();
+  };
+
+  // Авто-выход при размонтировании (Навигация) и Закрытии вкладки
+  useEffect(() => {
+    const handleUnload = () => {
+        // keepalive fetch для надежности при закрытии вкладки
+        // Примечание: Для работы этого метода нужен прямой REST запрос,
+        // но так как Supabase JS SDK не поддерживает keepalive флаг нативно в методах,
+        // мы полагаемся на processDisconnect при навигации и best-effort при закрытии.
+        processDisconnect();
     };
 
-    // Слушатель закрытия вкладки/браузера
     window.addEventListener('beforeunload', handleUnload);
-
-    // Слушатель размонтирования компонента (переход по ссылкам внутри app)
     return () => {
-      window.removeEventListener('beforeunload', handleUnload);
-      handleUnload();
+        window.removeEventListener('beforeunload', handleUnload);
+        processDisconnect(); // Срабатывает при смене маршрута (нажатии Назад)
     };
   }, []);
 
@@ -310,5 +334,5 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
     await updateState(newState);
   };
 
-  return { gameState, roomMeta, loading, performAction, startGame };
+  return { gameState, roomMeta, loading, performAction, startGame, leaveGame };
 }
