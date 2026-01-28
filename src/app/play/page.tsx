@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import {
   ArrowLeft, Search, Users, Lock, Play, X, Loader2,
-  Crown, Filter, ScrollText, KeyRound, Unlock, SortAsc, SortDesc
+  Crown, Filter, ScrollText, KeyRound, Unlock, SortAsc, SortDesc, LogOut
 } from 'lucide-react';
 import { GameState, Player } from '@/types/coup';
 
@@ -29,6 +29,7 @@ function PlayContent() {
   const router = useRouter();
   const [lobbies, setLobbies] = useState<LobbyRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   // --- Фильтры ---
   const [search, setSearch] = useState('');
@@ -41,11 +42,16 @@ function PlayContent() {
   const [selectedLobby, setSelectedLobby] = useState<LobbyRow | null>(null);
   const [passwordInput, setPasswordInput] = useState('');
 
+  // Получаем ID текущего пользователя для проверок
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setCurrentUserId(data.user?.id || null));
+  }, []);
+
   const fetchLobbies = async () => {
     const { data } = await supabase
       .from('lobbies')
       .select('*')
-      .neq('status', 'finished') // Не показываем завершенные
+      .neq('status', 'finished')
       .order('created_at', { ascending: false });
 
     if (data) setLobbies(data as unknown as LobbyRow[]);
@@ -86,11 +92,11 @@ function PlayContent() {
 
     const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
 
-    // Используем реальные данные профиля
+    // ИСПРАВЛЕНО: Более надежное определение имени при входе
     const newPlayer: Player = {
       id: user.id,
-      name: profile?.username || user.email?.split('@')[0] || 'Player',
-      avatarUrl: profile?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`,
+      name: profile?.username || user.user_metadata?.username || user.user_metadata?.full_name || user.email?.split('@')[0] || 'Player',
+      avatarUrl: user.user_metadata?.avatar_url || profile?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`,
       coins: 2,
       cards: [],
       isDead: false,
@@ -111,6 +117,22 @@ function PlayContent() {
     }
   };
 
+  // Функция для выхода из лобби, если застрял (вызывается из списка)
+  const handleLeaveFromList = async (lobbyId: string) => {
+      const lobby = lobbies.find(l => l.id === lobbyId);
+      if (!lobby || !currentUserId) return;
+
+      const newPlayers = lobby.game_state.players.filter(p => p.id !== currentUserId);
+      const newState = { ...lobby.game_state, players: newPlayers };
+
+      // Если игроков не осталось, можно удалить лобби (опционально)
+      if (newPlayers.length === 0) {
+          await supabase.from('lobbies').delete().eq('id', lobbyId);
+      } else {
+          await supabase.from('lobbies').update({ game_state: newState }).eq('id', lobbyId);
+      }
+  };
+
   const handleCodeJoin = () => {
       const found = lobbies.find(l => l.code === codeQuery.toUpperCase());
       if (found) {
@@ -121,15 +143,11 @@ function PlayContent() {
       }
   };
 
-  // --- Логика фильтрации и сортировки ---
   const processedLobbies = lobbies
     .filter(l => {
         const term = search.toLowerCase();
-        // Поиск по названию комнаты
         const matchesRoomName = l.name.toLowerCase().includes(term);
-        // Поиск по нику игрока внутри комнаты
         const matchesPlayerName = l.game_state.players.some(p => p.name.toLowerCase().includes(term));
-
         const matchesSearch = matchesRoomName || matchesPlayerName;
 
         const isCoup = !l.game_state.gameType || l.game_state.gameType === 'coup';
@@ -152,7 +170,6 @@ function PlayContent() {
 
       <div className="max-w-6xl mx-auto w-full relative z-10 px-4 py-6">
 
-        {/* ХЕДЕР */}
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
           <div className="flex items-center gap-4">
             <button onClick={() => router.push('/')} className="group p-3 bg-white border border-[#E6E1DC] rounded-2xl hover:border-[#9e1316]/30 hover:shadow-lg hover:shadow-[#9e1316]/5 transition-all">
@@ -164,7 +181,6 @@ function PlayContent() {
             </div>
           </div>
 
-          {/* Ввод Кода */}
           <div className="flex bg-white p-2 rounded-2xl border border-[#E6E1DC] shadow-sm w-full md:w-auto">
              <div className="relative flex-1">
                 <KeyRound className="absolute left-3 top-3 w-5 h-5 text-[#E6E1DC]" />
@@ -189,10 +205,7 @@ function PlayContent() {
 
         <div className="flex flex-col lg:flex-row gap-8 items-start">
 
-            {/* САЙДБАР ФИЛЬТРОВ */}
             <aside className="w-full lg:w-72 space-y-6">
-
-                {/* Поиск */}
                 <div className="bg-white p-4 rounded-[24px] border border-[#E6E1DC] shadow-sm group focus-within:border-[#9e1316]/30 focus-within:shadow-md transition-all">
                     <div className="flex items-center gap-3">
                         <Search className="w-5 h-5 text-[#8A9099]" />
@@ -206,7 +219,6 @@ function PlayContent() {
                     </div>
                 </div>
 
-                {/* Сортировка */}
                 <div className="bg-white p-6 rounded-[24px] border border-[#E6E1DC] shadow-sm">
                     <div className="flex items-center gap-2 text-xs font-black text-[#8A9099] uppercase tracking-widest mb-4">
                         <Filter className="w-4 h-4" /> Сортировка
@@ -223,7 +235,6 @@ function PlayContent() {
                     </div>
                 </div>
 
-                {/* Типы игр */}
                 <div className="bg-white p-6 rounded-[24px] border border-[#E6E1DC] shadow-sm space-y-4">
                     <div className="flex items-center gap-2 text-xs font-black text-[#8A9099] uppercase tracking-widest mb-2">
                         Режимы
@@ -269,9 +280,10 @@ function PlayContent() {
                             const hostPlayer = lobby.game_state.players.find(p => p.isHost) || lobby.game_state.players[0];
                             const isFull = lobby.game_state.players.length >= 6;
                             const gameType = lobby.game_state.gameType || 'coup';
+                            const isAlreadyIn = lobby.game_state.players.some(p => p.id === currentUserId);
 
                             return (
-                                <div key={lobby.id} className="group bg-white border border-[#E6E1DC] p-5 rounded-[24px] flex flex-col sm:flex-row items-center gap-6 hover:shadow-xl hover:shadow-[#9e1316]/5 hover:border-[#9e1316]/30 transition-all duration-300 relative overflow-hidden">
+                                <div key={lobby.id} className={`group bg-white border border-[#E6E1DC] p-5 rounded-[24px] flex flex-col sm:flex-row items-center gap-6 hover:shadow-xl hover:shadow-[#9e1316]/5 hover:border-[#9e1316]/30 transition-all duration-300 relative overflow-hidden ${isAlreadyIn ? 'ring-2 ring-emerald-500/50' : ''}`}>
                                     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-[#F5F5F0] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
 
                                     <div className={`w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 shadow-inner ${gameType === 'coup' ? 'bg-[#9e1316]/10 text-[#9e1316]' : 'bg-[#1A1F26]/10 text-[#1A1F26]'}`}>
@@ -304,19 +316,39 @@ function PlayContent() {
                                         </div>
                                     </div>
 
-                                    <button
-                                        onClick={() => lobby.is_private ? setSelectedLobby(lobby) : handleJoin(lobby)}
-                                        disabled={isFull}
-                                        className={`
-                                            z-10 px-8 py-4 rounded-xl font-black text-xs uppercase tracking-widest flex items-center gap-2 transition-all
-                                            ${isFull
-                                                ? 'bg-[#F5F5F0] text-[#E6E1DC] cursor-not-allowed'
-                                                : 'bg-[#1A1F26] text-white hover:bg-[#9e1316] shadow-lg shadow-[#1A1F26]/10 hover:shadow-[#9e1316]/20 active:scale-95'
-                                            }
-                                        `}
-                                    >
-                                        {isFull ? 'Full' : 'Войти'} <Play className="w-3 h-3 fill-current" />
-                                    </button>
+                                    <div className="flex gap-2 z-10">
+                                        {isAlreadyIn ? (
+                                            <>
+                                                <button
+                                                    onClick={() => router.push(`/game/coup?id=${lobby.id}`)}
+                                                    className="bg-emerald-600 text-white px-6 py-3 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-emerald-700 transition-colors shadow-lg"
+                                                >
+                                                    Вернуться
+                                                </button>
+                                                <button
+                                                    onClick={() => handleLeaveFromList(lobby.id)}
+                                                    className="bg-gray-200 text-gray-500 px-4 py-3 rounded-xl hover:bg-red-100 hover:text-red-500 transition-colors"
+                                                    title="Покинуть лобби"
+                                                >
+                                                    <LogOut className="w-4 h-4" />
+                                                </button>
+                                            </>
+                                        ) : (
+                                            <button
+                                                onClick={() => lobby.is_private ? setSelectedLobby(lobby) : handleJoin(lobby)}
+                                                disabled={isFull}
+                                                className={`
+                                                    px-8 py-4 rounded-xl font-black text-xs uppercase tracking-widest flex items-center gap-2 transition-all
+                                                    ${isFull
+                                                        ? 'bg-[#F5F5F0] text-[#E6E1DC] cursor-not-allowed'
+                                                        : 'bg-[#1A1F26] text-white hover:bg-[#9e1316] shadow-lg shadow-[#1A1F26]/10 hover:shadow-[#9e1316]/20 active:scale-95'
+                                                    }
+                                                `}
+                                            >
+                                                {isFull ? 'Full' : 'Войти'} <Play className="w-3 h-3 fill-current" />
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                             );
                         })}
@@ -325,33 +357,16 @@ function PlayContent() {
             </div>
         </div>
 
-        {/* Модальное окно пароля */}
         {selectedLobby && (
           <div className="fixed inset-0 bg-[#1A1F26]/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
             <div className="bg-white p-8 rounded-[32px] w-full max-w-sm relative shadow-2xl border border-[#E6E1DC] animate-in zoom-in-95">
               <button onClick={() => setSelectedLobby(null)} className="absolute top-6 right-6 text-[#8A9099] hover:text-[#1A1F26] transition-colors"><X className="w-6 h-6" /></button>
-
-              <div className="w-16 h-16 bg-[#9e1316]/5 rounded-2xl flex items-center justify-center mx-auto mb-6 text-[#9e1316]">
-                  <Lock className="w-8 h-8" />
-              </div>
-
+              <div className="w-16 h-16 bg-[#9e1316]/5 rounded-2xl flex items-center justify-center mx-auto mb-6 text-[#9e1316]"><Lock className="w-8 h-8" /></div>
               <h3 className="text-xl font-black mb-2 uppercase text-center text-[#1A1F26] tracking-tight">{selectedLobby.name}</h3>
               <p className="text-xs text-center text-[#8A9099] font-bold uppercase tracking-wider mb-8">Приватная комната</p>
-
               <div className="space-y-4">
-                  <input
-                    type="password"
-                    placeholder="Введите пароль..."
-                    className="w-full bg-[#F5F5F0] border border-transparent focus:bg-white focus:border-[#9e1316] rounded-xl py-4 px-5 text-center text-[#1A1F26] font-bold text-lg transition-all outline-none placeholder:text-[#E6E1DC] placeholder:font-medium"
-                    value={passwordInput}
-                    onChange={e => setPasswordInput(e.target.value)}
-                  />
-                  <button
-                    onClick={() => handleJoin(selectedLobby, passwordInput)}
-                    className="w-full bg-[#1A1F26] text-white py-4 rounded-xl font-bold uppercase tracking-widest hover:bg-[#9e1316] transition-colors shadow-lg active:scale-95"
-                  >
-                    Подтвердить
-                  </button>
+                  <input type="password" placeholder="Введите пароль..." className="w-full bg-[#F5F5F0] border border-transparent focus:bg-white focus:border-[#9e1316] rounded-xl py-4 px-5 text-center text-[#1A1F26] font-bold text-lg transition-all outline-none placeholder:text-[#E6E1DC] placeholder:font-medium" value={passwordInput} onChange={e => setPasswordInput(e.target.value)} />
+                  <button onClick={() => handleJoin(selectedLobby, passwordInput)} className="w-full bg-[#1A1F26] text-white py-4 rounded-xl font-bold uppercase tracking-widest hover:bg-[#9e1316] transition-colors shadow-lg active:scale-95">Подтвердить</button>
               </div>
             </div>
           </div>

@@ -102,12 +102,13 @@ function CreateLobbyContent() {
     }
 
     const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
-    const hostName = profile?.username || 'Host';
-    const hostAvatar = profile?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`;
+
+    // ИСПРАВЛЕНО: Более надежное определение имени
+    const hostName = profile?.username || user.user_metadata?.username || user.user_metadata?.full_name || user.email?.split('@')[0] || 'Host';
+    const hostAvatar = user.user_metadata?.avatar_url || profile?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`;
 
     const code = Math.random().toString(36).substring(2, 8).toUpperCase();
 
-    // Создаем начальное состояние игры
     const initialHost: Player = {
         id: user.id,
         name: hostName,
@@ -142,7 +143,6 @@ function CreateLobbyContent() {
         alert('Error: ' + error.message);
         setLoading(false);
     } else {
-        // Перенаправляем на страницу игры, где будет отображено Лобби ожидания
         router.push(`/game/coup?id=${data.id}`);
     }
   };

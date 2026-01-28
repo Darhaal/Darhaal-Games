@@ -8,8 +8,7 @@ import { useCoupGame } from '@/hooks/useCoupGame';
 import { ROLE_CONFIG, DICTIONARY } from '@/constants/coup';
 import { Role, Lang } from '@/types/coup';
 
-// --- Sub-components for UI ---
-
+// --- Sub-components ---
 const CardView = ({ role, revealed, isMe, onClick, selected, lang }: { role: Role, revealed: boolean, isMe: boolean, onClick?: () => void, selected?: boolean, lang: Lang }) => {
   if (!role || !ROLE_CONFIG[role]) return null;
   const config = ROLE_CONFIG[role];
@@ -69,8 +68,10 @@ export default function CoupBoard() {
   const [targetMode, setTargetMode] = useState<'coup' | 'steal' | 'assassinate' | null>(null);
   const [copied, setCopied] = useState(false);
   const [lang, setLang] = useState<Lang>('ru');
+  const [isLeaving, setIsLeaving] = useState(false); // Локальный стейт для UI загрузки при выходе
 
-  const { gameState, roomMeta, loading, performAction, startGame } = useCoupGame(lobbyId, userId);
+  // Достаем leaveGame из хука
+  const { gameState, roomMeta, loading, performAction, startGame, leaveGame } = useCoupGame(lobbyId, userId);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id));
@@ -86,14 +87,31 @@ export default function CoupBoard() {
     }
   };
 
+  // Обработка выхода
   const handleLeave = async () => {
-      router.push('/play');
+      if (isLeaving) return;
+      setIsLeaving(true);
+      try {
+        await leaveGame();
+      } catch (e) {
+        console.error("Leave failed", e);
+      } finally {
+        router.push('/play');
+      }
   };
 
   // --- RENDERING ---
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]"><Loader2 className="animate-spin text-[#9e1316]" /></div>;
-  if (!gameState) return <div className="min-h-screen flex items-center justify-center font-bold text-gray-400">Lobby not found</div>;
+  if (loading || isLeaving) return <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]"><Loader2 className="animate-spin text-[#9e1316]" /></div>;
+  if (!gameState) {
+      // Если стейта нет, значит лобби удалено или ID неверен
+      return (
+          <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-[#F8FAFC]">
+              <div className="text-xl font-bold text-gray-400">Лобби не найдено или игра завершена</div>
+              <button onClick={() => router.push('/play')} className="px-6 py-2 bg-[#1A1F26] text-white rounded-xl font-bold uppercase text-xs">Найти другую игру</button>
+          </div>
+      );
+  }
 
   const players = gameState.players || [];
   const me = players.find(p => p.id === userId);
@@ -120,8 +138,6 @@ export default function CoupBoard() {
             </header>
 
             <main className="flex-1 w-full max-w-5xl mx-auto p-4 z-10 flex flex-col lg:flex-row gap-8 items-start justify-center mt-8">
-
-                {/* Левая колонка: Игроки */}
                 <div className="w-full lg:w-2/3 bg-white border border-[#E6E1DC] rounded-[32px] p-8 shadow-sm">
                     <div className="flex justify-between items-center mb-6">
                         <h2 className="text-xl font-black uppercase flex items-center gap-2">
@@ -148,7 +164,6 @@ export default function CoupBoard() {
                     </div>
                 </div>
 
-                {/* Правая колонка: Инфо и Старт */}
                 <div className="w-full lg:w-1/3 space-y-6">
                     <div className="bg-white border border-[#E6E1DC] p-6 rounded-[32px] shadow-sm">
                         <div className="text-xs font-bold text-[#8A9099] uppercase tracking-wider mb-2 text-center">{lang === 'ru' ? 'Код комнаты' : 'Room Code'}</div>
@@ -203,7 +218,7 @@ export default function CoupBoard() {
       <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-50 mix-blend-overlay pointer-events-none" />
 
       <header className="p-4 flex justify-between items-center z-10 bg-white/80 backdrop-blur border-b border-[#E6E1DC]">
-        <button onClick={() => router.push('/play')} className="p-2 hover:bg-gray-100 rounded-full"><LogOut className="w-5 h-5 text-gray-500" /></button>
+        <button onClick={handleLeave} className="p-2 hover:bg-gray-100 rounded-full"><LogOut className="w-5 h-5 text-gray-500" /></button>
         <div className="text-center">
           <h1 className="font-black text-xl tracking-tight">COUP</h1>
           <div className="text-[10px] font-bold text-[#9e1316] uppercase tracking-widest">
@@ -214,8 +229,6 @@ export default function CoupBoard() {
       </header>
 
       <main className="flex-1 relative z-10 p-4 flex flex-col max-w-5xl mx-auto w-full h-full">
-
-        {/* Opponents */}
         <div className="flex flex-wrap justify-center gap-4 mb-auto pt-4 pb-20">
           {players.map(player => {
             if (player.id === userId) return null;
@@ -251,7 +264,6 @@ export default function CoupBoard() {
           })}
         </div>
 
-        {/* Game Logs */}
         {gameState.status === 'playing' && (
            <div className="absolute top-20 left-1/2 -translate-x-1/2 bg-white/80 backdrop-blur px-4 py-2 rounded-full border border-[#E6E1DC] shadow-sm text-[10px] font-bold text-gray-500 flex items-center gap-2 z-0 max-w-[90%] truncate">
               <History className="w-3 h-3 shrink-0" />
@@ -264,11 +276,9 @@ export default function CoupBoard() {
            </div>
         )}
 
-        {/* My Zone */}
         {me && (
           <div className="fixed bottom-0 left-0 right-0 p-4 pb-8">
             <div className="max-w-3xl mx-auto bg-white/95 backdrop-blur-md border border-[#E6E1DC] rounded-[32px] p-4 sm:p-6 shadow-2xl relative">
-
               {isMyTurn && (
                 <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-[#9e1316] text-white px-4 py-1.5 rounded-full text-xs font-black uppercase flex items-center gap-2 shadow-lg animate-bounce z-20">
                   <Clock className="w-3 h-3" /> {t.yourTurn}
@@ -305,11 +315,9 @@ export default function CoupBoard() {
                           <ActionButton label={actionsT.income} onClick={() => handleActionClick('income')} disabled={!isMyTurn} />
                           <ActionButton label={actionsT.aid} onClick={() => handleActionClick('aid')} disabled={!isMyTurn} />
                           <ActionButton label={actionsT.tax} onClick={() => handleActionClick('tax')} disabled={!isMyTurn} color="bg-purple-50" borderColor="border-purple-200" />
-
                           <ActionButton label={actionsT.steal} onClick={() => handleActionClick('steal')} disabled={!isMyTurn} color="bg-blue-50" borderColor="border-blue-200" />
                           <ActionButton label={actionsT.exchange} onClick={() => handleActionClick('exchange')} disabled={!isMyTurn} color="bg-green-50" borderColor="border-green-200" />
                           <ActionButton label={actionsT.assassinate} onClick={() => handleActionClick('assassinate')} disabled={!isMyTurn || me.coins < 3} color="bg-gray-800" borderColor="border-black" />
-
                           <button
                             onClick={() => handleActionClick('coup')}
                             disabled={!isMyTurn || me.coins < 7}
@@ -331,7 +339,6 @@ export default function CoupBoard() {
         )}
       </main>
 
-      {/* Winner Overlay */}
       {gameState.winner && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white p-10 rounded-[32px] text-center animate-in zoom-in duration-300 border-4 border-[#9e1316] shadow-2xl max-w-sm w-full relative overflow-hidden">
@@ -341,7 +348,7 @@ export default function CoupBoard() {
                 <h2 className="text-xs font-black uppercase tracking-[0.2em] text-gray-400 mb-2">{t.winner}</h2>
                 <p className="text-3xl font-black text-[#1A1F26] mb-8">{gameState.winner}</p>
                 <button
-                    onClick={() => router.push('/')}
+                    onClick={handleLeave} // Кнопка "Выйти" теперь чистит за собой
                     className="w-full py-4 bg-[#1A1F26] text-white rounded-xl font-black uppercase tracking-widest hover:bg-[#9e1316] transition-colors shadow-lg"
                 >
                     {t.leave}

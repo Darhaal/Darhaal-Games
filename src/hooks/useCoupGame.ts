@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { GameState, Player, Role } from '@/types/coup';
 import { DICTIONARY } from '@/constants/coup';
 
-// Получаем URL и Key для прямого запроса (копия из вашего конфига, чтобы работало везде)
+// Константы для прямого доступа (на случай если SDK не успевает)
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://amemndrojsaccfhtbsxc.supabase.com';
 const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFtZW1uZHJvanNhY2NmaHRic3hjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk1MjE2MDEsImV4cCI6MjA4NTA5NzYwMX0.G4RV8_5hF2eVdFA42QQSQGyTIWpjbQlosFnWxMBhp0g';
 
@@ -12,7 +12,7 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
   const [roomMeta, setRoomMeta] = useState<{ name: string; code: string; isHost: boolean } | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Храним состояние в ref для доступа в beforeunload
+  // Храним состояние в ref для доступа в beforeunload/cleanup
   const stateRef = useRef<{
     lobbyId: string | null;
     userId: string | undefined;
@@ -86,7 +86,7 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
                  setRoomMeta(prev => prev ? ({ ...prev, isHost: payload.new.host_id === userId }) : null);
              }
           } else {
-             setGameState(null);
+             setGameState(null); // Лобби удалено
           }
         }
       )
@@ -100,14 +100,12 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
 
   // --- 2. ЛОГИКА ВЫХОДА (LEAVE & CLEANUP) ---
 
-  // Эта функция готовит данные для обновления при выходе
   const prepareLeaveData = () => {
       const { userId: uid, status, players } = stateRef.current;
       if (!uid) return null;
 
       let newPlayers = [...players];
       let newStatus = status;
-      let logsAdd = null;
       let shouldDelete = false;
 
       if (status === 'playing') {
@@ -127,10 +125,10 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
               shouldDelete = true;
           } else if (alive.length === 1 && playerDied) {
               newStatus = 'finished';
-              // Лог добавить сложно в сыром запросе без winner name, но попробуем
+              // Логика победы обрабатывается на клиенте
           }
       } else {
-          // В лобби: удаляем
+          // В лобби или в конце игры: удаляем
           newPlayers = newPlayers.filter(p => p.id !== uid);
           if (newPlayers.length === 0) shouldDelete = true;
       }
@@ -142,22 +140,36 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
   const leaveGame = async () => {
       const { lobbyId: lid } = stateRef.current;
       if (!lid) return;
+
+      // Сначала читаем свежие данные с сервера, чтобы избежать конфликтов
+      const { data: current } = await supabase.from('lobbies').select('game_state').eq('id', lid).single();
+
+      // Если лобби уже нет - просто уходим
+      if (!current) return;
+
+      // Обновляем реф свежими данными для prepareLeaveData
+      stateRef.current.players = current.game_state.players || [];
+      stateRef.current.status = current.game_state.status;
+
       const data = prepareLeaveData();
       if (!data) return;
 
       if (data.shouldDelete) {
           await supabase.from('lobbies').delete().eq('id', lid);
       } else {
-          // Нам нужно сначала получить актуальный стейт, чтобы не затереть
-          const { data: current } = await supabase.from('lobbies').select('game_state').eq('id', lid).single();
-          if (current?.game_state) {
-             const mergedState = {
-                 ...current.game_state,
-                 players: data.newPlayers,
-                 status: data.newStatus
-             };
-             await supabase.from('lobbies').update({ game_state: mergedState }).eq('id', lid);
+          const mergedState = {
+              ...current.game_state,
+              players: data.newPlayers,
+              status: data.newStatus
+          };
+
+          // Если есть победитель, пропишем его
+          if (data.newStatus === 'finished' && !mergedState.winner) {
+             const winner = data.newPlayers.find(p => !p.isDead);
+             if (winner) mergedState.winner = winner.name;
           }
+
+          await supabase.from('lobbies').update({ game_state: mergedState }).eq('id', lid);
       }
   };
 
@@ -170,9 +182,9 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
         const leaveData = prepareLeaveData();
         if (!leaveData) return;
 
-        // Если нужно удалить лобби (все вышли)
+        const url = `${SUPABASE_URL}/rest/v1/lobbies?id=eq.${lid}`;
+
         if (leaveData.shouldDelete) {
-            const url = `${SUPABASE_URL}/rest/v1/lobbies?id=eq.${lid}`;
             fetch(url, {
                 method: 'DELETE',
                 headers: {
@@ -183,17 +195,10 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
                 keepalive: true
             });
         } else {
-            // Обновляем лобби.
-            // ВАЖНО: Мы не можем прочитать актуальный стейт в unload,
-            // поэтому используем то, что есть в ref (best effort).
-            // Это риск гонки данных, но лучше чем ничего.
-            const url = `${SUPABASE_URL}/rest/v1/lobbies?id=eq.${lid}`;
-            // Формируем payload для PATCH
-            // Нам нужно обновить game_state.
-            // В REST API Supabase мы шлем JSON объект
-            // Так как мы не можем сделать merge deep, мы шлем весь объект game_state который у нас был + изменения
+            // Формируем payload. Берем текущий стейт из рефа как базу
+            // Это "Best Effort"
             const finalState = {
-                ...(gameState || {}), // Берем из замыкания, т.к. ref может быть устаревшим для глубоких полей
+                ...(gameState || {}),
                 players: leaveData.newPlayers,
                 status: leaveData.newStatus
             };
@@ -216,7 +221,7 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
     return () => {
         window.removeEventListener('beforeunload', handleUnload);
     };
-  }, [gameState]); // Добавляем gameState в зависимости, чтобы handleUnload имел свежий стейт
+  }, [gameState]); // Зависимость от gameState важна для свежего замыкания
 
 
   // --- 3. Игровые Действия ---
@@ -270,7 +275,6 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
         }
         break;
       case 'exchange':
-        // Упрощенный обмен
         if (newState.deck.length >= 2) {
              const currentHand = player.cards.filter(c => !c.revealed).map(c => c.role);
              newState.deck.push(...currentHand);
