@@ -2,231 +2,177 @@
 
 import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  Gamepad2,
-  Plus,
-  Settings as SettingsIcon,
-  Trophy,
-  User,
-  LogOut,
-  Loader2
-} from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { Loader2, Gamepad2, Plus, LogOut, Settings as SettingsIcon, Trophy, User } from 'lucide-react';
 import AuthForm from '@/components/AuthForm';
 import Settings from '@/components/Settings';
 
 type Lang = 'ru' | 'en';
 
-function HomeContent() {
+export default function Home() {
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
   const [lang, setLang] = useState<Lang>('ru');
 
+  // Загрузка языка
   useEffect(() => {
     const savedLang = localStorage.getItem('dg_lang') as Lang;
     if (savedLang) setLang(savedLang);
   }, []);
 
-  const t = {
-    ru: {
-      welcome: 'Привет,',
-      menu: {
-        play: { title: 'Играть', sub: 'Найти игру' },
-        create: { title: 'Создать', sub: 'Новая комната' },
-        achievements: { title: 'Достижения', sub: 'Твой прогресс' },
-        settings: { title: 'Настройки', sub: 'Профиль и опции' }
-      },
-      footer: '© 2026 Darhaal Games'
-    },
-    en: {
-      welcome: 'Hello,',
-      menu: {
-        play: { title: 'Play', sub: 'Find Game' },
-        create: { title: 'Create', sub: 'New Room' },
-        achievements: { title: 'Achievements', sub: 'Your Progress' },
-        settings: { title: 'Settings', sub: 'Profile & Options' }
-      },
-      footer: '© 2026 Darhaal Games'
-    }
-  }[lang];
-
+  // Проверка авторизации
   useEffect(() => {
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (session) updateLocalUser(session.user);
+      if (session?.user) {
+        updateLocalUser(session.user);
+      } else {
+        setUser(null);
+      }
       setLoading(false);
     };
-
     checkUser();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) updateLocalUser(session.user);
+      if (session?.user) updateLocalUser(session.user);
       else setUser(null);
     });
-
     return () => subscription.unsubscribe();
   }, []);
 
+  // Парсинг данных пользователя
   const updateLocalUser = (authUser: any) => {
-      const name = authUser.user_metadata?.username || authUser.email?.split('@')[0] || 'Player';
+      const name = authUser.user_metadata?.username || authUser.user_metadata?.full_name || authUser.email?.split('@')[0] || 'Player';
       const avatar = authUser.user_metadata?.avatar_url || null;
       setUser({
         id: authUser.id,
         email: authUser.email,
         name: name,
         avatarUrl: avatar,
-        isAnonymous: authUser.is_anonymous
+        isAnonymous: authUser.is_anonymous,
+        user_metadata: authUser.user_metadata // Сохраняем все метаданные
       });
   };
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
+  // Callback для обновления данных из Настроек без перезагрузки
+  const handleProfileUpdate = (updates: { name?: string; avatarUrl?: string }) => {
+    if (!user) return;
+    setUser((prev: any) => ({
+      ...prev,
+      name: updates.name || prev.name,
+      avatarUrl: updates.avatarUrl || prev.avatarUrl,
+      user_metadata: {
+        ...prev.user_metadata,
+        username: updates.name || prev.user_metadata?.username,
+        avatar_url: updates.avatarUrl || prev.user_metadata?.avatar_url
+      }
+    }));
   };
 
-  const menuItems = [
-    {
-      title: t.menu.play.title,
-      subtitle: t.menu.play.sub,
-      icon: <Gamepad2 className="w-8 h-8 mb-4 text-[#8A9099] group-hover:text-[#9e1316] transition-colors duration-300" />,
-      action: () => router.push('/play'),
-    },
-    {
-      title: t.menu.create.title,
-      subtitle: t.menu.create.sub,
-      icon: <Plus className="w-8 h-8 mb-4 text-[#8A9099] group-hover:text-[#9e1316] transition-colors duration-300" />,
-      action: () => router.push('/create'),
-    },
-    {
-      title: t.menu.achievements.title,
-      subtitle: t.menu.achievements.sub,
-      icon: <Trophy className="w-8 h-8 mb-4 text-[#8A9099] group-hover:text-[#9e1316] transition-colors duration-300" />,
-      action: () => router.push('/achievements'),
-    },
-    {
-      title: t.menu.settings.title,
-      subtitle: t.menu.settings.sub,
-      icon: <SettingsIcon className="w-8 h-8 mb-4 text-[#8A9099] group-hover:text-[#9e1316] transition-colors duration-300" />,
-      action: () => setShowSettings(true),
-    }
-  ];
+  const t = {
+    ru: { play: 'Найти Игру', list: 'Список лобби', create: 'Создать', new: 'Новая комната', footer: '© 2026 Darhaal Games' },
+    en: { play: 'Find Game', list: 'Lobby list', create: 'Create', new: 'New Room', footer: '© 2026 Darhaal Games' }
+  }[lang];
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center text-[#8A9099]">
+      <div className="min-h-screen flex items-center justify-center bg-white">
         <Loader2 className="w-10 h-10 animate-spin text-[#9e1316]" />
       </div>
     );
   }
 
+  // Если не вошел — показываем форму входа
   if (!user) {
     return (
-      <main className="min-h-screen bg-white text-[#1A1F26] flex flex-col items-center justify-center relative overflow-hidden font-sans">
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-50 brightness-100 contrast-150 mix-blend-overlay pointer-events-none"></div>
-        <div className="relative z-10 w-full px-4 flex justify-center">
-           <AuthForm />
+      <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC] relative overflow-hidden">
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-50 mix-blend-overlay pointer-events-none"></div>
+        <div className="w-full max-w-md p-4 relative z-10">
+            <AuthForm />
         </div>
-      </main>
+      </div>
     );
   }
 
+  // Главное меню
   return (
-    <main className="min-h-screen bg-white text-[#1A1F26] flex flex-col items-center relative overflow-hidden font-sans selection:bg-[#9e1316] selection:text-white">
+    <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center font-sans relative overflow-hidden text-[#1A1F26]">
+       <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-50 brightness-100 contrast-150 mix-blend-overlay pointer-events-none"></div>
 
-      <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-40 brightness-100 contrast-150 mix-blend-overlay pointer-events-none"></div>
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-[#9e1316]/5 rounded-full blur-[120px] pointer-events-none" />
+       <Settings
+         isOpen={showSettings}
+         onClose={() => setShowSettings(false)}
+         user={user}
+         currentLang={lang}
+         setLang={setLang}
+         onProfileUpdate={handleProfileUpdate}
+       />
 
-      <Settings
-        isOpen={showSettings}
-        onClose={() => setShowSettings(false)}
-        user={user}
-        currentLang={lang}
-        setLang={setLang}
-        updateUserAvatar={(url) => setUser({...user, avatarUrl: url})}
-      />
-
-      <header className="w-full max-w-7xl p-6 flex justify-between items-center z-10 relative mt-4">
-        <button
+       <header className="absolute top-0 w-full p-6 flex justify-between items-center z-10">
+          <button
             onClick={() => setShowSettings(true)}
-            className="flex items-center gap-4 bg-white/80 backdrop-blur-md border border-[#E6E1DC] p-2 pr-6 rounded-full hover:border-[#9e1316]/50 hover:shadow-lg hover:shadow-[#9e1316]/5 transition-all cursor-pointer group"
-        >
-          <div className="w-12 h-12 bg-[#F5F5F0] border border-[#E6E1DC] rounded-full flex items-center justify-center overflow-hidden relative">
-            {user.avatarUrl ? (
-              <img src={user.avatarUrl} alt="Avatar" className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity" />
-            ) : (
-              <User className="w-5 h-5 text-[#8A9099]" />
-            )}
-          </div>
-          <div className="flex flex-col items-start">
-            <span className="font-bold text-sm text-[#1A1F26] group-hover:text-[#9e1316] transition-colors tracking-wide">
-                {user.name}
-            </span>
-            <span className="text-[10px] font-medium text-[#8A9099] uppercase tracking-wider">
-              {user.isAnonymous ? 'Guest' : `ID: ${user.id.slice(0,4)}`}
-            </span>
-          </div>
-        </button>
+            className="flex items-center gap-3 group cursor-pointer bg-white/50 backdrop-blur-sm p-2 pr-4 rounded-full border border-[#E6E1DC] hover:border-[#9e1316]/30 transition-all"
+          >
+            <div className="w-10 h-10 bg-white rounded-full border border-[#E6E1DC] flex items-center justify-center overflow-hidden group-hover:border-[#9e1316] transition-colors relative">
+                {user.avatarUrl ? (
+                  <img src={user.avatarUrl} className="w-full h-full object-cover" />
+                ) : (
+                  <User className="w-5 h-5 text-[#8A9099]" />
+                )}
+            </div>
+            <div className="flex flex-col items-start">
+                <span className="font-bold text-sm text-[#1A1F26] group-hover:text-[#9e1316] transition-colors max-w-[120px] truncate">{user.name}</span>
+                <span className="text-[10px] text-[#8A9099] font-bold uppercase tracking-wider">{user.isAnonymous ? 'Guest' : 'Online'}</span>
+            </div>
+          </button>
 
-        <div className="hidden md:flex flex-col items-center absolute left-1/2 -translate-x-1/2">
-           <div className="flex items-center gap-3 opacity-90 hover:opacity-100 transition-opacity bg-white/50 backdrop-blur-sm px-6 py-2 rounded-full border border-transparent hover:border-[#E6E1DC]">
-             <img src="/logo512.png" alt="Logo" className="w-8 h-8 object-contain" onError={(e) => e.currentTarget.style.display = 'none'} />
-             <span className="text-xl font-black tracking-widest font-sans text-[#1A1F26]">DARHAAL</span>
-           </div>
-        </div>
-
-        <button
-          onClick={handleLogout}
-          className="p-3 bg-white/80 backdrop-blur-md border border-[#E6E1DC] text-[#8A9099] hover:text-[#9e1316] hover:border-[#9e1316]/50 hover:bg-[#9e1316]/5 rounded-full transition-all shadow-sm"
-        >
-          <LogOut className="w-5 h-5" />
-        </button>
-      </header>
-
-      <div className="flex-1 flex flex-col items-center justify-center w-full max-w-6xl px-4 z-10 mt-[-60px]">
-        <div className="text-center mb-16 animate-in slide-in-from-bottom-8 duration-700 fade-in">
-          <h1 className="text-5xl md:text-7xl font-black mb-4 tracking-tight text-[#1A1F26]">
-            {t.welcome} <span className="text-[#9e1316]">{user.name}</span>
-          </h1>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 w-full">
-          {menuItems.map((item, index) => (
+          <div className="flex gap-2">
             <button
-              key={index}
-              onClick={item.action}
-              className={`
-                group relative flex flex-col items-center justify-center h-72
-                bg-white border border-[#E6E1DC] rounded-[32px] shadow-sm
-                transition-all duration-300 hover:border-[#9e1316]/50 hover:-translate-y-2 hover:shadow-2xl hover:shadow-[#9e1316]/10
-              `}
+              onClick={() => setShowSettings(true)}
+              className="p-3 bg-white rounded-full border border-[#E6E1DC] text-[#8A9099] hover:text-[#9e1316] hover:border-[#9e1316] transition-all shadow-sm"
             >
-              <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#9e1316]/0 group-hover:to-[#9e1316]/5 rounded-[32px] transition-all duration-300" />
-
-              <div className="mb-8 p-5 bg-[#F5F5F0] border border-[#E6E1DC] rounded-2xl group-hover:border-[#9e1316]/30 group-hover:bg-white transition-all duration-300 relative z-10 shadow-inner">
-                 {item.icon}
-              </div>
-
-              <h3 className="text-xl font-bold text-[#1A1F26] mb-2 group-hover:text-[#9e1316] tracking-tight relative z-10 transition-colors">{item.title}</h3>
-              <p className="text-xs font-semibold text-[#8A9099] uppercase tracking-wider relative z-10">{item.subtitle}</p>
+              <SettingsIcon className="w-5 h-5" />
             </button>
-          ))}
-        </div>
-      </div>
+            <button
+              onClick={() => supabase.auth.signOut()}
+              className="p-3 bg-white rounded-full border border-[#E6E1DC] text-[#8A9099] hover:text-[#9e1316] hover:border-[#9e1316] transition-all shadow-sm"
+            >
+              <LogOut className="w-5 h-5" />
+            </button>
+          </div>
+       </header>
 
-      <footer className="w-full p-8 text-center z-10 mb-4 opacity-60">
-        <p className="text-[#8A9099] text-xs font-bold uppercase tracking-[0.2em] hover:text-[#9e1316] transition-colors cursor-default">
+       <div className="z-10 text-center space-y-12 animate-in slide-in-from-bottom-8 duration-700 w-full max-w-4xl px-4">
+          <h1 className="text-6xl md:text-8xl font-black tracking-tighter cursor-default select-none drop-shadow-sm">
+            DARHAAL<span className="text-[#9e1316]">GAMES</span>
+          </h1>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full">
+             <button onClick={() => router.push('/play')} className="group h-72 bg-white border border-[#E6E1DC] rounded-[40px] p-8 flex flex-col items-center justify-center hover:border-[#9e1316]/50 hover:shadow-2xl hover:shadow-[#9e1316]/10 hover:-translate-y-2 transition-all relative overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-br from-transparent to-[#9e1316]/0 group-hover:to-[#9e1316]/5 transition-all duration-500" />
+                <div className="w-20 h-20 bg-[#F5F5F0] rounded-3xl border border-[#E6E1DC] flex items-center justify-center group-hover:bg-white group-hover:border-[#9e1316]/20 group-hover:scale-110 transition-all duration-300 mb-8 shadow-inner">
+                  <Gamepad2 className="w-10 h-10 text-[#8A9099] group-hover:text-[#9e1316] transition-colors" />
+                </div>
+                <span className="text-2xl font-black uppercase tracking-tight text-[#1A1F26] group-hover:text-[#9e1316] transition-colors">{t.play}</span>
+                <span className="text-xs font-bold text-[#8A9099] uppercase tracking-widest mt-2 group-hover:text-[#1A1F26] transition-colors">{t.list}</span>
+             </button>
+
+             <button onClick={() => router.push('/create')} className="group h-72 bg-white border border-[#E6E1DC] rounded-[40px] p-8 flex flex-col items-center justify-center hover:border-[#9e1316]/50 hover:shadow-2xl hover:shadow-[#9e1316]/10 hover:-translate-y-2 transition-all relative overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-br from-transparent to-[#9e1316]/0 group-hover:to-[#9e1316]/5 transition-all duration-500" />
+                <div className="w-20 h-20 bg-[#F5F5F0] rounded-3xl border border-[#E6E1DC] flex items-center justify-center group-hover:bg-white group-hover:border-[#9e1316]/20 group-hover:scale-110 transition-all duration-300 mb-8 shadow-inner">
+                  <Plus className="w-10 h-10 text-[#8A9099] group-hover:text-[#9e1316] transition-colors" />
+                </div>
+                <span className="text-2xl font-black uppercase tracking-tight text-[#1A1F26] group-hover:text-[#9e1316] transition-colors">{t.create}</span>
+                <span className="text-xs font-bold text-[#8A9099] uppercase tracking-widest mt-2 group-hover:text-[#1A1F26] transition-colors">{t.new}</span>
+             </button>
+          </div>
+       </div>
+
+       <footer className="absolute bottom-6 text-[10px] font-bold text-[#8A9099] uppercase tracking-[0.2em] opacity-60 hover:opacity-100 transition-opacity cursor-default">
           {t.footer}
-        </p>
-      </footer>
-    </main>
-  );
-}
-
-export default function Home() {
-  return (
-    <Suspense fallback={<div className="min-h-screen bg-white flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-[#9e1316]" /></div>}>
-      <HomeContent />
-    </Suspense>
+       </footer>
+    </div>
   );
 }

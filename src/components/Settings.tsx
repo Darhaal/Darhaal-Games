@@ -12,12 +12,12 @@ interface SettingsProps {
   user: any;
   currentLang: Lang;
   setLang: (lang: Lang) => void;
-  updateUserAvatar: (url: string) => void;
+  onProfileUpdate: (updates: { name?: string; avatarUrl?: string }) => void;
 }
 
 const AVATAR_SEEDS = ['Felix', 'Aneka', 'Zack', 'Midnight', 'Luna', 'Shadow', 'Gamer', 'Pro', 'Sky', 'River', 'Ember'];
 
-export default function Settings({ isOpen, onClose, user, currentLang, setLang, updateUserAvatar }: SettingsProps) {
+export default function Settings({ isOpen, onClose, user, currentLang, setLang, onProfileUpdate }: SettingsProps) {
   const [activeTab, setActiveTab] = useState<'general' | 'profile' | 'security'>('general');
   const [volume, setVolume] = useState(80);
   const [music, setMusic] = useState(50);
@@ -32,7 +32,7 @@ export default function Settings({ isOpen, onClose, user, currentLang, setLang, 
   const [isEditingName, setIsEditingName] = useState(false);
   const [savingName, setSavingName] = useState(false);
 
-  // Инициализация имени
+  // Синхронизация локального стейта при открытии или изменении юзера
   useEffect(() => {
     if (user && user.name) {
       setUsername(user.name);
@@ -110,18 +110,25 @@ export default function Settings({ isOpen, onClose, user, currentLang, setLang, 
 
   const handleSaveName = async () => {
     if (!username.trim() || user.isAnonymous) return;
+    if (username === user.name) {
+        setIsEditingName(false);
+        return;
+    }
+
     setSavingName(true);
     try {
-      // 1. Обновляем метаданные Auth
-      await supabase.auth.updateUser({ data: { username: username } });
+      // 1. Обновляем метаданные Auth (это главное)
+      const { error: authError } = await supabase.auth.updateUser({ data: { username: username } });
+      if (authError) throw authError;
+
       // 2. Обновляем публичный профиль
       await supabase.from('profiles').update({ username: username }).eq('id', user.id);
 
-      // Обновляем локально (хак, чтобы не перезагружать страницу)
-      user.name = username;
+      // 3. Обновляем состояние в родителе
+      onProfileUpdate({ name: username });
       setIsEditingName(false);
-    } catch (e) {
-      console.error(e);
+    } catch (e: any) {
+      alert('Error updating name: ' + e.message);
     } finally {
       setSavingName(false);
     }
@@ -130,7 +137,7 @@ export default function Settings({ isOpen, onClose, user, currentLang, setLang, 
   const saveAvatar = async (url: string) => {
     if (user.isAnonymous) return;
     try {
-      updateUserAvatar(url);
+      onProfileUpdate({ avatarUrl: url });
       await Promise.all([
         supabase.auth.updateUser({ data: { avatar_url: url } }),
         supabase.from('profiles').update({ avatar_url: url }).eq('id', user.id)
@@ -192,7 +199,6 @@ export default function Settings({ isOpen, onClose, user, currentLang, setLang, 
         {/* Sidebar */}
         <div className="w-full md:w-64 bg-[#F5F5F0] p-8 border-b md:border-b-0 md:border-r border-[#E6E1DC] flex flex-row md:flex-col gap-3">
           <div className="hidden md:flex items-center gap-2 text-lg font-black text-[#1A1F26] mb-8 px-2 tracking-tight">
-            <img src="/logo512.png" alt="Logo" className="w-6 h-6 object-contain" onError={(e) => e.currentTarget.style.display = 'none'} />
             Darhaal<span className="text-[#9e1316]">System</span>
           </div>
 
@@ -280,33 +286,42 @@ export default function Settings({ isOpen, onClose, user, currentLang, setLang, 
 
               {/* Смена ника */}
               {!user.isAnonymous && (
-                <div className="bg-[#F5F5F0] p-4 rounded-2xl border border-[#E6E1DC]">
-                  <div className="flex justify-between items-center mb-2">
+                <div className="bg-[#F5F5F0] p-4 rounded-2xl border border-[#E6E1DC] flex flex-col gap-2">
+                  <div className="flex justify-between items-center">
                     <label className="text-xs font-bold text-[#8A9099] uppercase tracking-wider">{t.nickname}</label>
                     {!isEditingName && (
-                      <button onClick={() => setIsEditingName(true)} className="text-[#9e1316] hover:text-[#7a0f11]">
+                      <button onClick={() => setIsEditingName(true)} className="text-[#9e1316] hover:text-[#7a0f11] transition-colors p-1">
                         <Edit2 className="w-4 h-4" />
                       </button>
                     )}
                   </div>
 
                   {isEditingName ? (
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 items-center">
                       <input
                         type="text"
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
-                        className="flex-1 bg-white border border-[#E6E1DC] rounded-xl px-3 py-2 text-sm font-bold text-[#1A1F26] focus:outline-none focus:border-[#9e1316]"
+                        className="flex-1 bg-white border border-[#E6E1DC] rounded-xl px-4 py-2 text-sm font-bold text-[#1A1F26] focus:outline-none focus:border-[#9e1316] focus:ring-2 focus:ring-[#9e1316]/10 transition-all"
+                        placeholder="New nickname"
+                        autoFocus
                       />
-                      <button onClick={handleSaveName} disabled={savingName} className="bg-[#1A1F26] text-white p-2 rounded-xl">
+                      <button
+                        onClick={handleSaveName}
+                        disabled={savingName || !username.trim()}
+                        className="bg-[#1A1F26] hover:bg-[#9e1316] text-white p-2.5 rounded-xl transition-all shadow-sm disabled:opacity-50"
+                      >
                         {savingName ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                       </button>
-                      <button onClick={() => { setIsEditingName(false); setUsername(user.name); }} className="bg-white border border-[#E6E1DC] text-[#8A9099] p-2 rounded-xl">
+                      <button
+                        onClick={() => { setIsEditingName(false); setUsername(user.name); }}
+                        className="bg-white border border-[#E6E1DC] hover:border-[#8A9099] text-[#8A9099] hover:text-[#1A1F26] p-2.5 rounded-xl transition-all"
+                      >
                         <X className="w-4 h-4" />
                       </button>
                     </div>
                   ) : (
-                    <div className="text-lg font-black text-[#1A1F26]">{user.name}</div>
+                    <div className="text-xl font-black text-[#1A1F26] tracking-tight">{user.name}</div>
                   )}
                 </div>
               )}
