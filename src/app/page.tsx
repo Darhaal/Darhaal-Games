@@ -9,7 +9,8 @@ import {
   Trophy,
   User,
   LogOut,
-  Loader2
+  Loader2,
+  LayoutGrid
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import AuthForm from '@/components/AuthForm';
@@ -25,6 +26,7 @@ function HomeContent() {
   const [lang, setLang] = useState<Lang>('ru');
 
   useEffect(() => {
+    // Load lang from local storage
     const savedLang = localStorage.getItem('dg_lang') as Lang;
     if (savedLang) setLang(savedLang);
   }, []);
@@ -134,6 +136,7 @@ function HomeContent() {
   return (
     <main className="min-h-screen bg-white text-[#1A1F26] flex flex-col items-center relative overflow-hidden font-sans selection:bg-[#9e1316] selection:text-white">
 
+      {/* Texture & Ambient */}
       <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-40 brightness-100 contrast-150 mix-blend-overlay pointer-events-none"></div>
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-[#9e1316]/5 rounded-full blur-[120px] pointer-events-none" />
 
@@ -147,6 +150,8 @@ function HomeContent() {
       />
 
       <header className="w-full max-w-7xl p-6 flex justify-between items-center z-10 relative mt-4">
+
+        {/* Профиль */}
         <button
             onClick={() => setShowSettings(true)}
             className="flex items-center gap-4 bg-white/80 backdrop-blur-md border border-[#E6E1DC] p-2 pr-6 rounded-full hover:border-[#9e1316]/50 hover:shadow-lg hover:shadow-[#9e1316]/5 transition-all cursor-pointer group"
@@ -168,6 +173,7 @@ function HomeContent() {
           </div>
         </button>
 
+        {/* Логотип */}
         <div className="hidden md:flex flex-col items-center absolute left-1/2 -translate-x-1/2">
            <div className="flex items-center gap-3 opacity-90 hover:opacity-100 transition-opacity bg-white/50 backdrop-blur-sm px-6 py-2 rounded-full border border-transparent hover:border-[#E6E1DC]">
              <img src="/logo512.png" alt="Logo" className="w-8 h-8 object-contain" onError={(e) => e.currentTarget.style.display = 'none'} />
