@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { X, Volume2, Music, Globe, Shield, User, Mail, Upload, Loader2, Trash2, Monitor } from 'lucide-react';
+import { X, Volume2, Music, Globe, Shield, User, Mail, Upload, Loader2, Trash2, Check, Edit2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 type Lang = 'ru' | 'en';
@@ -26,6 +26,18 @@ export default function Settings({ isOpen, onClose, user, currentLang, setLang, 
   const [uploading, setUploading] = useState(false);
   const [resetCooldown, setResetCooldown] = useState(0);
   const [customAvatars, setCustomAvatars] = useState<string[]>([]);
+
+  // Никнейм
+  const [username, setUsername] = useState('');
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [savingName, setSavingName] = useState(false);
+
+  // Инициализация имени
+  useEffect(() => {
+    if (user && user.name) {
+      setUsername(user.name);
+    }
+  }, [user]);
 
   const fetchCustomAvatars = useCallback(async () => {
     if (!user || user.isAnonymous) return;
@@ -64,6 +76,9 @@ export default function Settings({ isOpen, onClose, user, currentLang, setLang, 
       sec: 'с',
       myAvatars: 'Загруженные',
       basicAvatars: 'Стандартные',
+      nickname: 'Имя в игре',
+      save: 'Сохранить',
+      cancel: 'Отмена'
     },
     en: {
       title: 'Settings',
@@ -82,12 +97,34 @@ export default function Settings({ isOpen, onClose, user, currentLang, setLang, 
       sec: 's',
       myAvatars: 'Uploaded',
       basicAvatars: 'Standard',
+      nickname: 'Display Name',
+      save: 'Save',
+      cancel: 'Cancel'
     }
   }[currentLang];
 
   const handleLangChange = (lang: Lang) => {
     setLang(lang);
     localStorage.setItem('dg_lang', lang);
+  };
+
+  const handleSaveName = async () => {
+    if (!username.trim() || user.isAnonymous) return;
+    setSavingName(true);
+    try {
+      // 1. Обновляем метаданные Auth
+      await supabase.auth.updateUser({ data: { username: username } });
+      // 2. Обновляем публичный профиль
+      await supabase.from('profiles').update({ username: username }).eq('id', user.id);
+
+      // Обновляем локально (хак, чтобы не перезагружать страницу)
+      user.name = username;
+      setIsEditingName(false);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSavingName(false);
+    }
   };
 
   const saveAvatar = async (url: string) => {
@@ -136,7 +173,6 @@ export default function Settings({ isOpen, onClose, user, currentLang, setLang, 
     if (!user.email || resetCooldown > 0) return;
     setLoading(true);
 
-    // Explicitly determine redirect URL with production fallback
     const baseUrl = typeof window !== 'undefined' && window.location.hostname === 'localhost'
       ? 'http://localhost:3000'
       : 'https://online-games-phi.vercel.app';
@@ -181,7 +217,7 @@ export default function Settings({ isOpen, onClose, user, currentLang, setLang, 
         </div>
 
         {/* Content */}
-        <div className="flex-1 p-10 relative overflow-y-auto bg-white custom-scrollbar">
+        <div className="flex-1 p-10 relative overflow-y-auto custom-scrollbar">
           <button onClick={onClose} className="absolute top-8 right-8 p-2 text-[#8A9099] hover:text-[#9e1316] hover:bg-[#F5F5F0] rounded-full transition-all">
             <X className="w-6 h-6" />
           </button>
@@ -241,6 +277,41 @@ export default function Settings({ isOpen, onClose, user, currentLang, setLang, 
           {/* PROFILE */}
           {activeTab === 'profile' && (
             <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500">
+
+              {/* Смена ника */}
+              {!user.isAnonymous && (
+                <div className="bg-[#F5F5F0] p-4 rounded-2xl border border-[#E6E1DC]">
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="text-xs font-bold text-[#8A9099] uppercase tracking-wider">{t.nickname}</label>
+                    {!isEditingName && (
+                      <button onClick={() => setIsEditingName(true)} className="text-[#9e1316] hover:text-[#7a0f11]">
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+
+                  {isEditingName ? (
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        className="flex-1 bg-white border border-[#E6E1DC] rounded-xl px-3 py-2 text-sm font-bold text-[#1A1F26] focus:outline-none focus:border-[#9e1316]"
+                      />
+                      <button onClick={handleSaveName} disabled={savingName} className="bg-[#1A1F26] text-white p-2 rounded-xl">
+                        {savingName ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                      </button>
+                      <button onClick={() => { setIsEditingName(false); setUsername(user.name); }} className="bg-white border border-[#E6E1DC] text-[#8A9099] p-2 rounded-xl">
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="text-lg font-black text-[#1A1F26]">{user.name}</div>
+                  )}
+                </div>
+              )}
+
+              {/* Загрузка аватара */}
               {!user.isAnonymous && (
                 <div className="flex items-center justify-between mb-6">
                   <span className="text-xs text-[#8A9099] font-bold uppercase tracking-wider pl-1">{t.deleteHint}</span>

@@ -90,12 +90,17 @@ export default function CoupBoard() {
   // Обработка выхода
   const handleLeave = async () => {
       if (isLeaving) return;
+
+      // Блокируем кнопку
       setIsLeaving(true);
+
       try {
+        // Вызываем функцию выхода из хука, которая чистит БД
         await leaveGame();
       } catch (e) {
         console.error("Leave failed", e);
       } finally {
+        // В любом случае уходим на страницу поиска
         router.push('/play');
       }
   };
