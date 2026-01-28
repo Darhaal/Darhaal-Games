@@ -6,7 +6,7 @@ import {
   ArrowLeft, ScrollText, X, Info,
   Shield, Swords, Skull, Coins,
   Crown, RefreshCw, Loader2, Copy, Check, Clock, Globe,
-  LogOut, RotateCcw, User as UserIcon
+  LogOut, RotateCcw
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { User } from '@supabase/supabase-js';
