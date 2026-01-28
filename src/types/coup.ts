@@ -25,7 +25,7 @@ export interface Player {
   isReady: boolean;
 }
 
-// Типы для промежуточных состояний резолюции
+// Добавляем этот тип, чтобы TS не ругался на nextPhase
 export type ActionResolution = 'blocked_end' | 'continue_action' | 'action_cancelled';
 
 export interface PendingAction {
@@ -33,8 +33,7 @@ export interface PendingAction {
   player: string;
   target?: string;
   blockedBy?: string;
-  // Контекст для возврата после резолюции челенджа/потери карты
-  // Теперь явно разрешаем и фазы игры, и служебные статусы
+  // Разрешаем и фазы, и статусы резолюции
   nextPhase?: GamePhase | ActionResolution;
 }
 

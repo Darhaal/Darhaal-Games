@@ -1,22 +1,22 @@
 import { Crown, Skull, Swords, RefreshCw, Shield } from 'lucide-react';
 import { Role } from '@/types/coup';
 
-export const ROLE_CONFIG: Record<Role, { color: string; bg: string; icon: any }> = {
-  duke: { color: '#7C3AED', bg: 'bg-purple-100', icon: Crown },
-  assassin: { color: '#DC2626', bg: 'bg-red-100', icon: Skull },
-  captain: { color: '#2563EB', bg: 'bg-blue-100', icon: Swords },
-  ambassador: { color: '#059669', bg: 'bg-emerald-100', icon: RefreshCw },
-  contessa: { color: '#EA580C', bg: 'bg-orange-100', icon: Shield }
+export const ROLE_CONFIG: Record<Role, { color: string; icon: any }> = {
+  duke: { color: '#7C3AED', icon: Crown },       // Фиолетовый
+  assassin: { color: '#DC2626', icon: Skull },    // Красный
+  captain: { color: '#2563EB', icon: Swords },    // Синий
+  ambassador: { color: '#059669', icon: RefreshCw }, // Зеленый
+  contessa: { color: '#EA580C', icon: Shield }    // Оранжевый
 };
 
 export const DICTIONARY = {
   ru: {
     roles: {
-      duke: { name: 'Герцог', action: 'Налог (+3)', block: 'Помощь', desc: 'Берет 3 монеты' },
-      assassin: { name: 'Ассасин', action: 'Убийство (-3)', block: '-', desc: 'Устраняет игрока' },
-      captain: { name: 'Капитан', action: 'Кража (+2)', block: 'Кража', desc: 'Крадет 2 монеты' },
-      ambassador: { name: 'Посол', action: 'Обмен', block: 'Кража', desc: 'Меняет карты' },
-      contessa: { name: 'Графиня', action: '-', block: 'Убийство', desc: 'Блокирует убийцу' },
+      duke: { name: 'Герцог', action: 'Налог (+3)', block: 'Помощь', desc: 'Берет 3 монеты. Блокирует Иностранную помощь.' },
+      assassin: { name: 'Ассасин', action: 'Убийство (-3)', block: '-', desc: 'Платит 3 монеты. Заставляет жертву сбросить карту. Блокируется Графиней.' },
+      captain: { name: 'Капитан', action: 'Кража (+2)', block: 'Кража', desc: 'Крадет 2 монеты у другого игрока. Блокирует кражу.' },
+      ambassador: { name: 'Посол', action: 'Обмен', block: 'Кража', desc: 'Берет 2 карты из колоды, выбирает 2, возвращает остальные. Блокирует кражу.' },
+      contessa: { name: 'Графиня', action: '-', block: 'Убийство', desc: 'Не имеет действия. Блокирует попытку убийства Ассасином.' },
     },
     actions: {
       income: 'Доход (+1)',
@@ -43,44 +43,43 @@ export const DICTIONARY = {
       logs: 'История',
       code: 'Код комнаты',
       players: 'Игроки',
-      loseInfluence: 'ВЫБЕРИТЕ КАРТУ ДЛЯ СБРОСА',
-      exchange: 'Выберите 2 карты, чтобы оставить',
-      confirm: 'Подтвердить',
-      youDied: 'Вы выбыли из игры'
+      loseInfluence: 'СБРОС КАРТЫ',
+      exchange: 'ОБМЕН КАРТ',
+      confirm: 'Готово'
     },
     rules: {
       title: 'Правила Coup',
-      sections: [
-        {
-          title: '🎯 Цель игры',
-          content: 'Остаться последним игроком с хотя бы 1 влиянием.'
-        },
-        {
-          title: '🎴 Влияния (карты)',
-          content: 'Каждый начинает с 2 карт и 2 монет. Карты скрыты (можно блефовать). Потеря влияния = карта открывается.'
-        },
-        {
-          title: '💰 Базовые действия',
-          content: 'Income (+1), Foreign Aid (+2, блок Герцогом), Coup (-7, жертва теряет карту, блок невозможен).'
-        },
-        {
-          title: '👑 Действия карт',
-          content: 'Duke (Налог +3), Assassin (Убийство за 3 монеты), Captain (Кража +2), Ambassador (Обмен карт).'
-        },
-        {
-          title: '❗ Блеф и вызов (Challenge)',
-          content: 'Любое действие карты можно оспорить. Соврал — теряешь карту. Доказал — оспоривший теряет карту (твоя карта меняется).'
-        }
-      ]
+      objective: {
+        title: 'Цель игры',
+        text: 'Остаться последним игроком с хотя бы одной картой влияния.'
+      },
+      general: {
+        title: 'Ход игры',
+        text: 'В свой ход выберите одно действие. Вы не обязаны иметь карту, чтобы выполнить её действие (Блеф!). Другие игроки могут оспорить действие или заблокировать его.'
+      },
+      actions: [
+        { name: 'Income (Доход)', effect: '+1 монета. Нельзя заблокировать.' },
+        { name: 'Foreign Aid (Помощь)', effect: '+2 монеты. Блокируется Герцогом.' },
+        { name: 'Coup (Переворот)', effect: '-7 монет. Выбранный игрок теряет карту. Нельзя заблокировать. (Обязательно при 10+ монетах).' },
+        { name: 'Duke (Герцог)', effect: 'Налог: +3 монеты. Блокирует Помощь.' },
+        { name: 'Assassin (Ассасин)', effect: 'Убийство (-3 монеты): Цель теряет карту. Блокируется Графиней.' },
+        { name: 'Captain (Капитан)', effect: 'Кража: +2 монеты у другого игрока. Блокируется Капитаном или Послом.' },
+        { name: 'Ambassador (Посол)', effect: 'Обмен карт с колодой. Блокирует Кражу.' },
+        { name: 'Contessa (Графиня)', effect: 'Блокирует Убийство.' }
+      ],
+      challenge: {
+        title: 'Блеф и Вызов',
+        text: 'Любое действие карты можно оспорить. Если игрок доказал наличие карты — оспоривший теряет влияние (карта замешивается и берется новая). Если не доказал — лжец теряет влияние.'
+      }
     }
   },
   en: {
     roles: {
-      duke: { name: 'Duke', action: 'Tax (+3)', block: 'Foreign Aid', desc: 'Takes 3 coins' },
-      assassin: { name: 'Assassin', action: 'Assassinate (-3)', block: '-', desc: 'Eliminates player' },
-      captain: { name: 'Captain', action: 'Steal (+2)', block: 'Stealing', desc: 'Steals 2 coins' },
-      ambassador: { name: 'Ambassador', action: 'Exchange', block: 'Stealing', desc: 'Swaps cards' },
-      contessa: { name: 'Contessa', action: '-', block: 'Assassination', desc: 'Blocks Assassin' },
+      duke: { name: 'Duke', action: 'Tax (+3)', block: 'Foreign Aid', desc: 'Takes 3 coins. Blocks Foreign Aid.' },
+      assassin: { name: 'Assassin', action: 'Assassinate (-3)', block: '-', desc: 'Pays 3 coins to make a player lose influence. Blocked by Contessa.' },
+      captain: { name: 'Captain', action: 'Steal (+2)', block: 'Stealing', desc: 'Steals 2 coins from another player. Blocks stealing.' },
+      ambassador: { name: 'Ambassador', action: 'Exchange', block: 'Stealing', desc: 'Draws 2 cards, keeps 2, returns rest. Blocks stealing.' },
+      contessa: { name: 'Contessa', action: '-', block: 'Assassination', desc: 'No active action. Blocks Assassination.' },
     },
     actions: {
       income: 'Income (+1)',
@@ -107,35 +106,34 @@ export const DICTIONARY = {
       logs: 'Game Log',
       code: 'Room Code',
       players: 'Players',
-      loseInfluence: 'CHOOSE CARD TO LOSE',
-      exchange: 'Select 2 cards to keep',
-      confirm: 'Confirm',
-      youDied: 'You have been eliminated'
+      loseInfluence: 'LOSE INFLUENCE',
+      exchange: 'EXCHANGE',
+      confirm: 'Confirm'
     },
     rules: {
       title: 'Coup Rules',
-      sections: [
-        {
-          title: '🎯 Objective',
-          content: 'To be the last player with at least one influence card.'
-        },
-        {
-          title: '🎴 Influence (Cards)',
-          content: 'Start with 2 cards & 2 coins. Cards are secret (you can bluff). Lose influence = reveal a card.'
-        },
-        {
-          title: '💰 Base Actions',
-          content: 'Income (+1), Foreign Aid (+2, blocked by Duke), Coup (-7, target loses card, unblockable).'
-        },
-        {
-          title: '👑 Character Actions',
-          content: 'Duke (Tax +3), Assassin (Assassinate for 3 coins), Captain (Steal +2), Ambassador (Exchange cards).'
-        },
-        {
-          title: '❗ Bluff & Challenge',
-          content: 'Any character action can be challenged. Lie = lose card. Truth = challenger loses card (yours is replaced).'
-        }
-      ]
+      objective: {
+        title: 'Objective',
+        text: 'To be the last player with at least one influence card.'
+      },
+      general: {
+        title: 'Gameplay',
+        text: 'On your turn, choose one action. You can bluff (claim an action of a card you don\'t have). Other players can challenge or block.'
+      },
+      actions: [
+        { name: 'Income', effect: '+1 coin. Cannot be blocked.' },
+        { name: 'Foreign Aid', effect: '+2 coins. Blocked by Duke.' },
+        { name: 'Coup', effect: '-7 coins. Target loses a card. Unblockable. (Mandatory at 10+ coins).' },
+        { name: 'Duke', effect: 'Tax: +3 coins. Blocks Foreign Aid.' },
+        { name: 'Assassin', effect: 'Assassinate (-3 coins): Target loses a card. Blocked by Contessa.' },
+        { name: 'Captain', effect: 'Steal: +2 coins from another player. Blocked by Captain/Ambassador.' },
+        { name: 'Ambassador', effect: 'Exchange cards with deck. Blocks Stealing.' },
+        { name: 'Contessa', effect: 'Blocks Assassination.' }
+      ],
+      challenge: {
+        title: 'Bluff & Challenge',
+        text: 'Any character action can be challenged. If proven true, challenger loses a card. If false, actor loses a card.'
+      }
     }
   }
 };
