@@ -1,13 +1,13 @@
 import { Crown, Skull, Swords, RefreshCw, Shield } from 'lucide-react';
 import { Role } from '@/types/coup';
 
-// Premium Rich Palette (Контрастные и богатые цвета)
+// Premium Rich Palette
 export const ROLE_CONFIG: Record<Role, { color: string; icon: any }> = {
-  duke: { color: '#6B21A8', icon: Crown },       // Royal Purple (Глубокий фиолетовый)
-  assassin: { color: '#be123c', icon: Skull },    // Crimson Rose (Насыщенный малиновый)
-  captain: { color: '#1e40af', icon: Swords },    // Deep Blue (Глубокий синий)
-  ambassador: { color: '#047857', icon: RefreshCw }, // Emerald (Изумрудный)
-  contessa: { color: '#F59E0B', icon: Shield }    // Gold/Amber (Бронзовый)
+  duke: { color: '#6B21A8', icon: Crown },       // Royal Purple
+  assassin: { color: '#9F1239', icon: Skull },    // Crimson Blood
+  captain: { color: '#1E3A8A', icon: Swords },    // Imperial Blue
+  ambassador: { color: '#065F46', icon: RefreshCw }, // Deep Emerald
+  contessa: { color: '#78350F', icon: Shield }    // Ancient Bronze
 };
 
 export const DICTIONARY = {

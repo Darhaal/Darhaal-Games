@@ -30,25 +30,24 @@ export default function CoupBoard() {
       if (isLeaving) return;
       setIsLeaving(true);
       await leaveGame();
-      router.push('/play'); // Возврат к списку игр
+      router.push('/play');
   };
 
-  // Обработка выхода при закрытии вкладки или нажатии "Назад"
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-        // Пытаемся выйти, но это не гарантировано при закрытии вкладки
-        leaveGame();
         e.preventDefault();
-        e.returnValue = ''; // Показать стандартное предупреждение браузера
+        e.returnValue = '';
     };
-
-    // При размонтировании компонента (например, переход на другую страницу внутри приложения)
+    const handlePopState = async () => {
+        await leaveGame();
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('popstate', handlePopState);
     return () => {
-       if (lobbyId) {
-           leaveGame();
-       }
+        window.removeEventListener('beforeunload', handleBeforeUnload);
+        window.removeEventListener('popstate', handlePopState);
     };
-  }, [leaveGame, lobbyId]);
+  }, [leaveGame]);
 
   if (loading || isLeaving) return <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]"><Loader2 className="animate-spin text-[#9e1316]" /></div>;
   if (!gameState) return <div className="min-h-screen flex items-center justify-center">Lobby not found</div>;

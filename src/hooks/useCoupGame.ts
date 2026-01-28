@@ -151,45 +151,36 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
     if (!challenger || !newState.currentAction) return;
 
     const isBlockChallenge = newState.phase === 'waiting_for_block_challenges';
-
-    // Определяем обвиняемого.
-    // Если фаза блока - обвиняем блокера.
-    // Если фаза действия (или блоков действия) - обвиняем актора.
     const accusedId = isBlockChallenge ? newState.currentAction.blockedBy : newState.currentAction.player;
 
-    // Нельзя оспорить самого себя
-    if (challenger.id === accusedId) return;
+    if (challenger.id === accusedId) return; // Cannot challenge self
 
     const accused = newState.players.find(p => p.id === accusedId);
     if (!accused) return;
 
     addLog(newState, challenger.name, `НЕ ВЕРИТ игроку ${accused.name}!`);
 
-    // Проверяем роль
     const requiredRole = getRequiredRole(newState.currentAction.type, isBlockChallenge);
     const hasRole = accused.cards.some(c => !c.revealed && c.role === requiredRole);
 
     if (hasRole) {
-      // ПРАВДА
+      // PROVEN TRUE
       addLog(newState, accused.name, `Показал карту: ${getRoleName(requiredRole)}!`);
 
-      // Замена карты
       const cardIdx = accused.cards.findIndex(c => !c.revealed && c.role === requiredRole);
       const oldRole = accused.cards[cardIdx].role;
       newState.deck.push(oldRole);
       newState.deck.sort(() => Math.random() - 0.5);
       accused.cards[cardIdx].role = newState.deck.pop() as Role;
 
-      // Наказание челленджера
       newState.phase = 'losing_influence';
       newState.pendingPlayerId = challenger.id;
       newState.currentAction.nextPhase = isBlockChallenge ? 'blocked_end' : 'continue_action';
 
     } else {
-      // ЛОЖЬ
+      // BLUFFING
       addLog(newState, accused.name, `БЛЕФОВАЛ! (Нет карты ${getRoleName(requiredRole)})`);
 
-      // Наказание лжеца
       newState.phase = 'losing_influence';
       newState.pendingPlayerId = accused.id;
       newState.currentAction.nextPhase = isBlockChallenge ? 'continue_action' : 'action_cancelled';
@@ -203,8 +194,7 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
     const newState: GameState = JSON.parse(JSON.stringify(gameState));
     if (!newState.currentAction) return;
 
-    // Защита от повторного блока
-    if (newState.currentAction.blockedBy) return;
+    if (newState.currentAction.blockedBy) return; // Already blocked
 
     newState.currentAction.blockedBy = userId;
     newState.phase = 'waiting_for_block_challenges';
@@ -253,10 +243,8 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
                  nextTurn(newState);
              } else if (next === 'continue_action') {
                  if (action.blockedBy) {
-                     // Блок был блефом -> Выполняем действие
                      applyActionEffect(newState);
                  } else {
-                     // Челендж действия провалился -> Можно блочить (если Steal/Assassinate) или Выполнять
                      if (['steal', 'assassinate'].includes(action.type)) {
                          newState.phase = 'waiting_for_blocks';
                      } else {
@@ -283,7 +271,6 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
       const buffer = newState.exchangeBuffer;
       let selectionPtr = 0;
 
-      // Назначаем новые карты в слоты
       for (let i = 0; i < player.cards.length; i++) {
           if (!player.cards[i].revealed) {
               if (selectionPtr < selectedIndices.length) {
@@ -294,7 +281,6 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
           }
       }
 
-      // Возврат остальных в колоду
       const remainingRoles = buffer.filter((_, idx) => !selectedIndices.includes(idx));
       newState.deck.push(...remainingRoles);
       newState.deck.sort(() => Math.random() - 0.5);
