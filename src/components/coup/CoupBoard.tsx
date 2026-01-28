@@ -30,7 +30,8 @@ const GameCard = ({ role, revealed, isMe, onClick, selected, lang, small = false
   const config = ROLE_CONFIG[role];
   const info = DICTIONARY[lang].roles[role];
 
-  const dims = small ? 'w-20 h-28' : 'w-24 h-36 sm:w-28 sm:h-44';
+  // Адаптивные размеры: на мобилках чуть меньше, чтобы влезало 4 карты в ряд при обмене
+  const dims = small ? 'w-16 h-24 sm:w-20 sm:h-28' : 'w-20 h-32 sm:w-24 sm:h-36 md:w-28 md:h-44';
 
   return (
     <div
@@ -45,30 +46,30 @@ const GameCard = ({ role, revealed, isMe, onClick, selected, lang, small = false
       <div className={`relative w-full h-full duration-500 preserve-3d transition-transform shadow-xl rounded-2xl ${(isMe || revealed) ? 'rotate-y-0' : ''}`}>
 
         {/* FACE */}
-        <div className={`absolute inset-0 backface-hidden rounded-2xl border-[3px] overflow-hidden bg-white flex flex-col p-2 ${revealed ? 'grayscale brightness-90' : ''}`} style={{ borderColor: config.color }}>
+        <div className={`absolute inset-0 backface-hidden rounded-2xl border-[3px] overflow-hidden bg-white flex flex-col p-1.5 sm:p-2 ${revealed ? 'grayscale brightness-90' : ''}`} style={{ borderColor: config.color }}>
            <div className="absolute inset-0 opacity-5 pointer-events-none bg-black" />
 
            <div className="w-full flex justify-between items-start z-10 mb-1">
-              <span className="font-black text-[9px] sm:text-[10px] uppercase tracking-wider truncate" style={{ color: config.color }}>{info.name}</span>
+              <span className="font-black text-[8px] sm:text-[10px] uppercase tracking-wider truncate" style={{ color: config.color }}>{info.name}</span>
               <config.icon className="w-3 h-3 sm:w-4 sm:h-4 opacity-50" style={{ color: config.color }} />
            </div>
 
            <div className="flex-1 flex flex-col items-center justify-center z-10">
               <div className="p-2 sm:p-3 rounded-full bg-white border-2 shadow-sm relative" style={{ borderColor: config.color }}>
                  <div className="absolute inset-0 rounded-full opacity-10" style={{ backgroundColor: config.color }} />
-                 <config.icon className={`${small ? 'w-6 h-6' : 'w-8 h-8 sm:w-10 sm:h-10'}`} style={{ color: config.color }} />
+                 <config.icon className={`${small ? 'w-5 h-5 sm:w-6 sm:h-6' : 'w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10'}`} style={{ color: config.color }} />
               </div>
            </div>
 
-           {/* Stats */}
+           {/* Stats - Скрываем на совсем маленьких картах */}
            {!small && (
-             <div className="z-10 w-full space-y-1 mt-auto">
-               <div className="flex items-center gap-1 bg-gray-50 rounded p-1 border border-gray-100">
-                 <Swords className="w-2 h-2 text-emerald-600" /><span className="text-[8px] font-bold text-gray-600 truncate">{info.action}</span>
+             <div className="z-10 w-full space-y-0.5 sm:space-y-1 mt-auto">
+               <div className="flex items-center gap-1 bg-gray-50 rounded p-0.5 sm:p-1 border border-gray-100">
+                 <Swords className="w-2 h-2 text-emerald-600" /><span className="text-[7px] sm:text-[8px] font-bold text-gray-600 truncate">{info.action}</span>
                </div>
                {info.block !== '-' && (
-                 <div className="flex items-center gap-1 bg-gray-50 rounded p-1 border border-gray-100">
-                   <Shield className="w-2 h-2 text-red-600" /><span className="text-[8px] font-bold text-gray-600 truncate">{info.block}</span>
+                 <div className="flex items-center gap-1 bg-gray-50 rounded p-0.5 sm:p-1 border border-gray-100">
+                   <Shield className="w-2 h-2 text-red-600" /><span className="text-[7px] sm:text-[8px] font-bold text-gray-600 truncate">{info.block}</span>
                  </div>
                )}
              </div>
@@ -223,8 +224,8 @@ export default function CoupBoard() {
   const [activeModal, setActiveModal] = useState<'rules' | 'guide' | null>(null);
   const [copied, setCopied] = useState(false);
 
-  // Exchange state
-  const [selectedExchangeCards, setSelectedExchangeCards] = useState<Role[]>([]);
+  // Exchange state - сохраняем ИНДЕКСЫ, а не роли, чтобы различать одинаковые карты
+  const [selectedExchangeIndices, setSelectedExchangeIndices] = useState<number[]>([]);
 
   const { gameState, roomMeta, loading, performAction, startGame, leaveGame, pass, challenge, block, resolveLoss, resolveExchange } = useCoupGame(lobbyId, userId);
 
@@ -233,6 +234,28 @@ export default function CoupBoard() {
     const savedLang = localStorage.getItem('dg_lang') as Lang;
     if (savedLang === 'en' || savedLang === 'ru') setLang(savedLang);
   }, []);
+
+  // --- AUTOMATIC LOSS RESOLUTION ---
+  // Если у игрока 1 жизнь и он должен потерять карту, делаем это автоматически
+  useEffect(() => {
+    if (gameState?.phase === 'losing_influence' && gameState.pendingPlayerId === userId) {
+      const me = gameState.players.find(p => p.id === userId);
+      if (me) {
+        const unrevealedIndices = me.cards
+          .map((c, i) => c.revealed ? -1 : i)
+          .filter(i => i !== -1);
+
+        // Если осталась только 1 карта, теряем её автоматически через секунду (для драматического эффекта)
+        if (unrevealedIndices.length === 1) {
+          const timer = setTimeout(() => {
+             resolveLoss(unrevealedIndices[0]);
+          }, 1500);
+          return () => clearTimeout(timer);
+        }
+      }
+    }
+  }, [gameState, userId]);
+
 
   const handleCopyCode = () => {
     if (roomMeta?.code) { navigator.clipboard.writeText(roomMeta.code); setCopied(true); setTimeout(() => setCopied(false), 2000); }
@@ -254,19 +277,15 @@ export default function CoupBoard() {
     if (targetMode) { performAction(targetMode, targetId); setTargetMode(null); }
   };
 
-  const handleExchangeToggle = (role: Role) => {
-      if (selectedExchangeCards.includes(role)) {
-          setSelectedExchangeCards(prev => {
-              const idx = prev.indexOf(role);
-              const newArr = [...prev];
-              newArr.splice(idx, 1);
-              return newArr;
-          });
+  const handleExchangeToggle = (index: number) => {
+      if (selectedExchangeIndices.includes(index)) {
+          // Deselect
+          setSelectedExchangeIndices(prev => prev.filter(i => i !== index));
       } else {
-          // Allow selection up to number of lives
+          // Select
           const lives = gameState?.players.find(p => p.id === userId)?.cards.filter(c => !c.revealed).length || 2;
-          if (selectedExchangeCards.length < lives) {
-              setSelectedExchangeCards(prev => [...prev, role]);
+          if (selectedExchangeIndices.length < lives) {
+              setSelectedExchangeIndices(prev => [...prev, index]);
           }
       }
   };
@@ -428,17 +447,17 @@ export default function CoupBoard() {
              <div className="fixed inset-0 z-[150] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
                  <div className="bg-white rounded-[32px] p-6 w-full max-w-2xl flex flex-col items-center shadow-2xl animate-in zoom-in-95 border-4 border-[#059669]">
                      <h2 className="text-xl font-black uppercase mb-6 flex items-center gap-2 text-[#059669]"><RefreshCw className="w-6 h-6"/> {t.exchange}</h2>
-                     <div className="flex flex-wrap justify-center gap-4 mb-8">
+                     <div className="flex flex-wrap justify-center gap-2 sm:gap-4 mb-8">
                          {gameState.exchangeBuffer.map((role, i) => (
-                             <div key={i} className={`relative transition-all duration-300 ${selectedExchangeCards.includes(role) ? 'ring-4 ring-[#059669] rounded-2xl transform scale-105 z-10 shadow-xl' : 'opacity-80 hover:opacity-100'}`}>
+                             <div key={i} className={`relative transition-all duration-300 ${selectedExchangeIndices.includes(i) ? 'ring-4 ring-[#059669] rounded-2xl transform scale-105 z-10 shadow-xl' : 'opacity-80 hover:opacity-100'}`}>
                                 <GameCard
                                    role={role}
                                    revealed={false}
                                    isMe={true}
                                    lang={lang}
-                                   onClick={() => handleExchangeToggle(role)}
+                                   onClick={() => handleExchangeToggle(i)}
                                 />
-                                {selectedExchangeCards.includes(role) && (
+                                {selectedExchangeIndices.includes(i) && (
                                     <div className="absolute -top-2 -right-2 bg-[#059669] text-white rounded-full p-1 shadow-lg">
                                         <CheckCircle className="w-4 h-4" />
                                     </div>
@@ -447,11 +466,11 @@ export default function CoupBoard() {
                          ))}
                      </div>
                      <button
-                        onClick={() => resolveExchange(selectedExchangeCards)}
-                        disabled={selectedExchangeCards.length !== (me?.cards.filter(c => !c.revealed).length)}
+                        onClick={() => resolveExchange(selectedExchangeIndices.map(i => gameState.exchangeBuffer![i]))}
+                        disabled={selectedExchangeIndices.length !== (me?.cards.filter(c => !c.revealed).length)}
                         className="w-full max-w-xs py-4 bg-[#059669] text-white rounded-xl font-black uppercase disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#047857] transition-colors shadow-lg"
                      >
-                        {t.confirm} ({selectedExchangeCards.length}/{me?.cards.filter(c => !c.revealed).length})
+                        {t.confirm} ({selectedExchangeIndices.length}/{me?.cards.filter(c => !c.revealed).length})
                      </button>
                  </div>
              </div>
