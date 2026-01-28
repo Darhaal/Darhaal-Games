@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowLeft, ScrollText, X, Info,
@@ -273,7 +273,7 @@ const ActionButton = ({ onClick, label, color = 'text-[#1A1F26]', bg = 'bg-white
 
 // --- Main Component ---
 
-export default function CoupGame() {
+function CoupGameContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const lobbyId = searchParams.get('id');
@@ -920,5 +920,14 @@ export default function CoupGame() {
       )}
 
     </div>
+  );
+}
+
+// Wrap for Suspense
+export default function CoupGame() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-[#9e1316]" /></div>}>
+      <CoupGameContent />
+    </Suspense>
   );
 }
