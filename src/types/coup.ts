@@ -2,12 +2,12 @@ export type Lang = 'ru' | 'en';
 export type Role = 'duke' | 'assassin' | 'captain' | 'ambassador' | 'contessa';
 
 export type GamePhase = 
-  | 'choosing_action'              // Игрок выбирает действие
-  | 'waiting_for_challenges'       // Ждем, оспорит ли кто-то действие
-  | 'waiting_for_blocks'           // Ждем, заблокирует ли кто-то (для Foreign Aid, Steal, Assassinate)
-  | 'waiting_for_block_challenges' // Ждем, оспорят ли блок
-  | 'resolving_exchange'           // Посол выбирает карты
-  | 'losing_influence';            // Игрок выбирает карту для сброса
+  | 'choosing_action'
+  | 'waiting_for_challenges'
+  | 'waiting_for_blocks'
+  | 'waiting_for_block_challenges'
+  | 'resolving_exchange'
+  | 'losing_influence';
 
 export interface Card {
   role: Role;
@@ -25,13 +25,17 @@ export interface Player {
   isReady: boolean;
 }
 
+// Типы для промежуточных состояний резолюции
+export type ActionResolution = 'blocked_end' | 'continue_action' | 'action_cancelled';
+
 export interface PendingAction {
   type: string;
   player: string;
   target?: string;
   blockedBy?: string;
   // Контекст для возврата после резолюции челенджа/потери карты
-  nextPhase?: GamePhase;
+  // Теперь явно разрешаем и фазы игры, и служебные статусы
+  nextPhase?: GamePhase | ActionResolution;
 }
 
 export interface GameLog {
