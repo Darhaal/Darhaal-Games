@@ -113,8 +113,10 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
       newState.phase = 'losing_influence';
       newState.pendingPlayerId = targetId;
     } else if (actionType === 'foreign_aid') {
+      // Foreign Aid нельзя оспорить (это не действие персонажа), его можно только заблокировать
       newState.phase = 'waiting_for_blocks';
     } else {
+      // Остальные действия (Tax, Steal, Assassinate, Exchange) можно оспорить
       newState.phase = 'waiting_for_challenges';
     }
 
@@ -126,20 +128,20 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
     const newState: GameState = JSON.parse(JSON.stringify(gameState));
     if (!newState.currentAction) return;
 
-    // Если пропускаем челендж действия
     if (newState.phase === 'waiting_for_challenges') {
+      // Если никто не оспорил действие
       if (['steal', 'assassinate'].includes(newState.currentAction.type)) {
-        newState.phase = 'waiting_for_blocks'; // Переход к фазе блоков
+        newState.phase = 'waiting_for_blocks'; // Переходим к блокам
       } else {
-        applyActionEffect(newState); // Выполнение действия (Tax, Exchange)
+        applyActionEffect(newState); // Выполняем (Tax, Exchange)
       }
     }
-    // Если пропускаем блок (никто не блокирует)
     else if (newState.phase === 'waiting_for_blocks') {
+       // Никто не заблокировал
        applyActionEffect(newState);
     }
-    // Если пропускаем челендж блока (блок успешен)
     else if (newState.phase === 'waiting_for_block_challenges') {
+       // Блок не оспорен -> Блок успешен -> Действие отменено
        addLog(newState, 'Система', 'Блок успешен, действие отменено');
        nextTurn(newState);
     }
@@ -167,18 +169,20 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
       // Обвиняемый доказал правоту
       addLog(newState, accused.name, `Показал карту: ${getRoleName(requiredRole)}!`);
 
-      // Замена карты
+      // Замена карты (возвращаем старую в колоду, мешаем, берем новую)
       const cardIdx = accused.cards.findIndex(c => !c.revealed && c.role === requiredRole);
       const oldRole = accused.cards[cardIdx].role;
+
       newState.deck.push(oldRole);
       newState.deck.sort(() => Math.random() - 0.5);
+
       accused.cards[cardIdx].role = newState.deck.pop() as Role;
 
       // Наказание челленджера
       newState.phase = 'losing_influence';
       newState.pendingPlayerId = challenger.id;
-      // Если это был блок и он устоял -> действие отменено (blocked_end)
-      // Если это было действие и оно устояло -> продолжаем (continue_action)
+      // Если это был блок и он устоял -> действие отменено
+      // Если это было действие и оно устояло -> продолжаем
       newState.currentAction.nextPhase = isBlockChallenge ? 'blocked_end' : 'continue_action';
 
     } else {
@@ -187,8 +191,8 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
 
       newState.phase = 'losing_influence';
       newState.pendingPlayerId = accused.id;
-      // Если блок был блефом -> действие продолжается (continue_action)
-      // Если действие было блефом -> действие отменяется (action_cancelled)
+      // Если блок был блефом -> действие продолжается
+      // Если действие было блефом -> действие отменяется
       newState.currentAction.nextPhase = isBlockChallenge ? 'continue_action' : 'action_cancelled';
     }
 
@@ -218,7 +222,6 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
     const player = newState.players.find(p => p.id === userId);
     if (!player || player.cards[cardIndex].revealed) return;
 
-    // Вскрытие карты
     player.cards[cardIndex].revealed = true;
     const lostRole = getRoleName(player.cards[cardIndex].role);
     addLog(newState, player.name, `СБРОСИЛ КАРТУ: ${lostRole}`);
@@ -233,11 +236,9 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
     if (!action) {
        nextTurn(newState);
     } else {
-        // Если это был Coup или Assassinate (обычный, не челендж)
         if (action.type === 'coup' || (action.type === 'assassinate' && newState.phase === 'losing_influence' && !action.nextPhase)) {
             nextTurn(newState);
         }
-        // Обработка результатов челенджа
         else if (action.nextPhase) {
              const next = action.nextPhase;
              delete action.nextPhase;
@@ -249,13 +250,12 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
                  addLog(newState, 'Система', 'Блок успешен, действие отменено');
                  nextTurn(newState);
              } else if (next === 'continue_action') {
-                 // Если продолжаем после провала блока -> блок снят, выполняем действие
-                 // Если продолжаем после победы над челенджем действия -> идем к блокам или выполняем
+                 // Если продолжаем после...
                  if (action.blockedBy) {
-                     // Блок был пробит (блеф), выполняем действие
+                     // ...провала блока (блок был блефом) -> выполняем действие
                      applyActionEffect(newState);
                  } else {
-                     // Действие устояло, теперь можно блокировать
+                     // ...победы над челенджем действия -> идем к блокам или выполняем
                      if (['steal', 'assassinate'].includes(action.type)) {
                          newState.phase = 'waiting_for_blocks';
                      } else {
@@ -271,7 +271,8 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
     await updateState(newState);
   };
 
-  const resolveExchange = async (selectedRoles: Role[]) => {
+  // ИСПРАВЛЕНО: Принимаем индексы карт в буфере, чтобы различать дубликаты
+  const resolveExchange = async (selectedIndices: number[]) => {
       if (!gameState || !userId) return;
       const newState: GameState = JSON.parse(JSON.stringify(gameState));
       if (newState.phase !== 'resolving_exchange' || newState.pendingPlayerId !== userId) return;
@@ -279,28 +280,23 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
       const player = newState.players.find(p => p.id === userId);
       if (!player || !newState.exchangeBuffer) return;
 
-      let selectedIdx = 0;
+      const buffer = newState.exchangeBuffer;
+
+      // 1. Обновляем руку игрока выбранными картами
+      let selectionPtr = 0;
       for (let i = 0; i < player.cards.length; i++) {
           if (!player.cards[i].revealed) {
-              player.cards[i].role = selectedRoles[selectedIdx];
-              selectedIdx++;
+              if (selectionPtr < selectedIndices.length) {
+                  const bufferIndex = selectedIndices[selectionPtr];
+                  player.cards[i].role = buffer[bufferIndex];
+                  selectionPtr++;
+              }
           }
       }
 
-      const usedRoles = [...selectedRoles];
-      const rolesToReturn: Role[] = [];
-      const buffer = [...newState.exchangeBuffer];
-
-      for (const role of buffer) {
-          const idx = usedRoles.indexOf(role);
-          if (idx !== -1) {
-              usedRoles.splice(idx, 1);
-          } else {
-              rolesToReturn.push(role);
-          }
-      }
-
-      newState.deck.push(...rolesToReturn);
+      // 2. Все невыбранные карты из буфера возвращаем в колоду
+      const remainingRoles = buffer.filter((_, idx) => !selectedIndices.includes(idx));
+      newState.deck.push(...remainingRoles);
       newState.deck.sort(() => Math.random() - 0.5);
 
       newState.exchangeBuffer = undefined;
@@ -375,6 +371,7 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
 
   const startGame = async () => {
     if (!gameState) return;
+    // 3 копии каждой роли
     const roles: Role[] = ['duke', 'duke', 'duke', 'assassin', 'assassin', 'assassin', 'captain', 'captain', 'captain', 'ambassador', 'ambassador', 'ambassador', 'contessa', 'contessa', 'contessa'];
     const shuffled = roles.sort(() => Math.random() - 0.5);
 
