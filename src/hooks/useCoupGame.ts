@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { GameState, Player, Role } from '@/types/coup';
 import { DICTIONARY } from '@/constants/coup';
@@ -7,6 +7,15 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [roomMeta, setRoomMeta] = useState<{ name: string; code: string; isHost: boolean } | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Ref для доступа к актуальному стейту внутри cleanup функции (которая замыкается при маунте)
+  const stateRef = useRef<{ lobbyId: string | null; userId: string | undefined; status: string }>({
+    lobbyId, userId, status: 'waiting'
+  });
+
+  useEffect(() => {
+    stateRef.current = { lobbyId, userId, status: gameState?.status || 'waiting' };
+  }, [lobbyId, userId, gameState?.status]);
 
   // --- 1. Синхронизация с Supabase ---
 
@@ -22,14 +31,12 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
       if (error) throw error;
 
       if (data) {
-        // Метаданные комнаты
         setRoomMeta({
             name: data.name,
             code: data.code,
             isHost: data.host_id === userId
         });
 
-        // Состояние игры
         if (data.game_state) {
           const safeState = {
             ...data.game_state,
@@ -54,7 +61,6 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
         { event: 'UPDATE', schema: 'public', table: 'lobbies', filter: `id=eq.${lobbyId}` },
         (payload) => {
           if (payload.new) {
-             // Обновляем состояние игры
              if (payload.new.game_state) {
                 const safeState = {
                     ...payload.new.game_state,
@@ -62,7 +68,6 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
                 };
                 setGameState(safeState);
              }
-             // Обновляем мету (на случай смены хоста, хотя в MVP это редкость)
              if (roomMeta && payload.new.host_id !== undefined) {
                  setRoomMeta(prev => prev ? ({ ...prev, isHost: payload.new.host_id === userId }) : null);
              }
@@ -72,16 +77,89 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [lobbyId, userId, fetchLobbyState]); // Добавил userId в зависимости
+  }, [lobbyId, userId, fetchLobbyState]);
 
-  // --- 2. Утилиты Логики ---
+  // --- 2. УМНЫЙ АВТО-ВЫХОД И ОЧИСТКА ---
+
+  useEffect(() => {
+    const handleUnload = async () => {
+      const { lobbyId: lid, userId: uid, status } = stateRef.current;
+      if (!lid || !uid) return;
+
+      // 1. Получаем свежее состояние перед выходом
+      const { data } = await supabase.from('lobbies').select('game_state').eq('id', lid).single();
+      if (!data?.game_state) return;
+
+      let newState = { ...data.game_state };
+      let shouldDelete = false;
+
+      if (status === 'waiting') {
+        // Сценарий 1: Выход из Лобби
+        // Просто удаляем игрока из списка
+        newState.players = newState.players.filter((p: Player) => p.id !== uid);
+
+        // Если игроков не осталось — удаляем комнату
+        if (newState.players.length === 0) shouldDelete = true;
+      } else if (status === 'playing') {
+        // Сценарий 2: Выход из Активной Игры (Rage Quit / Disconnect)
+        // Мы не можем удалить игрока из массива (собьются ходы), поэтому "убиваем" его
+        newState.players = newState.players.map((p: Player) => {
+            if (p.id === uid) {
+                return {
+                    ...p,
+                    isDead: true,
+                    coins: 0,
+                    cards: p.cards.map(c => ({ ...c, revealed: true })) // Вскрываем карты
+                };
+            }
+            return p;
+        });
+
+        // Проверяем, сколько живых осталось
+        const alivePlayers = newState.players.filter((p: Player) => !p.isDead);
+
+        if (alivePlayers.length === 0) {
+            // Все вышли или умерли — удаляем мусорную комнату
+            shouldDelete = true;
+        } else if (alivePlayers.length === 1) {
+            // Остался последний герой — присуждаем победу
+            newState.status = 'finished';
+            newState.winner = alivePlayers[0].name;
+            // Добавляем лог о технической победе
+            newState.logs.unshift({
+                user: 'System',
+                action: 'Opponent disconnected. Winner determined.',
+                time: new Date().toLocaleTimeString()
+            });
+        }
+      }
+
+      // Применяем изменения
+      if (shouldDelete) {
+        await supabase.from('lobbies').delete().eq('id', lid);
+      } else {
+        await supabase.from('lobbies').update({ game_state: newState }).eq('id', lid);
+      }
+    };
+
+    // Срабатывает при закрытии вкладки (ненадежно, но полезно)
+    window.addEventListener('beforeunload', handleUnload);
+
+    // Срабатывает при размонтировании компонента (переход Назад, клик по логотипу) - НАДЕЖНО
+    return () => {
+      window.removeEventListener('beforeunload', handleUnload);
+      handleUnload();
+    };
+  }, []);
+
+
+  // --- 3. Игровые Действия ---
 
   const updateState = async (newState: GameState) => {
     setGameState(newState);
     await supabase.from('lobbies').update({ game_state: newState }).eq('id', lobbyId);
   };
 
-  // Переход хода с пропуском выбывших
   const getNextTurn = (players: Player[], currentIdx: number) => {
     if (!players || players.length === 0) return 0;
     let next = (currentIdx + 1) % players.length;
@@ -109,14 +187,11 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
     }
   };
 
-  // --- 3. Игровые Действия ---
-
   const startGame = async () => {
     if (!gameState) return;
     const roles: Role[] = ['duke', 'duke', 'duke', 'assassin', 'assassin', 'assassin', 'captain', 'captain', 'captain', 'ambassador', 'ambassador', 'ambassador', 'contessa', 'contessa', 'contessa'];
     const shuffled = roles.sort(() => Math.random() - 0.5);
 
-    // Раздаем карты
     const newPlayers = (gameState.players || []).map(p => ({
       ...p,
       coins: 2,
@@ -137,7 +212,6 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
       winner: undefined
     };
 
-    // Обновляем статус лобби в корне и стейт игры
     await supabase.from('lobbies').update({ status: 'playing', game_state: newState }).eq('id', lobbyId);
     setGameState(newState);
   };
