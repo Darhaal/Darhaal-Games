@@ -135,8 +135,17 @@ export default function Settings({ isOpen, onClose, user, currentLang, setLang, 
   const handleEmailReset = async () => {
     if (!user.email || resetCooldown > 0) return;
     setLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(user.email, { redirectTo: `${window.location.origin}/reset-password` });
-    if (error) alert(error.message); else { alert(t.resetSent); setResetCooldown(60); }
+
+    // Explicitly determine redirect URL with production fallback
+    const baseUrl = typeof window !== 'undefined' && window.location.hostname === 'localhost'
+      ? 'http://localhost:3000'
+      : 'https://online-games-phi.vercel.app';
+    const redirectTo = `${baseUrl}/reset-password`;
+
+    const { error } = await supabase.auth.resetPasswordForEmail(user.email, { redirectTo });
+
+    if (error) alert(error.message);
+    else { alert(t.resetSent); setResetCooldown(60); }
     setLoading(false);
   };
 

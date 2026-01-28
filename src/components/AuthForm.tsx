@@ -66,6 +66,14 @@ export default function AuthForm() {
     localStorage.setItem('dg_lang', newLang);
   };
 
+  // Helper to get the correct redirect URL
+  const getRedirectUrl = () => {
+    if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+      return 'http://localhost:3000';
+    }
+    return 'https://online-games-phi.vercel.app';
+  };
+
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -81,13 +89,15 @@ export default function AuthForm() {
         const randomAvatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${randomSeed}&backgroundColor=transparent`;
 
         const { error } = await supabase.auth.signUp({
-          email, password, options: { data: { username, avatar_url: randomAvatar } }
+          email, password, options: {
+            data: { username, avatar_url: randomAvatar },
+            emailRedirectTo: getRedirectUrl() // Explicit redirect for email confirmation
+          }
         });
         if (error) throw error;
         setSuccessMsg(t.successReg);
         setTimeout(() => setIsSignUp(false), 2000);
       } else {
-        // Сначала пробуем найти email по username, если пользователь ввел username
         let loginEmail = email;
         if (!email.includes('@')) {
              const { data: profile, error: profileError } = await supabase.from('profiles').select('email').eq('username', username).single();
@@ -95,7 +105,6 @@ export default function AuthForm() {
              loginEmail = profile.email;
         }
 
-        // В форме используем поле username как универсальное (если email пуст, берем из username state если он похож на email)
         const finalEmail = loginEmail || username;
 
         const { error } = await supabase.auth.signInWithPassword({ email: finalEmail, password });
@@ -110,8 +119,12 @@ export default function AuthForm() {
 
   const handleGoogleLogin = async () => {
     setLoading(true);
+    const redirectTo = getRedirectUrl();
+    console.log('Google Auth Redirecting to:', redirectTo);
+
     const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google', options: { redirectTo: `${window.location.origin}` },
+      provider: 'google',
+      options: { redirectTo },
     });
     if (error) { setErrorMsg(error.message); setLoading(false); }
   };

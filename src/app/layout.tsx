@@ -13,10 +13,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://online-games-phi.vercel.app'),
   title: "Darhaal Games",
   description: "Old school atmosphere, modern gameplay.",
   icons: {
-    icon: '/logo512.png',
+    icon: '/logo512.png', // Используем ваше лого как иконку
     apple: '/logo512.png',
   },
 };
@@ -29,7 +30,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[#F0F2F5] text-[#334155]`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[#F0F2F5] text-[#334155]`}\
       >
         {children}
       </body>
