@@ -8,7 +8,7 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
   const [roomMeta, setRoomMeta] = useState<{ name: string; code: string; isHost: boolean } | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Ref для доступа к актуальному стейту внутри cleanup функции (которая замыкается при маунте)
+  // Храним актуальное состояние в рефе, чтобы доступ к нему был внутри cleanup-функции
   const stateRef = useRef<{ lobbyId: string | null; userId: string | undefined; status: string }>({
     lobbyId, userId, status: 'waiting'
   });
@@ -86,55 +86,59 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
       const { lobbyId: lid, userId: uid, status } = stateRef.current;
       if (!lid || !uid) return;
 
-      // 1. Получаем свежее состояние перед выходом
+      // Читаем актуальное состояние из БД перед выходом
       const { data } = await supabase.from('lobbies').select('game_state').eq('id', lid).single();
-      if (!data?.game_state) return;
+      if (!data?.game_state) return; // Лобби уже удалено
 
       let newState = { ...data.game_state };
       let shouldDelete = false;
 
-      if (status === 'waiting') {
-        // Сценарий 1: Выход из Лобби
-        // Просто удаляем игрока из списка
-        newState.players = newState.players.filter((p: Player) => p.id !== uid);
-
-        // Если игроков не осталось — удаляем комнату
-        if (newState.players.length === 0) shouldDelete = true;
-      } else if (status === 'playing') {
-        // Сценарий 2: Выход из Активной Игры (Rage Quit / Disconnect)
-        // Мы не можем удалить игрока из массива (собьются ходы), поэтому "убиваем" его
+      if (status === 'playing') {
+        // Сценарий: Игрок выходит во время игры (Сдается)
         newState.players = newState.players.map((p: Player) => {
             if (p.id === uid) {
                 return {
                     ...p,
                     isDead: true,
                     coins: 0,
-                    cards: p.cards.map(c => ({ ...c, revealed: true })) // Вскрываем карты
+                    cards: p.cards.map(c => ({ ...c, revealed: true }))
                 };
             }
             return p;
         });
 
-        // Проверяем, сколько живых осталось
         const alivePlayers = newState.players.filter((p: Player) => !p.isDead);
+        const activePlayers = newState.players.filter((p: Player) => p.id !== uid); // Те, кто физически не вышел (для проверки на пустоту)
+
+        // Если вообще никого не осталось в комнате (все вышли) - удаляем
+        // Но так как мы здесь не удаляем игрока из массива, проверяем по логике:
+        // Если это был последний активный коннект - удалим.
+        // В рамках MVP упростим: если все "мертвы" и прошло время - удалять.
+        // Но для надежности лучше так:
 
         if (alivePlayers.length === 0) {
-            // Все вышли или умерли — удаляем мусорную комнату
-            shouldDelete = true;
+            shouldDelete = true; // Все мертвы, игра окончена, удаляем мусор
         } else if (alivePlayers.length === 1) {
-            // Остался последний герой — присуждаем победу
+            // Техническая победа
             newState.status = 'finished';
             newState.winner = alivePlayers[0].name;
-            // Добавляем лог о технической победе
             newState.logs.unshift({
                 user: 'System',
                 action: 'Opponent disconnected. Winner determined.',
                 time: new Date().toLocaleTimeString()
             });
         }
+      } else {
+        // Сценарий: waiting (Лобби) ИЛИ finished (Конец игры)
+        // В обоих случаях игрока можно просто удалить из списка
+        newState.players = newState.players.filter((p: Player) => p.id !== uid);
+
+        // Если игроков не осталось — удаляем комнату, чтобы не плодить мусор
+        if (newState.players.length === 0) {
+            shouldDelete = true;
+        }
       }
 
-      // Применяем изменения
       if (shouldDelete) {
         await supabase.from('lobbies').delete().eq('id', lid);
       } else {
@@ -142,10 +146,10 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
       }
     };
 
-    // Срабатывает при закрытии вкладки (ненадежно, но полезно)
+    // Слушатель закрытия вкладки/браузера
     window.addEventListener('beforeunload', handleUnload);
 
-    // Срабатывает при размонтировании компонента (переход Назад, клик по логотипу) - НАДЕЖНО
+    // Слушатель размонтирования компонента (переход по ссылкам внутри app)
     return () => {
       window.removeEventListener('beforeunload', handleUnload);
       handleUnload();
