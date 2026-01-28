@@ -1,13 +1,13 @@
 export type Lang = 'ru' | 'en';
 export type Role = 'duke' | 'assassin' | 'captain' | 'ambassador' | 'contessa';
 
-export type GamePhase =
-  | 'choosing_action'
-  | 'waiting_for_challenges' // Ждем, оспорит ли кто-то действие
-  | 'waiting_for_blocks'     // Ждем, заблокирует ли кто-то (для Foreign Aid, Steal, Assassinate)
-  | 'waiting_for_block_challenges' // Ждем, оспорят ли блок
-  | 'resolving_exchange'     // Посол выбирает карты
-  | 'losing_influence';      // Игрок должен выбрать карту для сброса
+export type GamePhase = 
+  | 'choosing_action' 
+  | 'waiting_for_challenges' 
+  | 'waiting_for_blocks'     
+  | 'waiting_for_block_challenges' 
+  | 'resolving_exchange'     
+  | 'losing_influence';      
 
 export interface Card {
   role: Role;
@@ -26,10 +26,10 @@ export interface Player {
 }
 
 export interface PendingAction {
-  type: string; // tax, steal, assassinate, etc.
-  player: string; // id игрока, который делает действие
-  target?: string; // id цели (для steal, coup, assassinate)
-  blockedBy?: string; // id игрока, который поставил блок
+  type: string; 
+  player: string; 
+  target?: string; 
+  blockedBy?: string; 
 }
 
 export interface GameLog {
@@ -45,10 +45,9 @@ export interface GameState {
   logs: GameLog[];
   status: 'waiting' | 'playing' | 'finished';
   winner?: string;
-
-  // Новые поля для полной логики
+  
+  // State Machine
   phase: GamePhase;
-  currentAction: PendingAction | null; // Текущее заявленное действие
-  timerStart?: number; // Для таймеров (опционально)
-  actionResult?: string | null; // Для отображения результата последнего действия
+  currentAction: PendingAction | null;
+  pendingLoserId?: string; // ID игрока, который должен сбросить карту
 }
