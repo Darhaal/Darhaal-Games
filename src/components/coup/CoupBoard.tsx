@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase';
 import {
   Loader2, Coins, Crown, X, Shield, History,
   LogOut, Book, HelpCircle,
-  Swords, Skull, RefreshCw, AlertTriangle, ThumbsUp, AlertOctagon
+  Swords, Skull, RefreshCw, AlertTriangle, ThumbsUp, AlertOctagon, CheckCircle
 } from 'lucide-react';
 import { useCoupGame } from '@/hooks/useCoupGame';
 import { ROLE_CONFIG, DICTIONARY } from '@/constants/coup';
