@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   title: "Darhaal Games",
   description: "Old school atmosphere, modern gameplay.",
   icons: {
-    icon: '/logo512.png', // Используем ваше лого как иконку
+    icon: '/logo512.png',
     apple: '/logo512.png',
   },
 };

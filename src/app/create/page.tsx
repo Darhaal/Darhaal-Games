@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import {
@@ -46,7 +46,7 @@ const GAMES: Game[] = [
   },
 ];
 
-export default function CreateLobby() {
+function CreateLobbyContent() {
   const router = useRouter();
   const [lang, setLang] = useState<Lang>('ru');
   const [step, setStep] = useState<'selection' | 'settings' | 'lobby'>('selection');
@@ -406,8 +406,6 @@ export default function CreateLobby() {
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center p-4 font-sans text-[#1A1F26] relative overflow-hidden">
       <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-50 brightness-100 contrast-150 mix-blend-overlay pointer-events-none"></div>
 
-      {/* Language Switcher Removed as per request */}
-
       <header className="w-full max-w-7xl p-6 flex items-center justify-between z-10 relative mb-8">
         <button onClick={() => { if (step === 'selection') router.push('/'); else if (step === 'settings') setStep('selection'); else if (step === 'lobby') { if(confirm(t.leave + '?')) handleLeaveLobby(); } }} className="flex items-center gap-2 text-[#8A9099] hover:text-[#9e1316] transition-colors group">
           <div className="p-3 bg-white border border-[#E6E1DC] rounded-xl group-hover:border-[#9e1316]/50 shadow-sm transition-all"><ArrowLeft className="w-5 h-5" /></div><span className="text-xs font-bold uppercase tracking-widest hidden sm:block">{t.back}</span>
@@ -427,5 +425,13 @@ export default function CreateLobby() {
         {step === 'lobby' && renderLobby()}
       </div>
     </div>
+  );
+}
+
+export default function CreateLobby() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-[#9e1316]" /></div>}>
+      <CreateLobbyContent />
+    </Suspense>
   );
 }

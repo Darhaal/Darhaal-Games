@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { Loader2, CheckCircle, AlertCircle, ArrowLeft } from 'lucide-react';
 
-export default function ResetPassword() {
+function ResetPasswordContent() {
   const router = useRouter();
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -138,5 +138,13 @@ export default function ResetPassword() {
         <span className="text-xs font-bold text-[#8A9099] uppercase tracking-widest">Darhaal Games System</span>
       </div>
     </div>
+  );
+}
+
+export default function ResetPassword() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-white flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-[#9e1316]" /></div>}>
+      <ResetPasswordContent />
+    </Suspense>
   );
 }
