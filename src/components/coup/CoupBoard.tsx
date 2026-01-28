@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase';
 import {
   Loader2, Coins, Clock, Crown, X, Shield, History,
   Copy, CheckCircle, Play, LogOut, Book, HelpCircle,
-  Swords, Skull, RefreshCw, AlertTriangle, Ban, ThumbsUp, AlertOctagon, Menu
+  Swords, Skull, RefreshCw, AlertTriangle, Ban, ThumbsUp, AlertOctagon
 } from 'lucide-react';
 import { useCoupGame } from '@/hooks/useCoupGame';
 import { ROLE_CONFIG, DICTIONARY } from '@/constants/coup';
@@ -17,13 +17,6 @@ const GameCard = ({ role, revealed, isMe, onClick, selected, lang, small = false
   if (!role || !ROLE_CONFIG[role]) return null;
   const config = ROLE_CONFIG[role];
   const info = DICTIONARY[lang].roles[role];
-  const roleKey = role as Role;
-
-  // Определяем действие/блок для краткой инфы на карте
-  const details = {
-    action: info.action,
-    block: info.block
-  };
 
   const dims = small ? 'w-20 h-28' : 'w-24 h-36 sm:w-28 sm:h-44';
 
@@ -59,11 +52,11 @@ const GameCard = ({ role, revealed, isMe, onClick, selected, lang, small = false
            {!small && (
              <div className="z-10 w-full space-y-1 mt-auto">
                <div className="flex items-center gap-1 bg-gray-50 rounded p-1 border border-gray-100">
-                 <Swords className="w-2 h-2 text-emerald-600" /><span className="text-[8px] font-bold text-gray-600 truncate">{details.action}</span>
+                 <Swords className="w-2 h-2 text-emerald-600" /><span className="text-[8px] font-bold text-gray-600 truncate">{info.action}</span>
                </div>
-               {details.block !== '-' && (
+               {info.block !== '-' && (
                  <div className="flex items-center gap-1 bg-gray-50 rounded p-1 border border-gray-100">
-                   <Shield className="w-2 h-2 text-red-600" /><span className="text-[8px] font-bold text-gray-600 truncate">{details.block}</span>
+                   <Shield className="w-2 h-2 text-red-600" /><span className="text-[8px] font-bold text-gray-600 truncate">{info.block}</span>
                  </div>
                )}
              </div>
@@ -113,12 +106,10 @@ const RulesModal = ({ onClose, lang }: { onClose: () => void, lang: Lang }) => {
              <h3 className="font-bold text-[#1A1F26] mb-1">{content.objective.title}</h3>
              <p className="bg-yellow-50 p-3 rounded-xl border border-yellow-100 text-yellow-800">{content.objective.text}</p>
            </section>
-
            <section>
               <h3 className="font-bold text-[#1A1F26] mb-1">{content.general?.title}</h3>
               <p className="mb-2">{content.general?.text}</p>
            </section>
-
            <section>
              <h3 className="font-bold text-[#1A1F26] mb-2">{DICTIONARY[lang].ui.code} Actions</h3>
              <ul className="space-y-2">
@@ -175,36 +166,23 @@ const GuideModal = ({ onClose, lang }: { onClose: () => void, lang: Lang }) => {
   );
 };
 
-// --- LOGS COMPONENT (SCROLLABLE) ---
+// --- LOGS COMPONENT ---
 const LogPanel = ({ logs, lang }: { logs: any[], lang: Lang }) => {
-  const [isOpen, setIsOpen] = useState(false); // Mobile toggle
+  const [isOpen, setIsOpen] = useState(false);
 
   return (
     <>
-      {/* Mobile Toggle Button */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="md:hidden fixed top-20 left-4 z-40 bg-white p-2 rounded-full shadow-lg border border-[#E6E1DC]"
-      >
+      <button onClick={() => setIsOpen(!isOpen)} className="md:hidden fixed top-20 left-4 z-40 bg-white p-2 rounded-full shadow-lg border border-[#E6E1DC]">
         <History className="w-5 h-5 text-[#8A9099]" />
       </button>
 
-      <div className={`
-        fixed md:absolute top-24 left-4 z-30 w-72 max-h-64 bg-white/95 backdrop-blur-md rounded-2xl border border-[#E6E1DC] shadow-xl flex flex-col overflow-hidden transition-all duration-300 transform
-        ${isOpen ? 'translate-x-0 opacity-100' : '-translate-x-full opacity-0 md:translate-x-0 md:opacity-100'}
-      `}>
+      <div className={`fixed md:absolute top-24 left-4 z-30 w-72 max-h-64 bg-white/95 backdrop-blur-md rounded-2xl border border-[#E6E1DC] shadow-xl flex flex-col overflow-hidden transition-all duration-300 transform ${isOpen ? 'translate-x-0 opacity-100' : '-translate-x-full opacity-0 md:translate-x-0 md:opacity-100'}`}>
          <div className="px-4 py-3 border-b border-[#E6E1DC] bg-gray-50/50 flex justify-between items-center">
-           <div className="text-[10px] font-black uppercase text-[#8A9099] flex items-center gap-2 tracking-wider">
-             <History className="w-3 h-3" /> {DICTIONARY[lang].ui.logs}
-           </div>
+           <div className="text-[10px] font-black uppercase text-[#8A9099] flex items-center gap-2 tracking-wider"><History className="w-3 h-3" /> {DICTIONARY[lang].ui.logs}</div>
            <button onClick={() => setIsOpen(false)} className="md:hidden"><X className="w-4 h-4 text-gray-400" /></button>
          </div>
          <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
-            {logs.length === 0 && (
-              <div className="h-20 flex items-center justify-center text-xs text-gray-400 font-medium italic">
-                {lang === 'ru' ? 'Игра началась' : 'Game Started'}
-              </div>
-            )}
+            {logs.length === 0 && <div className="h-20 flex items-center justify-center text-xs text-gray-400 font-medium italic">{lang === 'ru' ? 'Игра началась' : 'Game Started'}</div>}
             {logs.map((log, i) => (
               <div key={i} className="text-xs px-3 py-2 rounded-xl hover:bg-gray-50 flex flex-col gap-1 border border-transparent hover:border-gray-100 transition-colors">
                  <div className="flex justify-between items-center">
@@ -221,7 +199,6 @@ const LogPanel = ({ logs, lang }: { logs: any[], lang: Lang }) => {
 };
 
 // --- MAIN ---
-
 export default function CoupBoard() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -243,11 +220,7 @@ export default function CoupBoard() {
   }, []);
 
   const handleCopyCode = () => {
-    if (roomMeta?.code) {
-        navigator.clipboard.writeText(roomMeta.code);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-    }
+    if (roomMeta?.code) { navigator.clipboard.writeText(roomMeta.code); setCopied(true); setTimeout(() => setCopied(false), 2000); }
   };
 
   const handleLeave = async () => {
@@ -260,6 +233,10 @@ export default function CoupBoard() {
   const handleAction = (action: string) => {
     if (['coup', 'steal', 'assassinate'].includes(action)) setTargetMode(action as any);
     else performAction(action);
+  };
+
+  const handleTarget = (targetId: string) => {
+    if (targetMode) { performAction(targetMode, targetId); setTargetMode(null); }
   };
 
   if (loading || isLeaving) return <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]"><Loader2 className="animate-spin text-[#9e1316]" /></div>;
@@ -283,8 +260,8 @@ export default function CoupBoard() {
                   <button onClick={handleLeave} className="flex items-center gap-2 text-gray-400 hover:text-[#9e1316] transition-colors"><LogOut className="w-5 h-5"/><span className="text-xs font-bold uppercase hidden sm:block">{t.leave}</span></button>
                   <div className="text-center"><h1 className="text-2xl font-black text-[#1A1F26]">{roomMeta?.name}</h1><div className="text-[10px] font-bold text-[#9e1316] uppercase">{t.waiting}</div></div>
                   <div className="flex gap-2">
-                      <button onClick={()=>setActiveModal('guide')} className="p-2 bg-white border border-[#E6E1DC] rounded-xl shadow-sm hover:border-[#9e1316] hover:text-[#9e1316] transition-colors"><Book className="w-5 h-5"/></button>
-                      <button onClick={()=>setActiveModal('rules')} className="p-2 bg-white border border-[#E6E1DC] rounded-xl shadow-sm hover:border-[#9e1316] hover:text-[#9e1316] transition-colors"><HelpCircle className="w-5 h-5"/></button>
+                      <button onClick={()=>setActiveModal('guide')} className="p-2 bg-white border rounded-xl shadow-sm"><Book className="w-5 h-5"/></button>
+                      <button onClick={()=>setActiveModal('rules')} className="p-2 bg-white border rounded-xl shadow-sm"><HelpCircle className="w-5 h-5"/></button>
                   </div>
               </header>
 
@@ -327,14 +304,14 @@ export default function CoupBoard() {
       {activeModal === 'guide' && <GuideModal onClose={()=>setActiveModal(null)} lang={lang} />}
 
       <header className="w-full max-w-6xl mx-auto p-4 flex justify-between items-center z-10 relative">
-          <button onClick={handleLeave} className="text-gray-400 hover:text-[#9e1316] transition-colors"><LogOut className="w-5 h-5"/></button>
+          <button onClick={handleLeave}><LogOut className="w-5 h-5 text-gray-500" /></button>
           <div className="text-center">
              <h1 className="font-black text-xl">COUP</h1>
              <div className="text-[10px] font-bold text-[#9e1316] uppercase">{isLosing ? 'LOSE INFLUENCE!' : (gameState.status === 'playing' ? `Turn: ${players[gameState.turnIndex]?.name}` : 'End')}</div>
           </div>
           <div className="flex gap-2">
-              <button onClick={()=>setActiveModal('guide')} className="p-2 bg-white border border-[#E6E1DC] rounded-xl shadow-sm hover:border-[#9e1316] hover:text-[#9e1316] transition-colors"><Book className="w-5 h-5"/></button>
-              <button onClick={()=>setActiveModal('rules')} className="p-2 bg-white border border-[#E6E1DC] rounded-xl shadow-sm hover:border-[#9e1316] hover:text-[#9e1316] transition-colors"><HelpCircle className="w-5 h-5"/></button>
+              <button onClick={()=>setActiveModal('guide')} className="p-2 bg-white border rounded-xl shadow-sm"><Book className="w-5 h-5"/></button>
+              <button onClick={()=>setActiveModal('rules')} className="p-2 bg-white border rounded-xl shadow-sm"><HelpCircle className="w-5 h-5"/></button>
           </div>
       </header>
 
@@ -413,15 +390,21 @@ export default function CoupBoard() {
         )}
       </main>
 
-      {/* Winner */}
+      {/* Winner Overlay */}
       {gameState.winner && (
         <div className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white p-10 rounded-[32px] text-center animate-in zoom-in border-4 border-[#9e1316] shadow-2xl max-w-sm w-full relative overflow-hidden">
+          <div className="bg-white p-10 rounded-[32px] text-center animate-in zoom-in duration-300 border-4 border-[#9e1316] shadow-2xl max-w-sm w-full relative overflow-hidden">
+            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20" />
             <div className="relative z-10">
-                <Crown className="w-24 h-24 text-yellow-500 mx-auto mb-6 animate-bounce" />
+                <Crown className="w-24 h-24 text-yellow-500 mx-auto mb-6 animate-bounce drop-shadow-md" />
                 <h2 className="text-xs font-black uppercase tracking-[0.2em] text-gray-400 mb-2">{t.winner}</h2>
                 <p className="text-3xl font-black text-[#1A1F26] mb-8">{gameState.winner}</p>
-                <button onClick={handleLeave} className="w-full py-4 bg-[#1A1F26] text-white rounded-xl font-black uppercase tracking-widest hover:bg-[#9e1316] shadow-lg">{t.leave}</button>
+                <button
+                    onClick={handleLeave}
+                    className="w-full py-4 bg-[#1A1F26] text-white rounded-xl font-black uppercase tracking-widest hover:bg-[#9e1316] transition-colors shadow-lg"
+                >
+                    {t.leave}
+                </button>
             </div>
           </div>
         </div>
