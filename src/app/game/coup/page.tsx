@@ -524,25 +524,25 @@ function CoupGameContent() {
   };
 
   const handleIncome = async () => {
-      const newPlayers = JSON.parse(JSON.stringify(gameState.players));
+      const newPlayers: Player[] = JSON.parse(JSON.stringify(gameState.players));
       newPlayers[gameState.turnIndex].coins += 1;
       await finalizeTurn(newPlayers, t.logs.income);
   };
 
   const handleAid = async () => {
-      const newPlayers = JSON.parse(JSON.stringify(gameState.players));
+      const newPlayers: Player[] = JSON.parse(JSON.stringify(gameState.players));
       newPlayers[gameState.turnIndex].coins += 2;
       await finalizeTurn(newPlayers, t.logs.aid);
   };
 
   const handleTax = async () => {
-      const newPlayers = JSON.parse(JSON.stringify(gameState.players));
+      const newPlayers: Player[] = JSON.parse(JSON.stringify(gameState.players));
       newPlayers[gameState.turnIndex].coins += 3;
       await finalizeTurn(newPlayers, t.logs.tax);
   };
 
   const handleSteal = async (targetIndex: number) => {
-      const newPlayers = JSON.parse(JSON.stringify(gameState.players));
+      const newPlayers: Player[] = JSON.parse(JSON.stringify(gameState.players));
       const target = newPlayers[targetIndex];
       const stolen = Math.min(2, target.coins);
       target.coins -= stolen;
@@ -551,14 +551,14 @@ function CoupGameContent() {
   };
 
   const handleAssassinate = async (targetIndex: number) => {
-      const newPlayers = JSON.parse(JSON.stringify(gameState.players));
+      const newPlayers: Player[] = JSON.parse(JSON.stringify(gameState.players));
       newPlayers[gameState.turnIndex].coins -= 3;
       loseCard(targetIndex, newPlayers);
       await finalizeTurn(newPlayers, t.logs.assassinate(newPlayers[targetIndex].name));
   };
 
   const handleCoup = async (targetIndex: number) => {
-      const newPlayers = JSON.parse(JSON.stringify(gameState.players));
+      const newPlayers: Player[] = JSON.parse(JSON.stringify(gameState.players));
       newPlayers[gameState.turnIndex].coins -= 7;
       loseCard(targetIndex, newPlayers);
       await finalizeTurn(newPlayers, t.logs.coup(newPlayers[targetIndex].name));
@@ -641,8 +641,8 @@ function CoupGameContent() {
       newDeck.push(...returnedToDeck);
       newDeck = shuffleDeck(newDeck);
 
-      const newPlayers = JSON.parse(JSON.stringify(gameState.players));
-      const oldRevealed = newPlayers[currentPlayerIdx].cards.filter(c => c.revealed);
+      const newPlayers: Player[] = JSON.parse(JSON.stringify(gameState.players));
+      const oldRevealed = newPlayers[currentPlayerIdx].cards.filter((c: Card) => c.revealed);
       newPlayers[currentPlayerIdx].cards = [...oldRevealed, ...keptCards];
 
       setExchangeMode({ active: false, tempHand: [], keptIndices: [] });
