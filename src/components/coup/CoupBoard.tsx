@@ -3,13 +3,17 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { Loader2, ArrowLeft, Coins, Clock, Crown, X, Shield, History, Copy, CheckCircle, Users, Play, LogOut } from 'lucide-react';
+import {
+  Loader2, ArrowLeft, Coins, Clock, Crown, X, Shield, History,
+  Copy, CheckCircle, Users, Play, LogOut, Book, HelpCircle,
+  Swords, Skull, RefreshCw
+} from 'lucide-react';
 import { useCoupGame } from '@/hooks/useCoupGame';
 import { ROLE_CONFIG, DICTIONARY } from '@/constants/coup';
 import { Role, Lang } from '@/types/coup';
 
 // --- Sub-components ---
-const CardView = ({ role, revealed, isMe, onClick, selected, lang }: { role: Role, revealed: boolean, isMe: boolean, onClick?: () => void, selected?: boolean, lang: Lang }) => {
+const CardView = ({ role, revealed, isMe, onClick, selected, lang, small = false }: { role: Role, revealed: boolean, isMe: boolean, onClick?: () => void, selected?: boolean, lang: Lang, small?: boolean }) => {
   if (!role || !ROLE_CONFIG[role]) return null;
   const config = ROLE_CONFIG[role];
   const info = DICTIONARY[lang].roles[role];
@@ -18,7 +22,7 @@ const CardView = ({ role, revealed, isMe, onClick, selected, lang }: { role: Rol
     <div
       onClick={onClick}
       className={`
-        relative w-20 h-32 sm:w-28 sm:h-44 rounded-xl border-2 transition-all duration-300
+        relative ${small ? 'w-16 h-24' : 'w-20 h-32 sm:w-28 sm:h-44'} rounded-xl border-2 transition-all duration-300
         ${revealed ? 'bg-gray-200 grayscale opacity-60 border-gray-300' : 'bg-white border-[#E6E1DC] shadow-lg'}
         ${selected ? 'ring-4 ring-[#9e1316] -translate-y-2' : ''}
         ${!isMe && !revealed ? 'bg-[#1A1F26] border-white' : ''}
@@ -26,12 +30,12 @@ const CardView = ({ role, revealed, isMe, onClick, selected, lang }: { role: Rol
       `}
     >
       {(isMe || revealed) ? (
-        <div className="flex flex-col items-center justify-between h-full p-2 sm:p-3 text-center">
-          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center mb-1" style={{ backgroundColor: config.color + '20' }}>
-            <config.icon className="w-5 h-5 sm:w-6 sm:h-6" style={{ color: config.color }} />
+        <div className={`flex flex-col items-center justify-between h-full ${small ? 'p-1' : 'p-2 sm:p-3'} text-center`}>
+          <div className={`${small ? 'w-6 h-6' : 'w-8 h-8 sm:w-10 sm:h-10'} rounded-full flex items-center justify-center mb-1`} style={{ backgroundColor: config.color + '20' }}>
+            <config.icon className={`${small ? 'w-3 h-3' : 'w-5 h-5 sm:w-6 sm:h-6'}`} style={{ color: config.color }} />
           </div>
           <div className="font-black text-[10px] sm:text-xs uppercase leading-tight" style={{ color: config.color }}>{info.name}</div>
-          <div className="text-[8px] sm:text-[9px] leading-tight text-gray-500 hidden sm:block">{info.desc}</div>
+          {!small && <div className="text-[8px] sm:text-[9px] leading-tight text-gray-500 hidden sm:block">{info.desc}</div>}
           {revealed && <div className="absolute inset-0 flex items-center justify-center bg-black/10"><X className="w-12 h-12 text-[#9e1316]" /></div>}
         </div>
       ) : (
@@ -57,6 +61,139 @@ const ActionButton = ({ label, onClick, disabled, color = 'bg-white', borderColo
   </button>
 );
 
+// --- MODALS ---
+
+const GuideModal = ({ onClose, lang }: { onClose: () => void, lang: Lang }) => {
+  const roles: Role[] = ['duke', 'assassin', 'captain', 'ambassador', 'contessa'];
+
+  return (
+    <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+      <div className="bg-white rounded-[32px] w-full max-w-lg h-[80vh] flex flex-col shadow-2xl relative overflow-hidden">
+        <div className="p-6 border-b border-[#E6E1DC] flex justify-between items-center bg-white sticky top-0 z-10">
+          <h2 className="text-xl font-black uppercase tracking-tight flex items-center gap-2">
+            <Book className="w-5 h-5 text-[#9e1316]" /> {lang === 'ru' ? 'Карты' : 'Cards'}
+          </h2>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors"><X className="w-5 h-5" /></button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
+          {roles.map(role => {
+             const info = DICTIONARY[lang].roles[role];
+             const config = ROLE_CONFIG[role];
+             return (
+               <div key={role} className="flex gap-4 p-4 rounded-2xl bg-[#F8FAFC] border border-[#E6E1DC]">
+                 <div className="shrink-0">
+                    <CardView role={role} revealed={false} isMe={true} lang={lang} small={true} />
+                 </div>
+                 <div className="flex-1 space-y-1">
+                    <div className="flex items-center gap-2 mb-1">
+                       <config.icon className="w-4 h-4" style={{ color: config.color }} />
+                       <h3 className="font-black uppercase text-sm" style={{ color: config.color }}>{info.name}</h3>
+                    </div>
+                    <div className="text-xs text-[#1A1F26] font-medium leading-relaxed">
+                       {info.desc}
+                    </div>
+                    {/* Дополнительные детали если есть в словаре или хардкод для красоты */}
+                    <div className="flex flex-wrap gap-2 mt-2">
+                       {role === 'duke' && <span className="text-[9px] font-bold uppercase bg-purple-100 text-purple-700 px-2 py-1 rounded">Блок: Помощь</span>}
+                       {role === 'contessa' && <span className="text-[9px] font-bold uppercase bg-orange-100 text-orange-700 px-2 py-1 rounded">Блок: Убийца</span>}
+                       {(role === 'captain' || role === 'ambassador') && <span className="text-[9px] font-bold uppercase bg-blue-100 text-blue-700 px-2 py-1 rounded">Блок: Кража</span>}
+                    </div>
+                 </div>
+               </div>
+             );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const RulesModal = ({ onClose }: { onClose: () => void }) => {
+  return (
+    <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+      <div className="bg-white rounded-[32px] w-full max-w-lg h-[80vh] flex flex-col shadow-2xl relative overflow-hidden">
+        <div className="p-6 border-b border-[#E6E1DC] flex justify-between items-center bg-white sticky top-0 z-10">
+          <h2 className="text-xl font-black uppercase tracking-tight flex items-center gap-2">
+            <HelpCircle className="w-5 h-5 text-[#9e1316]" /> Правила
+          </h2>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors"><X className="w-5 h-5" /></button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar text-sm text-[#334155] leading-relaxed">
+
+          <section>
+            <h3 className="font-black text-[#1A1F26] uppercase mb-3 flex items-center gap-2"><Crown className="w-4 h-4 text-yellow-600" /> Цель игры</h3>
+            <p className="bg-yellow-50 p-3 rounded-xl border border-yellow-100 text-yellow-900 font-medium">
+              Остаться последним игроком с хотя бы <strong>1 картой влияния</strong>.
+            </p>
+          </section>
+
+          <section>
+            <h3 className="font-black text-[#1A1F26] uppercase mb-3 flex items-center gap-2"><Coins className="w-4 h-4" /> Базовые действия</h3>
+            <ul className="space-y-3">
+              <li className="flex gap-3 items-start">
+                <div className="w-1.5 h-1.5 rounded-full bg-[#1A1F26] mt-2 shrink-0" />
+                <div>
+                  <span className="font-bold text-[#1A1F26]">Income (Доход):</span> <span className="text-emerald-600 font-bold">+1 монета</span>. Нельзя заблокировать.
+                </div>
+              </li>
+              <li className="flex gap-3 items-start">
+                <div className="w-1.5 h-1.5 rounded-full bg-[#1A1F26] mt-2 shrink-0" />
+                <div>
+                  <span className="font-bold text-[#1A1F26]">Foreign Aid (Помощь):</span> <span className="text-emerald-600 font-bold">+2 монеты</span>. Блокируется <span className="text-purple-700 font-bold">Герцогом</span>.
+                </div>
+              </li>
+              <li className="flex gap-3 items-start">
+                <div className="w-1.5 h-1.5 rounded-full bg-[#1A1F26] mt-2 shrink-0" />
+                <div>
+                  <span className="font-bold text-[#9e1316]">Coup (Переворот):</span> Платишь <span className="text-red-600 font-bold">7 монет</span>. Выбираешь жертву -> она теряет карту. Нельзя заблокировать. <span className="text-xs uppercase font-bold text-gray-400 block mt-1">(При 10+ монетах обязан делать Coup)</span>
+                </div>
+              </li>
+            </ul>
+          </section>
+
+          <section>
+            <h3 className="font-black text-[#1A1F26] uppercase mb-3 flex items-center gap-2"><Shield className="w-4 h-4" /> Действия карт</h3>
+            <div className="grid gap-3">
+               <div className="p-3 rounded-xl bg-purple-50 border border-purple-100">
+                 <div className="font-bold text-purple-900">Герцог (Duke)</div>
+                 <div className="text-xs mt-1">Берет <strong>3 монеты</strong>. Блокирует Помощь.</div>
+               </div>
+               <div className="p-3 rounded-xl bg-red-50 border border-red-100">
+                 <div className="font-bold text-red-900">Ассасин (Assassin)</div>
+                 <div className="text-xs mt-1">Платит <strong>3 монеты</strong> чтобы убить карту. Блокируется Графиней.</div>
+               </div>
+               <div className="p-3 rounded-xl bg-blue-50 border border-blue-100">
+                 <div className="font-bold text-blue-900">Капитан (Captain)</div>
+                 <div className="text-xs mt-1">Крадет <strong>2 монеты</strong>. Блокируется Капитаном или Послом.</div>
+               </div>
+               <div className="p-3 rounded-xl bg-green-50 border border-green-100">
+                 <div className="font-bold text-green-900">Посол (Ambassador)</div>
+                 <div className="text-xs mt-1">Меняет карты из колоды. Блокирует кражу.</div>
+               </div>
+               <div className="p-3 rounded-xl bg-gray-100 border border-gray-200">
+                 <div className="font-bold text-gray-900">Графиня (Contessa)</div>
+                 <div className="text-xs mt-1">Не имеет активного действия. Блокирует Ассасина.</div>
+               </div>
+            </div>
+          </section>
+
+          <section>
+            <h3 className="font-black text-[#1A1F26] uppercase mb-3 text-red-600">❗ Блеф и Вызов</h3>
+            <p className="mb-2">Любое действие карты или блокировку можно <strong>ОСПОРИТЬ</strong>.</p>
+            <ul className="space-y-2 text-xs font-bold text-gray-600 bg-gray-50 p-4 rounded-xl">
+               <li>1. Если игрок соврал (нет карты) -> он теряет карту.</li>
+               <li>2. Если игрок доказал (показал карту) -> оспоривший теряет карту. (Показанная карта замешивается и берется новая).</li>
+            </ul>
+          </section>
+
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // --- MAIN BOARD ---
 
 export default function CoupBoard() {
@@ -68,9 +205,12 @@ export default function CoupBoard() {
   const [targetMode, setTargetMode] = useState<'coup' | 'steal' | 'assassinate' | null>(null);
   const [copied, setCopied] = useState(false);
   const [lang, setLang] = useState<Lang>('ru');
-  const [isLeaving, setIsLeaving] = useState(false); // Локальный стейт для UI загрузки при выходе
+  const [isLeaving, setIsLeaving] = useState(false);
 
-  // Достаем leaveGame из хука
+  // Modals state
+  const [showRules, setShowRules] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
+
   const { gameState, roomMeta, loading, performAction, startGame, leaveGame } = useCoupGame(lobbyId, userId);
 
   useEffect(() => {
@@ -87,29 +227,20 @@ export default function CoupBoard() {
     }
   };
 
-  // Обработка выхода
   const handleLeave = async () => {
       if (isLeaving) return;
-
-      // Блокируем кнопку
       setIsLeaving(true);
-
       try {
-        // Вызываем функцию выхода из хука, которая чистит БД
         await leaveGame();
       } catch (e) {
         console.error("Leave failed", e);
       } finally {
-        // В любом случае уходим на страницу поиска
         router.push('/play');
       }
   };
 
-  // --- RENDERING ---
-
   if (loading || isLeaving) return <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]"><Loader2 className="animate-spin text-[#9e1316]" /></div>;
   if (!gameState) {
-      // Если стейта нет, значит лобби удалено или ID неверен
       return (
           <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-[#F8FAFC]">
               <div className="text-xl font-bold text-gray-400">Лобби не найдено или игра завершена</div>
@@ -124,26 +255,42 @@ export default function CoupBoard() {
   const t = DICTIONARY[lang].ui;
   const actionsT = DICTIONARY[lang].actions;
 
+  // Header Logic (Shared)
+  const renderHeader = (title: string, sub: string) => (
+    <header className="w-full max-w-5xl mx-auto p-4 sm:p-6 flex justify-between items-center z-10 relative">
+        <button onClick={handleLeave} className="flex items-center gap-2 text-[#8A9099] hover:text-[#9e1316] transition-colors group">
+            <div className="p-2 sm:p-3 bg-white border border-[#E6E1DC] rounded-xl shadow-sm group-hover:border-[#9e1316]/50 transition-all"><LogOut className="w-4 h-4 sm:w-5 sm:h-5" /></div>
+            <span className="text-xs font-bold uppercase tracking-widest hidden sm:block">{t.leave}</span>
+        </button>
+
+        <div className="text-center">
+            <h1 className="text-xl sm:text-3xl font-black text-[#1A1F26] tracking-tight">{title}</h1>
+            <div className="text-[10px] sm:text-xs font-bold text-[#9e1316] uppercase tracking-[0.2em]">{sub}</div>
+        </div>
+
+        <div className="flex gap-2">
+            <button onClick={() => setShowGuide(true)} className="p-2 sm:p-3 bg-white border border-[#E6E1DC] rounded-xl shadow-sm hover:text-[#9e1316] hover:border-[#9e1316]/50 transition-all">
+                <Book className="w-4 h-4 sm:w-5 sm:h-5" />
+            </button>
+            <button onClick={() => setShowRules(true)} className="p-2 sm:p-3 bg-white border border-[#E6E1DC] rounded-xl shadow-sm hover:text-[#9e1316] hover:border-[#9e1316]/50 transition-all">
+                <HelpCircle className="w-4 h-4 sm:w-5 sm:h-5" />
+            </button>
+        </div>
+    </header>
+  );
+
   // === 1. LOBBY VIEW (WAITING) ===
   if (gameState.status === 'waiting') {
     return (
         <div className="min-h-screen bg-[#F8FAFC] text-[#1A1F26] flex flex-col font-sans relative overflow-hidden">
             <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-50 brightness-100 contrast-150 mix-blend-overlay pointer-events-none"></div>
+            {showGuide && <GuideModal onClose={() => setShowGuide(false)} lang={lang} />}
+            {showRules && <RulesModal onClose={() => setShowRules(false)} />}
 
-            <header className="w-full max-w-5xl mx-auto p-6 flex justify-between items-center z-10 relative">
-                <button onClick={handleLeave} className="flex items-center gap-2 text-[#8A9099] hover:text-[#9e1316] transition-colors">
-                    <div className="p-3 bg-white border border-[#E6E1DC] rounded-xl shadow-sm"><ArrowLeft className="w-5 h-5" /></div>
-                    <span className="text-xs font-bold uppercase tracking-widest hidden sm:block">{t.leave}</span>
-                </button>
-                <div className="text-center">
-                    <h1 className="text-3xl font-black text-[#1A1F26] tracking-tight">{roomMeta?.name || 'Lobby'}</h1>
-                    <div className="text-xs font-bold text-[#9e1316] uppercase tracking-[0.2em]">Coup • {t.waiting}</div>
-                </div>
-                <div className="w-12"></div>
-            </header>
+            {renderHeader(roomMeta?.name || 'Lobby', `Coup • ${t.waiting}`)}
 
-            <main className="flex-1 w-full max-w-5xl mx-auto p-4 z-10 flex flex-col lg:flex-row gap-8 items-start justify-center mt-8">
-                <div className="w-full lg:w-2/3 bg-white border border-[#E6E1DC] rounded-[32px] p-8 shadow-sm">
+            <main className="flex-1 w-full max-w-5xl mx-auto p-4 z-10 flex flex-col lg:flex-row gap-8 items-start justify-center mt-4 sm:mt-8">
+                <div className="w-full lg:w-2/3 bg-white border border-[#E6E1DC] rounded-[32px] p-6 sm:p-8 shadow-sm">
                     <div className="flex justify-between items-center mb-6">
                         <h2 className="text-xl font-black uppercase flex items-center gap-2">
                           {lang === 'ru' ? 'Игроки' : 'Players'} <span className="bg-[#F5F5F0] px-2 py-1 rounded-lg text-sm text-[#8A9099]">{players.length}/6</span>
@@ -181,7 +328,7 @@ export default function CoupBoard() {
                         <p className="text-[10px] text-center text-[#8A9099] font-bold mt-4">{lang === 'ru' ? 'Нажми, чтобы скопировать' : 'Click to copy'}</p>
                     </div>
 
-                    {roomMeta?.isHost ? (
+                    {me?.isHost ? (
                         <button
                             onClick={startGame}
                             disabled={players.length < 2}
@@ -221,17 +368,10 @@ export default function CoupBoard() {
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-[#1A1F26] flex flex-col font-sans overflow-hidden relative">
       <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-50 mix-blend-overlay pointer-events-none" />
+      {showGuide && <GuideModal onClose={() => setShowGuide(false)} lang={lang} />}
+      {showRules && <RulesModal onClose={() => setShowRules(false)} />}
 
-      <header className="p-4 flex justify-between items-center z-10 bg-white/80 backdrop-blur border-b border-[#E6E1DC]">
-        <button onClick={handleLeave} className="p-2 hover:bg-gray-100 rounded-full"><LogOut className="w-5 h-5 text-gray-500" /></button>
-        <div className="text-center">
-          <h1 className="font-black text-xl tracking-tight">COUP</h1>
-          <div className="text-[10px] font-bold text-[#9e1316] uppercase tracking-widest">
-            {gameState.status === 'playing' ? `${lang === 'ru' ? 'Ход' : 'Turn'}: ${players[gameState.turnIndex]?.name || '...'}` : (lang === 'ru' ? 'Конец' : 'End')}
-          </div>
-        </div>
-        <div className="w-8" />
-      </header>
+      {renderHeader('COUP', gameState.status === 'playing' ? `${lang === 'ru' ? 'Ход' : 'Turn'}: ${players[gameState.turnIndex]?.name || '...'}` : (lang === 'ru' ? 'Конец' : 'End'))}
 
       <main className="flex-1 relative z-10 p-4 flex flex-col max-w-5xl mx-auto w-full h-full">
         <div className="flex flex-wrap justify-center gap-4 mb-auto pt-4 pb-20">
@@ -353,7 +493,7 @@ export default function CoupBoard() {
                 <h2 className="text-xs font-black uppercase tracking-[0.2em] text-gray-400 mb-2">{t.winner}</h2>
                 <p className="text-3xl font-black text-[#1A1F26] mb-8">{gameState.winner}</p>
                 <button
-                    onClick={handleLeave} // Кнопка "Выйти" теперь чистит за собой
+                    onClick={handleLeave}
                     className="w-full py-4 bg-[#1A1F26] text-white rounded-xl font-black uppercase tracking-widest hover:bg-[#9e1316] transition-colors shadow-lg"
                 >
                     {t.leave}
