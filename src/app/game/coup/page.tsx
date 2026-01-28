@@ -4,7 +4,7 @@ import React, { Suspense } from 'react';
 import { Loader2 } from 'lucide-react';
 import CoupBoard from '@/components/coup/CoupBoard';
 
-export default function Page() {
+export default function CoupGamePage() {
   return (
     <Suspense
       fallback={
