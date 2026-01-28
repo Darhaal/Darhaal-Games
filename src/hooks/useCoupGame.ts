@@ -3,26 +3,33 @@ import { supabase } from '@/lib/supabase';
 import { GameState, Player, Role } from '@/types/coup';
 import { DICTIONARY } from '@/constants/coup';
 
+// Получаем URL и Key для прямого запроса (копия из вашего конфига, чтобы работало везде)
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://amemndrojsaccfhtbsxc.supabase.com';
+const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFtZW1uZHJvanNhY2NmaHRic3hjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk1MjE2MDEsImV4cCI6MjA4NTA5NzYwMX0.G4RV8_5hF2eVdFA42QQSQGyTIWpjbQlosFnWxMBhp0g';
+
 export function useCoupGame(lobbyId: string | null, userId: string | undefined) {
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [roomMeta, setRoomMeta] = useState<{ name: string; code: string; isHost: boolean } | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Рефы для доступа внутри cleanup и beforeunload
-  const stateRef = useRef<{ lobbyId: string | null; userId: string | undefined; status: string; token: string | null }>({
-    lobbyId, userId, status: 'waiting', token: null
+  // Храним состояние в ref для доступа в beforeunload
+  const stateRef = useRef<{
+    lobbyId: string | null;
+    userId: string | undefined;
+    status: string;
+    players: Player[]
+  }>({
+    lobbyId, userId, status: 'waiting', players: []
   });
 
-  // Сохраняем токен и состояние в ref для доступа при закрытии вкладки
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-        if (data.session) stateRef.current.token = data.session.access_token;
-    });
-  }, []);
-
-  useEffect(() => {
-    stateRef.current = { ...stateRef.current, lobbyId, userId, status: gameState?.status || 'waiting' };
-  }, [lobbyId, userId, gameState?.status]);
+    stateRef.current = {
+        lobbyId,
+        userId,
+        status: gameState?.status || 'waiting',
+        players: gameState?.players || []
+    };
+  }, [lobbyId, userId, gameState]);
 
   // --- 1. Синхронизация ---
 
@@ -79,13 +86,12 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
                  setRoomMeta(prev => prev ? ({ ...prev, isHost: payload.new.host_id === userId }) : null);
              }
           } else {
-             // Лобби удалено
              setGameState(null);
           }
         }
       )
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'lobbies', filter: `id=eq.${lobbyId}` }, () => {
-          setGameState(null); // Выкидываем игрока в UI, если лобби удалено
+          setGameState(null);
       })
       .subscribe();
 
@@ -94,94 +100,207 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
 
   // --- 2. ЛОГИКА ВЫХОДА (LEAVE & CLEANUP) ---
 
-  // Функция для "жесткого" выхода (при закрытии вкладки)
-  const processDisconnect = async () => {
-      const { lobbyId: lid, userId: uid, status, token } = stateRef.current;
-      if (!lid || !uid) return;
+  // Эта функция готовит данные для обновления при выходе
+  const prepareLeaveData = () => {
+      const { userId: uid, status, players } = stateRef.current;
+      if (!uid) return null;
 
-      // Получаем актуальные данные
-      // Внимание: при закрытии вкладки supabase.js может не успеть.
-      // Пытаемся стандартным путем, если это обычный выход
-      const { data } = await supabase.from('lobbies').select('game_state').eq('id', lid).single();
-
-      // Если лобби уже нет, ничего не делаем
-      if (!data?.game_state) return;
-
-      let newState = { ...data.game_state };
-      let players = newState.players || [];
+      let newPlayers = [...players];
+      let newStatus = status;
+      let logsAdd = null;
       let shouldDelete = false;
 
-      // Логика удаления
       if (status === 'playing') {
-          // Если игра идет, помечаем мертвым
+          // В игре: помечаем мертвым
           let playerDied = false;
-          players = players.map((p: Player) => {
+          newPlayers = newPlayers.map(p => {
               if (p.id === uid && !p.isDead) {
                   playerDied = true;
-                  return {
-                      ...p,
-                      isDead: true,
-                      coins: 0,
-                      cards: p.cards.map(c => ({ ...c, revealed: true }))
-                  };
+                  return { ...p, isDead: true, coins: 0, cards: p.cards.map(c => ({ ...c, revealed: true })) };
               }
               return p;
           });
 
-          // Проверяем условия победы или удаления
-          const alive = players.filter((p: Player) => !p.isDead);
-          // Если никого живого (все вышли) -> удаляем лобби
-          // Если 1 живой -> он победил
+          const alive = newPlayers.filter(p => !p.isDead);
+
           if (alive.length === 0) {
               shouldDelete = true;
           } else if (alive.length === 1 && playerDied) {
-              newState.status = 'finished';
-              newState.winner = alive[0].name;
-              newState.logs.unshift({
-                  user: 'System',
-                  action: `${alive[0].name} победил (противник вышел)`,
-                  time: new Date().toLocaleTimeString()
-              });
+              newStatus = 'finished';
+              // Лог добавить сложно в сыром запросе без winner name, но попробуем
           }
       } else {
-          // Если lobby/finished -> просто удаляем из списка
-          players = players.filter((p: Player) => p.id !== uid);
-          if (players.length === 0) shouldDelete = true;
+          // В лобби: удаляем
+          newPlayers = newPlayers.filter(p => p.id !== uid);
+          if (newPlayers.length === 0) shouldDelete = true;
       }
 
-      newState.players = players;
+      return { newPlayers, newStatus, shouldDelete };
+  };
 
-      if (shouldDelete) {
+  // Ручной выход (кнопка)
+  const leaveGame = async () => {
+      const { lobbyId: lid } = stateRef.current;
+      if (!lid) return;
+      const data = prepareLeaveData();
+      if (!data) return;
+
+      if (data.shouldDelete) {
           await supabase.from('lobbies').delete().eq('id', lid);
       } else {
-          await supabase.from('lobbies').update({ game_state: newState }).eq('id', lid);
+          // Нам нужно сначала получить актуальный стейт, чтобы не затереть
+          const { data: current } = await supabase.from('lobbies').select('game_state').eq('id', lid).single();
+          if (current?.game_state) {
+             const mergedState = {
+                 ...current.game_state,
+                 players: data.newPlayers,
+                 status: data.newStatus
+             };
+             await supabase.from('lobbies').update({ game_state: mergedState }).eq('id', lid);
+          }
       }
   };
 
-  // Ручной выход (кнопка "Выйти")
-  const leaveGame = async () => {
-      await processDisconnect();
-  };
-
-  // Авто-выход при размонтировании (Навигация) и Закрытии вкладки
+  // Авто-выход (закрытие вкладки)
   useEffect(() => {
     const handleUnload = () => {
-        // keepalive fetch для надежности при закрытии вкладки
-        // Примечание: Для работы этого метода нужен прямой REST запрос,
-        // но так как Supabase JS SDK не поддерживает keepalive флаг нативно в методах,
-        // мы полагаемся на processDisconnect при навигации и best-effort при закрытии.
-        processDisconnect();
+        const { lobbyId: lid } = stateRef.current;
+        if (!lid) return;
+
+        const leaveData = prepareLeaveData();
+        if (!leaveData) return;
+
+        // Если нужно удалить лобби (все вышли)
+        if (leaveData.shouldDelete) {
+            const url = `${SUPABASE_URL}/rest/v1/lobbies?id=eq.${lid}`;
+            fetch(url, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${SUPABASE_KEY}`,
+                    'apikey': SUPABASE_KEY
+                },
+                keepalive: true
+            });
+        } else {
+            // Обновляем лобби.
+            // ВАЖНО: Мы не можем прочитать актуальный стейт в unload,
+            // поэтому используем то, что есть в ref (best effort).
+            // Это риск гонки данных, но лучше чем ничего.
+            const url = `${SUPABASE_URL}/rest/v1/lobbies?id=eq.${lid}`;
+            // Формируем payload для PATCH
+            // Нам нужно обновить game_state.
+            // В REST API Supabase мы шлем JSON объект
+            // Так как мы не можем сделать merge deep, мы шлем весь объект game_state который у нас был + изменения
+            const finalState = {
+                ...(gameState || {}), // Берем из замыкания, т.к. ref может быть устаревшим для глубоких полей
+                players: leaveData.newPlayers,
+                status: leaveData.newStatus
+            };
+
+            fetch(url, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${SUPABASE_KEY}`,
+                    'apikey': SUPABASE_KEY,
+                    'Prefer': 'return=minimal'
+                },
+                body: JSON.stringify({ game_state: finalState }),
+                keepalive: true
+            });
+        }
     };
 
     window.addEventListener('beforeunload', handleUnload);
     return () => {
         window.removeEventListener('beforeunload', handleUnload);
-        processDisconnect(); // Срабатывает при смене маршрута (нажатии Назад)
     };
-  }, []);
+  }, [gameState]); // Добавляем gameState в зависимости, чтобы handleUnload имел свежий стейт
 
 
   // --- 3. Игровые Действия ---
+
+  const performAction = async (actionType: string, targetId?: string) => {
+    if (!gameState || !userId) return;
+    const newState: GameState = JSON.parse(JSON.stringify(gameState));
+    if (!newState.players || newState.players.length === 0) return;
+
+    const playerIdx = newState.turnIndex;
+    const player = newState.players[playerIdx];
+
+    if (player.id !== userId) return;
+
+    let logAction = '';
+    const dict = DICTIONARY.ru.logs;
+
+    switch (actionType) {
+      case 'income': player.coins += 1; logAction = dict.income; break;
+      case 'aid': player.coins += 2; logAction = dict.aid; break;
+      case 'tax': player.coins += 3; logAction = dict.tax; break;
+      case 'steal':
+        if (targetId) {
+          const target = newState.players.find(p => p.id === targetId);
+          if (target) {
+            const stolen = Math.min(2, target.coins);
+            target.coins -= stolen;
+            player.coins += stolen;
+            logAction = dict.steal(target.name);
+          }
+        }
+        break;
+      case 'assassinate':
+        if (targetId && player.coins >= 3) {
+          player.coins -= 3;
+          const target = newState.players.find(p => p.id === targetId);
+          if (target) {
+            killPlayerCard(target);
+            logAction = dict.assassinate(target.name);
+          }
+        }
+        break;
+      case 'coup':
+        if (targetId && player.coins >= 7) {
+          player.coins -= 7;
+          const target = newState.players.find(p => p.id === targetId);
+          if (target) {
+            killPlayerCard(target);
+            logAction = dict.coup(target.name);
+          }
+        }
+        break;
+      case 'exchange':
+        // Упрощенный обмен
+        if (newState.deck.length >= 2) {
+             const currentHand = player.cards.filter(c => !c.revealed).map(c => c.role);
+             newState.deck.push(...currentHand);
+             newState.deck.sort(() => Math.random() - 0.5);
+             player.cards.forEach(c => {
+                 if(!c.revealed) c.role = newState.deck.pop()!;
+             });
+             logAction = dict.exchange;
+        }
+        break;
+    }
+
+    const winner = checkWinner(newState.players);
+    if (winner) {
+      newState.winner = winner;
+      newState.status = 'finished';
+      logAction += ` | ${dict.win}`;
+    } else {
+      newState.turnIndex = getNextTurn(newState.players, newState.turnIndex);
+    }
+
+    newState.logs.unshift({
+      user: player.name,
+      action: logAction,
+      time: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+    });
+    newState.logs = newState.logs.slice(0, 50);
+
+    await updateState(newState);
+  };
 
   const updateState = async (newState: GameState) => {
     setGameState(newState);
@@ -242,96 +361,6 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
 
     await supabase.from('lobbies').update({ status: 'playing', game_state: newState }).eq('id', lobbyId);
     setGameState(newState);
-  };
-
-  const performAction = async (actionType: string, targetId?: string) => {
-    if (!gameState || !userId) return;
-
-    const newState: GameState = JSON.parse(JSON.stringify(gameState));
-    if (!newState.players || newState.players.length === 0) return;
-
-    const playerIdx = newState.turnIndex;
-    const player = newState.players[playerIdx];
-
-    if (player.id !== userId) return;
-
-    let logAction = '';
-    const dict = DICTIONARY.ru.logs;
-
-    switch (actionType) {
-      case 'income':
-        player.coins += 1;
-        logAction = dict.income;
-        break;
-      case 'aid':
-        player.coins += 2;
-        logAction = dict.aid;
-        break;
-      case 'tax':
-        player.coins += 3;
-        logAction = dict.tax;
-        break;
-      case 'steal':
-        if (targetId) {
-          const target = newState.players.find(p => p.id === targetId);
-          if (target) {
-            const stolen = Math.min(2, target.coins);
-            target.coins -= stolen;
-            player.coins += stolen;
-            logAction = dict.steal(target.name);
-          }
-        }
-        break;
-      case 'assassinate':
-        if (targetId && player.coins >= 3) {
-          player.coins -= 3;
-          const target = newState.players.find(p => p.id === targetId);
-          if (target) {
-            killPlayerCard(target);
-            logAction = dict.assassinate(target.name);
-          }
-        }
-        break;
-      case 'coup':
-        if (targetId && player.coins >= 7) {
-          player.coins -= 7;
-          const target = newState.players.find(p => p.id === targetId);
-          if (target) {
-            killPlayerCard(target);
-            logAction = dict.coup(target.name);
-          }
-        }
-        break;
-      case 'exchange':
-        if (newState.deck.length >= 2) {
-             const currentHand = player.cards.filter(c => !c.revealed).map(c => c.role);
-             newState.deck.push(...currentHand);
-             newState.deck.sort(() => Math.random() - 0.5);
-             player.cards.forEach(c => {
-                 if(!c.revealed) c.role = newState.deck.pop()!;
-             });
-             logAction = dict.exchange;
-        }
-        break;
-    }
-
-    const winner = checkWinner(newState.players);
-    if (winner) {
-      newState.winner = winner;
-      newState.status = 'finished';
-      logAction += ` | ${dict.win}`;
-    } else {
-      newState.turnIndex = getNextTurn(newState.players, newState.turnIndex);
-    }
-
-    newState.logs.unshift({
-      user: player.name,
-      action: logAction,
-      time: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
-    });
-    newState.logs = newState.logs.slice(0, 50);
-
-    await updateState(newState);
   };
 
   return { gameState, roomMeta, loading, performAction, startGame, leaveGame };

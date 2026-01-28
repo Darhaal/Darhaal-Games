@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import {
   ArrowLeft, Search, Users, Lock, Play, X, Loader2,
-  Crown, Filter, ScrollText, KeyRound, Unlock
+  Crown, Filter, ScrollText, KeyRound, Unlock, SortAsc, SortDesc
 } from 'lucide-react';
 import { GameState, Player } from '@/types/coup';
 
@@ -14,7 +14,7 @@ interface LobbyRow {
   name: string;
   code: string;
   game_state: {
-      gameType?: string; // Добавляем поддержку типа игры
+      gameType?: string;
       players: Player[];
   } & GameState;
   status: string;
@@ -22,6 +22,8 @@ interface LobbyRow {
   password?: string;
   created_at: string;
 }
+
+type SortOption = 'newest' | 'oldest' | 'players-desc' | 'players-asc';
 
 function PlayContent() {
   const router = useRouter();
@@ -33,6 +35,7 @@ function PlayContent() {
   const [codeQuery, setCodeQuery] = useState('');
   const [filterCoup, setFilterCoup] = useState(true);
   const [filterMafia, setFilterMafia] = useState(true);
+  const [sortBy, setSortBy] = useState<SortOption>('newest');
 
   // --- Приватные комнаты ---
   const [selectedLobby, setSelectedLobby] = useState<LobbyRow | null>(null);
@@ -83,9 +86,10 @@ function PlayContent() {
 
     const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
 
+    // Используем реальные данные профиля
     const newPlayer: Player = {
       id: user.id,
-      name: profile?.username || 'Guest',
+      name: profile?.username || user.email?.split('@')[0] || 'Player',
       avatarUrl: profile?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`,
       coins: 2,
       cards: [],
@@ -117,16 +121,30 @@ function PlayContent() {
       }
   };
 
-  // --- Логика фильтрации ---
-  const filteredLobbies = lobbies.filter(l => {
-    const matchesSearch = l.name.toLowerCase().includes(search.toLowerCase());
-    const isCoup = !l.game_state.gameType || l.game_state.gameType === 'coup';
-    const isMafia = l.game_state.gameType === 'mafia';
+  // --- Логика фильтрации и сортировки ---
+  const processedLobbies = lobbies
+    .filter(l => {
+        const term = search.toLowerCase();
+        // Поиск по названию комнаты
+        const matchesRoomName = l.name.toLowerCase().includes(term);
+        // Поиск по нику игрока внутри комнаты
+        const matchesPlayerName = l.game_state.players.some(p => p.name.toLowerCase().includes(term));
 
-    const matchesType = (isCoup && filterCoup) || (isMafia && filterMafia);
+        const matchesSearch = matchesRoomName || matchesPlayerName;
 
-    return matchesSearch && matchesType;
-  });
+        const isCoup = !l.game_state.gameType || l.game_state.gameType === 'coup';
+        const isMafia = l.game_state.gameType === 'mafia';
+
+        const matchesType = (isCoup && filterCoup) || (isMafia && filterMafia);
+        return matchesSearch && matchesType;
+    })
+    .sort((a, b) => {
+        if (sortBy === 'newest') return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        if (sortBy === 'oldest') return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        if (sortBy === 'players-desc') return b.game_state.players.length - a.game_state.players.length;
+        if (sortBy === 'players-asc') return a.game_state.players.length - b.game_state.players.length;
+        return 0;
+    });
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-[#1A1F26] font-sans relative overflow-x-hidden">
@@ -180,7 +198,7 @@ function PlayContent() {
                         <Search className="w-5 h-5 text-[#8A9099]" />
                         <input
                             type="text"
-                            placeholder="Поиск по названию..."
+                            placeholder="Название или ник..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             className="w-full font-bold text-sm text-[#1A1F26] placeholder:text-[#E6E1DC] focus:outline-none"
@@ -188,15 +206,32 @@ function PlayContent() {
                     </div>
                 </div>
 
+                {/* Сортировка */}
+                <div className="bg-white p-6 rounded-[24px] border border-[#E6E1DC] shadow-sm">
+                    <div className="flex items-center gap-2 text-xs font-black text-[#8A9099] uppercase tracking-widest mb-4">
+                        <Filter className="w-4 h-4" /> Сортировка
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                        <button onClick={() => setSortBy('newest')} className={`p-2 rounded-lg text-[10px] font-bold uppercase transition-all ${sortBy === 'newest' ? 'bg-[#1A1F26] text-white' : 'bg-[#F5F5F0] text-[#8A9099]'}`}>Новые</button>
+                        <button onClick={() => setSortBy('oldest')} className={`p-2 rounded-lg text-[10px] font-bold uppercase transition-all ${sortBy === 'oldest' ? 'bg-[#1A1F26] text-white' : 'bg-[#F5F5F0] text-[#8A9099]'}`}>Старые</button>
+                        <button onClick={() => setSortBy('players-desc')} className={`p-2 rounded-lg text-[10px] font-bold uppercase transition-all flex items-center justify-center gap-1 ${sortBy === 'players-desc' ? 'bg-[#1A1F26] text-white' : 'bg-[#F5F5F0] text-[#8A9099]'}`}>
+                            Игроки <SortDesc className="w-3 h-3" />
+                        </button>
+                        <button onClick={() => setSortBy('players-asc')} className={`p-2 rounded-lg text-[10px] font-bold uppercase transition-all flex items-center justify-center gap-1 ${sortBy === 'players-asc' ? 'bg-[#1A1F26] text-white' : 'bg-[#F5F5F0] text-[#8A9099]'}`}>
+                            Игроки <SortAsc className="w-3 h-3" />
+                        </button>
+                    </div>
+                </div>
+
                 {/* Типы игр */}
                 <div className="bg-white p-6 rounded-[24px] border border-[#E6E1DC] shadow-sm space-y-4">
                     <div className="flex items-center gap-2 text-xs font-black text-[#8A9099] uppercase tracking-widest mb-2">
-                        <Filter className="w-4 h-4" /> Фильтры
+                        Режимы
                     </div>
 
                     <label className="flex items-center gap-4 cursor-pointer group">
                         <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${filterCoup ? 'bg-[#9e1316] border-[#9e1316]' : 'border-[#E6E1DC] bg-[#F5F5F0]'}`}>
-                            {filterCoup && <X className="w-4 h-4 text-white rotate-0" />} {/* Используем иконку галочки или крестика для стиля */}
+                            {filterCoup && <X className="w-4 h-4 text-white rotate-0" />}
                         </div>
                         <span className={`font-bold text-sm transition-colors ${filterCoup ? 'text-[#1A1F26]' : 'text-[#8A9099]'}`}>Coup (Переворот)</span>
                         <input type="checkbox" className="hidden" checked={filterCoup} onChange={() => setFilterCoup(!filterCoup)} />
@@ -219,7 +254,7 @@ function PlayContent() {
                         <Loader2 className="w-10 h-10 animate-spin text-[#9e1316] mb-4" />
                         <span className="text-xs font-bold uppercase tracking-widest text-[#8A9099]">Загрузка миров...</span>
                     </div>
-                ) : filteredLobbies.length === 0 ? (
+                ) : processedLobbies.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-20 border-2 border-dashed border-[#E6E1DC] rounded-[32px] bg-white/50">
                         <div className="w-16 h-16 bg-[#F5F5F0] rounded-full flex items-center justify-center mb-4">
                             <Search className="w-8 h-8 text-[#E6E1DC]" />
@@ -229,37 +264,35 @@ function PlayContent() {
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 gap-4">
-                        {filteredLobbies.map(lobby => {
-                            const host = lobby.game_state.players.find(p => p.isHost);
+                        {processedLobbies.map(lobby => {
+                            // Ищем хоста в массиве игроков
+                            const hostPlayer = lobby.game_state.players.find(p => p.isHost) || lobby.game_state.players[0];
                             const isFull = lobby.game_state.players.length >= 6;
                             const gameType = lobby.game_state.gameType || 'coup';
 
                             return (
                                 <div key={lobby.id} className="group bg-white border border-[#E6E1DC] p-5 rounded-[24px] flex flex-col sm:flex-row items-center gap-6 hover:shadow-xl hover:shadow-[#9e1316]/5 hover:border-[#9e1316]/30 transition-all duration-300 relative overflow-hidden">
-                                    {/* Декоративный фон при наведении */}
                                     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-[#F5F5F0] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
 
-                                    {/* Иконка игры */}
                                     <div className={`w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 shadow-inner ${gameType === 'coup' ? 'bg-[#9e1316]/10 text-[#9e1316]' : 'bg-[#1A1F26]/10 text-[#1A1F26]'}`}>
                                         {gameType === 'coup' ? <ScrollText className="w-8 h-8" /> : <Users className="w-8 h-8" />}
                                     </div>
 
-                                    {/* Информация */}
                                     <div className="flex-1 text-center sm:text-left z-10">
                                         <div className="flex items-center justify-center sm:justify-start gap-2 mb-1">
                                             <h3 className="font-black text-lg text-[#1A1F26] group-hover:text-[#9e1316] transition-colors">{lobby.name}</h3>
-                                            {lobby.is_private ? (
-                                                <Lock className="w-4 h-4 text-[#E6E1DC]" />
-                                            ) : (
-                                                <Unlock className="w-4 h-4 text-[#E6E1DC] opacity-50" />
-                                            )}
+                                            {lobby.is_private ? <Lock className="w-4 h-4 text-[#E6E1DC]" /> : <Unlock className="w-4 h-4 text-[#E6E1DC] opacity-50" />}
                                         </div>
 
                                         <div className="flex items-center justify-center sm:justify-start gap-4 text-xs font-bold text-[#8A9099] uppercase tracking-wide">
-                                            {host && (
-                                                <div className="flex items-center gap-1 bg-[#F5F5F0] px-2 py-1 rounded-lg">
-                                                    <Crown className="w-3 h-3 text-[#E6E1DC] fill-current" />
-                                                    {host.name}
+                                            {hostPlayer && (
+                                                <div className="flex items-center gap-2 bg-[#F5F5F0] px-2 py-1 rounded-lg pr-3">
+                                                    {hostPlayer.avatarUrl ? (
+                                                        <img src={hostPlayer.avatarUrl} alt={hostPlayer.name} className="w-5 h-5 rounded-full object-cover border border-white shadow-sm" />
+                                                    ) : (
+                                                        <Crown className="w-4 h-4 text-[#E6E1DC] fill-current" />
+                                                    )}
+                                                    <span className="truncate max-w-[100px] text-xs font-bold text-[#1A1F26]">{hostPlayer.name}</span>
                                                 </div>
                                             )}
                                             <span className="flex items-center gap-1">
@@ -271,7 +304,6 @@ function PlayContent() {
                                         </div>
                                     </div>
 
-                                    {/* Кнопка */}
                                     <button
                                         onClick={() => lobby.is_private ? setSelectedLobby(lobby) : handleJoin(lobby)}
                                         disabled={isFull}
