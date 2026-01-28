@@ -1,12 +1,19 @@
+'use client';
+
 import React, { useState, useEffect, useRef, useCallback, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowLeft, ScrollText, X, Info,
   Shield, Swords, Skull, Coins,
   Crown, RefreshCw, Loader2, Copy, Check, Clock, Globe,
   LogOut, RotateCcw, ChevronRight
 } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
+
+// --- Supabase Initialization ---
+// Инициализируем клиент напрямую, чтобы избежать ошибок разрешения путей в Canvas
+const supabaseUrl = 'https://amemndrojsaccfhtbsxc.supabase.com';
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFtZW1uZHJvanNhY2NmaHRic3hjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk1MjE2MDEsImV4cCI6MjA4NTA5NzYwMX0.G4RV8_5hF2eVdFA42QQSQGyTIWpjbQlosFnWxMBhp0g';
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // --- Configuration & Dictionary ---
 
@@ -180,9 +187,10 @@ const GameCard = ({ card, lang, onClick, selectable, selected }) => {
 // --- Main Content ---
 
 function CoupGameContent() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  // Реализация навигации через window для совместимости с Canvas
+  const searchParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
   const lobbyId = searchParams.get('id');
+  const navigate = (path) => { if (typeof window !== 'undefined') window.location.href = path; };
 
   const [user, setUser] = useState(null);
   const [lang, setLang] = useState('ru');
@@ -275,7 +283,6 @@ function CoupGameContent() {
     let newPlayers = JSON.parse(JSON.stringify(gameState.players));
     let me = newPlayers[gameState.turnIndex];
     let logMsg = '';
-    let updatedDeck = [...gameState.deck];
 
     switch (actionType) {
       case 'income':
@@ -310,8 +317,8 @@ function CoupGameContent() {
         logMsg = `${t.actions.coup} @${targetCoup.name}`;
         break;
       case 'exchange':
-        setExchangeMode({ active: true, tempHand: [], keptIndices: [] });
-        return; // Handled separately
+        startExchange();
+        return;
       default: break;
     }
 
@@ -338,8 +345,8 @@ function CoupGameContent() {
   };
 
   const startExchange = () => {
-    const me = gameState.players[gameState.turnIndex];
-    const myAliveCards = me.cards.filter(c => !c.revealed);
+    const mePlayer = gameState.players[gameState.turnIndex];
+    const myAliveCards = mePlayer.cards.filter(c => !c.revealed);
     const drawn = gameState.deck.slice(0, 2).map(role => ({ role, revealed: false }));
     setExchangeMode({
       active: true,
@@ -354,15 +361,13 @@ function CoupGameContent() {
     if (exchangeMode.keptIndices.length !== required) return;
 
     let newPlayers = JSON.parse(JSON.stringify(gameState.players));
-    let me = newPlayers[meIdx];
+    let mePlayer = newPlayers[meIdx];
     const kept = exchangeMode.keptIndices.map(i => exchangeMode.tempHand[i]);
     const returned = exchangeMode.tempHand.filter((_, i) => !exchangeMode.keptIndices.includes(i)).map(c => c.role);
 
-    // Update player cards
-    const revealedOnes = me.cards.filter(c => c.revealed);
-    me.cards = [...revealedOnes, ...kept];
+    const revealedOnes = mePlayer.cards.filter(c => c.revealed);
+    mePlayer.cards = [...revealedOnes, ...kept];
 
-    // Update deck
     const newDeck = shuffle([...gameState.deck.slice(2), ...returned]);
 
     await updateDB({
@@ -370,7 +375,7 @@ function CoupGameContent() {
       players: newPlayers,
       deck: newDeck,
       turnIndex: nextTurn(newPlayers),
-      logs: addLog(me.name, t.actions.exchange)
+      logs: addLog(mePlayer.name, t.actions.exchange)
     });
 
     setExchangeMode({ active: false, tempHand: [], keptIndices: [] });
@@ -406,17 +411,15 @@ function CoupGameContent() {
     </div>
   );
 
-  const me = gameState.players.find(p => p.id === user?.id);
-  const isHost = me?.isHost;
+  const mePlayer = gameState.players.find(p => p.id === user?.id);
+  const isHost = mePlayer?.isHost;
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-[#1A1F26] flex flex-col relative overflow-hidden font-sans">
-      {/* Background Texture */}
       <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-40 mix-blend-overlay pointer-events-none"></div>
 
-      {/* Header */}
       <header className="h-16 border-b border-[#E6E1DC] bg-white/80 backdrop-blur-md flex items-center justify-between px-6 z-40 shadow-sm">
-        <button onClick={() => router.push('/')} className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-400 hover:text-[#9E1316]">
+        <button onClick={() => navigate('/')} className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-400 hover:text-[#9E1316]">
           <ArrowLeft className="w-6 h-6" />
         </button>
         <div className="flex flex-col items-center">
@@ -434,10 +437,8 @@ function CoupGameContent() {
         </button>
       </header>
 
-      {/* Main Area */}
       <main className="flex-1 p-4 flex flex-col items-center justify-between z-10 max-w-7xl mx-auto w-full relative">
 
-        {/* LOBBY VIEW */}
         {gameState.status === 'waiting' && (
           <div className="flex-1 flex flex-col items-center justify-center w-full max-w-md animate-in fade-in zoom-in-95 duration-500">
             <div className="w-full bg-white p-8 rounded-[40px] border border-[#E6E1DC] shadow-2xl">
@@ -479,7 +480,6 @@ function CoupGameContent() {
           </div>
         )}
 
-        {/* GAME PLAYING VIEW */}
         {(gameState.status === 'playing' || gameState.status === 'finished') && (
           <div className="w-full flex-1 flex flex-col justify-between py-2">
 
@@ -545,9 +545,9 @@ function CoupGameContent() {
             </div>
 
             {/* My Area */}
-            {me && (
+            {mePlayer && (
               <div className="w-full max-w-4xl mx-auto flex flex-col items-center gap-4">
-                {me.isDead ? (
+                {mePlayer.isDead ? (
                   <div className="py-6 px-12 bg-white rounded-3xl border border-red-100 shadow-xl text-center">
                     <Skull className="w-12 h-12 text-red-500 mx-auto mb-2" />
                     <h2 className="text-2xl font-black text-gray-300 uppercase tracking-tight">{t.ui.eliminated}</h2>
@@ -557,19 +557,19 @@ function CoupGameContent() {
                     {/* Status Pill */}
                     <div className="flex items-center gap-6 bg-white px-8 py-3 rounded-full border border-[#E6E1DC] shadow-2xl relative z-20">
                       <div className="absolute -top-10 left-1/2 -translate-x-1/2">
-                        <PlayerAvatar url={me.avatarUrl} name={me.name} size="lg" border={isMyTurn} borderColor="border-[#9E1316]" />
+                        <PlayerAvatar url={mePlayer.avatarUrl} name={mePlayer.name} size="lg" border={isMyTurn} borderColor="border-[#9E1316]" />
                       </div>
                       <div className="flex items-center gap-2">
                         <Coins className="w-6 h-6 text-yellow-500" />
-                        <span className="text-2xl font-black tracking-tighter">{me.coins}</span>
+                        <span className="text-2xl font-black tracking-tighter">{mePlayer.coins}</span>
                       </div>
                       <div className="h-8 w-px bg-gray-100"></div>
-                      <div className="text-sm font-black uppercase tracking-widest text-gray-400">{me.name}</div>
+                      <div className="text-sm font-black uppercase tracking-widest text-gray-400">{mePlayer.name}</div>
                     </div>
 
                     {/* My Cards */}
                     <div className="flex gap-4 sm:gap-6 mt-2 perspective-1000">
-                      {me.cards.map((card, i) => (
+                      {mePlayer.cards.map((card, i) => (
                         <div key={i} className="animate-in slide-in-from-bottom-8 duration-500" style={{ transitionDelay: `${i * 100}ms` }}>
                           <GameCard card={card} lang={lang} />
                         </div>
@@ -585,12 +585,12 @@ function CoupGameContent() {
                       <ActionBtn onClick={() => handleAction('aid')} label={t.actions.aid} />
                       <ActionBtn onClick={() => handleAction('tax')} label={t.actions.tax} color="text-[#9E1316]" />
                       <ActionBtn onClick={() => setSelectionMode({ active: true, action: 'steal' })} label={t.actions.steal} color="text-[#2563EB]" />
-                      <ActionBtn onClick={() => setSelectionMode({ active: true, action: 'assassinate' })} label={t.actions.assassinate} disabled={me.coins < 3} />
+                      <ActionBtn onClick={() => setSelectionMode({ active: true, action: 'assassinate' })} label={t.actions.assassinate} disabled={mePlayer.coins < 3} />
                       <ActionBtn onClick={startExchange} label={t.actions.exchange} color="text-amber-600" />
                       <ActionBtn
                         onClick={() => setSelectionMode({ active: true, action: 'coup' })}
                         label={`${t.actions.coup} (-7)`}
-                        disabled={me.coins < 7}
+                        disabled={mePlayer.coins < 7}
                         bg="bg-[#1A1F26] text-white hover:bg-[#9E1316]"
                       />
                     </div>
@@ -710,7 +710,7 @@ function CoupGameContent() {
                 </button>
               )}
               <button
-                onClick={() => router.push('/play')}
+                onClick={() => navigate('/play')}
                 className="w-full py-5 bg-gray-100 text-[#1A1F26] font-black rounded-2xl uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-gray-200 transition-all"
               >
                 <LogOut className="w-5 h-5" /> {t.ui.leave}
@@ -747,7 +747,7 @@ const ActionBtn = ({ onClick, label, color = 'text-[#1A1F26]', bg = 'bg-gray-50/
   </button>
 );
 
-export default function CoupGame() {
+export default function App() {
   return (
     <Suspense fallback={<div className="h-screen flex items-center justify-center"><Loader2 className="w-12 h-12 animate-spin text-[#9E1316]" /></div>}>
       <CoupGameContent />
