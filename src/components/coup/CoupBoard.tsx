@@ -3,16 +3,16 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { Loader2, ArrowLeft, Coins, Clock, Crown, X } from 'lucide-react';
+import { Loader2, ArrowLeft, Coins, Clock, Crown, X, Shield } from 'lucide-react';
 import { useCoupGame } from '@/hooks/useCoupGame';
 import { ROLE_CONFIG, DICTIONARY } from '@/constants/coup';
 import { Role } from '@/types/coup';
 
-// --- Sub-components for UI ---
+// --- Мини-компоненты ---
 
 const CardView = ({ role, revealed, isMe, onClick, selected }: { role: Role, revealed: boolean, isMe: boolean, onClick?: () => void, selected?: boolean }) => {
   const config = ROLE_CONFIG[role];
-  const info = DICTIONARY.ru.roles[role]; // Hardcoded RU for consistency, can be dynamic
+  const info = DICTIONARY.ru.roles[role];
 
   return (
     <div
@@ -57,7 +57,7 @@ const ActionButton = ({ label, onClick, disabled, color = 'bg-white' }: any) => 
   </button>
 );
 
-// --- MAIN BOARD ---
+// --- ОСНОВНОЙ КОМПОНЕНТ ---
 
 export default function CoupBoard() {
   const searchParams = useSearchParams();
@@ -148,7 +148,7 @@ export default function CoupBoard() {
           })}
         </div>
 
-        {/* СТАТУС ИГРЫ */}
+        {/* СТАТУС ИГРЫ / ЛОГИ */}
         <div className="my-4 text-center">
           {gameState.status === 'waiting' ? (
             <div className="bg-white p-6 rounded-2xl border border-[#E6E1DC] shadow-sm max-w-md mx-auto">

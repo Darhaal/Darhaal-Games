@@ -4,8 +4,8 @@ import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import {
-  ArrowLeft, Users, Lock, Unlock, Copy, CheckCircle,
-  Crown, ScrollText, ArrowRight, Eye, EyeOff, Loader2
+  ArrowLeft, Users, Lock, Unlock,
+  ScrollText, ArrowRight, Eye, EyeOff, Loader2
 } from 'lucide-react';
 import { GameState, Player } from '@/types/coup';
 
@@ -50,22 +50,16 @@ const GAMES: Game[] = [
 function CreateLobbyContent() {
   const router = useRouter();
   const [lang, setLang] = useState<Lang>('ru');
-  const [step, setStep] = useState<'selection' | 'settings' | 'lobby'>('selection');
+  const [step, setStep] = useState<'selection' | 'settings'>('selection');
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
 
-  // Состояние настроек
+  // Настройки комнаты
   const [roomName, setRoomName] = useState('New Room');
   const [isPrivate, setIsPrivate] = useState(false);
   const [password, setPassword] = useState('');
   const [maxPlayers, setMaxPlayers] = useState(6);
   const [showPassword, setShowPassword] = useState(false);
-
-  // Состояние Лобби (Ожидания)
   const [loading, setLoading] = useState(false);
-  const [lobbyId, setLobbyId] = useState<string | null>(null);
-  const [lobbyCode, setLobbyCode] = useState('');
-  const [players, setPlayers] = useState<Player[]>([]);
-  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     const savedLang = localStorage.getItem('dg_lang') as Lang;
@@ -77,45 +71,26 @@ function CreateLobbyContent() {
       back: 'Назад',
       select: 'Выбор игры',
       settings: 'Настройки',
-      lobby: 'Лобби',
-      players: 'Игроков',
       name: 'Название',
       max: 'Макс. игроков',
       public: 'Открытая',
       private: 'Приватная',
-      pass: 'Пароль (для приватных)',
-      create: 'Создать',
-      code: 'Код лобби',
-      wait: 'Ожидание...',
-      start: 'Начать игру',
-      leave: 'Выйти',
-      copy: 'Скопировано',
-      host: 'Хост',
-      ready: 'Готов'
+      pass: 'Пароль',
+      create: 'Создать комнату',
     },
     en: {
       back: 'Back',
       select: 'Select Game',
       settings: 'Settings',
-      lobby: 'Lobby',
-      players: 'Players',
       name: 'Room Name',
       max: 'Max Players',
       public: 'Public',
       private: 'Private',
-      pass: 'Password (Required for private)',
-      create: 'Create',
-      code: 'Lobby Code',
-      wait: 'Waiting...',
-      start: 'Start Game',
-      leave: 'Leave',
-      copy: 'Copied',
-      host: 'Host',
-      ready: 'Ready'
+      pass: 'Password',
+      create: 'Create Room',
     }
   }[lang];
 
-  // 1. Создание лобби в БД
   const createLobby = async () => {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
@@ -132,7 +107,7 @@ function CreateLobbyContent() {
 
     const code = Math.random().toString(36).substring(2, 8).toUpperCase();
 
-    // Начальное состояние игры (соответствует types/coup.ts)
+    // Создаем начальное состояние игры
     const initialHost: Player = {
         id: user.id,
         name: hostName,
@@ -167,62 +142,10 @@ function CreateLobbyContent() {
         alert('Error: ' + error.message);
         setLoading(false);
     } else {
-        setLobbyId(data.id);
-        setLobbyCode(code);
-        setPlayers(initialState.players);
-        setStep('lobby');
-        setLoading(false);
+        // Перенаправляем на страницу игры, где будет отображено Лобби ожидания
+        router.push(`/game/coup?id=${data.id}`);
     }
   };
-
-  // 2. Подписка на обновления лобби
-  useEffect(() => {
-    if (step === 'lobby' && lobbyId) {
-        // Подгружаем актуальное состояние
-        supabase.from('lobbies').select('game_state, status').eq('id', lobbyId).single()
-          .then(({ data }) => {
-             if (data?.game_state?.players) setPlayers(data.game_state.players);
-          });
-
-        const channel = supabase.channel(`lobby_wait:${lobbyId}`)
-            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'lobbies', filter: `id=eq.${lobbyId}` }, (payload) => {
-                if (payload.new) {
-                    if (payload.new.game_state?.players) {
-                        setPlayers(payload.new.game_state.players);
-                    }
-                    if (payload.new.status === 'playing') {
-                        router.push(`/game/coup?id=${lobbyId}`);
-                    }
-                }
-            })
-            .subscribe();
-
-        return () => { supabase.removeChannel(channel); };
-    }
-  }, [step, lobbyId, router]);
-
-  const handleStartGame = async () => {
-      if (!lobbyId) return;
-      // Ставим статус playing, что триггерит переход у всех игроков
-      await supabase.from('lobbies').update({ status: 'playing' }).eq('id', lobbyId);
-      router.push(`/game/coup?id=${lobbyId}`);
-  };
-
-  const handleLeaveLobby = async () => {
-      if (!lobbyId) return;
-      await supabase.from('lobbies').delete().eq('id', lobbyId); // Удаляем лобби (MVP решение)
-      setStep('selection');
-      setSelectedGame(null);
-      setLobbyId(null);
-  };
-
-  const handleCopyLink = () => {
-    setCopied(true);
-    navigator.clipboard.writeText(lobbyCode);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  // --- UI Components ---
 
   const renderSelection = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-4xl animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -259,7 +182,7 @@ function CreateLobbyContent() {
 
             <div className="flex items-center gap-2 text-xs font-bold text-[#8A9099] uppercase tracking-wider">
               <Users className="w-4 h-4" />
-              {game.minPlayers}-{game.maxPlayers} Игроков
+              {game.minPlayers}-{game.maxPlayers} Players
             </div>
           </div>
         </button>
@@ -345,97 +268,22 @@ function CreateLobbyContent() {
     </div>
   );
 
-  const renderLobby = () => (
-    <div className="w-full max-w-4xl grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom-8 duration-500">
-
-      {/* Left: Info & Players */}
-      <div className="lg:col-span-2 space-y-6">
-        <div className="bg-white border border-[#E6E1DC] p-8 rounded-[32px] shadow-sm">
-          <div className="flex justify-between items-start mb-8 border-b border-[#E6E1DC] pb-6">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <h2 className="text-3xl font-black text-[#1A1F26] tracking-tight">{roomName}</h2>
-                {isPrivate && <Lock className="w-5 h-5 text-[#8A9099]" />}
-              </div>
-              <p className="text-sm font-bold text-[#9e1316] uppercase tracking-wider">{selectedGame?.name}</p>
-            </div>
-            <div className="text-right">
-              <div className="text-4xl font-black text-[#E6E1DC]">{players.length}<span className="text-lg text-[#8A9099]">/{maxPlayers}</span></div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {players.map((p) => (
-              <div key={p.id} className="bg-[#F5F5F0] p-4 rounded-2xl border border-[#E6E1DC] flex items-center gap-4 relative overflow-hidden transition-all hover:border-[#9e1316]/30 group">
-                {p.isHost && <div className="absolute top-2 right-2 text-[#9e1316]" title="Host"><Crown className="w-4 h-4" /></div>}
-                <div className="w-12 h-12 bg-white rounded-full border border-[#E6E1DC] flex items-center justify-center overflow-hidden">
-                    <img src={p.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-                </div>
-                <div>
-                  <div className="font-bold text-[#1A1F26] text-sm group-hover:text-[#9e1316] transition-colors">{p.name}</div>
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-600">{t.ready}</div>
-                </div>
-              </div>
-            ))}
-
-            {Array.from({ length: maxPlayers - players.length }).map((_, i) => (
-              <div key={`empty-${i}`} className="bg-white border border-dashed border-[#E6E1DC] p-4 rounded-2xl flex items-center gap-4 opacity-60">
-                <div className="w-12 h-12 bg-[#F5F5F0] rounded-full flex items-center justify-center"><div className="w-2 h-2 bg-[#E6E1DC] rounded-full animate-pulse" /></div>
-                <div className="text-xs font-bold text-[#8A9099] uppercase tracking-wider">{t.wait}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Right: Controls */}
-      <div className="space-y-6">
-        <div className="bg-white border border-[#E6E1DC] p-6 rounded-[24px] shadow-sm space-y-6">
-          <div className="space-y-2">
-            <label className="text-[10px] font-bold text-[#8A9099] uppercase tracking-wider ml-1">{t.code}</label>
-            <div onClick={handleCopyLink} className="group cursor-pointer bg-[#1A1F26] p-4 rounded-xl flex justify-between items-center hover:bg-[#9e1316] transition-colors shadow-lg shadow-[#1A1F26]/10 active:scale-95">
-              <span className="text-white font-mono text-xl font-bold tracking-widest">{lobbyCode}</span>
-              {copied ? <CheckCircle className="w-5 h-5 text-white animate-in zoom-in" /> : <Copy className="w-5 h-5 text-[#8A9099] group-hover:text-white transition-colors" />}
-            </div>
-          </div>
-          <div className="pt-4 border-t border-[#F5F5F0] space-y-3">
-            <div className="flex justify-between text-xs font-bold text-[#1A1F26]"><span>Статус</span><span className="text-[#9e1316] animate-pulse">{t.wait}</span></div>
-            <button
-                onClick={handleStartGame}
-                disabled={players.length < 2}
-                className="w-full bg-[#E6E1DC] hover:bg-[#9e1316] hover:text-white text-[#8A9099] font-bold py-4 rounded-xl transition-all flex justify-center items-center gap-2 text-xs uppercase tracking-widest disabled:opacity-50 disabled:hover:bg-[#E6E1DC] disabled:hover:text-[#8A9099] disabled:cursor-not-allowed"
-            >
-              {t.start}
-            </button>
-          </div>
-        </div>
-        <button onClick={handleLeaveLobby} className="w-full py-3 text-[#8A9099] hover:text-[#9e1316] font-bold text-xs uppercase tracking-widest transition-colors border border-transparent hover:border-[#9e1316]/20 rounded-xl">{t.leave}</button>
-      </div>
-    </div>
-  );
-
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center p-4 font-sans text-[#1A1F26] relative overflow-hidden">
       <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-50 brightness-100 contrast-150 mix-blend-overlay pointer-events-none"></div>
 
       <header className="w-full max-w-7xl p-6 flex items-center justify-between z-10 relative mb-8">
-        <button onClick={() => { if (step === 'selection') router.push('/'); else if (step === 'settings') setStep('selection'); else if (step === 'lobby') { if(confirm(t.leave + '?')) handleLeaveLobby(); } }} className="flex items-center gap-2 text-[#8A9099] hover:text-[#9e1316] transition-colors group">
+        <button onClick={() => { if (step === 'selection') router.push('/'); else setStep('selection'); }} className="flex items-center gap-2 text-[#8A9099] hover:text-[#9e1316] transition-colors group">
           <div className="p-3 bg-white border border-[#E6E1DC] rounded-xl group-hover:border-[#9e1316]/50 shadow-sm transition-all"><ArrowLeft className="w-5 h-5" /></div><span className="text-xs font-bold uppercase tracking-widest hidden sm:block">{t.back}</span>
         </button>
         <div className="flex flex-col items-center">
            <h1 className="text-xl font-black tracking-tight text-[#1A1F26] uppercase">{step === 'selection' ? t.select : t.settings}</h1>
-           <div className="flex gap-1 mt-2">
-             <div className={`w-8 h-1 rounded-full ${step === 'selection' ? 'bg-[#9e1316]' : 'bg-[#E6E1DC]'}`} />
-             <div className={`w-8 h-1 rounded-full ${step === 'settings' ? 'bg-[#9e1316]' : 'bg-[#E6E1DC]'}`} />
-             <div className={`w-8 h-1 rounded-full ${step === 'lobby' ? 'bg-[#9e1316]' : 'bg-[#E6E1DC]'}`} />
-           </div>
         </div>
         <div className="w-12"></div>
       </header>
       <div className="flex-1 w-full flex flex-col items-center justify-center relative z-10 pb-10">
         {step === 'selection' && renderSelection()}
         {step === 'settings' && renderSettings()}
-        {step === 'lobby' && renderLobby()}
       </div>
     </div>
   );

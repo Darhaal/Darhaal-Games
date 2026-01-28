@@ -3,7 +3,7 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { ArrowLeft, Search, Users, Lock, Play, X, Loader2, Filter, SortAsc, SortDesc } from 'lucide-react';
+import { ArrowLeft, Search, Users, Lock, Play, X, Loader2 } from 'lucide-react';
 import { GameState, Player } from '@/types/coup';
 
 interface LobbyRow {
@@ -22,7 +22,7 @@ function PlayContent() {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
 
-  // Приватные комнаты
+  // Для приватных комнат
   const [selectedLobby, setSelectedLobby] = useState<LobbyRow | null>(null);
   const [passwordInput, setPasswordInput] = useState('');
 
@@ -58,6 +58,7 @@ function PlayContent() {
       return;
     }
 
+    // Если уже в игре — просто редирект
     const existingPlayer = lobby.game_state.players.find(p => p.id === user.id);
     if (existingPlayer) {
       router.push(`/game/coup?id=${lobby.id}`);
@@ -102,57 +103,54 @@ function PlayContent() {
   );
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-[#1A1F26] p-4 font-sans relative overflow-hidden">
-      <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-50 brightness-100 contrast-150 mix-blend-overlay pointer-events-none"></div>
+    <div className="min-h-screen bg-[#F8FAFC] text-[#1A1F26] p-4 font-sans relative">
+       <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-50 brightness-100 contrast-150 mix-blend-overlay pointer-events-none"></div>
 
       <div className="max-w-4xl mx-auto w-full relative z-10">
-        <header className="flex items-center justify-between mb-8 pt-4">
-          <button onClick={() => router.push('/')} className="flex items-center gap-2 text-[#8A9099] hover:text-[#9e1316] transition-colors group">
-            <div className="p-2 bg-white border border-[#E6E1DC] rounded-lg shadow-sm group-hover:border-[#9e1316]/50"><ArrowLeft className="w-5 h-5" /></div>
+        <header className="flex items-center justify-between mb-8">
+          <button onClick={() => router.push('/')} className="flex items-center gap-2 text-gray-500 hover:text-[#9e1316]">
+            <div className="p-2 bg-white border rounded-lg shadow-sm"><ArrowLeft className="w-5 h-5" /></div>
             <span className="font-bold uppercase text-xs tracking-widest hidden sm:block">Назад</span>
           </button>
-          <h1 className="text-2xl font-black uppercase tracking-tight text-[#1A1F26]">Найти Игру</h1>
+          <h1 className="text-2xl font-black uppercase tracking-tight">Найти Игру</h1>
           <div className="w-10" />
         </header>
 
-        <div className="relative mb-8 group">
-          <Search className="absolute left-4 top-3.5 w-5 h-5 text-[#8A9099] group-focus-within:text-[#9e1316] transition-colors" />
+        <div className="relative mb-6">
+          <Search className="absolute left-4 top-3.5 w-5 h-5 text-gray-400" />
           <input
             type="text"
-            placeholder="Поиск лобби..."
+            placeholder="Поиск по названию..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full bg-white border border-[#E6E1DC] rounded-xl py-3 pl-12 pr-4 font-bold text-sm text-[#1A1F26] focus:outline-none focus:border-[#9e1316] focus:shadow-lg focus:shadow-[#9e1316]/5 transition-all"
+            className="w-full bg-white border border-gray-200 rounded-xl py-3 pl-12 pr-4 font-bold focus:outline-none focus:border-[#9e1316]"
           />
         </div>
 
         {loading ? (
-          <div className="flex justify-center py-20"><Loader2 className="animate-spin w-10 h-10 text-[#9e1316]" /></div>
+          <div className="flex justify-center py-10"><Loader2 className="animate-spin text-[#9e1316]" /></div>
         ) : (
           <div className="space-y-4">
             {filtered.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20 text-center border border-dashed border-[#E6E1DC] rounded-3xl bg-white/50">
-                <Search className="w-12 h-12 text-[#E6E1DC] mb-4" />
-                <div className="text-[#8A9099] font-bold uppercase tracking-widest">Игр не найдено</div>
-              </div>
+              <div className="text-center py-10 text-gray-400 font-bold uppercase">Игр не найдено</div>
             ) : (
               filtered.map(lobby => (
-                <div key={lobby.id} className="bg-white border border-[#E6E1DC] p-5 rounded-2xl flex flex-col sm:flex-row items-center justify-between hover:shadow-lg hover:border-[#9e1316]/30 transition-all group gap-4">
-                  <div className="flex-1 w-full sm:w-auto">
-                    <div className="flex items-center gap-3 mb-1">
-                      <h3 className="font-bold text-lg text-[#1A1F26] group-hover:text-[#9e1316] transition-colors">{lobby.name}</h3>
-                      {lobby.is_private && <Lock className="w-4 h-4 text-[#8A9099]" />}
+                <div key={lobby.id} className="bg-white border border-gray-200 p-4 rounded-2xl flex items-center justify-between hover:shadow-lg transition-all group">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="font-bold text-lg">{lobby.name}</h3>
+                      {lobby.is_private && <Lock className="w-4 h-4 text-gray-400" />}
                     </div>
-                    <div className="flex items-center gap-4 text-xs font-bold text-[#8A9099] uppercase tracking-wide">
-                      <span className="bg-[#F5F5F0] px-2 py-1 rounded">Coup</span>
-                      <span className={`flex items-center gap-1 ${lobby.game_state.players.length >= 6 ? 'text-[#9e1316]' : 'text-emerald-600'}`}>
+                    <div className="flex items-center gap-4 text-xs font-bold text-gray-400 uppercase">
+                      <span className="bg-gray-100 px-2 py-1 rounded">Coup</span>
+                      <span className="flex items-center gap-1 text-[#9e1316]">
                         <Users className="w-3 h-3" /> {lobby.game_state.players.length} / 6
                       </span>
                     </div>
                   </div>
                   <button
                     onClick={() => lobby.is_private ? setSelectedLobby(lobby) : handleJoin(lobby)}
-                    className="w-full sm:w-auto bg-[#1A1F26] text-white px-6 py-3 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-[#9e1316] transition-colors flex items-center justify-center gap-2 shadow-lg shadow-[#1A1F26]/10"
+                    className="bg-[#1A1F26] text-white px-6 py-3 rounded-xl font-bold text-xs uppercase hover:bg-[#9e1316] transition-colors flex items-center gap-2"
                   >
                     Войти <Play className="w-3 h-3" />
                   </button>
@@ -163,23 +161,20 @@ function PlayContent() {
         )}
 
         {selectedLobby && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-            <div className="bg-white p-8 rounded-[32px] w-full max-w-sm relative shadow-2xl border border-[#E6E1DC]">
-              <button onClick={() => setSelectedLobby(null)} className="absolute top-4 right-4 text-[#8A9099] hover:text-[#1A1F26]"><X className="w-6 h-6" /></button>
-              <div className="w-16 h-16 bg-[#F5F5F0] rounded-2xl flex items-center justify-center mx-auto mb-6 text-[#1A1F26]"><Lock className="w-8 h-8" /></div>
-              <h3 className="text-xl font-black mb-2 uppercase text-center text-[#1A1F26] tracking-tight">{selectedLobby.name}</h3>
-              <p className="text-xs text-center text-[#8A9099] font-bold uppercase tracking-wider mb-6">Введите пароль для входа</p>
-
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white p-6 rounded-3xl w-full max-w-sm relative shadow-2xl">
+              <button onClick={() => setSelectedLobby(null)} className="absolute top-4 right-4"><X className="w-5 h-5" /></button>
+              <h3 className="text-xl font-black mb-4 uppercase text-center">Приватная игра</h3>
               <input
                 type="password"
-                placeholder="Пароль"
-                className="w-full bg-[#F5F5F0] border-none rounded-xl py-4 px-5 text-center text-[#1A1F26] font-bold text-lg mb-4 focus:ring-2 focus:ring-[#9e1316]/20 transition-all placeholder:text-[#E6E1DC]"
+                placeholder="Введите пароль"
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 mb-4 text-center font-bold"
                 value={passwordInput}
                 onChange={e => setPasswordInput(e.target.value)}
               />
               <button
                 onClick={() => handleJoin(selectedLobby, passwordInput)}
-                className="w-full bg-[#1A1F26] text-white py-4 rounded-xl font-bold uppercase tracking-widest hover:bg-[#9e1316] transition-colors shadow-lg"
+                className="w-full bg-[#1A1F26] text-white py-3 rounded-xl font-bold uppercase hover:bg-[#9e1316]"
               >
                 Войти
               </button>
