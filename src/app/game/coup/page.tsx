@@ -11,7 +11,7 @@ import {
 import { supabase } from '@/lib/supabase';
 import { User } from '@supabase/supabase-js';
 
-// --- Types ---
+// --- Типы данных ---
 type Lang = 'ru' | 'en';
 type Card = { role: string; revealed: boolean };
 
@@ -33,19 +33,19 @@ type GameState = {
   logs: { user: string; action: string; time: string }[];
   status: 'waiting' | 'playing' | 'finished';
   winner?: string;
-  lastActionTime: number; // Для синхронизации таймера
+  lastActionTime: number;
 };
 
-// --- Dictionary & Config ---
+// --- Словарь и Конфигурация ---
 
 const DICTIONARY = {
   ru: {
     roles: {
-      duke: { name: 'Герцог', action: 'Налог (+3)', desc: 'Блок Помощи' },
-      assassin: { name: 'Ассасин', action: 'Убийство (-3)', desc: 'Устранение' },
-      captain: { name: 'Капитан', action: 'Кража (+2)', desc: 'Блок Кражи' },
-      ambassador: { name: 'Посол', action: 'Обмен', desc: 'Блок Кражи' },
-      contessa: { name: 'Графиня', action: '-', desc: 'Блок Убийства' },
+      duke: { name: 'Герцог (Duke)', action: 'Налог', desc: 'Берет 3 монеты из казны. Блокирует Иностранную помощь.' },
+      assassin: { name: 'Ассасин (Assassin)', action: 'Убийство', desc: 'Платит 3 монеты. Заставляет игрока потерять карту влияния.' },
+      captain: { name: 'Капитан (Captain)', action: 'Кража', desc: 'Крадет 2 монеты у другого игрока. Блокирует Кражу.' },
+      ambassador: { name: 'Посол (Ambassador)', action: 'Обмен', desc: 'Берет 2 карты из колоды, выбирает, возвращает 2. Блокирует Кражу.' },
+      contessa: { name: 'Графиня (Contessa)', action: '-', desc: 'Блокирует Убийство.' },
     },
     actions: {
       income: 'Доход',
@@ -92,11 +92,11 @@ const DICTIONARY = {
   },
   en: {
     roles: {
-      duke: { name: 'Duke', action: 'Tax (+3)', desc: 'Block Aid' },
-      assassin: { name: 'Assassin', action: 'Assassinate (-3)', desc: 'Eliminate' },
-      captain: { name: 'Captain', action: 'Steal (+2)', desc: 'Block Steal' },
-      ambassador: { name: 'Ambassador', action: 'Exchange', desc: 'Block Steal' },
-      contessa: { name: 'Contessa', action: '-', desc: 'Block Assassination' },
+      duke: { name: 'Duke', action: 'Tax', desc: 'Take 3 coins from treasury. Blocks Foreign Aid.' },
+      assassin: { name: 'Assassin', action: 'Assassinate', desc: 'Pay 3 coins. Force a player to lose an influence card.' },
+      captain: { name: 'Captain', action: 'Steal', desc: 'Steal 2 coins from another player. Blocks Stealing.' },
+      ambassador: { name: 'Ambassador', action: 'Exchange', desc: 'Take 2 cards from deck, choose, return 2. Blocks Stealing.' },
+      contessa: { name: 'Contessa', action: '-', desc: 'Blocks Assassination.' },
     },
     actions: {
       income: 'Income',
@@ -153,18 +153,20 @@ const getRoleConfig = (role: string, lang: Lang) => {
     ambassador: <RefreshCw className="w-5 h-5" />,
     contessa: <Shield className="w-5 h-5" />
   };
+
+  // Установлены цвета согласно запросу
   const colors: Record<string, string> = {
-    duke: '#9E1316',
-    assassin: '#7B1012',
-    captain: '#8C1215',
-    ambassador: '#B21A1E',
-    contessa: '#A31619'
+    duke: '#9E1316',       // Spartan Crimson
+    assassin: '#7B1012',   // Dark Red
+    ambassador: '#B21A1E', // Bright Red
+    captain: '#8C1215',    // Deep Red
+    contessa: '#A31619'    // Elegant Red
   };
 
   return { ...config, icon: icons[role] || icons.duke, color: colors[role] || colors.duke };
 };
 
-// --- Helpers ---
+// --- Вспомогательные функции ---
 
 const shuffleDeck = (array: string[]) => {
   const newArray = [...array];
@@ -183,7 +185,7 @@ const addLog = (currentLogs: any[], user: string, action: string, time: string) 
     return newLogs;
 };
 
-// --- Components ---
+// --- Компоненты ---
 
 const PlayerAvatar = React.memo(({ url, name, size = 'md', border = false, borderColor = 'border-white' }: { url: string, name: string, size?: 'sm' | 'md' | 'lg' | 'xl', border?: boolean, borderColor?: string }) => {
   const [error, setError] = useState(false);
@@ -271,7 +273,7 @@ const ActionButton = ({ onClick, label, color = 'text-[#1A1F26]', bg = 'bg-white
 );
 
 
-// --- Main Component ---
+// --- Основной компонент контента ---
 
 function CoupGameContent() {
   const router = useRouter();
@@ -284,7 +286,7 @@ function CoupGameContent() {
   const [lang, setLang] = useState<Lang>('ru');
   const [copied, setCopied] = useState(false);
 
-  // UI States
+  // Состояния UI
   const [timeLeft, setTimeLeft] = useState(30);
   const [selectionMode, setSelectionMode] = useState<{ active: boolean; action: string | null }>({ active: false, action: null });
   const [exchangeMode, setExchangeMode] = useState<{ active: boolean; tempHand: Card[]; keptIndices: number[] }>({ active: false, tempHand: [], keptIndices: [] });
@@ -300,7 +302,7 @@ function CoupGameContent() {
 
   const logRef = useRef<HTMLDivElement>(null);
 
-  // 1. Init & Lang
+  // 1. Инициализация и Язык
   useEffect(() => {
     const savedLang = localStorage.getItem('dg_lang') as Lang;
     if (savedLang) setLang(savedLang);
@@ -313,7 +315,7 @@ function CoupGameContent() {
     getUser();
   }, []);
 
-  // 2. Load & Subscribe
+  // 2. Загрузка и Realtime Подписка
   const fetchLobbyState = useCallback(async () => {
     if (!lobbyId) return;
     const { data } = await supabase.from('lobbies').select('game_state').eq('id', lobbyId).single();
@@ -333,6 +335,7 @@ function CoupGameContent() {
       .channel(`lobby:${lobbyId}`)
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'lobbies', filter: `id=eq.${lobbyId}` }, (payload: any) => {
         if (payload.new && payload.new.game_state) {
+          // Мгновенное обновление локального стейта при изменениях в БД
           setGameState(payload.new.game_state);
         }
       })
@@ -341,7 +344,7 @@ function CoupGameContent() {
     return () => { supabase.removeChannel(channel); };
   }, [lobbyId, router, fetchLobbyState]);
 
-  // 3. Auto-Join
+  // 3. Авто-вход
   useEffect(() => {
     if (!user || loading || gameState.status !== 'waiting') return;
     const imInGame = gameState.players.some(p => p.id === user.id);
@@ -349,7 +352,7 @@ function CoupGameContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, loading, gameState.status]);
 
-  // Auto-scroll logs
+  // Автопрокрутка логов
   useEffect(() => {
     if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
   }, [gameState.logs.length]);
@@ -357,9 +360,8 @@ function CoupGameContent() {
   const isMyTurn = user && gameState.players[gameState.turnIndex]?.id === user.id && !gameState.winner;
   const t = DICTIONARY[lang];
 
-  // 4. Timer Logic
+  // 4. Логика таймера
   useEffect(() => {
-    // Sync timer with server state if possible, or reset locally on turn change
     setTimeLeft(30);
   }, [gameState.turnIndex, gameState.status]);
 
@@ -370,7 +372,6 @@ function CoupGameContent() {
         setTimeLeft((prev) => {
             if (prev <= 1) {
                 if (isMyTurn && !selectionMode.active && !exchangeMode.active) {
-                    // Auto-action if my turn
                     handleIncome();
                 }
                 return 0;
@@ -383,10 +384,12 @@ function CoupGameContent() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isMyTurn, gameState.status, gameState.turnIndex]);
 
-  // --- Actions Logic Refactored ---
+  // --- Логика обновлений состояния ---
 
   const updateGameState = async (newState: GameState) => {
+    // Важно: сначала обновляем локально для мгновенного отклика (Optimistic UI)
     setGameState(newState);
+    // Затем отправляем в БД, что стриггерит Realtime событие для остальных
     await supabase.from('lobbies').update({ game_state: newState }).eq('id', lobbyId);
   };
 
@@ -413,12 +416,11 @@ function CoupGameContent() {
       return next;
   };
 
-  // --- Game Lifecycle ---
+  // --- Жизненный цикл игры ---
 
   const joinLobby = async () => {
     if (!user) return;
 
-    // Получаем свежие данные лобби напрямую, чтобы узнать истинного хоста
     const { data: lobbyData } = await supabase
       .from('lobbies')
       .select('host_id, game_state')
@@ -441,12 +443,18 @@ function CoupGameContent() {
       coins: 2,
       cards: [],
       isDead: false,
-      // Исправлено: игрок становится хостом только если он указан как создатель лобби в БД
       isHost: user.id === lobbyData.host_id,
       isReady: false
     };
 
-    await updateGameState({ ...gameState, players: [...currentPlayers, newPlayer] });
+    const newGameState = {
+      ...gameState,
+      // Сохраняем текущие данные игры (колоду, логи), добавляя только нового игрока
+      ...lobbyData.game_state,
+      players: [...currentPlayers, newPlayer]
+    };
+
+    await updateGameState(newGameState);
   };
 
   const startGame = async () => {
@@ -472,7 +480,6 @@ function CoupGameContent() {
   };
 
   const restartGame = async () => {
-    // Reset state but keep players
     const newPlayers = gameState.players.map(p => ({
         ...p, coins: 2, cards: [], isDead: false
     }));
@@ -485,7 +492,7 @@ function CoupGameContent() {
     });
   };
 
-  // --- Specific Action Handlers ---
+  // --- Обработчики действий ---
 
   const finalizeTurn = async (newPlayers: Player[], logText: string, currentDeck?: string[]) => {
       const currentPlayer = gameState.players[gameState.turnIndex];
@@ -517,25 +524,25 @@ function CoupGameContent() {
   };
 
   const handleIncome = async () => {
-      const newPlayers = [...gameState.players];
+      const newPlayers = JSON.parse(JSON.stringify(gameState.players));
       newPlayers[gameState.turnIndex].coins += 1;
       await finalizeTurn(newPlayers, t.logs.income);
   };
 
   const handleAid = async () => {
-      const newPlayers = [...gameState.players];
+      const newPlayers = JSON.parse(JSON.stringify(gameState.players));
       newPlayers[gameState.turnIndex].coins += 2;
       await finalizeTurn(newPlayers, t.logs.aid);
   };
 
   const handleTax = async () => {
-      const newPlayers = [...gameState.players];
+      const newPlayers = JSON.parse(JSON.stringify(gameState.players));
       newPlayers[gameState.turnIndex].coins += 3;
       await finalizeTurn(newPlayers, t.logs.tax);
   };
 
   const handleSteal = async (targetIndex: number) => {
-      const newPlayers = [...gameState.players];
+      const newPlayers = JSON.parse(JSON.stringify(gameState.players));
       const target = newPlayers[targetIndex];
       const stolen = Math.min(2, target.coins);
       target.coins -= stolen;
@@ -544,14 +551,14 @@ function CoupGameContent() {
   };
 
   const handleAssassinate = async (targetIndex: number) => {
-      const newPlayers = [...gameState.players];
+      const newPlayers = JSON.parse(JSON.stringify(gameState.players));
       newPlayers[gameState.turnIndex].coins -= 3;
       loseCard(targetIndex, newPlayers);
       await finalizeTurn(newPlayers, t.logs.assassinate(newPlayers[targetIndex].name));
   };
 
   const handleCoup = async (targetIndex: number) => {
-      const newPlayers = [...gameState.players];
+      const newPlayers = JSON.parse(JSON.stringify(gameState.players));
       newPlayers[gameState.turnIndex].coins -= 7;
       loseCard(targetIndex, newPlayers);
       await finalizeTurn(newPlayers, t.logs.coup(newPlayers[targetIndex].name));
@@ -568,7 +575,7 @@ function CoupGameContent() {
       }
   };
 
-  // --- Dispatcher ---
+  // --- Диспетчер действий ---
 
   const initiateAction = (actionType: string) => {
       const me = gameState.players[gameState.turnIndex];
@@ -603,7 +610,7 @@ function CoupGameContent() {
       setSelectionMode({ active: false, action: null });
   };
 
-  // --- Exchange Logic ---
+  // --- Логика обмена ---
 
   const handleExchangeStart = () => {
       const me = gameState.players[gameState.turnIndex];
@@ -634,7 +641,7 @@ function CoupGameContent() {
       newDeck.push(...returnedToDeck);
       newDeck = shuffleDeck(newDeck);
 
-      const newPlayers = [...gameState.players];
+      const newPlayers = JSON.parse(JSON.stringify(gameState.players));
       const oldRevealed = newPlayers[currentPlayerIdx].cards.filter(c => c.revealed);
       newPlayers[currentPlayerIdx].cards = [...oldRevealed, ...keptCards];
 
@@ -643,7 +650,7 @@ function CoupGameContent() {
   };
 
 
-  // --- Render ---
+  // --- Рендеринг ---
 
   if (loading) return <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-[#9e1316]" /></div>;
 
@@ -697,7 +704,7 @@ function CoupGameContent() {
                   {gameState.players.map(p => (
                       <div key={p.id} className="flex items-center gap-4 p-3 bg-[#F5F5F0] rounded-xl border border-[#E6E1DC]">
                           <PlayerAvatar url={p.avatarUrl} name={p.name} />
-                          <span className="font-bold flex-1 text-[#1A1F26]">{p.name} {p.id === user?.id && '(You)'}</span>
+                          <span className="font-bold flex-1 text-[#1A1F26]">{p.name} {p.id === user?.id && '(Вы)'}</span>
                           {p.isHost && <Crown className="w-4 h-4 text-[#9e1316]" />}
                       </div>
                   ))}
@@ -850,26 +857,31 @@ function CoupGameContent() {
         </div>
       )}
 
-      {/* Info Modal */}
+      {/* Модалка информации */}
       {showInfo && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
             <div className="bg-white p-8 rounded-3xl max-w-lg w-full relative">
                 <button onClick={() => setShowInfo(false)} className="absolute top-4 right-4 text-gray-400 hover:text-black"><X /></button>
                 <h2 className="text-2xl font-black mb-4">{t.ui.rules}</h2>
                 <div className="space-y-3 text-sm text-gray-600">
-                    {Object.entries(t.roles).map(([key, val]) => (
-                        <div key={key} className="flex justify-between border-b border-gray-100 pb-2">
-                            <span className="font-bold uppercase text-[#1A1F26]">{(val as any).name}</span>
-                            <span className="text-[#9e1316]">{(val as any).action}</span>
-                            <span className="text-gray-400">{(val as any).desc}</span>
-                        </div>
-                    ))}
+                    {Object.entries(t.roles).map(([key, val]) => {
+                        const roleStyle = getRoleConfig(key, lang);
+                        return (
+                          <div key={key} className="flex flex-col border-b border-gray-100 pb-2">
+                              <div className="flex justify-between items-center mb-1">
+                                <span className="font-bold uppercase" style={{ color: roleStyle.color }}>{(val as any).name}</span>
+                                <span className="text-[#1A1F26] font-semibold">{(val as any).action}</span>
+                              </div>
+                              <span className="text-gray-400 leading-tight">{(val as any).desc}</span>
+                          </div>
+                        );
+                    })}
                 </div>
             </div>
         </div>
       )}
 
-      {/* Exchange Modal */}
+      {/* Модалка обмена */}
       {exchangeMode.active && (
           <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
               <div className="bg-white p-8 rounded-[32px] max-w-3xl w-full border border-[#E6E1DC] shadow-2xl">
@@ -914,7 +926,7 @@ function CoupGameContent() {
           </div>
       )}
 
-      {/* Winner Overlay */}
+      {/* Экран победителя */}
       {gameState.status === 'finished' && gameState.winner && (
           <div className="absolute inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-500">
               <div className="bg-white p-10 rounded-[40px] border-2 border-[#9e1316] shadow-2xl text-center max-w-md w-full relative overflow-hidden">
@@ -941,7 +953,7 @@ function CoupGameContent() {
   );
 }
 
-// Wrap for Suspense
+// Обертка для Suspense
 export default function CoupGame() {
   return (
     <Suspense fallback={<div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-[#9e1316]" /></div>}>
