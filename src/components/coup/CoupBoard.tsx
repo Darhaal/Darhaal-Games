@@ -31,7 +31,7 @@ const GameCard = ({ role, revealed, isMe, onClick, selected, lang, small = false
   const info = DICTIONARY[lang].roles[role];
 
   // Адаптивные размеры
-  const dims = small ? 'w-16 h-24 sm:w-20 sm:h-28' : 'w-20 h-32 sm:w-24 sm:h-36 md:w-28 md:h-44';
+  const dims = small ? 'w-16 h-24 sm:w-20 sm:h-28' : 'w-24 h-36 sm:w-28 sm:h-44';
 
   return (
     <div className="flex flex-col items-center gap-1.5 group relative z-0">
@@ -59,21 +59,23 @@ const GameCard = ({ role, revealed, isMe, onClick, selected, lang, small = false
             <div className="flex-1 flex flex-col items-center justify-center z-10">
                 <div className="p-2 sm:p-3 rounded-full bg-white border-2 shadow-sm relative" style={{ borderColor: config.color }}>
                     <div className="absolute inset-0 rounded-full opacity-10" style={{ backgroundColor: config.color }} />
-                    <config.icon className={`${small ? 'w-5 h-5 sm:w-6 sm:h-6' : 'w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10'}`} style={{ color: config.color }} />
+                    <config.icon className={`${small ? 'w-5 h-5 sm:w-6 sm:h-6' : 'w-8 h-8 sm:w-10 sm:h-10'}`} style={{ color: config.color }} />
                 </div>
             </div>
 
-            {/* Stats - Скрываем на телефонах (они вынесены вниз) */}
+            {/* Stats - INTERNAL (Inside card) for all screens */}
             {!small && (
-                <div className="z-10 w-full space-y-0.5 sm:space-y-1 mt-auto hidden sm:block">
-                <div className="flex items-center gap-1 bg-gray-50 rounded p-0.5 sm:p-1 border border-gray-100">
-                    <Swords className="w-2 h-2 text-emerald-600" /><span className="text-[7px] sm:text-[8px] font-bold text-gray-600 truncate">{info.action}</span>
-                </div>
-                {info.block !== '-' && (
-                    <div className="flex items-center gap-1 bg-gray-50 rounded p-0.5 sm:p-1 border border-gray-100">
-                    <Shield className="w-2 h-2 text-red-600" /><span className="text-[7px] sm:text-[8px] font-bold text-gray-600 truncate">{info.block}</span>
+                <div className="z-10 w-full space-y-1 mt-auto">
+                    <div className="flex items-center gap-1 bg-gray-50/90 backdrop-blur-sm rounded p-1 border border-gray-100 shadow-sm">
+                        <Swords className="w-2.5 h-2.5 text-emerald-600 shrink-0" />
+                        <span className="text-[7px] sm:text-[8px] font-black text-gray-700 uppercase leading-none truncate">{info.action}</span>
                     </div>
-                )}
+                    {info.block !== '-' && (
+                        <div className="flex items-center gap-1 bg-gray-50/90 backdrop-blur-sm rounded p-1 border border-gray-100 shadow-sm">
+                            <Shield className="w-2.5 h-2.5 text-red-600 shrink-0" />
+                            <span className="text-[7px] sm:text-[8px] font-black text-gray-700 uppercase leading-none truncate">{info.block}</span>
+                        </div>
+                    )}
                 </div>
             )}
 
@@ -95,23 +97,6 @@ const GameCard = ({ role, revealed, isMe, onClick, selected, lang, small = false
             )}
         </div>
         </div>
-
-        {/* EXTERNAL STATS - Visible ONLY on mobile, under the card */}
-        {/* Changed style to DARK and HIGH CONTRAST */}
-        {!small && !revealed && (
-            <div className="block sm:hidden text-center space-y-1 w-full max-w-[80px] z-20 relative pointer-events-none">
-                <div className="flex items-center justify-center gap-1 bg-[#1A1F26] text-white rounded-lg px-2 py-1.5 shadow-md border border-gray-700">
-                    <Swords className="w-2.5 h-2.5 text-emerald-400 shrink-0" />
-                    <span className="text-[8px] font-black uppercase tracking-tight leading-none truncate">{info.action}</span>
-                </div>
-                {info.block !== '-' && (
-                    <div className="flex items-center justify-center gap-1 bg-[#1A1F26] text-white rounded-lg px-2 py-1.5 shadow-md border border-gray-700">
-                        <Shield className="w-2.5 h-2.5 text-red-400 shrink-0" />
-                        <span className="text-[8px] font-black uppercase tracking-tight leading-none truncate">{info.block}</span>
-                    </div>
-                )}
-            </div>
-        )}
     </div>
   );
 };
@@ -401,10 +386,10 @@ export default function CoupBoard() {
           })}
         </div>
 
-        {/* Reaction Bar */}
+        {/* Reaction Bar - MOVED TO TOP ON MOBILE (top-24) to avoid overlapping cards at bottom */}
         {!isMyTurn && phase !== 'choosing_action' && phase !== 'losing_influence' && phase !== 'resolving_exchange' && !me?.isDead && (
-            <div className="fixed bottom-60 sm:bottom-64 left-0 right-0 z-40 flex justify-center px-4 pointer-events-none">
-                <div className="bg-white/95 backdrop-blur-xl border border-[#9e1316] p-4 rounded-2xl shadow-2xl flex flex-col sm:flex-row items-center gap-4 pointer-events-auto animate-in slide-in-from-bottom-10 fade-in">
+            <div className="fixed top-24 sm:top-auto sm:bottom-64 left-0 right-0 z-[60] flex justify-center px-4 pointer-events-none">
+                <div className="bg-white/95 backdrop-blur-xl border border-[#9e1316] p-4 rounded-2xl shadow-2xl flex flex-col sm:flex-row items-center gap-4 pointer-events-auto animate-in slide-in-from-top-10 sm:slide-in-from-bottom-10 fade-in">
                     <div className="text-xs font-bold uppercase text-[#1A1F26] text-center">{gameState.currentAction?.player === userId ? t.waitingForResponse : `${gameState.currentAction?.type.toUpperCase()}!`}</div>
                     <div className="flex gap-2">
                         {!isActor && (phase.includes('challenges')) && <button onClick={challenge} className="bg-red-100 text-red-700 px-4 py-2 rounded-lg font-bold text-xs hover:bg-red-200 flex gap-2"><AlertOctagon className="w-4 h-4"/> {t.challenge}</button>}
@@ -423,7 +408,6 @@ export default function CoupBoard() {
               {isExchanging && <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-emerald-600 text-white px-6 py-2 rounded-full text-xs font-black uppercase shadow-lg z-30">{t.exchange}</div>}
 
               <div className="flex flex-col md:flex-row items-center justify-between gap-6 sm:gap-8">
-                {/* Changed gap to gap-6 and added bottom margin on mobile to separate cards from actions */}
                 <div className="flex justify-center gap-3 sm:gap-4 relative shrink-0 mb-4 sm:mb-0 z-0">
                   {me.cards.map((card, i) => <GameCard key={i} role={card.role} revealed={card.revealed} isMe={true} lang={lang} disabled={me.isDead} isLosing={isLosing && !card.revealed} onClick={() => resolveLoss(i)} />)}
                 </div>
