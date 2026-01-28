@@ -18,11 +18,11 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey);
 // --- Configuration & Dictionary ---
 
 const COLORS = {
-  duke: '#9E1316',       // Spartan Crimson
-  assassin: '#7B1012',   // Dark Red
-  ambassador: '#B21A1E', // Bright Red
-  captain: '#8C1215',    // Deep Red
-  contessa: '#A31619'    // Elegant Red
+  duke: '#6D28D9',
+  assassin: '#991B1B',
+  captain: '#1D4ED8',
+  ambassador: '#047857',
+  contessa: '#374151'
 };
 
 const DICTIONARY = {
