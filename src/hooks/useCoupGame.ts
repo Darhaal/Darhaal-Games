@@ -5,53 +5,87 @@ import { DICTIONARY } from '@/constants/coup';
 
 export function useCoupGame(lobbyId: string | null, userId: string | undefined) {
   const [gameState, setGameState] = useState<GameState | null>(null);
+  const [roomMeta, setRoomMeta] = useState<{ name: string; code: string; isHost: boolean } | null>(null);
   const [loading, setLoading] = useState(true);
 
   // --- 1. Синхронизация с Supabase ---
 
   const fetchLobbyState = useCallback(async () => {
     if (!lobbyId) return;
-    const { data, error } = await supabase
-      .from('lobbies')
-      .select('game_state')
-      .eq('id', lobbyId)
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from('lobbies')
+        .select('name, code, host_id, game_state')
+        .eq('id', lobbyId)
+        .single();
 
-    if (data?.game_state) {
-      setGameState(data.game_state);
+      if (error) throw error;
+
+      if (data) {
+        // Метаданные комнаты
+        setRoomMeta({
+            name: data.name,
+            code: data.code,
+            isHost: data.host_id === userId
+        });
+
+        // Состояние игры
+        if (data.game_state) {
+          const safeState = {
+            ...data.game_state,
+            players: data.game_state.players || []
+          };
+          setGameState(safeState);
+        }
+      }
+    } catch (e) {
+      console.error("Error fetching lobby:", e);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-  }, [lobbyId]);
+  }, [lobbyId, userId]);
 
   useEffect(() => {
-    if (!lobbyId) return;
+    if (!lobbyId || !userId) return;
     fetchLobbyState();
 
     const channel = supabase.channel(`lobby_coup:${lobbyId}`)
       .on('postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'lobbies', filter: `id=eq.${lobbyId}` },
         (payload) => {
-          if (payload.new?.game_state) {
-            setGameState(payload.new.game_state);
+          if (payload.new) {
+             // Обновляем состояние игры
+             if (payload.new.game_state) {
+                const safeState = {
+                    ...payload.new.game_state,
+                    players: payload.new.game_state.players || []
+                };
+                setGameState(safeState);
+             }
+             // Обновляем мету (на случай смены хоста, хотя в MVP это редкость)
+             if (roomMeta && payload.new.host_id !== undefined) {
+                 setRoomMeta(prev => prev ? ({ ...prev, isHost: payload.new.host_id === userId }) : null);
+             }
           }
         }
       )
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [lobbyId, fetchLobbyState]);
+  }, [lobbyId, userId, fetchLobbyState]); // Добавил userId в зависимости
 
   // --- 2. Утилиты Логики ---
 
   const updateState = async (newState: GameState) => {
-    setGameState(newState); // Оптимистичное обновление
+    setGameState(newState);
     await supabase.from('lobbies').update({ game_state: newState }).eq('id', lobbyId);
   };
 
+  // Переход хода с пропуском выбывших
   const getNextTurn = (players: Player[], currentIdx: number) => {
+    if (!players || players.length === 0) return 0;
     let next = (currentIdx + 1) % players.length;
     let loops = 0;
-    // Пропускаем мертвых игроков
     while (players[next].isDead && loops < players.length) {
       next = (next + 1) % players.length;
       loops++;
@@ -82,7 +116,8 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
     const roles: Role[] = ['duke', 'duke', 'duke', 'assassin', 'assassin', 'assassin', 'captain', 'captain', 'captain', 'ambassador', 'ambassador', 'ambassador', 'contessa', 'contessa', 'contessa'];
     const shuffled = roles.sort(() => Math.random() - 0.5);
 
-    const newPlayers = gameState.players.map(p => ({
+    // Раздаем карты
+    const newPlayers = (gameState.players || []).map(p => ({
       ...p,
       coins: 2,
       isDead: false,
@@ -102,22 +137,24 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
       winner: undefined
     };
 
-    await updateState(newState);
+    // Обновляем статус лобби в корне и стейт игры
+    await supabase.from('lobbies').update({ status: 'playing', game_state: newState }).eq('id', lobbyId);
+    setGameState(newState);
   };
 
   const performAction = async (actionType: string, targetId?: string) => {
     if (!gameState || !userId) return;
 
-    // Глубокая копия стейта
     const newState: GameState = JSON.parse(JSON.stringify(gameState));
+    if (!newState.players || newState.players.length === 0) return;
+
     const playerIdx = newState.turnIndex;
     const player = newState.players[playerIdx];
 
-    // Проверка очередности хода
     if (player.id !== userId) return;
 
     let logAction = '';
-    const dict = DICTIONARY.ru.logs; // Используем RU для логов по умолчанию
+    const dict = DICTIONARY.ru.logs;
 
     switch (actionType) {
       case 'income':
@@ -164,14 +201,10 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
         }
         break;
       case 'exchange':
-        // Упрощенная логика обмена: перемешиваем колоду, даем новые карты (для скорости игры)
         if (newState.deck.length >= 2) {
              const currentHand = player.cards.filter(c => !c.revealed).map(c => c.role);
-             // Возвращаем в колоду
              newState.deck.push(...currentHand);
-             // Перемешиваем
              newState.deck.sort(() => Math.random() - 0.5);
-             // Берем новые
              player.cards.forEach(c => {
                  if(!c.revealed) c.role = newState.deck.pop()!;
              });
@@ -180,7 +213,6 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
         break;
     }
 
-    // Проверка победителя
     const winner = checkWinner(newState.players);
     if (winner) {
       newState.winner = winner;
@@ -190,17 +222,15 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
       newState.turnIndex = getNextTurn(newState.players, newState.turnIndex);
     }
 
-    // Добавляем лог
     newState.logs.unshift({
       user: player.name,
       action: logAction,
       time: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
     });
-    // Ограничиваем историю
     newState.logs = newState.logs.slice(0, 50);
 
     await updateState(newState);
   };
 
-  return { gameState, loading, performAction, startGame };
+  return { gameState, roomMeta, loading, performAction, startGame };
 }
