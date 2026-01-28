@@ -9,6 +9,8 @@ import {
 } from 'lucide-react';
 import { GameState, Player } from '@/types/coup';
 
+type Lang = 'ru' | 'en';
+
 interface LobbyRow {
   id: string;
   name: string;
@@ -25,10 +27,66 @@ interface LobbyRow {
 
 type SortOption = 'newest' | 'oldest' | 'players-desc' | 'players-asc';
 
+const TRANSLATIONS = {
+  ru: {
+    title: 'Список Игр',
+    subtitle: 'Присоединяйся и побеждай',
+    codePlaceholder: 'КОД',
+    join: 'Войти',
+    searchPlaceholder: 'Название или ник...',
+    sort: 'Сортировка',
+    sortNew: 'Новые',
+    sortOld: 'Старые',
+    sortPlayers: 'Игроки',
+    modes: 'Режимы',
+    coup: 'Coup (Переворот)',
+    mafia: 'Mafia',
+    loading: 'Загрузка миров...',
+    empty: 'Ничего не найдено',
+    emptyDesc: 'Попробуйте изменить фильтры',
+    full: 'Full',
+    back: 'Вернуться',
+    private: 'Приватная комната',
+    enterPass: 'Введите пароль...',
+    confirm: 'Подтвердить',
+    errorPass: 'Неверный пароль',
+    errorAuth: 'Авторизуйтесь, чтобы играть',
+    errorFull: 'Комната заполнена',
+    errorNotFound: 'Лобби с таким кодом не найдено'
+  },
+  en: {
+    title: 'Game List',
+    subtitle: 'Join and conquer',
+    codePlaceholder: 'CODE',
+    join: 'Join',
+    searchPlaceholder: 'Name or host...',
+    sort: 'Sort By',
+    sortNew: 'Newest',
+    sortOld: 'Oldest',
+    sortPlayers: 'Players',
+    modes: 'Game Modes',
+    coup: 'Coup',
+    mafia: 'Mafia',
+    loading: 'Loading worlds...',
+    empty: 'No games found',
+    emptyDesc: 'Try changing filters',
+    full: 'Full',
+    back: 'Return',
+    private: 'Private Room',
+    enterPass: 'Enter password...',
+    confirm: 'Confirm',
+    errorPass: 'Invalid password',
+    errorAuth: 'Login required to play',
+    errorFull: 'Room is full',
+    errorNotFound: 'Lobby not found'
+  }
+};
+
 function PlayContent() {
   const router = useRouter();
   const [lobbies, setLobbies] = useState<LobbyRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [lang, setLang] = useState<Lang>('ru');
 
   // --- Фильтры ---
   const [search, setSearch] = useState('');
@@ -43,9 +101,14 @@ function PlayContent() {
 
   // Получаем ID пользователя для подсветки "своих" лобби
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setCurrentUserId(data.user?.id || null));
+    const savedLang = localStorage.getItem('dg_lang') as Lang;
+    if (savedLang) setLang(savedLang);
   }, []);
+
+  const t = TRANSLATIONS[lang];
 
   const fetchLobbies = async () => {
     const { data } = await supabase
@@ -69,13 +132,13 @@ function PlayContent() {
 
   const handleJoin = async (lobby: LobbyRow, pass?: string) => {
     if (lobby.is_private && lobby.password !== pass) {
-      alert('Неверный пароль');
+      alert(t.errorPass);
       return;
     }
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      alert('Авторизуйтесь, чтобы играть');
+      alert(t.errorAuth);
       return;
     }
 
@@ -86,7 +149,7 @@ function PlayContent() {
     }
 
     if (lobby.game_state.players.length >= 6) {
-      alert('Комната заполнена');
+      alert(t.errorFull);
       return;
     }
 
@@ -122,7 +185,7 @@ function PlayContent() {
           if (found.is_private) setSelectedLobby(found);
           else handleJoin(found);
       } else {
-          alert('Лобби с таким кодом не найдено');
+          alert(t.errorNotFound);
       }
   };
 
@@ -152,7 +215,7 @@ function PlayContent() {
     <div className="min-h-screen bg-[#F8FAFC] text-[#1A1F26] font-sans relative overflow-x-hidden flex flex-col">
       <div className="fixed inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-50 brightness-100 contrast-150 mix-blend-overlay pointer-events-none z-0"></div>
 
-      {/* Sticky Header: Гарантирует, что контент не перекрывает заголовок при скролле */}
+      {/* Sticky Header */}
       <header className="sticky top-0 z-30 w-full bg-[#F8FAFC]/90 backdrop-blur-xl border-b border-[#E6E1DC] shadow-sm">
         <div className="max-w-6xl mx-auto px-4 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
@@ -160,8 +223,8 @@ function PlayContent() {
                 <ArrowLeft className="w-5 h-5 text-[#8A9099] group-hover:text-[#9e1316]" />
             </button>
             <div>
-                <h1 className="text-2xl font-black text-[#1A1F26] uppercase tracking-tight leading-none">Список Игр</h1>
-                <p className="text-[10px] font-bold text-[#8A9099] uppercase tracking-wider mt-1 hidden sm:block">Присоединяйся и побеждай</p>
+                <h1 className="text-2xl font-black text-[#1A1F26] uppercase tracking-tight leading-none">{t.title}</h1>
+                <p className="text-[10px] font-bold text-[#8A9099] uppercase tracking-wider mt-1 hidden sm:block">{t.subtitle}</p>
             </div>
           </div>
 
@@ -171,7 +234,7 @@ function PlayContent() {
                 <KeyRound className="absolute left-3 top-2.5 w-4 h-4 text-[#E6E1DC]" />
                 <input
                     type="text"
-                    placeholder="КОД"
+                    placeholder={t.codePlaceholder}
                     value={codeQuery}
                     onChange={(e) => setCodeQuery(e.target.value.toUpperCase())}
                     className="w-full md:w-32 h-full pl-9 pr-3 font-mono font-bold text-sm text-[#1A1F26] placeholder:text-[#E6E1DC] focus:outline-none bg-transparent uppercase"
@@ -183,7 +246,7 @@ function PlayContent() {
                 disabled={codeQuery.length < 6}
                 className="bg-[#1A1F26] hover:bg-[#9e1316] text-white px-4 py-2 rounded-lg font-bold text-[10px] uppercase tracking-wider transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
              >
-                Войти
+                {t.join}
              </button>
           </div>
         </div>
@@ -192,7 +255,7 @@ function PlayContent() {
       <div className="max-w-6xl mx-auto w-full relative z-10 px-4 py-8 flex-1">
         <div className="flex flex-col lg:flex-row gap-8 items-start">
 
-            {/* САЙДБАР ФИЛЬТРОВ (Sticky on Desktop) */}
+            {/* САЙДБАР ФИЛЬТРОВ */}
             <aside className="w-full lg:w-72 space-y-6 lg:sticky lg:top-28">
 
                 {/* Поиск */}
@@ -201,7 +264,7 @@ function PlayContent() {
                         <Search className="w-5 h-5 text-[#8A9099] group-focus-within:text-[#9e1316]" />
                         <input
                             type="text"
-                            placeholder="Название или ник..."
+                            placeholder={t.searchPlaceholder}
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             className="w-full font-bold text-sm text-[#1A1F26] placeholder:text-[#E6E1DC] focus:outline-none"
@@ -212,16 +275,16 @@ function PlayContent() {
                 {/* Сортировка */}
                 <div className="bg-white p-6 rounded-[24px] border border-[#E6E1DC] shadow-sm">
                     <div className="flex items-center gap-2 text-xs font-black text-[#8A9099] uppercase tracking-widest mb-4">
-                        <Filter className="w-4 h-4" /> Сортировка
+                        <Filter className="w-4 h-4" /> {t.sort}
                     </div>
                     <div className="grid grid-cols-2 gap-2">
-                        <button onClick={() => setSortBy('newest')} className={`p-2 rounded-lg text-[10px] font-bold uppercase transition-all ${sortBy === 'newest' ? 'bg-[#1A1F26] text-white' : 'bg-[#F5F5F0] text-[#8A9099]'}`}>Новые</button>
-                        <button onClick={() => setSortBy('oldest')} className={`p-2 rounded-lg text-[10px] font-bold uppercase transition-all ${sortBy === 'oldest' ? 'bg-[#1A1F26] text-white' : 'bg-[#F5F5F0] text-[#8A9099]'}`}>Старые</button>
+                        <button onClick={() => setSortBy('newest')} className={`p-2 rounded-lg text-[10px] font-bold uppercase transition-all ${sortBy === 'newest' ? 'bg-[#1A1F26] text-white' : 'bg-[#F5F5F0] text-[#8A9099]'}`}>{t.sortNew}</button>
+                        <button onClick={() => setSortBy('oldest')} className={`p-2 rounded-lg text-[10px] font-bold uppercase transition-all ${sortBy === 'oldest' ? 'bg-[#1A1F26] text-white' : 'bg-[#F5F5F0] text-[#8A9099]'}`}>{t.sortOld}</button>
                         <button onClick={() => setSortBy('players-desc')} className={`p-2 rounded-lg text-[10px] font-bold uppercase transition-all flex items-center justify-center gap-1 ${sortBy === 'players-desc' ? 'bg-[#1A1F26] text-white' : 'bg-[#F5F5F0] text-[#8A9099]'}`}>
-                            Игроки <SortDesc className="w-3 h-3" />
+                            {t.sortPlayers} <SortDesc className="w-3 h-3" />
                         </button>
                         <button onClick={() => setSortBy('players-asc')} className={`p-2 rounded-lg text-[10px] font-bold uppercase transition-all flex items-center justify-center gap-1 ${sortBy === 'players-asc' ? 'bg-[#1A1F26] text-white' : 'bg-[#F5F5F0] text-[#8A9099]'}`}>
-                            Игроки <SortAsc className="w-3 h-3" />
+                            {t.sortPlayers} <SortAsc className="w-3 h-3" />
                         </button>
                     </div>
                 </div>
@@ -229,14 +292,14 @@ function PlayContent() {
                 {/* Типы игр */}
                 <div className="bg-white p-6 rounded-[24px] border border-[#E6E1DC] shadow-sm space-y-4">
                     <div className="flex items-center gap-2 text-xs font-black text-[#8A9099] uppercase tracking-widest mb-2">
-                        Режимы
+                        {t.modes}
                     </div>
 
                     <label className="flex items-center gap-4 cursor-pointer group hover:bg-[#F5F5F0] p-2 rounded-xl transition-colors -mx-2">
                         <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${filterCoup ? 'bg-[#9e1316] border-[#9e1316]' : 'border-[#E6E1DC] bg-white'}`}>
                             {filterCoup && <X className="w-4 h-4 text-white rotate-0" />}
                         </div>
-                        <span className={`font-bold text-sm transition-colors ${filterCoup ? 'text-[#1A1F26]' : 'text-[#8A9099]'}`}>Coup (Переворот)</span>
+                        <span className={`font-bold text-sm transition-colors ${filterCoup ? 'text-[#1A1F26]' : 'text-[#8A9099]'}`}>{t.coup}</span>
                         <input type="checkbox" className="hidden" checked={filterCoup} onChange={() => setFilterCoup(!filterCoup)} />
                     </label>
 
@@ -244,7 +307,7 @@ function PlayContent() {
                         <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${filterMafia ? 'bg-[#1A1F26] border-[#1A1F26]' : 'border-[#E6E1DC] bg-white'}`}>
                             {filterMafia && <X className="w-4 h-4 text-white rotate-0" />}
                         </div>
-                        <span className={`font-bold text-sm transition-colors ${filterMafia ? 'text-[#1A1F26]' : 'text-[#8A9099]'}`}>Mafia</span>
+                        <span className={`font-bold text-sm transition-colors ${filterMafia ? 'text-[#1A1F26]' : 'text-[#8A9099]'}`}>{t.mafia}</span>
                         <input type="checkbox" className="hidden" checked={filterMafia} onChange={() => setFilterMafia(!filterMafia)} />
                     </label>
                 </div>
@@ -255,15 +318,15 @@ function PlayContent() {
                 {loading ? (
                     <div className="flex flex-col items-center justify-center py-20 opacity-50">
                         <Loader2 className="w-10 h-10 animate-spin text-[#9e1316] mb-4" />
-                        <span className="text-xs font-bold uppercase tracking-widest text-[#8A9099]">Загрузка миров...</span>
+                        <span className="text-xs font-bold uppercase tracking-widest text-[#8A9099]">{t.loading}</span>
                     </div>
                 ) : processedLobbies.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-20 border-2 border-dashed border-[#E6E1DC] rounded-[32px] bg-white/50">
                         <div className="w-16 h-16 bg-[#F5F5F0] rounded-full flex items-center justify-center mb-4">
                             <Search className="w-8 h-8 text-[#E6E1DC]" />
                         </div>
-                        <div className="text-[#1A1F26] font-black text-lg mb-1">Ничего не найдено</div>
-                        <div className="text-[#8A9099] text-xs font-bold uppercase tracking-widest">Попробуйте изменить фильтры</div>
+                        <div className="text-[#1A1F26] font-black text-lg mb-1">{t.empty}</div>
+                        <div className="text-[#8A9099] text-xs font-bold uppercase tracking-widest">{t.emptyDesc}</div>
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 gap-4 pb-20">
@@ -284,7 +347,7 @@ function PlayContent() {
                                         {gameType === 'coup' ? <ScrollText className="w-8 h-8" /> : <Users className="w-8 h-8" />}
                                     </div>
 
-                                    {/* Инфо - min-w-0 предотвращает выход текста за пределы flex контейнера */}
+                                    {/* Инфо */}
                                     <div className="flex-1 text-center sm:text-left z-10 min-w-0">
                                         <div className="flex items-center justify-center sm:justify-start gap-2 mb-1">
                                             <h3 className="font-black text-lg text-[#1A1F26] group-hover:text-[#9e1316] transition-colors truncate">{lobby.name}</h3>
@@ -322,7 +385,7 @@ function PlayContent() {
                                                 }
                                             `}
                                         >
-                                            {isAlreadyIn ? 'Вернуться' : (isFull ? 'Full' : 'Войти')} <Play className="w-3 h-3 fill-current" />
+                                            {isAlreadyIn ? t.back : (isFull ? t.full : t.join)} <Play className="w-3 h-3 fill-current" />
                                         </button>
                                     </div>
                                 </div>
@@ -344,12 +407,12 @@ function PlayContent() {
               </div>
 
               <h3 className="text-xl font-black mb-2 uppercase text-center text-[#1A1F26] tracking-tight">{selectedLobby.name}</h3>
-              <p className="text-xs text-center text-[#8A9099] font-bold uppercase tracking-wider mb-8">Приватная комната</p>
+              <p className="text-xs text-center text-[#8A9099] font-bold uppercase tracking-wider mb-8">{t.private}</p>
 
               <div className="space-y-4">
                   <input
                     type="password"
-                    placeholder="Введите пароль..."
+                    placeholder={t.enterPass}
                     className="w-full bg-[#F5F5F0] border border-transparent focus:bg-white focus:border-[#9e1316] rounded-xl py-4 px-5 text-center text-[#1A1F26] font-bold text-lg transition-all outline-none placeholder:text-[#E6E1DC] placeholder:font-medium"
                     value={passwordInput}
                     onChange={e => setPasswordInput(e.target.value)}
@@ -358,7 +421,7 @@ function PlayContent() {
                     onClick={() => handleJoin(selectedLobby, passwordInput)}
                     className="w-full bg-[#1A1F26] text-white py-4 rounded-xl font-bold uppercase tracking-widest hover:bg-[#9e1316] transition-colors shadow-lg active:scale-95"
                   >
-                    Подтвердить
+                    {t.confirm}
                   </button>
               </div>
             </div>

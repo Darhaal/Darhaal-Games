@@ -34,64 +34,82 @@ const GameCard = ({ role, revealed, isMe, onClick, selected, lang, small = false
   const dims = small ? 'w-16 h-24 sm:w-20 sm:h-28' : 'w-20 h-32 sm:w-24 sm:h-36 md:w-28 md:h-44';
 
   return (
-    <div
-      onClick={!disabled ? onClick : undefined}
-      className={`
-        relative ${dims} perspective-1000 group transition-all duration-300 flex-shrink-0
-        ${selected ? '-translate-y-4 z-30 scale-105' : 'hover:-translate-y-2 z-10'}
-        ${disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}
-        ${isLosing ? 'ring-4 ring-red-500 rounded-2xl animate-pulse' : ''}
-      `}
-    >
-      <div className={`relative w-full h-full duration-500 preserve-3d transition-transform shadow-xl rounded-2xl ${(isMe || revealed) ? 'rotate-y-0' : ''}`}>
+    <div className="flex flex-col items-center gap-1 group">
+        <div
+        onClick={!disabled ? onClick : undefined}
+        className={`
+            relative ${dims} perspective-1000 transition-all duration-300 flex-shrink-0
+            ${selected ? '-translate-y-4 z-30 scale-105' : 'hover:-translate-y-2 z-10'}
+            ${disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}
+            ${isLosing ? 'ring-4 ring-red-500 rounded-2xl animate-pulse' : ''}
+        `}
+        >
+        <div className={`relative w-full h-full duration-500 preserve-3d transition-transform shadow-xl rounded-2xl ${(isMe || revealed) ? 'rotate-y-0' : ''}`}>
 
-        {/* FACE */}
-        <div className={`absolute inset-0 backface-hidden rounded-2xl border-[3px] overflow-hidden bg-white flex flex-col p-1.5 sm:p-2 ${revealed ? 'grayscale brightness-90' : ''}`} style={{ borderColor: config.color }}>
-           <div className="absolute inset-0 opacity-5 pointer-events-none bg-black" />
+            {/* FACE */}
+            <div className={`absolute inset-0 backface-hidden rounded-2xl border-[3px] overflow-hidden bg-white flex flex-col p-1.5 sm:p-2 ${revealed ? 'grayscale brightness-90' : ''}`} style={{ borderColor: config.color }}>
+            <div className="absolute inset-0 opacity-5 pointer-events-none bg-black" />
 
-           <div className="w-full flex justify-between items-start z-10 mb-1">
-              <span className="font-black text-[8px] sm:text-[10px] uppercase tracking-wider truncate" style={{ color: config.color }}>{info.name}</span>
-              <config.icon className="w-3 h-3 sm:w-4 sm:h-4 opacity-50" style={{ color: config.color }} />
-           </div>
+            <div className="w-full flex justify-between items-start z-10 mb-1">
+                <span className="font-black text-[8px] sm:text-[10px] uppercase tracking-wider truncate" style={{ color: config.color }}>{info.name}</span>
+                <config.icon className="w-3 h-3 sm:w-4 sm:h-4 opacity-50" style={{ color: config.color }} />
+            </div>
 
-           <div className="flex-1 flex flex-col items-center justify-center z-10">
-              <div className="p-2 sm:p-3 rounded-full bg-white border-2 shadow-sm relative" style={{ borderColor: config.color }}>
-                 <div className="absolute inset-0 rounded-full opacity-10" style={{ backgroundColor: config.color }} />
-                 <config.icon className={`${small ? 'w-5 h-5 sm:w-6 sm:h-6' : 'w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10'}`} style={{ color: config.color }} />
-              </div>
-           </div>
+            <div className="flex-1 flex flex-col items-center justify-center z-10">
+                <div className="p-2 sm:p-3 rounded-full bg-white border-2 shadow-sm relative" style={{ borderColor: config.color }}>
+                    <div className="absolute inset-0 rounded-full opacity-10" style={{ backgroundColor: config.color }} />
+                    <config.icon className={`${small ? 'w-5 h-5 sm:w-6 sm:h-6' : 'w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10'}`} style={{ color: config.color }} />
+                </div>
+            </div>
 
-           {/* Stats - Скрываем на совсем маленьких картах */}
-           {!small && (
-             <div className="z-10 w-full space-y-0.5 sm:space-y-1 mt-auto">
-               <div className="flex items-center gap-1 bg-gray-50 rounded p-0.5 sm:p-1 border border-gray-100">
-                 <Swords className="w-2 h-2 text-emerald-600" /><span className="text-[7px] sm:text-[8px] font-bold text-gray-600 truncate">{info.action}</span>
-               </div>
-               {info.block !== '-' && (
-                 <div className="flex items-center gap-1 bg-gray-50 rounded p-0.5 sm:p-1 border border-gray-100">
-                   <Shield className="w-2 h-2 text-red-600" /><span className="text-[7px] sm:text-[8px] font-bold text-gray-600 truncate">{info.block}</span>
-                 </div>
-               )}
-             </div>
-           )}
+            {/* Stats - Скрываем на совсем маленьких картах и на телефонах (где они вынесены наружу) */}
+            {!small && (
+                <div className="z-10 w-full space-y-0.5 sm:space-y-1 mt-auto hidden sm:block">
+                <div className="flex items-center gap-1 bg-gray-50 rounded p-0.5 sm:p-1 border border-gray-100">
+                    <Swords className="w-2 h-2 text-emerald-600" /><span className="text-[7px] sm:text-[8px] font-bold text-gray-600 truncate">{info.action}</span>
+                </div>
+                {info.block !== '-' && (
+                    <div className="flex items-center gap-1 bg-gray-50 rounded p-0.5 sm:p-1 border border-gray-100">
+                    <Shield className="w-2 h-2 text-red-600" /><span className="text-[7px] sm:text-[8px] font-bold text-gray-600 truncate">{info.block}</span>
+                    </div>
+                )}
+                </div>
+            )}
 
-           {revealed && (
-             <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center z-50 backdrop-blur-[1px]">
-               <Skull className="w-8 h-8 text-white drop-shadow-lg mb-1" />
-             </div>
-           )}
+            {revealed && (
+                <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center z-50 backdrop-blur-[1px]">
+                <Skull className="w-8 h-8 text-white drop-shadow-lg mb-1" />
+                </div>
+            )}
+            </div>
+
+            {/* BACK */}
+            {!revealed && !isMe && (
+            <div className="absolute inset-0 backface-hidden rounded-2xl bg-[#1A1F26] border-4 border-[#333] flex flex-col items-center justify-center shadow-inner">
+                <div className="absolute inset-4 border border-[#E6E1DC]/20 rounded-xl" />
+                <div className="w-12 h-12 rounded-full border-2 border-[#E6E1DC]/20 flex items-center justify-center bg-[#E6E1DC]/5">
+                    <Crown className="w-6 h-6 text-[#E6E1DC]" />
+                </div>
+            </div>
+            )}
+        </div>
         </div>
 
-        {/* BACK */}
-        {!revealed && !isMe && (
-          <div className="absolute inset-0 backface-hidden rounded-2xl bg-[#1A1F26] border-4 border-[#333] flex flex-col items-center justify-center shadow-inner">
-             <div className="absolute inset-4 border border-[#E6E1DC]/20 rounded-xl" />
-             <div className="w-12 h-12 rounded-full border-2 border-[#E6E1DC]/20 flex items-center justify-center bg-[#E6E1DC]/5">
-                <Crown className="w-6 h-6 text-[#E6E1DC]" />
-             </div>
-          </div>
+        {/* EXTERNAL STATS - Visible ONLY on mobile, under the card */}
+        {!small && !revealed && (
+            <div className="block sm:hidden text-center space-y-1 mt-1 animate-in fade-in w-full max-w-[80px]">
+                <div className="flex items-center justify-center gap-1 bg-white/90 backdrop-blur-sm rounded px-1.5 py-1 border border-gray-200 shadow-sm">
+                    <Swords className="w-2 h-2 text-emerald-600 shrink-0" />
+                    <span className="text-[7px] font-black text-gray-700 uppercase tracking-tight leading-none truncate">{info.action}</span>
+                </div>
+                {info.block !== '-' && (
+                    <div className="flex items-center justify-center gap-1 bg-white/90 backdrop-blur-sm rounded px-1.5 py-1 border border-gray-200 shadow-sm">
+                        <Shield className="w-2 h-2 text-red-600 shrink-0" />
+                        <span className="text-[7px] font-black text-gray-700 uppercase tracking-tight leading-none truncate">{info.block}</span>
+                    </div>
+                )}
+            </div>
         )}
-      </div>
     </div>
   );
 };

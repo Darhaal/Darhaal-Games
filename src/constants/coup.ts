@@ -2,11 +2,11 @@ import { Crown, Skull, Swords, RefreshCw, Shield } from 'lucide-react';
 import { Role } from '@/types/coup';
 
 export const ROLE_CONFIG: Record<Role, { color: string; icon: any }> = {
-  duke: { color: '#7C3AED', icon: Crown },       // Фиолетовый
-  assassin: { color: '#DC2626', icon: Skull },    // Красный
-  captain: { color: '#2563EB', icon: Swords },    // Синий
-  ambassador: { color: '#059669', icon: RefreshCw }, // Зеленый
-  contessa: { color: '#EA580C', icon: Shield }    // Оранжевый
+  duke: { color: '#5B2D8B', icon: Crown },       // Royal Amethyst
+  assassin: { color: '#8B1E1E', icon: Skull },    // Blood Crimson
+  captain: { color: '#1E3A8A', icon: Swords },    // Naval Blue
+  ambassador: { color: '#065F46', icon: RefreshCw }, // Emerald Council
+  contessa: { color: '#3F3F46', icon: Shield }    // Noble Charcoal
 };
 
 export const DICTIONARY = {
