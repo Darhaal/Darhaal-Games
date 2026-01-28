@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
@@ -34,3 +35,47 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+=======
+# Darhaal Game Dashboard
+
+Interactive game dashboard with Supabase authentication and multi-language support.
+
+## Description
+
+Darhaal Game Dashboard is a modern web application built with Next.js and React.  
+It allows users to log in, manage their profile, choose a language (English or Russian), and navigate a main menu with game-related actions.  
+The dashboard features smooth animations, responsive design, and a clean user interface.
+
+### Features
+
+- User authentication via Supabase (email and anonymous)
+- Profile management: username and avatar
+- Language selection: English / Russian
+- Main menu actions:
+  - Play: Find a game
+  - Create: Start a new room
+  - Achievements: Track progress
+  - Settings: Profile and app options
+- Smooth animations and hover effects
+- Responsive layout for mobile and desktop
+
+### Tech Stack
+
+- Next.js 13+ (App Router, client components)
+- React (useState, useEffect)
+- Supabase Auth
+- Tailwind CSS
+- Lucide React Icons
+
+### Folder Structure
+
+- `/components` — AuthForm, Settings
+- `/lib` — Supabase client
+- `/app/page.tsx` — main dashboard with menu
+
+### Getting Started
+
+1. Clone the repository:
+   ```bash
+   git clone <your-repo-url>
+>>>>>>> 1032d64122fc650596ff7d14272658389092ec71
