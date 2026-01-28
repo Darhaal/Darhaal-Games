@@ -7,6 +7,7 @@ import {
   ArrowLeft, Users, Lock, Unlock, Copy, CheckCircle,
   Crown, ScrollText, ArrowRight, Eye, EyeOff, Loader2
 } from 'lucide-react';
+import { GameState, Player } from '@/types/coup';
 
 type Lang = 'ru' | 'en';
 
@@ -52,22 +53,21 @@ function CreateLobbyContent() {
   const [step, setStep] = useState<'selection' | 'settings' | 'lobby'>('selection');
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
 
-  // State for creation
+  // Состояние настроек
   const [roomName, setRoomName] = useState('New Room');
   const [isPrivate, setIsPrivate] = useState(false);
   const [password, setPassword] = useState('');
   const [maxPlayers, setMaxPlayers] = useState(6);
   const [showPassword, setShowPassword] = useState(false);
 
-  // Lobby State
+  // Состояние Лобби (Ожидания)
   const [loading, setLoading] = useState(false);
   const [lobbyId, setLobbyId] = useState<string | null>(null);
   const [lobbyCode, setLobbyCode] = useState('');
-  const [players, setPlayers] = useState<any[]>([]);
+  const [players, setPlayers] = useState<Player[]>([]);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    // Load lang from local storage
     const savedLang = localStorage.getItem('dg_lang') as Lang;
     if (savedLang) setLang(savedLang);
   }, []);
@@ -83,7 +83,7 @@ function CreateLobbyContent() {
       max: 'Макс. игроков',
       public: 'Открытая',
       private: 'Приватная',
-      pass: 'Пароль (обязательно для приватных)',
+      pass: 'Пароль (для приватных)',
       create: 'Создать',
       code: 'Код лобби',
       wait: 'Ожидание...',
@@ -126,12 +126,32 @@ function CreateLobbyContent() {
         return;
     }
 
-    // Получаем профиль для красивого имени/аватара
     const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
     const hostName = profile?.username || 'Host';
     const hostAvatar = profile?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`;
 
     const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+
+    // Начальное состояние игры (соответствует types/coup.ts)
+    const initialHost: Player = {
+        id: user.id,
+        name: hostName,
+        avatarUrl: hostAvatar,
+        coins: 2,
+        cards: [],
+        isDead: false,
+        isHost: true,
+        isReady: true
+    };
+
+    const initialState: GameState = {
+        players: [initialHost],
+        deck: [],
+        turnIndex: 0,
+        logs: [],
+        status: 'waiting',
+        lastActionTime: Date.now()
+    };
 
     const { data, error } = await supabase.from('lobbies').insert({
         name: roomName,
@@ -140,20 +160,7 @@ function CreateLobbyContent() {
         code: code,
         is_private: isPrivate,
         password: isPrivate ? password : null,
-        game_state: {
-            players: [{
-                id: user.id,
-                name: hostName,
-                avatarUrl: hostAvatar,
-                isHost: true,
-                isReady: true
-            }],
-            deck: [],
-            turnIndex: 0,
-            logs: [],
-            status: 'waiting',
-            gameType: selectedGame?.id
-        }
+        game_state: initialState
     }).select().single();
 
     if (error) {
@@ -162,7 +169,7 @@ function CreateLobbyContent() {
     } else {
         setLobbyId(data.id);
         setLobbyCode(code);
-        setPlayers(data.game_state.players);
+        setPlayers(initialState.players);
         setStep('lobby');
         setLoading(false);
     }
@@ -171,10 +178,18 @@ function CreateLobbyContent() {
   // 2. Подписка на обновления лобби
   useEffect(() => {
     if (step === 'lobby' && lobbyId) {
-        const channel = supabase.channel(`lobby:${lobbyId}`)
+        // Подгружаем актуальное состояние
+        supabase.from('lobbies').select('game_state, status').eq('id', lobbyId).single()
+          .then(({ data }) => {
+             if (data?.game_state?.players) setPlayers(data.game_state.players);
+          });
+
+        const channel = supabase.channel(`lobby_wait:${lobbyId}`)
             .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'lobbies', filter: `id=eq.${lobbyId}` }, (payload) => {
-                if (payload.new && payload.new.game_state) {
-                    setPlayers(payload.new.game_state.players);
+                if (payload.new) {
+                    if (payload.new.game_state?.players) {
+                        setPlayers(payload.new.game_state.players);
+                    }
                     if (payload.new.status === 'playing') {
                         router.push(`/game/coup?id=${lobbyId}`);
                     }
@@ -188,14 +203,14 @@ function CreateLobbyContent() {
 
   const handleStartGame = async () => {
       if (!lobbyId) return;
+      // Ставим статус playing, что триггерит переход у всех игроков
       await supabase.from('lobbies').update({ status: 'playing' }).eq('id', lobbyId);
       router.push(`/game/coup?id=${lobbyId}`);
   };
 
   const handleLeaveLobby = async () => {
       if (!lobbyId) return;
-      // Простое удаление лобби при выходе хоста (для MVP)
-      await supabase.from('lobbies').delete().eq('id', lobbyId);
+      await supabase.from('lobbies').delete().eq('id', lobbyId); // Удаляем лобби (MVP решение)
       setStep('selection');
       setSelectedGame(null);
       setLobbyId(null);
@@ -206,6 +221,8 @@ function CreateLobbyContent() {
     navigator.clipboard.writeText(lobbyCode);
     setTimeout(() => setCopied(false), 2000);
   };
+
+  // --- UI Components ---
 
   const renderSelection = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-4xl animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -228,10 +245,6 @@ function CreateLobbyContent() {
             }
           `}
         >
-          {!game.disabled && (
-            <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-[#9e1316]/5 opacity-0 group-hover:opacity-100 rounded-[32px] transition-opacity duration-300 pointer-events-none" />
-          )}
-
           <div className={`mb-6 p-5 w-fit rounded-2xl border transition-all duration-300 ${game.disabled ? 'bg-[#F5F5F0] border-[#E6E1DC]' : 'bg-[#F5F5F0] border-[#E6E1DC] group-hover:bg-[#9e1316] group-hover:text-white group-hover:border-[#9e1316]'}`}>
             {game.icon}
           </div>
@@ -256,7 +269,6 @@ function CreateLobbyContent() {
 
   const renderSettings = () => (
     <div className="w-full max-w-lg bg-white border border-[#E6E1DC] p-10 rounded-[32px] shadow-2xl shadow-[#9e1316]/5 relative animate-in zoom-in-95 duration-300">
-
       <div className="mb-8 flex items-center gap-4 border-b border-[#E6E1DC] pb-6">
         <div className="p-4 bg-[#9e1316]/10 rounded-2xl text-[#9e1316]">
           {selectedGame?.icon}
@@ -415,6 +427,7 @@ function CreateLobbyContent() {
            <div className="flex gap-1 mt-2">
              <div className={`w-8 h-1 rounded-full ${step === 'selection' ? 'bg-[#9e1316]' : 'bg-[#E6E1DC]'}`} />
              <div className={`w-8 h-1 rounded-full ${step === 'settings' ? 'bg-[#9e1316]' : 'bg-[#E6E1DC]'}`} />
+             <div className={`w-8 h-1 rounded-full ${step === 'lobby' ? 'bg-[#9e1316]' : 'bg-[#E6E1DC]'}`} />
            </div>
         </div>
         <div className="w-12"></div>
