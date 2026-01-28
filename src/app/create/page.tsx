@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import {
   ArrowLeft, Users, Lock, Unlock,
-  ScrollText, ArrowRight, Eye, EyeOff, Loader2, Gamepad2
+  ScrollText, ArrowRight, Eye, EyeOff, Loader2
 } from 'lucide-react';
 import { GameState, Player } from '@/types/coup';
 
@@ -47,144 +47,127 @@ const GAMES: Game[] = [
   },
 ];
 
-function CreateLobbyContent() {
+export default function CreatePage() {
   const router = useRouter();
+  const [user, setUser] = useState<any>(null);
   const [lang, setLang] = useState<Lang>('ru');
   const [step, setStep] = useState<'selection' | 'settings'>('selection');
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
 
-  // Настройки комнаты
-  const [roomName, setRoomName] = useState('New Room');
+  // Settings
   const [isPrivate, setIsPrivate] = useState(false);
   const [password, setPassword] = useState('');
-  const [maxPlayers, setMaxPlayers] = useState(6);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setUser(data.user));
     const savedLang = localStorage.getItem('dg_lang') as Lang;
     if (savedLang) setLang(savedLang);
   }, []);
 
   const t = {
     ru: {
+      select: 'Выберите игру',
+      settings: 'Настройки комнаты',
+      create: 'Создать',
       back: 'Назад',
-      select: 'Выбор игры',
-      settings: 'Настройки',
-      name: 'Название',
-      max: 'Макс. игроков',
-      public: 'Открытая',
-      private: 'Приватная',
-      pass: 'Пароль',
-      create: 'Создать комнату',
+      private: 'Приватная комната',
+      password: 'Пароль',
+      players: 'Игроков',
+      comingSoon: 'Скоро'
     },
     en: {
-      back: 'Back',
       select: 'Select Game',
-      settings: 'Settings',
-      name: 'Room Name',
-      max: 'Max Players',
-      public: 'Public',
-      private: 'Private',
-      pass: 'Password',
-      create: 'Create Room',
+      settings: 'Room Settings',
+      create: 'Create',
+      back: 'Back',
+      private: 'Private Room',
+      password: 'Password',
+      players: 'Players',
+      comingSoon: 'Coming Soon'
     }
   }[lang];
 
-  const createLobby = async () => {
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedGame || !user) return;
     setLoading(true);
-    const { data: { user } } = await supabase.auth.getUser();
 
-    if (!user) {
-        alert(lang === 'ru' ? 'Нужно войти в систему!' : 'Login required!');
-        setLoading(false);
-        return;
-    }
+    try {
+      const code = Math.floor(1000 + Math.random() * 9000).toString();
 
-    const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
-    const hostName = profile?.username || user.user_metadata?.username || user.user_metadata?.full_name || user.email?.split('@')[0] || 'Host';
-    const hostAvatar = user.user_metadata?.avatar_url || profile?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`;
-
-    const code = Math.random().toString(36).substring(2, 8).toUpperCase();
-
-    // Начальное состояние игры
-    const initialHost: Player = {
+      const initialHost: Player = {
         id: user.id,
-        name: hostName,
-        avatarUrl: hostAvatar,
+        name: user.user_metadata?.username || user.email?.split('@')[0] || 'Host',
+        avatarUrl: user.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`,
         coins: 2,
         cards: [],
         isDead: false,
         isHost: true,
         isReady: true
-    };
+      };
 
-    // ИСПРАВЛЕНО: Инициализация соответствует типу GameState из src/types/coup.ts
-    const initialState: GameState = {
+      // ИСПРАВЛЕНИЕ: Добавлены поля lastActionTime и version
+      const initialState: GameState = {
         players: [initialHost],
         deck: [],
         turnIndex: 0,
         logs: [],
         status: 'waiting',
-        phase: 'choosing_action', // Начальная фаза
-        currentAction: null
-    };
+        phase: 'choosing_action',
+        currentAction: null,
+        lastActionTime: Date.now(),
+        version: 1
+      };
 
-    const { data, error } = await supabase.from('lobbies').insert({
-        name: roomName,
+      const { data, error } = await supabase.from('lobbies').insert({
+        code,
+        name: `${selectedGame.name} Lobby`,
         host_id: user.id,
-        status: 'waiting',
-        code: code,
         is_private: isPrivate,
         password: isPrivate ? password : null,
-        game_state: initialState
-    }).select().single();
+        game_type: selectedGame.id,
+        status: 'waiting',
+        game_state: initialState,
+      }).select().single();
 
-    if (error) {
-        alert('Error: ' + error.message);
-        setLoading(false);
-    } else {
-        router.push(`/game/coup?id=${data.id}`);
+      if (error) throw error;
+
+      router.push(`/play?id=${data.id}`);
+    } catch (error: any) {
+      alert('Error creating lobby: ' + error.message);
+      setLoading(false);
     }
   };
 
   const renderSelection = () => (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-4xl animate-in fade-in slide-in-from-bottom-4 duration-500">
-      {GAMES.map((game) => (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-2xl animate-in zoom-in-95 duration-300">
+      {GAMES.map(game => (
         <button
           key={game.id}
+          onClick={() => { if (!game.disabled) { setSelectedGame(game); setStep('settings'); } }}
           disabled={game.disabled}
-          onClick={() => {
-            setSelectedGame(game);
-            setMaxPlayers(game.maxPlayers);
-            setStep('settings');
-          }}
           className={`
-            group relative flex flex-col p-8 h-80 text-left
-            bg-white border border-[#E6E1DC] rounded-[32px] shadow-sm
-            transition-all duration-300
+            relative group overflow-hidden bg-white border border-[#E6E1DC] rounded-[32px] p-6 text-left transition-all duration-300
             ${game.disabled
               ? 'opacity-60 cursor-not-allowed grayscale'
-              : 'hover:border-[#9e1316] hover:-translate-y-2 hover:shadow-2xl hover:shadow-[#9e1316]/10'
+              : 'hover:border-[#9e1316] hover:shadow-xl hover:shadow-[#9e1316]/10 hover:-translate-y-1'
             }
           `}
         >
-          <div className={`mb-6 p-5 w-fit rounded-2xl border transition-all duration-300 ${game.disabled ? 'bg-[#F5F5F0] border-[#E6E1DC]' : 'bg-[#F5F5F0] border-[#E6E1DC] group-hover:bg-[#9e1316] group-hover:text-white group-hover:border-[#9e1316]'}`}>
-            {game.icon}
+          <div className="flex justify-between items-start mb-4">
+             <div className={`p-4 rounded-2xl ${game.disabled ? 'bg-gray-100' : 'bg-[#F5F5F0] group-hover:bg-[#9e1316]/5 transition-colors'}`}>
+               {game.icon}
+             </div>
+             {game.disabled && <span className="text-[10px] font-bold uppercase bg-gray-100 px-2 py-1 rounded text-gray-400">{t.comingSoon}</span>}
           </div>
+          <h3 className="text-2xl font-black text-[#1A1F26] mb-2">{game.name}</h3>
+          <p className="text-sm text-[#8A9099] font-medium leading-relaxed mb-4">{game.desc[lang]}</p>
 
-          <div className="mt-auto relative z-10">
-            <h3 className={`text-2xl font-black mb-2 uppercase tracking-tight ${game.disabled ? 'text-[#8A9099]' : 'text-[#1A1F26] group-hover:text-[#9e1316]'}`}>
-              {game.name}
-            </h3>
-            <p className="text-sm text-[#8A9099] font-medium mb-4 line-clamp-2">
-              {game.disabled ? 'Coming Soon' : game.desc[lang]}
-            </p>
-
-            <div className="flex items-center gap-2 text-xs font-bold text-[#8A9099] uppercase tracking-wider">
-              <Users className="w-4 h-4" />
-              {game.minPlayers}-{game.maxPlayers} Players
-            </div>
+          <div className="flex items-center gap-2 text-xs font-bold text-[#1A1F26] uppercase tracking-wider">
+            <Users className="w-4 h-4 text-[#9e1316]" />
+            {game.minPlayers}-{game.maxPlayers} {t.players}
           </div>
         </button>
       ))}
@@ -192,88 +175,58 @@ function CreateLobbyContent() {
   );
 
   const renderSettings = () => (
-    <div className="w-full max-w-lg bg-white border border-[#E6E1DC] p-10 rounded-[32px] shadow-2xl shadow-[#9e1316]/5 relative animate-in zoom-in-95 duration-300">
-      <div className="mb-8 flex items-center gap-4 border-b border-[#E6E1DC] pb-6">
-        <div className="p-4 bg-[#9e1316]/10 rounded-2xl text-[#9e1316]">
-          {selectedGame?.icon}
-        </div>
-        <div>
-          <h2 className="text-2xl font-black text-[#1A1F26] uppercase tracking-tight">{selectedGame?.name}</h2>
-          <p className="text-xs font-bold text-[#8A9099] uppercase tracking-wider">{t.settings}</p>
-        </div>
-      </div>
-
-      <div className="space-y-6">
-        <div className="space-y-2">
-          <label className="text-[10px] font-bold text-[#8A9099] uppercase tracking-wider ml-1">{t.name}</label>
-          <input
-            type="text"
-            value={roomName}
-            onChange={(e) => setRoomName(e.target.value)}
-            className="w-full bg-[#F5F5F0] border border-transparent rounded-xl py-3 px-4 text-[#1A1F26] font-bold text-sm focus:outline-none focus:bg-white focus:border-[#9e1316] focus:ring-4 focus:ring-[#9e1316]/5 transition-all placeholder:text-[#E6E1DC]"
-          />
-        </div>
-
-        <div className="space-y-4">
-          <div className="flex justify-between items-center">
-            <label className="text-[10px] font-bold text-[#8A9099] uppercase tracking-wider ml-1">{t.max}</label>
-            <span className="text-sm font-black text-[#9e1316] bg-[#9e1316]/10 px-3 py-1 rounded-lg">{maxPlayers}</span>
+    <form onSubmit={handleCreate} className="w-full max-w-md bg-white border border-[#E6E1DC] rounded-[32px] p-8 shadow-xl animate-in slide-in-from-right-8 duration-300">
+       <div className="flex items-center justify-center mb-8">
+          <div className="w-20 h-20 bg-[#F5F5F0] rounded-full flex items-center justify-center text-[#9e1316]">
+             {selectedGame?.icon}
           </div>
-          <input
-            type="range"
-            min={selectedGame?.minPlayers}
-            max={selectedGame?.maxPlayers}
-            value={maxPlayers}
-            onChange={(e) => setMaxPlayers(Number(e.target.value))}
-            className="w-full h-2 bg-[#F5F5F0] rounded-full appearance-none cursor-pointer accent-[#9e1316]"
-          />
-        </div>
+       </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <button onClick={() => { setIsPrivate(false); setPassword(''); }} className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${!isPrivate ? 'border-[#9e1316] bg-[#9e1316]/5 text-[#9e1316]' : 'border-[#E6E1DC] text-[#8A9099] hover:border-[#8A9099]'}`}>
-            <Unlock className="w-5 h-5" />
-            <span className="text-[10px] font-bold uppercase tracking-wider">{t.public}</span>
-          </button>
-          <button onClick={() => setIsPrivate(true)} className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${isPrivate ? 'border-[#9e1316] bg-[#9e1316]/5 text-[#9e1316]' : 'border-[#E6E1DC] text-[#8A9099] hover:border-[#8A9099]'}`}>
-            <Lock className="w-5 h-5" />
-            <span className="text-[10px] font-bold uppercase tracking-wider">{t.private}</span>
-          </button>
-        </div>
+       <div className="space-y-6">
+          <div className="flex items-center justify-between p-4 bg-[#F5F5F0] rounded-2xl cursor-pointer" onClick={() => setIsPrivate(!isPrivate)}>
+             <div className="flex items-center gap-3">
+               {isPrivate ? <Lock className="w-5 h-5 text-[#9e1316]" /> : <Unlock className="w-5 h-5 text-[#8A9099]" />}
+               <span className="font-bold text-[#1A1F26] text-sm uppercase tracking-wide">{t.private}</span>
+             </div>
+             <div className={`w-12 h-6 rounded-full transition-colors relative ${isPrivate ? 'bg-[#9e1316]' : 'bg-[#E6E1DC]'}`}>
+               <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform ${isPrivate ? 'translate-x-6' : ''}`} />
+             </div>
+          </div>
 
-        {isPrivate && (
-          <div className="space-y-2 animate-in slide-in-from-top-2 fade-in">
-            <label className="text-[10px] font-bold text-[#8A9099] uppercase tracking-wider ml-1">{t.pass}</label>
-            <div className="relative">
-              <input
-                type={showPassword ? "text" : "password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-[#F5F5F0] border border-transparent rounded-xl py-3 px-4 pr-10 text-[#1A1F26] font-bold text-sm focus:outline-none focus:bg-white focus:border-[#9e1316] focus:ring-4 focus:ring-[#9e1316]/5 transition-all placeholder:text-[#E6E1DC]"
-                required={isPrivate}
-              />
-              <button onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-3 text-[#8A9099] hover:text-[#1A1F26]">
-                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-              </button>
+          {isPrivate && (
+            <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
+               <label className="text-[10px] font-bold text-[#8A9099] uppercase tracking-wider ml-1">{t.password}</label>
+               <div className="relative">
+                 <input
+                   type={showPassword ? "text" : "password"}
+                   value={password}
+                   onChange={e => setPassword(e.target.value)}
+                   className="w-full bg-[#F5F5F0] border border-transparent focus:bg-white focus:border-[#9e1316] rounded-xl py-3 pl-4 pr-10 font-bold text-[#1A1F26] outline-none transition-all"
+                   required={isPrivate}
+                 />
+                 <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-3.5 text-[#8A9099] hover:text-[#1A1F26]">
+                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                 </button>
+               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        <button
-            onClick={createLobby}
+          <button
+            type="submit"
             disabled={loading}
-            className="w-full bg-[#1A1F26] hover:bg-[#9e1316] text-white font-bold py-4 rounded-xl transition-all shadow-xl shadow-[#1A1F26]/20 hover:shadow-[#9e1316]/30 active:scale-[0.98] flex justify-center items-center gap-2 text-xs uppercase tracking-widest mt-4 disabled:opacity-50"
-        >
-          {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>{t.create} <ArrowRight className="w-4 h-4" /></>}
-        </button>
-      </div>
-    </div>
+            className="w-full bg-[#1A1F26] text-white py-4 rounded-xl font-black uppercase tracking-widest hover:bg-[#9e1316] transition-colors shadow-lg active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <> {t.create} <ArrowRight className="w-4 h-4" /> </>}
+          </button>
+       </div>
+    </form>
   );
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-[#1A1F26] flex flex-col items-center font-sans relative overflow-hidden">
-      <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-50 brightness-100 contrast-150 mix-blend-overlay pointer-events-none"></div>
+    <div className="min-h-screen bg-[#F8FAFC] flex flex-col font-sans relative overflow-hidden">
+      <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-50 mix-blend-overlay pointer-events-none" />
 
-      <header className="w-full max-w-7xl p-6 flex justify-between items-center z-10 relative">
+      <header className="w-full max-w-6xl mx-auto p-6 flex justify-between items-center z-10 relative">
         <button onClick={() => { if (step === 'selection') router.push('/'); else setStep('selection'); }} className="flex items-center gap-2 text-[#8A9099] hover:text-[#9e1316] transition-colors group">
           <div className="p-3 bg-white border border-[#E6E1DC] rounded-xl group-hover:border-[#9e1316]/50 shadow-sm transition-all"><ArrowLeft className="w-5 h-5" /></div>
           <span className="text-xs font-bold uppercase tracking-widest hidden sm:block">{t.back}</span>
@@ -294,13 +247,5 @@ function CreateLobbyContent() {
         {step === 'settings' && renderSettings()}
       </div>
     </div>
-  );
-}
-
-export default function CreateLobby() {
-  return (
-    <Suspense fallback={<div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-[#9e1316]" /></div>}>
-      <CreateLobbyContent />
-    </Suspense>
   );
 }
