@@ -4,10 +4,10 @@ import { Role } from '@/types/coup';
 // Premium Rich Palette
 export const ROLE_CONFIG: Record<Role, { color: string; icon: any }> = {
   duke: { color: '#6B21A8', icon: Crown },       // Royal Purple
-  assassin: { color: '#9F1239', icon: Skull },    // Crimson Blood
-  captain: { color: '#1E3A8A', icon: Swords },    // Imperial Blue
-  ambassador: { color: '#065F46', icon: RefreshCw }, // Deep Emerald
-  contessa: { color: '#78350F', icon: Shield }    // Ancient Bronze
+  assassin: { color: '#B91C1C', icon: Skull },    // Crimson Blood
+  captain: { color: '#22C55E', icon: Swords },    // Imperial Blue
+  ambassador: { color: '#22C55E', icon: RefreshCw }, // Deep Emerald
+  contessa: { color: '#F59E0B', icon: Shield }    // Ancient Bronze
 };
 
 export const DICTIONARY = {

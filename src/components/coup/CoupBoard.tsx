@@ -97,9 +97,9 @@ const GameCard = ({ role, revealed, isMe, onClick, selected, lang, small = false
         </div>
 
         {/* EXTERNAL STATS - Visible ONLY on mobile, under the card */}
-        {/* RELATIVE positioning ensures it takes up space and pushes content below it */}
+        {/* Added pointer-events-none so touches pass through to buttons if they overlap */}
         {!small && !revealed && (
-            <div className="block sm:hidden text-center space-y-1 w-full max-w-[80px] z-20 relative">
+            <div className="block sm:hidden text-center space-y-1 w-full max-w-[80px] z-20 relative pointer-events-none">
                 <div className="flex items-center justify-center gap-1 bg-white/95 backdrop-blur-md rounded-lg px-2 py-1 border border-gray-300 shadow-md">
                     <Swords className="w-2.5 h-2.5 text-emerald-600 shrink-0" />
                     <span className="text-[8px] font-black text-gray-800 uppercase tracking-tight leading-none truncate">{info.action}</span>
@@ -256,7 +256,6 @@ export default function CoupBoard() {
   }, []);
 
   // --- AUTOMATIC LOSS RESOLUTION ---
-  // Если у игрока 1 жизнь и он должен потерять карту, делаем это автоматически
   useEffect(() => {
     if (gameState?.phase === 'losing_influence' && gameState.pendingPlayerId === userId) {
       const me = gameState.players.find(p => p.id === userId);
@@ -265,7 +264,6 @@ export default function CoupBoard() {
           .map((c, i) => c.revealed ? -1 : i)
           .filter(i => i !== -1);
 
-        // Если осталась только 1 карта, теряем её автоматически через секунду (для драматического эффекта)
         if (unrevealedIndices.length === 1) {
           const timer = setTimeout(() => {
              resolveLoss(unrevealedIndices[0]);
@@ -299,10 +297,8 @@ export default function CoupBoard() {
 
   const handleExchangeToggle = (index: number) => {
       if (selectedExchangeIndices.includes(index)) {
-          // Deselect
           setSelectedExchangeIndices(prev => prev.filter(i => i !== index));
       } else {
-          // Select
           const lives = gameState?.players.find(p => p.id === userId)?.cards.filter(c => !c.revealed).length || 2;
           if (selectedExchangeIndices.length < lives) {
               setSelectedExchangeIndices(prev => [...prev, index]);
@@ -427,12 +423,14 @@ export default function CoupBoard() {
               {isExchanging && <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-emerald-600 text-white px-6 py-2 rounded-full text-xs font-black uppercase shadow-lg z-30">{t.exchange}</div>}
 
               <div className="flex flex-col md:flex-row items-center justify-between gap-6 sm:gap-8">
-                {/* Changed gap to gap-6 and added bottom margin on mobile to separate cards from actions */}
-                <div className="flex justify-center gap-3 sm:gap-4 relative shrink-0 mb-8 sm:mb-0">
+                {/* Added mb-12 to the card container on mobile to create vertical space.
+                    This prevents the 'external stats' pill (from GameCard) from overlapping the action buttons below.
+                */}
+                <div className="flex justify-center gap-3 sm:gap-4 relative shrink-0 mb-12 sm:mb-0 z-0">
                   {me.cards.map((card, i) => <GameCard key={i} role={card.role} revealed={card.revealed} isMe={true} lang={lang} disabled={me.isDead} isLosing={isLosing && !card.revealed} onClick={() => resolveLoss(i)} />)}
                 </div>
 
-                <div className="flex-1 w-full max-w-lg">
+                <div className="flex-1 w-full max-w-lg z-10 relative">
                   <div className="flex items-center gap-3 mb-4 justify-center md:justify-start bg-[#F8FAFC] p-2 px-4 rounded-xl border border-[#E6E1DC] w-fit mx-auto md:mx-0"><Coins className="w-4 h-4 text-yellow-600" /><div className="text-2xl font-black text-[#1A1F26]">{me.coins}</div></div>
 
                   {!me.isDead && isMyTurn && phase === 'choosing_action' && (
