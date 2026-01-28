@@ -10,7 +10,6 @@ import {
   User,
   LogOut,
   Loader2,
-  LayoutGrid
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import AuthForm from '@/components/AuthForm';
@@ -149,9 +148,8 @@ function HomeContent() {
         updateUserAvatar={(url) => setUser({...user, avatarUrl: url})}
       />
 
-      <header className="w-full max-w-7xl p-6 flex justify-between items-center z-10 relative mt-4">
-
-        {/* Профиль */}
+      {/* Header */}
+      <header className="w-full max-w-7xl p-6 flex justify-between items-center z-10 relative">
         <button
             onClick={() => setShowSettings(true)}
             className="flex items-center gap-4 bg-white/80 backdrop-blur-md border border-[#E6E1DC] p-2 pr-6 rounded-full hover:border-[#9e1316]/50 hover:shadow-lg hover:shadow-[#9e1316]/5 transition-all cursor-pointer group"
@@ -173,11 +171,11 @@ function HomeContent() {
           </div>
         </button>
 
-        {/* Логотип */}
+        {/* Desktop Logo */}
         <div className="hidden md:flex flex-col items-center absolute left-1/2 -translate-x-1/2">
            <div className="flex items-center gap-3 opacity-90 hover:opacity-100 transition-opacity bg-white/50 backdrop-blur-sm px-6 py-2 rounded-full border border-transparent hover:border-[#E6E1DC]">
              <img src="/logo512.png" alt="Logo" className="w-8 h-8 object-contain" onError={(e) => e.currentTarget.style.display = 'none'} />
-             <span className="text-xl font-black tracking-widest font-sans text-[#1A1F26]">DARHAAL</span>
+             <span className="text-xl font-black tracking-widest font-sans text-[#1A1F26]">DARHAAL GAMES</span>
            </div>
         </div>
 
@@ -189,8 +187,9 @@ function HomeContent() {
         </button>
       </header>
 
-      <div className="flex-1 flex flex-col items-center justify-center w-full max-w-6xl px-4 z-10 mt-[-60px]">
-        <div className="text-center mb-16 animate-in slide-in-from-bottom-8 duration-700 fade-in">
+      {/* Main Content with adjusted spacing */}
+      <div className="flex-1 flex flex-col items-center justify-center w-full max-w-6xl px-4 z-10 py-10">
+        <div className="text-center mb-12 animate-in slide-in-from-bottom-8 duration-700 fade-in">
           <h1 className="text-5xl md:text-7xl font-black mb-4 tracking-tight text-[#1A1F26]">
             {t.welcome} <span className="text-[#9e1316]">{user.name}</span>
           </h1>
@@ -220,7 +219,7 @@ function HomeContent() {
         </div>
       </div>
 
-      <footer className="w-full p-8 text-center z-10 mb-4 opacity-60">
+      <footer className="w-full p-6 text-center z-10 opacity-60">
         <p className="text-[#8A9099] text-xs font-bold uppercase tracking-[0.2em] hover:text-[#9e1316] transition-colors cursor-default">
           {t.footer}
         </p>
