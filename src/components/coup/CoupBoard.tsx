@@ -13,8 +13,20 @@ import { ROLE_CONFIG, DICTIONARY } from '@/constants/coup';
 import { Role, Lang } from '@/types/coup';
 
 // --- GAME CARD COMPONENT ---
-const GameCard = ({ role, revealed, isMe, onClick, selected, lang, small = false, disabled = false, isLosing = false }: any) => {
-  if (!role || !ROLE_CONFIG[role]) return null;
+interface GameCardProps {
+  role: Role;
+  revealed: boolean;
+  isMe: boolean;
+  onClick?: () => void;
+  selected?: boolean;
+  lang: Lang;
+  small?: boolean;
+  disabled?: boolean;
+  isLosing?: boolean;
+}
+
+const GameCard = ({ role, revealed, isMe, onClick, selected, lang, small = false, disabled = false, isLosing = false }: GameCardProps) => {
+  if (!role || !ROLE_CONFIG[role] || !DICTIONARY[lang]?.roles[role]) return null;
   const config = ROLE_CONFIG[role];
   const info = DICTIONARY[lang].roles[role];
 
@@ -85,7 +97,7 @@ const GameCard = ({ role, revealed, isMe, onClick, selected, lang, small = false
 
 // --- ACTION BUTTON ---
 const ActionBtn = ({ label, onClick, disabled, color = 'bg-white', icon: Icon }: any) => (
-  <button onClick={onClick} disabled={disabled} className={`flex flex-col items-center justify-center gap-1 p-2 rounded-xl border-b-[3px] transition-all active:translate-y-0.5 active:border-b-0 h-full relative overflow-hidden ${disabled ? 'opacity-40 cursor-not-allowed bg-gray-100 border-gray-200 text-gray-400' : `${color} hover:brightness-95 text-[#1A1F26] shadow-sm`}`}>
+  <button onClick={onClick} disabled={disabled} className={`flex flex-col items-center justify-center gap-1 p-2 rounded-xl border-b-[3px] transition-all active:translate-y-0.5 active:border-b-0 h-full relative overflow-hidden w-full ${disabled ? 'opacity-40 cursor-not-allowed bg-gray-100 border-gray-200 text-gray-400' : `${color} hover:brightness-95 text-[#1A1F26] shadow-sm`}`}>
     {Icon && <Icon className="w-4 h-4 mb-0.5" />}
     <span className="text-[9px] font-black uppercase leading-none text-center">{label}</span>
   </button>
@@ -149,7 +161,7 @@ const GuideModal = ({ onClose, lang }: { onClose: () => void, lang: Lang }) => {
                 <div key={role} className="bg-white p-4 rounded-2xl border border-gray-200 flex items-center gap-4 hover:shadow-md transition-shadow">
                    <div className="shrink-0"><GameCard role={role} revealed={false} isMe={true} lang={lang} small={true} /></div>
                    <div className="flex-1 min-w-0">
-                      <div className="font-black text-sm uppercase truncate" style={{ color: ROLE_CONFIG[role].color }}>{info.name}</div>
+                      <div className="font-black text-sm uppercase truncate" style={{ color: config.color }}>{info.name}</div>
                       <p className="text-[10px] text-gray-500 leading-tight mt-1 mb-2 line-clamp-3">{info.desc}</p>
                       <div className="flex flex-wrap gap-1">
                          <span className="text-[9px] font-bold bg-gray-100 px-2 py-1 rounded text-gray-600 border border-gray-200 truncate max-w-full">{info.action}</span>
@@ -216,7 +228,7 @@ export default function CoupBoard() {
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id));
     const savedLang = localStorage.getItem('dg_lang') as Lang;
-    if (savedLang) setLang(savedLang);
+    if (savedLang === 'en' || savedLang === 'ru') setLang(savedLang);
   }, []);
 
   const handleCopyCode = () => {
@@ -260,8 +272,8 @@ export default function CoupBoard() {
                   <button onClick={handleLeave} className="flex items-center gap-2 text-gray-400 hover:text-[#9e1316] transition-colors"><LogOut className="w-5 h-5"/><span className="text-xs font-bold uppercase hidden sm:block">{t.leave}</span></button>
                   <div className="text-center"><h1 className="text-2xl font-black text-[#1A1F26]">{roomMeta?.name}</h1><div className="text-[10px] font-bold text-[#9e1316] uppercase">{t.waiting}</div></div>
                   <div className="flex gap-2">
-                      <button onClick={()=>setActiveModal('guide')} className="p-2 bg-white border rounded-xl shadow-sm"><Book className="w-5 h-5"/></button>
-                      <button onClick={()=>setActiveModal('rules')} className="p-2 bg-white border rounded-xl shadow-sm"><HelpCircle className="w-5 h-5"/></button>
+                      <button onClick={()=>setActiveModal('guide')} className="p-2 bg-white border border-[#E6E1DC] rounded-xl shadow-sm hover:border-[#9e1316] hover:text-[#9e1316] transition-colors"><Book className="w-5 h-5"/></button>
+                      <button onClick={()=>setActiveModal('rules')} className="p-2 bg-white border border-[#E6E1DC] rounded-xl shadow-sm hover:border-[#9e1316] hover:text-[#9e1316] transition-colors"><HelpCircle className="w-5 h-5"/></button>
                   </div>
               </header>
 
