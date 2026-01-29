@@ -4,9 +4,9 @@ import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import {
-  ArrowLeft, Search, Users, Lock, Play, X, Loader2,
+  ArrowLeft, Search, Lock, Play, X, Loader2,
   ScrollText, KeyRound, SortAsc, SortDesc,
-  Ship, Bomb, Fingerprint, ShieldAlert, Skull
+  Ship, Bomb, Fingerprint, ShieldAlert, Skull, Users
 } from 'lucide-react';
 
 type Lang = 'ru' | 'en';
@@ -34,7 +34,8 @@ const TRANSLATIONS = {
     private: 'Приватная',
     enterPass: 'Пароль',
     confirm: 'Вход',
-    empty: 'Нет активных игр'
+    empty: 'Нет активных игр',
+    create: 'Создать'
   },
   en: {
     title: 'Game Hall',
@@ -45,7 +46,8 @@ const TRANSLATIONS = {
     private: 'Private',
     enterPass: 'Password',
     confirm: 'Enter',
-    empty: 'No active games'
+    empty: 'No active games',
+    create: 'Create'
   }
 };
 
@@ -139,6 +141,7 @@ function PlayContent() {
       </header>
 
       <div className="flex-1 w-full max-w-6xl mx-auto p-4 z-10 flex flex-col gap-6">
+
         {/* Controls */}
         <div className="bg-white/80 backdrop-blur-sm p-4 rounded-[32px] border border-[#E6E1DC] shadow-sm flex flex-col md:flex-row gap-4 justify-between items-center">
             <div className="relative w-full md:w-64 group">
@@ -178,6 +181,7 @@ function PlayContent() {
                         <Search className="w-8 h-8 text-white" />
                     </div>
                     <div className="text-[#8A9099] font-bold uppercase tracking-widest">{t.empty}</div>
+                    <button onClick={() => router.push('/create')} className="mt-4 px-6 py-2 bg-[#1A1F26] text-white rounded-xl font-bold uppercase text-xs tracking-widest hover:bg-[#9e1316] transition-colors">{t.create}</button>
                 </div>
              ) :
              filteredLobbies.map(lobby => {

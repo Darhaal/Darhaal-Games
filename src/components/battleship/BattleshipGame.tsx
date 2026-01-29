@@ -5,12 +5,11 @@ import {
     Loader2, RotateCw, Trash2, Check, Shuffle,
     Anchor, Trophy, LogOut, Timer, Crosshair, Map, Shield
 } from 'lucide-react';
-import { Ship, CellStatus, Coordinate, ShipType, FLEET_CONFIG, BattleshipState, Lang } from '@/types/battleship';
+import { Ship, CellStatus, Coordinate, ShipType, FLEET_CONFIG } from '@/types/battleship';
 
-const CELL_SIZE_L = "w-8 h-8 sm:w-10 sm:h-10"; // Большие клетки (Setup / Enemy)
-const CELL_SIZE_S = "w-4 h-4 sm:w-5 sm:h-5";   // Маленькие клетки (My Fleet during battle)
+const CELL_SIZE_L = "w-8 h-8 sm:w-10 sm:h-10";
+const CELL_SIZE_S = "w-4 h-4 sm:w-5 sm:h-5";
 
-// --- COLORS & STYLES ---
 const getShipColor = (type: ShipType) => {
     switch (type) {
         case 'battleship': return 'bg-[#1A1F26]';
@@ -36,30 +35,26 @@ const GridCell = ({
     const isSmall = size === 'small';
     let content = null;
 
-    // Базовый фон - бумага
-    let bgClass = "bg-[#F5F5F0]";
+    let bgClass = "bg-[#F5F5F0]"; // Paper white
     let borderClass = isSmall ? "border-[0.5px] border-[#E6E1DC]" : "border border-[#E6E1DC]";
 
-    // Статусы
     if (status === 'miss') {
-        content = <div className={`${isSmall ? 'w-1 h-1' : 'w-2 h-2'} rounded-full bg-[#8A9099]`} />;
+        content = <div className={`${isSmall ? 'w-1 h-1' : 'w-2 h-2'} rounded-full bg-[#8A9099]/60`} />;
     } else if (status === 'hit') {
-        bgClass = "bg-red-100";
-        content = <span className={`${isSmall ? 'text-[10px]' : 'text-lg'} text-[#9e1316] font-bold`}>✕</span>;
+        bgClass = "bg-red-50";
+        content = <span className={`${isSmall ? 'text-[10px]' : 'text-lg'} text-[#9e1316] font-bold font-mono`}>X</span>;
     } else if (status === 'killed') {
         bgClass = "bg-[#9e1316]";
-        content = <span className={`${isSmall ? 'text-[8px]' : 'text-sm'} text-white`}>☠</span>;
+        content = <span className={`${isSmall ? 'text-[8px]' : 'text-sm'} text-white font-bold`}>☠</span>;
     } else if (shipPart) {
-        bgClass = getShipColor(shipPart) + " shadow-sm border-white/10";
+        bgClass = getShipColor(shipPart) + " shadow-sm border-white/20";
         borderClass = "border-transparent";
     }
 
-    // Hover (только для Setup)
     if (isHovered) {
         bgClass = hoverValid ? "bg-emerald-200" : "bg-red-200";
     }
 
-    // Cursor
     const cursorClass = onClick && status === 'empty' ? 'cursor-crosshair hover:bg-gray-100' : 'cursor-default';
 
     return (
@@ -95,7 +90,6 @@ export default function BattleshipGame({
     const isMyTurn = gameState.turn === userId;
     const phase = gameState.phase;
 
-    // Таймер
     useEffect(() => {
         if (phase !== 'playing') return;
         const interval = setInterval(() => {
@@ -105,32 +99,26 @@ export default function BattleshipGame({
         return () => clearInterval(interval);
     }, [gameState.lastActionTime, phase]);
 
-    // Helpers
     const getMyCellContent = (x: number, y: number) => {
         const s = myShips.find((s: Ship) =>
             s.orientation === 'horizontal'
                 ? (s.position.y === y && x >= s.position.x && x < s.position.x + s.size)
                 : (s.position.x === x && y >= s.position.y && y < s.position.y + s.size)
         );
-        // Если идет игра, показываем выстрелы врага по нам
         const shot = phase === 'playing' && me?.shots ? me.shots[`${x},${y}`] : null;
         return { status: shot || 'empty', shipPart: s?.type };
     };
 
     const getOpponentCellContent = (x: number, y: number) => {
-        // Мы видим только свои выстрелы по врагу
-        // me.shots - это МОИ выстрелы ПО ВРАГУ
         const shot = me?.shots[`${x},${y}`];
         return { status: shot || 'empty' };
     };
 
-    // Placement Handlers
     const handleSetupClick = (x: number, y: number) => {
         if (!selectedType) return;
         const config = FLEET_CONFIG.find(c => c.type === selectedType);
         if (!config) return;
 
-        // Check count
         const currentCount = myShips.filter((s: Ship) => s.type === selectedType).length;
         if (currentCount >= config.count) return;
 
@@ -145,15 +133,13 @@ export default function BattleshipGame({
 
         const success = placeShipManual(newShip);
         if (success && currentCount + 1 >= config.count) {
-            setSelectedType(null); // Auto deselect if full
+            setSelectedType(null);
         }
     };
 
     const isHoverValid = (x: number, y: number) => {
         if (!selectedType || !hoverPos) return false;
         const config = FLEET_CONFIG.find(c => c.type === selectedType)!;
-        // Check collision (using same logic as hook if possible, but simple check here)
-        // Note: Real validation happens in placeShipManual
         if (orientation === 'horizontal') return x + config.size <= 10;
         return y + config.size <= 10;
     };
@@ -168,7 +154,6 @@ export default function BattleshipGame({
         }
     };
 
-    // --- RENDER: FINISHED ---
     if (phase === 'finished') return (
         <div className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 font-sans">
             <div className="bg-white p-10 rounded-[32px] text-center animate-in zoom-in duration-300 border-4 border-[#9e1316] shadow-2xl max-w-sm w-full relative overflow-hidden">
@@ -185,12 +170,10 @@ export default function BattleshipGame({
         </div>
     );
 
-    // --- RENDER: GAME ---
     return (
         <div className="min-h-screen bg-[#F8FAFC] text-[#1A1F26] flex flex-col font-sans overflow-hidden relative">
             <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-50 mix-blend-overlay pointer-events-none" />
 
-            {/* HEADER */}
             <header className="w-full max-w-6xl mx-auto p-4 flex justify-between items-center z-10 relative">
                 <button onClick={leaveGame} className="p-2 text-gray-400 hover:text-[#9e1316] transition-colors"><LogOut className="w-5 h-5" /></button>
                 <div className="text-center">
@@ -211,13 +194,12 @@ export default function BattleshipGame({
                 {phase === 'setup' && (
                     <div className="flex flex-col lg:flex-row gap-8 items-start w-full max-w-5xl animate-in fade-in slide-in-from-bottom-4">
 
-                        {/* BOARD */}
                         <div className="bg-white p-6 rounded-[32px] shadow-xl border border-[#E6E1DC] relative mx-auto lg:mx-0">
                             <div className="absolute -top-3 left-6 bg-[#9e1316] text-white text-[10px] font-bold uppercase px-3 py-1 rounded-full tracking-wider shadow-sm">
                                 Сектор развертывания
                             </div>
                             <div
-                                className="grid grid-cols-10 gap-px bg-[#E6E1DC] border-2 border-[#1A1F26] overflow-hidden rounded-lg"
+                                className="grid grid-cols-10 gap-px bg-[#E6E1DC] border-2 border-[#1A1F26] overflow-hidden rounded-lg cursor-crosshair"
                                 onMouseLeave={() => setHoverPos(null)}
                             >
                                 {Array.from({ length: 100 }).map((_, i) => {
@@ -231,14 +213,17 @@ export default function BattleshipGame({
                                             shipPart={shipPart}
                                             onClick={() => handleSetupClick(x, y)}
                                             onMouseEnter={() => setHoverPos({x, y})}
-                                            onContextMenu={(e) => { e.preventDefault(); setOrientation(o => o === 'h' ? 'v' : 'h'); }}
+                                            onContextMenu={(e) => {
+                                                e.preventDefault();
+                                                setOrientation(prev => prev === 'horizontal' ? 'vertical' : 'horizontal');
+                                            }}
                                             isHovered={isPhantomCell(x, y)}
                                             hoverValid={isHoverValid(x, y)}
                                         />
                                     );
                                 })}
                             </div>
-                            <div className="flex justify-between items-center mt-4">
+                            <div className="flex justify-between items-center mt-4 px-2">
                                 <button onClick={() => setOrientation(o => o === 'horizontal' ? 'vertical' : 'horizontal')} className="flex items-center gap-2 text-xs font-bold uppercase text-[#1A1F26] hover:text-[#9e1316] transition-colors bg-[#F5F5F0] px-3 py-2 rounded-lg border border-[#E6E1DC]">
                                     <RotateCw className={`w-4 h-4 transition-transform ${orientation === 'vertical' ? 'rotate-90' : ''}`} />
                                     {orientation === 'horizontal' ? 'Горизонтально' : 'Вертикально'}
@@ -247,7 +232,6 @@ export default function BattleshipGame({
                             </div>
                         </div>
 
-                        {/* CONTROLS */}
                         <div className="flex-1 w-full space-y-4">
                             <div className="bg-white p-6 rounded-[24px] shadow-sm border border-[#E6E1DC]">
                                 <h3 className="text-xs font-black uppercase mb-4 text-[#8A9099] flex items-center gap-2"><Map className="w-4 h-4"/> Доступный Флот</h3>
@@ -297,9 +281,8 @@ export default function BattleshipGame({
 
                 {/* --- BATTLE UI --- */}
                 {phase === 'playing' && (
-                    <div className="flex flex-col md:flex-row gap-8 items-center md:items-start justify-center w-full max-w-6xl">
+                    <div className="flex flex-col md:flex-row gap-8 items-center md:items-start justify-center w-full max-w-6xl animate-in fade-in">
 
-                        {/* ENEMY BOARD (RADAR) */}
                         <div className="relative group order-1 md:order-2">
                             <div className="absolute -top-10 left-0 right-0 text-center">
                                 <span className={`text-xs font-black uppercase tracking-[0.2em] px-4 py-2 rounded-full bg-white shadow-sm border border-[#E6E1DC] ${isMyTurn ? 'text-[#9e1316] border-[#9e1316]' : 'text-gray-400'}`}>
@@ -326,7 +309,6 @@ export default function BattleshipGame({
                             </div>
                         </div>
 
-                        {/* MY BOARD (STATUS) */}
                         <div className="flex flex-col gap-4 order-2 md:order-1">
                             <div className="bg-white p-4 rounded-[24px] shadow-md border border-[#E6E1DC] opacity-90 hover:opacity-100 transition-opacity relative">
                                 <div className="absolute top-4 left-4 text-[10px] font-bold text-[#8A9099] uppercase tracking-widest flex items-center gap-2"><Shield className="w-3 h-3"/> Мой Флот</div>

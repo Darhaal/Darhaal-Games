@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { Loader2 } from 'lucide-react';
 import { useBattleshipGame } from '@/hooks/useBattleshipGame';
 import { Lang } from '@/types/battleship';
-import UniversalLobby, { LobbyPlayer } from '@/components/UniversalLobby'; // NEW IMPORT
+import BattleshipLobby from './BattleshipLobby';
 import BattleshipGame from './BattleshipGame';
 
 interface UserProfile {
@@ -24,6 +24,7 @@ export default function BattleshipBoard() {
   const [lang, setLang] = useState<Lang>('ru');
   const [isLeaving, setIsLeaving] = useState(false);
 
+  // Получаем данные пользователя
   useEffect(() => {
     const fetchUser = async () => {
         const { data: { user: authUser } } = await supabase.auth.getUser();
@@ -40,13 +41,16 @@ export default function BattleshipBoard() {
     if (savedLang === 'en' || savedLang === 'ru') setLang(savedLang);
   }, []);
 
+  // Передаем весь объект user в хук
   const {
       gameState, roomMeta, loading, initGame, startGame, leaveGame,
-      autoPlaceShips, clearShips, submitShips, fireShot, myShips
+      autoPlaceShips, clearShips, submitShips, fireShot, myShips, placeShipManual, removeShip
   } = useBattleshipGame(lobbyId, user);
 
   useEffect(() => {
-    if (user && gameState && !gameState.players?.[user.id]) initGame();
+    if (user && gameState && !gameState.players?.[user.id]) {
+        initGame();
+    }
   }, [user, gameState, initGame]);
 
   const handleLeave = async () => {
@@ -56,29 +60,40 @@ export default function BattleshipBoard() {
       router.push('/play');
   };
 
-  if (loading || isLeaving || !user) return <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]"><Loader2 className="animate-spin text-[#9e1316] w-8 h-8" /></div>;
-  if (!gameState) return <div className="min-h-screen flex items-center justify-center font-bold text-gray-400">LOBBY NOT FOUND</div>;
+  useEffect(() => {
+    const handlePopState = async () => {
+        await leaveGame();
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+        window.removeEventListener('popstate', handlePopState);
+    };
+  }, [leaveGame]);
 
-  // ИСПОЛЬЗУЕМ UNIVERSAL LOBBY
-  if (gameState.status === 'waiting') {
-      const playersList: LobbyPlayer[] = Object.values(gameState.players).map(p => ({
-          id: p.userId,
-          name: p.name,
-          avatarUrl: p.avatarUrl,
-          isHost: p.isHost
-      }));
-
+  if (loading || isLeaving || !user) {
       return (
-        <UniversalLobby
-          roomCode={roomMeta?.code || ''}
-          roomName={roomMeta?.name || 'Battleship'}
-          gameType="battleship"
-          players={playersList}
-          currentUserId={user.id}
-          minPlayers={2}
-          maxPlayers={2}
-          onStart={startGame}
-          onLeave={handleLeave}
+        <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]">
+            <Loader2 className="animate-spin text-[#9e1316] w-8 h-8" />
+        </div>
+      );
+  }
+
+  if (!gameState) {
+      return (
+        <div className="min-h-screen flex items-center justify-center font-bold text-gray-400 uppercase tracking-widest">
+            Лобби не найдено
+        </div>
+      );
+  }
+
+  if (gameState.status === 'waiting') {
+      return (
+        <BattleshipLobby
+          gameState={gameState}
+          roomMeta={roomMeta}
+          userId={user.id}
+          startGame={startGame}
+          leaveGame={handleLeave}
           lang={lang}
         />
       );
@@ -91,6 +106,8 @@ export default function BattleshipBoard() {
       myShips={myShips}
       autoPlaceShips={autoPlaceShips}
       clearShips={clearShips}
+      placeShipManual={placeShipManual} // Важно! передаем функцию
+      removeShip={removeShip}
       submitShips={submitShips}
       fireShot={fireShot}
       leaveGame={handleLeave}
