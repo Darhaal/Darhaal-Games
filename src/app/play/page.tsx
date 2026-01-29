@@ -1,4 +1,3 @@
-// app/play/page.tsx
 'use client';
 
 import React, { useState, useEffect, Suspense } from 'react';
@@ -196,8 +195,9 @@ function PlayContent() {
       return;
     }
 
-    // Do not allow joining active games unless handled by specific game logic (reconnect)
+    // LOCKING: Do not allow joining active games
     if (freshLobby.status === 'playing') {
+        alert(t.started); // "Game Started"
         return;
     }
 

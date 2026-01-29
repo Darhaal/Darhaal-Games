@@ -85,7 +85,7 @@ const getShipColor = (type: ShipType) => {
     }
 };
 
-// --- КОМПОНЕНТ ЯЧЕЙКИ (MEMOIZED для устранения лагов) ---
+// --- GRID CELL ---
 const GridCell = memo(({
     x, y, status, shipPart, onClick, onMouseEnter, onContextMenu,
     onDrop, onDragOver, onDragStart, isHovered, hoverValid, size = 'large'
@@ -111,8 +111,11 @@ const GridCell = memo(({
         }
     }
 
+    // Phantom / Hover Logic
     if (isHovered) {
-        bgClass = hoverValid ? "bg-emerald-500/20 ring-2 ring-emerald-500 inset" : "bg-red-500/20 ring-2 ring-red-500 inset";
+        bgClass = hoverValid
+            ? "bg-emerald-500/30 ring-2 ring-emerald-500 inset z-10"
+            : "bg-red-500/30 ring-2 ring-red-500 inset z-10";
     }
 
     const cursorClass = onClick && status === 'empty' ? 'cursor-crosshair' : 'cursor-default';
@@ -248,15 +251,6 @@ export default function BattleshipGame({
         return { status: shot || 'empty' };
     }, [me?.shots]);
 
-    const getStats = (playerBoard: any) => {
-        if (!playerBoard?.shots) return { shots: 0, hits: 0, accuracy: 0 };
-        const shots = Object.values(playerBoard.shots);
-        const total = shots.length;
-        const hits = shots.filter((s: any) => s === 'hit' || s === 'killed').length;
-        return { shots: total, hits, accuracy: total > 0 ? Math.round((hits / total) * 100) : 0 };
-    };
-    const myStats = getStats(me);
-
     // --- Logic ---
     const tryPlaceShip = (x: number, y: number, type: ShipType, existingId?: string) => {
         const config = FLEET_CONFIG.find(c => c.type === type);
@@ -324,18 +318,32 @@ export default function BattleshipGame({
         return checkPlacement(myShips, {id:'temp', type:selectedType, size:config.size, orientation, position:{x,y}, hits:0}, movingShipId||undefined);
     };
 
-    if (phase === 'finished') return (
-        <div className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 font-sans animate-in fade-in">
-            <div className="bg-white p-10 rounded-[32px] text-center animate-in zoom-in duration-300 border-4 border-[#9e1316] shadow-2xl max-w-sm w-full relative overflow-hidden">
-                <div className="relative z-10">
-                    <Trophy className="w-24 h-24 text-yellow-500 mx-auto mb-6 animate-bounce" />
-                    <h2 className="text-xs font-black uppercase tracking-[0.2em] text-gray-400 mb-2">{gameState.winner === userId ? t.victory : t.defeat}</h2>
-                    <p className="text-3xl font-black text-[#1A1F26] mb-8">{gameState.winner === userId ? t.winMsg : t.loseMsg}</p>
-                    <button onClick={() => { leaveGame(); window.location.href='/'; }} className="w-full py-4 bg-[#1A1F26] text-white rounded-xl font-black uppercase tracking-widest hover:bg-[#9e1316] transition-colors">{t.menu}</button>
+    if (phase === 'finished') {
+        const isWinner = gameState.winner === userId;
+        const enemyShipsSunk = opponent?.aliveShipsCount === 0;
+        const isSurrender = isWinner && !enemyShipsSunk;
+
+        return (
+            <div className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 font-sans animate-in fade-in">
+                <div className="bg-white p-10 rounded-[32px] text-center animate-in zoom-in duration-300 border-4 border-[#9e1316] shadow-2xl max-w-sm w-full relative overflow-hidden">
+                    <div className="relative z-10">
+                        {isWinner ? (
+                            <Trophy className="w-24 h-24 text-yellow-500 mx-auto mb-6 animate-bounce" />
+                        ) : (
+                            <AlertCircle className="w-24 h-24 text-gray-400 mx-auto mb-6" />
+                        )}
+                        <h2 className="text-xs font-black uppercase tracking-[0.2em] text-gray-400 mb-2">
+                            {isWinner ? t.victory : t.defeat}
+                        </h2>
+                        <p className="text-2xl font-black text-[#1A1F26] mb-8 leading-tight">
+                            {isSurrender ? t.surrenderMsg : (isWinner ? t.winMsg : t.loseMsg)}
+                        </p>
+                        <button onClick={() => { leaveGame(); window.location.href='/'; }} className="w-full py-4 bg-[#1A1F26] text-white rounded-xl font-black uppercase tracking-widest hover:bg-[#9e1316] transition-colors">{t.menu}</button>
+                    </div>
                 </div>
             </div>
-        </div>
-    );
+        );
+    }
 
     return (
         <div className="min-h-screen bg-[#F8FAFC] text-[#1A1F26] flex flex-col font-sans overflow-hidden relative">
@@ -371,11 +379,16 @@ export default function BattleshipGame({
                                     {Array.from({ length: 100 }).map((_, i) => {
                                         const x = i % 10, y = Math.floor(i / 10);
                                         const { shipPart, ship } = getMyCellContent(x, y);
-                                        return <GridCell key={i} x={x} y={y} status={'empty'} shipPart={shipPart} onClick={() => handleCellClick(x, y)} onMouseEnter={() => setHoverPos({x, y})} onDrop={(e:any) => handleDrop(e, x, y)} onDragOver={(e:any) => {e.preventDefault(); setHoverPos({x, y})}} onDragStart={(e:any) => ship && handleDragStartBoard(e, ship)} onContextMenu={(e:any) => {e.preventDefault(); setOrientation(prev => prev === 'horizontal' ? 'vertical' : 'horizontal')}} isHovered={isPhantomCell(x, y)} hoverValid={isPhantomCell(x, y) ? checkPlacement(myShips, {id:'temp', type:selectedType!, size:FLEET_CONFIG.find(c=>c.type===selectedType)?.size||0, orientation, position:{x, y}, hits:0}, movingShipId||undefined) : false} />;
+                                        const isHovered = isPhantomCell(x, y);
+                                        const isValid = isHovered ? checkPhantomValidity(x, y) : false;
+
+                                        return <GridCell key={i} x={x} y={y} status={'empty'} shipPart={shipPart} onClick={() => handleCellClick(x, y)} onMouseEnter={() => setHoverPos({x, y})} onDrop={(e:any) => handleDrop(e, x, y)} onDragOver={(e:any) => {e.preventDefault(); setHoverPos({x, y})}} onDragStart={(e:any) => ship && handleDragStartBoard(e, ship)} onContextMenu={(e:any) => {e.preventDefault(); setOrientation(prev => prev === 'horizontal' ? 'vertical' : 'horizontal')}} isHovered={isHovered} hoverValid={isValid} />;
                                     })}
                                 </div>
                                 <div className="flex justify-between items-center mt-6 bg-[#F8FAFC] p-2 rounded-2xl border border-[#E6E1DC]">
-                                    <button onClick={() => setOrientation(o => o === 'horizontal' ? 'vertical' : 'horizontal')} className="flex items-center gap-2 text-xs font-bold uppercase text-[#1A1F26] px-4 py-2 rounded-xl transition-all"><RotateCw className={`w-4 h-4 transition-transform duration-300 ${orientation === 'vertical' ? 'rotate-90' : ''}`} /> {t[orientation]}</button>
+                                    <button onClick={() => setOrientation(o => o === 'horizontal' ? 'vertical' : 'horizontal')} className="flex items-center gap-2 text-xs font-bold uppercase text-[#1A1F26] px-4 py-2 rounded-xl transition-all hover:bg-white border border-transparent hover:border-[#E6E1DC]">
+                                        <RotateCw className={`w-4 h-4 transition-transform duration-300 ${orientation === 'vertical' ? 'rotate-90' : ''}`} /> {t[orientation] || t.rotate}
+                                    </button>
                                     <button onClick={clearShips} className="text-[#8A9099] hover:text-red-500 p-2 rounded-xl"><Trash2 className="w-4 h-4"/> {t.clear}</button>
                                 </div>
                             </div>

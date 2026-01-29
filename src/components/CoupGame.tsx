@@ -1,13 +1,14 @@
-// components/CoupGame.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
 import {
-  Coins, Crown, Shield, LogOut, Swords, Skull, RefreshCw, AlertTriangle, ThumbsUp, AlertOctagon, CheckCircle, Timer
+  Coins, Crown, Shield,
+  LogOut, Book, HelpCircle,
+  Swords, Skull, RefreshCw, AlertTriangle, ThumbsUp, AlertOctagon, CheckCircle, Timer
 } from 'lucide-react';
 import { DICTIONARY } from '@/constants/coup';
-import { Role, Lang, GameState } from '@/types/coup';
-import { GameCard, ActionBtn, LogPanel } from './CoupComponents';
+import { Role, Lang, GameState, Player } from '@/types/coup';
+import { GameCard, ActionBtn, RulesModal, GuideModal, LogPanel } from './CoupComponents';
 
 interface CoupGameProps {
   gameState: GameState;
@@ -27,8 +28,10 @@ export default function CoupGame({
   gameState, userId, performAction, challenge, block, pass, resolveLoss, resolveExchange, leaveGame, skipTurn, lang
 }: CoupGameProps) {
   const [targetMode, setTargetMode] = useState<'coup' | 'steal' | 'assassinate' | null>(null);
+  const [activeModal, setActiveModal] = useState<'rules' | 'guide' | null>(null);
   const [selectedExchangeIndices, setSelectedExchangeIndices] = useState<number[]>([]);
   const [timeLeft, setTimeLeft] = useState(60);
+  const [hasPassed, setHasPassed] = useState(false); // Local UI state for pass
 
   const players = gameState.players || [];
   const me = players.find(p => p.id === userId);
@@ -45,26 +48,26 @@ export default function CoupGame({
 
   const isLosing = phase === 'losing_influence' && gameState.pendingPlayerId === userId;
   const isExchanging = phase === 'resolving_exchange' && gameState.pendingPlayerId === userId;
+
   const isForeignAid = gameState.currentAction?.type === 'foreign_aid';
   const isActionWithBlockAndChallenge = ['steal', 'assassinate'].includes(gameState.currentAction?.type || '');
+
   const isReactionPhase = phase === 'waiting_for_challenges' || phase === 'waiting_for_blocks' || phase === 'waiting_for_block_challenges';
   const isBlocker = gameState.currentAction?.blockedBy === userId;
 
-  // Server-Side Timer Sync
+  // Reset pass state when action changes
+  useEffect(() => {
+      setHasPassed(false);
+  }, [gameState.currentAction, phase]);
+
   useEffect(() => {
       if (gameState.status !== 'playing') return;
       const interval = setInterval(() => {
           if (gameState.turnDeadline) {
               const remaining = Math.max(0, Math.ceil((gameState.turnDeadline - Date.now()) / 1000));
               setTimeLeft(remaining);
-
-              // Trigger skip if I am responsible for this timeout
               if (remaining === 0 && skipTurn) {
-                  const myResponsibility =
-                      (phase === 'choosing_action' && isMyTurn) ||
-                      (isLosing) ||
-                      (isExchanging);
-
+                  const myResponsibility = (phase === 'choosing_action' && isMyTurn) || (isLosing) || (isExchanging);
                   if (myResponsibility) skipTurn();
               }
           }
@@ -72,23 +75,9 @@ export default function CoupGame({
       return () => clearInterval(interval);
   }, [gameState.turnDeadline, gameState.status, phase, isMyTurn, isLosing, isExchanging, skipTurn]);
 
-  const showChallengeBtn =
-      (phase === 'waiting_for_challenges' && !isActor && !isForeignAid) ||
-      (phase === 'waiting_for_block_challenges' && !isBlocker) ||
-      (phase === 'waiting_for_blocks' && !isActor && !isForeignAid);
-
-  const showBlockBtn =
-      !isActor &&
-      canBlock &&
-      !isBlocker &&
-      (isForeignAid || isActionWithBlockAndChallenge) &&
-      (phase === 'waiting_for_challenges' || phase === 'waiting_for_blocks');
-
-  // Simplifying "Pass" button visibility to improve UX on mobile
-  const showPassBtn =
-      (phase === 'waiting_for_challenges' && !isActor) ||
-      (phase === 'waiting_for_blocks' && !isActor) ||
-      (phase === 'waiting_for_block_challenges' && !isBlocker);
+  const showChallengeBtn = !hasPassed && ((phase === 'waiting_for_challenges' && !isActor && !isForeignAid) || (phase === 'waiting_for_block_challenges' && !isBlocker) || (phase === 'waiting_for_blocks' && !isActor && !isForeignAid));
+  const showBlockBtn = !hasPassed && !isActor && canBlock && !isBlocker && (isForeignAid || isActionWithBlockAndChallenge) && (phase === 'waiting_for_challenges' || phase === 'waiting_for_blocks');
+  const showPassBtn = !hasPassed && ((phase === 'waiting_for_challenges' && !isActor) || (phase === 'waiting_for_blocks' && !isActor) || (phase === 'waiting_for_block_challenges' && !isBlocker));
 
   const handleAction = (action: string) => {
     if (['coup', 'steal', 'assassinate'].includes(action)) setTargetMode(action as any);
@@ -112,6 +101,11 @@ export default function CoupGame({
       }
   };
 
+  const handlePass = () => {
+      setHasPassed(true);
+      pass();
+  };
+
   const shouldShowReactionPanel =
       isReactionPhase &&
       !me?.isDead &&
@@ -122,6 +116,8 @@ export default function CoupGame({
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-[#1A1F26] flex flex-col font-sans overflow-hidden relative">
       <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-50 mix-blend-overlay pointer-events-none" />
+      {activeModal === 'rules' && <RulesModal onClose={() => setActiveModal(null)} lang={lang} />}
+      {activeModal === 'guide' && <GuideModal onClose={() => setActiveModal(null)} lang={lang} />}
 
       <header className="w-full max-w-6xl mx-auto p-4 flex justify-between items-center z-10 relative">
           <button onClick={leaveGame} className="p-2 text-gray-400 hover:text-[#9e1316]"><LogOut className="w-5 h-5" /></button>
@@ -130,7 +126,7 @@ export default function CoupGame({
              <div className="text-[10px] font-bold text-[#9e1316] uppercase flex items-center justify-center gap-2">
                  {isLosing ? t.loseInfluence : (gameState.status === 'playing' ? `Turn: ${currentPlayer?.name}` : 'End')}
                  {gameState.status === 'playing' && (
-                     <span className={`flex items-center gap-1 ${timeLeft < 15 ? 'text-red-600 animate-pulse' : 'text-gray-500'}`}>
+                     <span className={`flex items-center gap-1 ${timeLeft < 15 ? 'text-red-600 animate-pulse' : 'text-gray-400'}`}>
                          <Timer className="w-3 h-3" /> {timeLeft}s
                      </span>
                  )}
@@ -141,7 +137,10 @@ export default function CoupGame({
                  </button>
              )}
           </div>
-          <div className="w-8" />
+          <div className="flex gap-2">
+              <button onClick={() => setActiveModal('guide')} className="p-2 bg-white border rounded-xl shadow-sm"><Book className="w-5 h-5" /></button>
+              <button onClick={() => setActiveModal('rules')} className="p-2 bg-white border rounded-xl shadow-sm"><HelpCircle className="w-5 h-5" /></button>
+          </div>
       </header>
 
       <LogPanel logs={gameState.logs} lang={lang} />
@@ -182,7 +181,7 @@ export default function CoupGame({
                     <div className="flex gap-2 pointer-events-auto">
                         {showChallengeBtn && <button onClick={challenge} className="bg-red-100 text-red-700 px-4 py-2 rounded-lg font-bold text-xs hover:bg-red-200 flex gap-2"><AlertOctagon className="w-4 h-4"/> {t.challenge}</button>}
                         {showBlockBtn && <button onClick={block} className="bg-purple-100 text-purple-700 px-4 py-2 rounded-lg font-bold text-xs hover:bg-purple-200 flex gap-2"><Shield className="w-4 h-4"/> {t.block}</button>}
-                        {showPassBtn && <button onClick={pass} className="bg-emerald-100 text-emerald-700 px-4 py-2 rounded-lg font-bold text-xs hover:bg-emerald-200 flex gap-2"><ThumbsUp className="w-4 h-4"/> {t.pass}</button>}
+                        {showPassBtn && <button onClick={handlePass} className="bg-emerald-100 text-emerald-700 px-4 py-2 rounded-lg font-bold text-xs hover:bg-emerald-200 flex gap-2"><ThumbsUp className="w-4 h-4"/> {t.pass}</button>}
                     </div>
                 </div>
             </div>
@@ -231,6 +230,7 @@ export default function CoupGame({
           </div>
         )}
 
+        {/* EXCHANGE MODAL */}
         {isExchanging && gameState.exchangeBuffer && (
              <div className="fixed inset-0 z-[150] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
                  <div className="bg-white rounded-[32px] p-6 w-full max-w-2xl flex flex-col items-center shadow-2xl animate-in zoom-in-95 border-4 border-[#059669]">
@@ -238,9 +238,17 @@ export default function CoupGame({
                      <div className="flex flex-wrap justify-center gap-2 sm:gap-4 mb-8">
                          {gameState.exchangeBuffer.map((role, i) => (
                              <div key={i} className={`relative transition-all duration-300 ${selectedExchangeIndices.includes(i) ? 'ring-4 ring-[#059669] rounded-2xl transform scale-105 z-10 shadow-xl' : 'opacity-80 hover:opacity-100'}`}>
-                                <GameCard role={role} revealed={false} isMe={true} lang={lang} onClick={() => handleExchangeToggle(i)} />
+                                <GameCard
+                                   role={role}
+                                   revealed={false}
+                                   isMe={true}
+                                   lang={lang}
+                                   onClick={() => handleExchangeToggle(i)}
+                                />
                                 {selectedExchangeIndices.includes(i) && (
-                                    <div className="absolute -top-2 -right-2 bg-[#059669] text-white rounded-full p-1 shadow-lg"><CheckCircle className="w-4 h-4" /></div>
+                                    <div className="absolute -top-2 -right-2 bg-[#059669] text-white rounded-full p-1 shadow-lg">
+                                        <CheckCircle className="w-4 h-4" />
+                                    </div>
                                 )}
                              </div>
                          ))}
@@ -257,13 +265,22 @@ export default function CoupGame({
         )}
       </main>
 
+      {/* Winner Overlay */}
       {gameState.winner && (
         <div className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white p-10 rounded-[32px] text-center border-4 border-[#9e1316] shadow-2xl max-w-sm w-full">
-            <Crown className="w-24 h-24 text-yellow-500 mx-auto mb-6 animate-bounce" />
-            <h2 className="text-xs font-black uppercase tracking-[0.2em] text-gray-400 mb-2">{t.winner}</h2>
-            <p className="text-3xl font-black text-[#1A1F26] mb-8">{gameState.winner}</p>
-            <button onClick={leaveGame} className="w-full py-4 bg-[#1A1F26] text-white rounded-xl font-black uppercase tracking-widest hover:bg-[#9e1316] transition-colors shadow-lg">{t.leave}</button>
+          <div className="bg-white p-10 rounded-[32px] text-center animate-in zoom-in duration-300 border-4 border-[#9e1316] shadow-2xl max-w-sm w-full relative overflow-hidden">
+            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20" />
+            <div className="relative z-10">
+                <Crown className="w-24 h-24 text-yellow-500 mx-auto mb-6 animate-bounce drop-shadow-md" />
+                <h2 className="text-xs font-black uppercase tracking-[0.2em] text-gray-400 mb-2">{t.winner}</h2>
+                <p className="text-3xl font-black text-[#1A1F26] mb-8">{gameState.winner}</p>
+                <button
+                    onClick={leaveGame}
+                    className="w-full py-4 bg-[#1A1F26] text-white rounded-xl font-black uppercase tracking-widest hover:bg-[#9e1316] transition-colors shadow-lg"
+                >
+                    {t.leave}
+                </button>
+            </div>
           </div>
         </div>
       )}

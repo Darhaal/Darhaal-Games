@@ -1,11 +1,9 @@
-// hooks/useCoupGame.ts
-
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { GameState, Player, Role } from '@/types/coup';
 import { DICTIONARY } from '@/constants/coup';
 
-// Фишер-Йейтс
+// Fisher-Yates Shuffle
 const shuffleDeck = (deck: Role[]): Role[] => {
   const newDeck = [...deck];
   for (let i = newDeck.length - 1; i > 0; i--) {
@@ -37,7 +35,7 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
         setRoomMeta({ name: data.name, code: data.code, isHost: data.host_id === userId });
         if (data.game_state) setGameState(data.game_state);
       } else {
-        setGameState(null); // Лобби удалено
+        setGameState(null);
       }
     } catch (e) { console.error(e); } finally { setLoading(false); }
   }, [lobbyId, userId]);
@@ -51,11 +49,9 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
       (payload) => {
           if (payload.new.game_state) {
             setGameState(prev => {
-                // ВАЖНО: В лобби (waiting) всегда принимаем обновление, чтобы видеть новых игроков
                 if (payload.new.status === 'waiting') {
                     return payload.new.game_state;
                 }
-                // В игре (playing) защищаемся от старых пакетов (Race Conditions)
                 if (prev && (payload.new.game_state.version || 0) < (prev.version || 0)) return prev;
                 return payload.new.game_state;
             });
@@ -109,7 +105,7 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
     state.currentAction = null;
     state.pendingPlayerId = undefined;
     state.exchangeBuffer = undefined;
-    state.turnDeadline = Date.now() + (60 * 1000); // Таймер на ход
+    state.turnDeadline = Date.now() + (60 * 1000);
   };
 
   // --- ACTIONS ---
@@ -156,59 +152,38 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
       newState.phase = 'losing_influence';
       newState.pendingPlayerId = targetId;
     } else if (actionType === 'foreign_aid') {
-      newState.phase = 'waiting_for_blocks'; // Иностранную помощь можно только блочить
+      newState.phase = 'waiting_for_blocks';
     } else {
-      newState.phase = 'waiting_for_challenges'; // Остальное можно оспорить
+      newState.phase = 'waiting_for_challenges';
     }
 
-    newState.turnDeadline = Date.now() + (30 * 1000); // Таймер на реакцию
+    newState.turnDeadline = Date.now() + (30 * 1000);
     await updateState(newState);
   };
 
   const pass = async () => {
     const currentGs = stateRef.current.gameState;
-    if (!currentGs || !userId) return; // Нужен userId чтобы проверить, кто пасует
+    if (!currentGs || !userId) return;
     const newState: GameState = JSON.parse(JSON.stringify(currentGs));
     if (!newState.currentAction) return;
-
-    // В MVP мы считаем, что если кто-то нажал PASS, он просто скрывает кнопки у себя.
-    // НО для действий типа Steal/Assassinate, если ЦЕЛЬ нажала PASS, действие проходит.
-    // Если это фаза waiting_for_challenges, PASS от цели не всегда завершает фазу (другие могут оспорить),
-    // но для упрощения, если никто не оспорил за время, или если цель сказала "ок", можно продолжать.
-
-    // Улучшенная логика:
-    // Если это фаза 'waiting_for_blocks' (например, steal), и ЦЕЛЬ нажала pass -> действие выполняется.
-    // Если это фаза 'waiting_for_challenges' и действие направлено на конкретного игрока (steal/assassinate),
-    // и этот игрок нажал pass -> переходим к фазе блока (steal) или выполнения (tax/exchange - тут нет цели).
-
-    // Для MVP сделаем так: кнопка Pass работает как "Я не возражаю".
-    // Реальный переход хода происходит по таймеру ИЛИ если это действие направленное на меня и я согласился.
 
     const isTarget = newState.currentAction.target === userId;
 
     if (isTarget) {
         if (newState.phase === 'waiting_for_challenges') {
-             // Если цель не оспаривает Steal/Assassinate, переходим к фазе Блока
+             // If target doesn't challenge steal/assassinate, wait for block
              if (['steal', 'assassinate'].includes(newState.currentAction.type)) {
                  newState.phase = 'waiting_for_blocks';
                  addLog(newState, 'Система', 'Цель не оспаривает роль. Ждем блок.');
-             } else {
-                 // Для остальных действий (tax, exchange) нет конкретной цели, поэтому pass одного игрока не должен решать всё.
-                 // Но здесь isTarget будет false.
-                 // Если я цель Assassinate и не челленджем, то переходим к блоку.
              }
         } else if (newState.phase === 'waiting_for_blocks') {
-             // Если цель не блокирует, действие выполняется
+             // Target doesn't block -> Action succeeds
              applyActionEffect(newState);
         }
-    } else {
-        // Если я просто наблюдатель, мой PASS ничего не меняет в глобальном стейте (только скрывает UI локально, что не требует updateState),
-        // либо мы можем реализовать счетчик пасов.
-        // Для простоты, пока оставим без изменений для наблюдателей, пусть ждут таймера или действий цели.
-        return;
     }
+    // Note: Bystanders passing just hide their UI (handled in component)
 
-    // Если это 'waiting_for_block_challenges' и я (активный игрок) не челленджем блок -> блок успешен
+    // If block challenge phase and active player passes (doesn't challenge block) -> block succeeds
     if (newState.phase === 'waiting_for_block_challenges' && newState.currentAction.player === userId) {
         addLog(newState, 'Система', 'Блок принят. Действие отменено.');
         nextTurn(newState);
@@ -227,7 +202,7 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
     const isBlockChallenge = newState.phase === 'waiting_for_block_challenges';
     const accusedId = isBlockChallenge ? newState.currentAction.blockedBy : newState.currentAction.player;
 
-    if (challenger.id === accusedId) return; // Нельзя челенджить себя
+    if (challenger.id === accusedId) return;
 
     const accused = newState.players.find(p => p.id === accusedId);
     if (!accused) return;
@@ -238,38 +213,28 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
     const hasRole = accused.cards.some(c => !c.revealed && requiredRoles.includes(c.role));
 
     if (hasRole) {
-      // Обвиняемый доказал правоту
       const cardIdx = accused.cards.findIndex(c => !c.revealed && requiredRoles.includes(c.role));
       const oldRole = accused.cards[cardIdx].role;
       addLog(newState, accused.name, `Показал карту: ${getRoleName(oldRole)}!`);
 
-      // Замешиваем карту и берем новую
       newState.deck.push(oldRole);
       newState.deck = shuffleDeck(newState.deck);
       accused.cards[cardIdx].role = newState.deck.pop() as Role;
 
-      // Челленджер теряет влияние
       newState.phase = 'losing_influence';
       newState.pendingPlayerId = challenger.id;
 
-      // Логика после потери карты челленджером:
-      // Если это был челлендж действия -> действие продолжается
-      // Если это был челлендж блока -> блок остается в силе (действие отменено)
       newState.currentAction.nextPhase = isBlockChallenge ? 'blocked_end' : 'continue_action';
 
     } else {
-      // Обвиняемый солгал
       addLog(newState, accused.name, `БЛЕФОВАЛ! (Нет нужной карты)`);
       newState.phase = 'losing_influence';
       newState.pendingPlayerId = accused.id;
 
-      // Логика после потери карты лжецом:
-      // Если это был челлендж действия (лжец делал действие) -> действие отменяется
-      // Если это был челлендж блока (лжец блокировал) -> блок снимается, действие продолжается
       newState.currentAction.nextPhase = isBlockChallenge ? 'continue_action' : 'action_cancelled';
     }
 
-    newState.turnDeadline = Date.now() + (60 * 1000); // Время на выбор карты для потери
+    newState.turnDeadline = Date.now() + (60 * 1000);
     await updateState(newState);
   };
 
@@ -314,12 +279,10 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
     if (!action) {
        nextTurn(newState);
     } else {
-        // Если это была потеря от Coup или Assassinate (успешного)
         if (action.type === 'coup') {
             nextTurn(newState);
         }
         else if (action.type === 'assassinate' && newState.phase === 'losing_influence' && !action.nextPhase) {
-            // Это была жертва ассасина, потерявшая карту. Ход завершен.
             nextTurn(newState);
         }
         else if (action.nextPhase) {
@@ -333,16 +296,10 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
                  addLog(newState, 'Система', 'Блок успешен (челлендж провален), действие отменено');
                  nextTurn(newState);
              } else if (next === 'continue_action') {
-                 // Если блок был снят (челлендж успешен) или действие подтверждено (челлендж провален)
                  if (action.blockedBy) {
-                     // Блокирующий потерял карту, значит блока нет -> выполняем действие
-                     // Но если действие Steal/Assassinate, нужно проверить, не хочет ли кто еще заблокировать?
-                     // (В упрощенной версии считаем, что блок снят и действие проходит)
                      addLog(newState, 'Система', 'Блок провалился, действие выполняется');
                      applyActionEffect(newState);
                  } else {
-                     // Действующий игрок доказал правоту -> действие продолжается
-                     // Если это Steal/Assassinate, теперь жертва может заблокировать
                      if (['steal', 'assassinate'].includes(action.type)) {
                          newState.phase = 'waiting_for_blocks';
                          newState.turnDeadline = Date.now() + (30 * 1000);
@@ -423,7 +380,6 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
               if (target) {
                   state.phase = 'losing_influence';
                   state.pendingPlayerId = target.id;
-                  // Важно: убираем nextPhase, чтобы resolveLoss не зациклился
                   delete action.nextPhase;
                   addLog(state, 'Система', `Покушение успешно! ${target.name} теряет карту`);
                   state.turnDeadline = Date.now() + (60 * 1000);
