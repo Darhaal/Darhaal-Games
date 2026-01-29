@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
     RotateCw, Trash2, Check, Shuffle,
     Anchor, Trophy, LogOut, Timer, Crosshair, Map, Shield
 } from 'lucide-react';
 import { Ship, CellStatus, Coordinate, ShipType, FLEET_CONFIG, Orientation } from '@/types/battleship';
-import { checkPlacement } from '@/hooks/useBattleshipGame'; // Используем логику из хука
+import { checkPlacement } from '@/hooks/useBattleshipGame';
 
 const CELL_SIZE_L = "w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10";
 const CELL_SIZE_S = "w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6";
@@ -29,7 +29,7 @@ const DICTIONARY = {
         zoneMe: 'Мой Флот',
         shipsAlive: 'В строю',
         enemy: 'Враг',
-        dragHint: 'Перетащите корабли или кликните. [Q/E] - Поворот',
+        dragHint: 'Перетащите корабли. Пробел/Q для поворота.',
         rotate: 'Повернуть',
         clear: 'Сброс'
     },
@@ -50,7 +50,7 @@ const DICTIONARY = {
         zoneMe: 'My Fleet',
         shipsAlive: 'Active',
         enemy: 'Enemy',
-        dragHint: 'Drag ships or click to place. [Q/E] - Rotate',
+        dragHint: 'Drag ships. Space/Q to rotate.',
         rotate: 'Rotate',
         clear: 'Reset'
     }
@@ -73,11 +73,9 @@ const GridCell = ({
     const isSmall = size === 'small';
     let content = null;
 
-    // Стили бумаги
     let bgClass = "bg-[#F5F5F0]";
     let borderClass = isSmall ? "border-[0.5px] border-[#E6E1DC]" : "border border-[#E6E1DC]";
 
-    // Статусы выстрелов
     if (status === 'miss') {
         content = <div className={`${isSmall ? 'w-1.5 h-1.5' : 'w-2 h-2'} rounded-full bg-[#8A9099]/40`} />;
     } else if (status === 'hit') {
@@ -87,14 +85,12 @@ const GridCell = ({
         bgClass = "bg-[#1A1F26]";
         content = <span className={`${isSmall ? 'text-[8px]' : 'text-sm'} text-white font-bold`}>☠</span>;
     } else if (shipPart) {
-        // Корабль (если не убит и не ранен)
         if (status === 'empty') {
             bgClass = getShipColor(shipPart) + " shadow-sm border-white/20";
             borderClass = "border-transparent";
         }
     }
 
-    // Подсветка при расстановке (Призрак)
     if (isHovered) {
         bgClass = hoverValid ? "bg-emerald-500/20 ring-2 ring-emerald-500 inset" : "bg-red-500/20 ring-2 ring-red-500 inset";
     }
@@ -133,8 +129,6 @@ export default function BattleshipGame({
     const [selectedType, setSelectedType] = useState<ShipType | null>(null);
     const [hoverPos, setHoverPos] = useState<Coordinate | null>(null);
     const [timeLeft, setTimeLeft] = useState(60);
-
-    // Стейт для временного хранения "взятого" корабля с доски
     const [movingShipId, setMovingShipId] = useState<string | null>(null);
 
     const t = DICTIONARY[lang as 'ru' | 'en'] || DICTIONARY['ru'];
@@ -145,7 +139,6 @@ export default function BattleshipGame({
     const isMyTurn = gameState.turn === userId;
     const phase = gameState.phase;
 
-    // --- ЭФФЕКТЫ ---
     useEffect(() => {
         if (phase !== 'playing') return;
         const interval = setInterval(() => {
@@ -155,10 +148,12 @@ export default function BattleshipGame({
         return () => clearInterval(interval);
     }, [gameState.lastActionTime, phase]);
 
-    // Клавиши для поворота
+    // Keyboard Rotation
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
-            if (['q', 'e', 'r'].includes(e.key.toLowerCase())) {
+            // Пробел, Q, E, R - поворот
+            if ([' ', 'q', 'e', 'r'].includes(e.key.toLowerCase())) {
+                e.preventDefault(); // Предотвращаем скролл пробелом
                 setOrientation(prev => prev === 'horizontal' ? 'vertical' : 'horizontal');
             }
         };
@@ -166,11 +161,9 @@ export default function BattleshipGame({
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, []);
 
-    // --- ЛОГИКА ---
-
     const getMyCellContent = (x: number, y: number) => {
         const s = myShips.find((s: Ship) => {
-            // Если мы сейчас перемещаем этот корабль (визуально он у нас в "руке"), не рисуем его на поле
+            // Скрываем корабль, если он "в руке" (перетаскивается)
             if (movingShipId === s.id) return false;
 
             if (s.orientation === 'horizontal') return s.position.y === y && x >= s.position.x && x < s.position.x + s.size;
@@ -188,12 +181,10 @@ export default function BattleshipGame({
 
     // --- Drag & Placement Logic ---
 
-    // Попытка поставить корабль
     const tryPlaceShip = (x: number, y: number, type: ShipType, existingId?: string) => {
         const config = FLEET_CONFIG.find(c => c.type === type);
         if (!config) return;
 
-        // Если это новый корабль, проверяем лимиты
         if (!existingId) {
             const count = myShips.filter((s: Ship) => s.type === type).length;
             if (count >= config.count) return;
@@ -211,7 +202,6 @@ export default function BattleshipGame({
         const success = placeShipManual(newShip);
 
         if (success) {
-            // Если успешно поставили новый - проверяем, не надо ли сбросить выбор
             if (!existingId) {
                 const newCount = myShips.filter((s: Ship) => s.type === type).length + 1;
                 if (newCount >= config.count) setSelectedType(null);
@@ -221,34 +211,37 @@ export default function BattleshipGame({
     };
 
     const handleCellClick = (x: number, y: number) => {
-        // 1. Если выбран тип из меню - ставим новый
         if (selectedType) {
             tryPlaceShip(x, y, selectedType);
             return;
         }
-
-        // 2. Если кликнули по кораблю на поле - забираем его ("Move")
         const { ship } = getMyCellContent(x, y);
         if (ship) {
-            // "Забираем" корабль в руку:
-            // Удаляем с поля
             removeShip(ship.id);
-            // Устанавливаем параметры выбора
             setSelectedType(ship.type);
             setOrientation(ship.orientation);
             setHoverPos({ x, y });
         }
     };
 
-    // Drag from Menu
+    // --- Drag Handlers ---
+
+    // Убираем стандартную картинку призрака
+    const hideDragImage = (e: React.DragEvent) => {
+        const img = new Image();
+        img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+        e.dataTransfer.setDragImage(img, 0, 0);
+    };
+
     const handleDragStartMenu = (e: React.DragEvent, type: ShipType) => {
+        hideDragImage(e);
         setSelectedType(type);
         e.dataTransfer.setData('type', type);
     };
 
-    // Drag from Board
     const handleDragStartBoard = (e: React.DragEvent, ship: Ship) => {
-        setMovingShipId(ship.id); // Скрываем с доски визуально
+        hideDragImage(e);
+        setMovingShipId(ship.id);
         setOrientation(ship.orientation);
         e.dataTransfer.setData('type', ship.type);
         e.dataTransfer.setData('id', ship.id);
@@ -257,13 +250,19 @@ export default function BattleshipGame({
     const handleDrop = (e: React.DragEvent, x: number, y: number) => {
         e.preventDefault();
         const type = e.dataTransfer.getData('type') as ShipType;
-        const id = e.dataTransfer.getData('id'); // Может быть пустым (новый корабль)
+        const id = e.dataTransfer.getData('id');
 
         if (type) tryPlaceShip(x, y, type, id || undefined);
         setMovingShipId(null);
     };
 
-    // Визуализация "Призрака"
+    const handleDragOver = (e: React.DragEvent, x: number, y: number) => {
+        e.preventDefault(); // Разрешаем дроп
+        if (hoverPos?.x !== x || hoverPos?.y !== y) {
+            setHoverPos({ x, y });
+        }
+    };
+
     const isPhantomCell = (x: number, y: number) => {
         if (!hoverPos || !selectedType) return false;
         const config = FLEET_CONFIG.find(c => c.type === selectedType)!;
@@ -278,9 +277,8 @@ export default function BattleshipGame({
         if (!selectedType || !hoverPos) return false;
         const config = FLEET_CONFIG.find(c => c.type === selectedType)!;
 
-        // Создаем временный корабль для проверки через хук
         const tempShip: Ship = {
-            id: 'temp', // ID не важен для валидации новой позиции (кроме игнорирования самого себя)
+            id: 'temp',
             type: selectedType,
             size: config.size,
             orientation,
@@ -289,21 +287,9 @@ export default function BattleshipGame({
         };
 
         // Используем функцию из хука (она экспортирована)
-        // Важно: если мы сейчас перетаскиваем корабль (movingShipId), мы должны его игнорировать при проверке
-        // Но myShips уже может не содержать его если мы сделали removeShip при клике.
-        // Если это Drag, то movingShipId установлен, но корабль ЕЩЕ в myShips.
-        // checkPlacement фильтрует по ID, так что передадим 'temp' как newShip
-
-        // Нюанс: checkPlacement в хуке принимает ID, который нужно игнорировать (старую позицию).
-        // Если это новый корабль, ignoreId не нужен. Если перестановка - нужен.
-        // Но так как у tempShip ID='temp', он не совпадет с реальным ID в myShips.
-        // Нам нужно передать ID перетаскиваемого корабля в ignoreId.
-
-        // Однако myShips в пропсах. Мы можем использовать checkPlacement напрямую.
         return checkPlacement(myShips, tempShip, movingShipId || undefined);
     };
 
-    // --- FINISHED SCREEN ---
     if (phase === 'finished') return (
         <div className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 font-sans animate-in fade-in">
             <div className="bg-white p-10 rounded-[32px] text-center animate-in zoom-in duration-300 border-4 border-[#9e1316] shadow-2xl max-w-sm w-full relative overflow-hidden">
@@ -320,7 +306,6 @@ export default function BattleshipGame({
         </div>
     );
 
-    // --- GAME SCREEN ---
     return (
         <div className="min-h-screen bg-[#F8FAFC] text-[#1A1F26] flex flex-col font-sans overflow-hidden relative selection:bg-[#9e1316] selection:text-white">
             <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-50 mix-blend-overlay pointer-events-none" />
@@ -396,7 +381,7 @@ export default function BattleshipGame({
                                     className="flex items-center gap-2 text-xs font-bold uppercase text-[#1A1F26] hover:bg-white hover:shadow-sm px-4 py-2 rounded-xl transition-all"
                                 >
                                     <RotateCw className={`w-4 h-4 transition-transform duration-300 ${orientation === 'vertical' ? 'rotate-90' : ''}`} />
-                                    {t.rotate}
+                                    {t[orientation === 'horizontal' ? 'horizontal' : 'vertical']}
                                 </button>
                                 <button onClick={clearShips} className="text-[#8A9099] hover:text-[#9e1316] hover:bg-white hover:shadow-sm p-2 rounded-xl transition-all flex items-center gap-2 text-xs font-bold uppercase px-4">
                                     <Trash2 className="w-4 h-4"/> {t.clear}
