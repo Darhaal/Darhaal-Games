@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, memo } from 'react';
+import React, { useState, useEffect, useCallback, memo } from 'react';
 import {
     RotateCw, Trash2, Check, Shuffle,
     Trophy, LogOut, Timer, Crosshair, Map, Shield, BarChart3, User, AlertCircle
@@ -245,6 +245,7 @@ export default function BattleshipGame({
         return () => clearInterval(interval);
     }, [gameState.lastActionTime, phase]);
 
+    // Keyboard Rotation
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (['Space', 'KeyQ', 'KeyE', 'KeyR'].includes(e.code)) {
@@ -271,14 +272,32 @@ export default function BattleshipGame({
         return { status: shot || 'empty' };
     }, [me?.shots]);
 
-    // Drag Logic
+    // --- Stats Calculation ---
+    const getStats = (playerBoard: any) => {
+        if (!playerBoard?.shots) return { shots: 0, hits: 0, accuracy: 0 };
+        const shots = Object.values(playerBoard.shots);
+        const total = shots.length;
+        const hits = shots.filter((s: any) => s === 'hit' || s === 'killed').length;
+        return {
+            shots: total,
+            hits: hits,
+            accuracy: total > 0 ? Math.round((hits / total) * 100) : 0
+        };
+    };
+
+    const myStats = getStats(me);
+
+    // --- Drag & Placement Logic ---
+
     const tryPlaceShip = (x: number, y: number, type: ShipType, existingId?: string) => {
         const config = FLEET_CONFIG.find(c => c.type === type);
         if (!config) return;
+
         if (!existingId) {
             const count = myShips.filter((s: Ship) => s.type === type).length;
             if (count >= config.count) return;
         }
+
         const newShip: Ship = {
             id: existingId || `${type}-${Date.now()}`,
             type: type,
@@ -287,7 +306,9 @@ export default function BattleshipGame({
             position: { x, y },
             hits: 0
         };
+
         const success = placeShipManual(newShip);
+
         if (success) {
             if (!existingId) {
                 const newCount = myShips.filter((s: Ship) => s.type === type).length + 1;
@@ -310,6 +331,8 @@ export default function BattleshipGame({
             setHoverPos({ x, y });
         }
     };
+
+    // --- Drag Handlers ---
 
     const hideDragImage = (e: React.DragEvent) => {
         if (typeof window !== 'undefined') {
@@ -341,6 +364,13 @@ export default function BattleshipGame({
         setMovingShipId(null);
     };
 
+    const handleDragOver = (e: React.DragEvent, x: number, y: number) => {
+        e.preventDefault();
+        if (hoverPos?.x !== x || hoverPos?.y !== y) {
+            setHoverPos({ x, y });
+        }
+    };
+
     const isPhantomCell = useCallback((x: number, y: number) => {
         if (!hoverPos || !selectedType) return false;
         const config = FLEET_CONFIG.find(c => c.type === selectedType)!;
@@ -350,6 +380,20 @@ export default function BattleshipGame({
              return x === hoverPos.x && y >= hoverPos.y && y < hoverPos.y + config.size;
         }
     }, [hoverPos, selectedType, orientation]);
+
+    const checkPhantomValidity = (x: number, y: number) => {
+        if (!selectedType || !hoverPos) return false;
+        const config = FLEET_CONFIG.find(c => c.type === selectedType)!;
+        const tempShip: Ship = {
+            id: 'temp',
+            type: selectedType,
+            size: config.size,
+            orientation,
+            position: { x: hoverPos.x, y: hoverPos.y },
+            hits: 0
+        };
+        return checkPlacement(myShips, tempShip, movingShipId || undefined);
+    };
 
     // --- FINISHED SCREEN ---
     if (phase === 'finished') return (
@@ -472,7 +516,7 @@ export default function BattleshipGame({
                             <div className="flex items-center gap-4 w-full md:w-1/3">
                                 <div className="relative">
                                     <div className="w-14 h-14 rounded-full border-2 border-white shadow-md overflow-hidden bg-[#F5F5F0]">
-                                        {me?.avatarUrl ? <img src={me.avatarUrl} className="w-full h-full object-cover" /> : <User className="w-8 h-8 text-gray-400 m-auto mt-2" />}
+                                        {me?.avatarUrl ? <img src={me.avatarUrl} alt="Me" className="w-full h-full object-cover" /> : <User className="w-8 h-8 text-gray-400 m-auto mt-2" />}
                                     </div>
                                     {isMyTurn && <div className="absolute bottom-0 right-0 w-4 h-4 bg-emerald-500 border-2 border-white rounded-full animate-pulse shadow-sm"></div>}
                                 </div>
@@ -482,7 +526,7 @@ export default function BattleshipGame({
                                 </div>
                             </div>
 
-                            {/* CENTER */}
+                            {/* CENTER STATUS */}
                             <div className="flex flex-col items-center justify-center w-full md:w-1/3 order-first md:order-none">
                                 <div className={`text-[10px] font-black uppercase tracking-[0.2em] px-6 py-2 rounded-full border shadow-sm transition-all duration-300 ${isMyTurn ? 'bg-[#9e1316] text-white border-[#9e1316] scale-105' : 'bg-white text-[#8A9099] border-[#E6E1DC]'}`}>
                                     {isMyTurn ? t.yourTurn : t.enemyTurn}
@@ -497,7 +541,7 @@ export default function BattleshipGame({
                                 </div>
                                 <div className="relative">
                                     <div className="w-14 h-14 rounded-full border-2 border-white shadow-md overflow-hidden bg-[#F5F5F0]">
-                                        {opponent?.avatarUrl ? <img src={opponent.avatarUrl} className="w-full h-full object-cover" /> : <User className="w-8 h-8 text-gray-400 m-auto mt-2" />}
+                                        {opponent?.avatarUrl ? <img src={opponent.avatarUrl} alt="Enemy" className="w-full h-full object-cover" /> : <User className="w-8 h-8 text-gray-400 m-auto mt-2" />}
                                     </div>
                                     {!isMyTurn && <div className="absolute bottom-0 right-0 w-4 h-4 bg-[#9e1316] border-2 border-white rounded-full animate-pulse shadow-sm"></div>}
                                 </div>
@@ -505,41 +549,62 @@ export default function BattleshipGame({
                         </div>
 
                         <div className="flex flex-col lg:flex-row gap-8 items-start justify-center w-full">
-                            {/* ENEMY BOARD */}
+
+                            {/* ENEMY BOARD (RADAR) */}
                             <div className="flex-1 w-full max-w-lg mx-auto lg:order-2">
                                 <div className={`bg-white p-6 rounded-[40px] shadow-2xl border-4 transition-all duration-500 relative ${isMyTurn ? 'border-[#9e1316] shadow-[#9e1316]/20 z-10' : 'border-[#E6E1DC] opacity-95'}`}>
-                                    <div className="absolute top-8 left-8 text-[10px] font-bold text-[#8A9099] uppercase tracking-widest flex items-center gap-2"><Crosshair className="w-4 h-4"/> {t.zoneEnemy}</div>
+                                    <div className="absolute top-8 left-8 text-[10px] font-bold text-[#8A9099] uppercase tracking-widest flex items-center gap-2">
+                                        <Crosshair className="w-4 h-4"/> {t.zoneEnemy}
+                                    </div>
                                     <div className="mt-8 grid grid-cols-10 gap-px bg-[#E6E1DC] border-2 border-[#1A1F26] rounded-xl overflow-hidden cursor-crosshair">
                                         {Array.from({ length: 100 }).map((_, i) => {
-                                            const x = i % 10, y = Math.floor(i / 10);
+                                            const x = i % 10;
+                                            const y = Math.floor(i / 10);
                                             const { status } = getOpponentCellContent(x, y);
-                                            return <GridCell key={i} x={x} y={y} status={status} onClick={() => isMyTurn && status === 'empty' && fireShot(x, y)} />;
+                                            return (
+                                                <GridCell
+                                                    key={i} x={x} y={y}
+                                                    status={status}
+                                                    onClick={() => isMyTurn && status === 'empty' && fireShot(x, y)}
+                                                />
+                                            );
                                         })}
                                     </div>
                                 </div>
                             </div>
 
-                            {/* MY BOARD + STATS */}
+                            {/* LEFT COLUMN: MY BOARD + STATS */}
                             <div className="flex flex-col gap-6 lg:order-1 w-full max-w-xs mx-auto lg:mx-0">
+
+                                {/* MY BOARD (STATUS) */}
                                 <div className="bg-white p-5 rounded-[32px] shadow-lg border border-[#E6E1DC] opacity-90 hover:opacity-100 transition-opacity relative group">
                                     <div className="absolute top-5 left-5 text-[10px] font-bold text-[#8A9099] uppercase tracking-widest flex items-center gap-2"><Shield className="w-3 h-3"/> {t.zoneMe}</div>
                                     <div className="mt-8 grid grid-cols-10 gap-px bg-[#E6E1DC] border border-[#E6E1DC] w-fit mx-auto rounded overflow-hidden">
                                         {Array.from({ length: 100 }).map((_, i) => {
-                                            const x = i % 10, y = Math.floor(i / 10);
+                                            const x = i % 10;
+                                            const y = Math.floor(i / 10);
                                             const { status, shipPart } = getMyCellContent(x, y);
                                             return <GridCell key={i} x={x} y={y} status={status} shipPart={shipPart} size="small" />;
                                         })}
                                     </div>
                                 </div>
 
+                                {/* LIGHT STATS PANEL (FIXED COLOR) */}
                                 <div className="bg-white border border-[#E6E1DC] p-6 rounded-[32px] shadow-sm flex flex-col gap-4 relative overflow-hidden">
-                                    <div className="flex items-center gap-2 text-xs font-black uppercase text-[#1A1F26] tracking-widest mb-2 relative z-10"><BarChart3 className="w-4 h-4 text-[#9e1316]" /> {t.stats}</div>
+                                    <div className="flex items-center gap-2 text-xs font-black uppercase text-[#1A1F26] tracking-widest mb-2 relative z-10">
+                                        <BarChart3 className="w-4 h-4 text-[#9e1316]" /> {t.stats}
+                                    </div>
+
                                     <div className="space-y-4">
+                                        {/* My Fleet Status */}
                                         <div className="space-y-1">
                                             <div className="text-[9px] font-bold uppercase text-[#8A9099] mb-2">{t.zoneMe}</div>
                                             <FleetStatusList ships={myShips} isEnemy={false} />
                                         </div>
+
                                         <div className="h-px bg-[#F5F5F0] w-full" />
+
+                                        {/* Enemy Fleet Status */}
                                         <div className="space-y-1">
                                             <div className="text-[9px] font-bold uppercase text-[#8A9099] mb-2">{t.enemy}</div>
                                             <FleetStatusList ships={opponent?.ships || []} isEnemy={true} />
@@ -547,9 +612,11 @@ export default function BattleshipGame({
                                     </div>
                                 </div>
                             </div>
+
                         </div>
                     </div>
                 )}
+
             </main>
         </div>
     );
