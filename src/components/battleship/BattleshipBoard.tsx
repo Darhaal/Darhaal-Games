@@ -9,14 +9,38 @@ import { Lang } from '@/types/battleship';
 import BattleshipLobby from './BattleshipLobby';
 import BattleshipGame from './BattleshipGame';
 
+interface UserProfile {
+    id: string;
+    name: string;
+    avatarUrl: string;
+}
+
 export default function BattleshipBoard() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const lobbyId = searchParams.get('id');
 
-  const [userId, setUserId] = useState<string>();
+  const [user, setUser] = useState<UserProfile | null>(null);
   const [lang, setLang] = useState<Lang>('ru');
   const [isLeaving, setIsLeaving] = useState(false);
+
+  // Получаем данные пользователя перед инициализацией игры
+  useEffect(() => {
+    const fetchUser = async () => {
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        if (authUser) {
+            setUser({
+                id: authUser.id,
+                name: authUser.user_metadata?.username || authUser.email?.split('@')[0] || 'Admiral',
+                avatarUrl: authUser.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${authUser.id}`
+            });
+        }
+    };
+    fetchUser();
+
+    const savedLang = localStorage.getItem('dg_lang') as Lang;
+    if (savedLang === 'en' || savedLang === 'ru') setLang(savedLang);
+  }, []);
 
   const {
       gameState,
@@ -30,19 +54,13 @@ export default function BattleshipBoard() {
       submitShips,
       fireShot,
       myShips
-  } = useBattleshipGame(lobbyId, userId);
+  } = useBattleshipGame(lobbyId, user); // Передаем объект user
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id));
-    const savedLang = localStorage.getItem('dg_lang') as Lang;
-    if (savedLang === 'en' || savedLang === 'ru') setLang(savedLang);
-  }, []);
-
-  useEffect(() => {
-    if (userId && gameState && !gameState.players?.[userId]) {
+    if (user && gameState && !gameState.players?.[user.id]) {
         initGame();
     }
-  }, [userId, gameState, initGame]);
+  }, [user, gameState, initGame]);
 
   const handleLeave = async () => {
       if (isLeaving) return;
@@ -61,7 +79,7 @@ export default function BattleshipBoard() {
     };
   }, [leaveGame]);
 
-  if (loading || isLeaving) {
+  if (loading || isLeaving || !user) {
       return (
         <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]">
             <Loader2 className="animate-spin text-[#9e1316] w-8 h-8" />
@@ -72,7 +90,7 @@ export default function BattleshipBoard() {
   if (!gameState) {
       return (
         <div className="min-h-screen flex items-center justify-center font-bold text-gray-400 uppercase tracking-widest">
-            Lobby not found
+            Лобби не найдено
         </div>
       );
   }
@@ -82,7 +100,7 @@ export default function BattleshipBoard() {
         <BattleshipLobby
           gameState={gameState}
           roomMeta={roomMeta}
-          userId={userId}
+          userId={user.id}
           startGame={startGame}
           leaveGame={handleLeave}
           lang={lang}
@@ -93,7 +111,7 @@ export default function BattleshipBoard() {
   return (
     <BattleshipGame
       gameState={gameState}
-      userId={userId}
+      userId={user.id}
       myShips={myShips}
       autoPlaceShips={autoPlaceShips}
       clearShips={clearShips}

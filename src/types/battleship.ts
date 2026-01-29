@@ -19,11 +19,13 @@ export interface Ship {
 }
 
 export interface PlayerBoard {
+  userId: string;
+  name: string;       // Добавлено
+  avatarUrl: string;  // Добавлено
   ships: Ship[];
   shots: Record<string, CellStatus>;
   isReady: boolean;
   isHost: boolean;
-  userId: string;
   aliveShipsCount: number;
 }
 

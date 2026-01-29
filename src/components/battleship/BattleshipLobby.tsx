@@ -25,7 +25,6 @@ export default function BattleshipLobby({ gameState, roomMeta, userId, startGame
       waiting: 'Ожидание соперника...',
       start: 'В Бой!',
       leave: 'Выйти',
-      players: 'Флот',
       code: 'Код доступа',
       copy: 'Скопировано',
       minPlayers: 'Ждем 2-го игрока'
@@ -35,7 +34,6 @@ export default function BattleshipLobby({ gameState, roomMeta, userId, startGame
       waiting: 'Waiting for opponent...',
       start: 'Battle!',
       leave: 'Leave',
-      players: 'Fleet',
       code: 'Access Code',
       copy: 'Copied',
       minPlayers: 'Waiting for P2'
@@ -86,13 +84,13 @@ export default function BattleshipLobby({ gameState, roomMeta, userId, startGame
                 {p.isHost && <div className="absolute top-4 right-4 text-[#9e1316]"><Crown className="w-5 h-5" /></div>}
                 <div className="w-20 h-20 rounded-full bg-[#F5F5F0] border-4 border-white shadow-lg overflow-hidden">
                     <img
-                        src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${p.userId}`}
+                        src={p.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${p.userId}`}
                         alt="Avatar"
                         className="w-full h-full object-cover"
                     />
                 </div>
                 <div className="text-center">
-                    <div className="font-black text-[#1A1F26] text-lg uppercase tracking-tight">Admiral</div>
+                    <div className="font-black text-[#1A1F26] text-lg uppercase tracking-tight">{p.name || 'Admiral'}</div>
                     <div className="text-xs font-bold text-[#8A9099] uppercase tracking-wider">{p.userId === userId ? '(Вы)' : ''}</div>
                 </div>
                 <div className="w-full h-2 bg-[#F5F5F0] rounded-full overflow-hidden">

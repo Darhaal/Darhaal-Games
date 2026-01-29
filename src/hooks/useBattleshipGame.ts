@@ -19,17 +19,12 @@ const getShipCoords = (ship: Ship): Coordinate[] => {
 
 const canPlaceShip = (ships: Ship[], newShip: Ship): boolean => {
   const newShipCoords = getShipCoords(newShip);
-
-  // 1. Проверка границ
   for (const c of newShipCoords) {
     if (!isValidCoord(c.x, c.y)) return false;
   }
-
-  // 2. Проверка пересечений и соседства
   const dangerZone = new Set<string>();
   ships.forEach(s => {
     getShipCoords(s).forEach(coord => {
-      // Добавляем саму клетку и соседей
       for (let dx = -1; dx <= 1; dx++) {
         for (let dy = -1; dy <= 1; dy++) {
           dangerZone.add(getKey(coord.x + dx, coord.y + dy));
@@ -37,7 +32,6 @@ const canPlaceShip = (ships: Ship[], newShip: Ship): boolean => {
       }
     });
   });
-
   for (const c of newShipCoords) {
     if (dangerZone.has(getKey(c.x, c.y))) return false;
   }
@@ -82,39 +76,42 @@ const shuffleFleet = (): Ship[] => {
   return [];
 };
 
-export function useBattleshipGame(lobbyId: string | null, userId: string | undefined) {
+// ОБНОВЛЕНО: Принимает полный профиль пользователя
+export function useBattleshipGame(
+    lobbyId: string | null,
+    user: { id: string; name: string; avatarUrl: string } | null
+) {
   const [gameState, setGameState] = useState<BattleshipState | null>(null);
   const [roomMeta, setRoomMeta] = useState<{ name: string; code: string; isHost: boolean } | null>(null);
   const [myShips, setMyShips] = useState<Ship[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const stateRef = useRef<{ lobbyId: string | null; userId: string | undefined; gameState: BattleshipState | null }>({
-    lobbyId, userId, gameState: null
+  const stateRef = useRef<{ lobbyId: string | null; user: typeof user; gameState: BattleshipState | null }>({
+    lobbyId, user, gameState: null
   });
 
   useEffect(() => {
-    stateRef.current = { lobbyId, userId, gameState };
-  }, [lobbyId, userId, gameState]);
+    stateRef.current = { lobbyId, user, gameState };
+  }, [lobbyId, user, gameState]);
 
-  // --- Sync ---
   const fetchLobbyState = useCallback(async () => {
     if (!lobbyId) return;
     try {
       const { data } = await supabase.from('lobbies').select('name, code, host_id, game_state').eq('id', lobbyId).single();
       if (data) {
-        setRoomMeta({ name: data.name, code: data.code, isHost: data.host_id === userId });
+        setRoomMeta({ name: data.name, code: data.code, isHost: data.host_id === user?.id });
         if (data.game_state) {
           setGameState(data.game_state);
-          // Восстанавливаем корабли из стейта, если они там есть (при рефреше)
-          if (userId && data.game_state.players && !Array.isArray(data.game_state.players)) {
-             if (data.game_state.players[userId]?.ships) {
-                setMyShips(data.game_state.players[userId].ships);
+          // Восстанавливаем расстановку
+          if (user?.id && data.game_state.players && !Array.isArray(data.game_state.players)) {
+             if (data.game_state.players[user.id]?.ships) {
+                setMyShips(data.game_state.players[user.id].ships);
              }
           }
         }
       }
     } catch (e) { console.error(e); } finally { setLoading(false); }
-  }, [lobbyId, userId]);
+  }, [lobbyId, user?.id]);
 
   useEffect(() => {
     if (!lobbyId) return;
@@ -125,7 +122,6 @@ export function useBattleshipGame(lobbyId: string | null, userId: string | undef
         const newState = payload.new.game_state as BattleshipState;
         if (newState) {
           setGameState(prev => {
-            // Простая защита от старых пакетов
             if (prev && (newState.version || 0) < (prev.version || 0)) return prev;
             return newState;
           });
@@ -143,23 +139,28 @@ export function useBattleshipGame(lobbyId: string | null, userId: string | undef
     }
   };
 
-  // --- Actions ---
-
   const initGame = async () => {
-    if (!userId || !stateRef.current.gameState) return;
+    if (!user || !stateRef.current.gameState) return;
     const currentState = stateRef.current.gameState;
 
-    // Fix: если стейт поврежден или это массив
+    // Защита от битого стейта
     let playersObj = currentState.players;
     if (Array.isArray(playersObj)) playersObj = {};
 
-    if (!playersObj[userId]) {
+    if (!playersObj[user.id]) {
       const newState = JSON.parse(JSON.stringify(currentState)) as BattleshipState;
       if (Array.isArray(newState.players)) newState.players = {};
 
       const isFirst = Object.keys(newState.players).length === 0;
-      newState.players[userId] = {
-        userId, ships: [], shots: {}, isReady: false,
+
+      // ОБНОВЛЕНО: Сохраняем имя и аватар
+      newState.players[user.id] = {
+        userId: user.id,
+        name: user.name,
+        avatarUrl: user.avatarUrl,
+        ships: [],
+        shots: {},
+        isReady: false,
         isHost: isFirst,
         aliveShipsCount: 0
       };
@@ -168,17 +169,15 @@ export function useBattleshipGame(lobbyId: string | null, userId: string | undef
   };
 
   const startGame = async () => {
-    if (!gameState || !userId) return;
+    if (!gameState || !user?.id) return;
     const newState = JSON.parse(JSON.stringify(gameState)) as BattleshipState;
     newState.status = 'playing';
     newState.phase = 'setup';
-    newState.logs.push({ text: 'Подготовка флота...', time: new Date().toLocaleTimeString() });
     await updateState(newState);
   };
 
   const autoPlaceShips = () => setMyShips(shuffleFleet());
   const clearShips = () => setMyShips([]);
-
   const placeShipManual = (ship: Ship) => {
       if (canPlaceShip(myShips, ship)) {
           setMyShips([...myShips, ship]);
@@ -186,44 +185,34 @@ export function useBattleshipGame(lobbyId: string | null, userId: string | undef
       }
       return false;
   };
-
   const removeShip = (id: string) => setMyShips(myShips.filter(s => s.id !== id));
 
   const submitShips = async () => {
-    if (!userId || !gameState) return;
+    if (!user?.id || !gameState) return;
     const newState = JSON.parse(JSON.stringify(gameState)) as BattleshipState;
-
-    newState.players[userId].ships = myShips;
-    newState.players[userId].isReady = true;
-    newState.players[userId].aliveShipsCount = myShips.length;
+    newState.players[user.id].ships = myShips;
+    newState.players[user.id].isReady = true;
+    newState.players[user.id].aliveShipsCount = myShips.length;
 
     const playersArr = Object.values(newState.players);
-    // Если оба готовы - начинаем бой
     if (playersArr.length === 2 && playersArr.every(p => p.isReady)) {
       newState.phase = 'playing';
-      newState.turn = playersArr[0].userId; // Хост ходит первым (или просто первый в списке)
-      newState.logs.push({ text: 'Бой начался!', time: new Date().toLocaleTimeString() });
-    } else {
-        newState.logs.push({ text: 'Ожидание соперника...', time: new Date().toLocaleTimeString() });
+      newState.turn = playersArr[0].userId;
+      newState.logs.push({ text: 'Battle started!', time: new Date().toLocaleTimeString() });
     }
     await updateState(newState);
   };
 
   const fireShot = async (x: number, y: number) => {
-    if (!userId || !gameState || gameState.turn !== userId || gameState.phase !== 'playing') return;
-    const opponentId = Object.keys(gameState.players).find(id => id !== userId);
+    if (!user?.id || !gameState || gameState.turn !== user.id || gameState.phase !== 'playing') return;
+    const opponentId = Object.keys(gameState.players).find(id => id !== user.id);
     if (!opponentId) return;
-
     const newState = JSON.parse(JSON.stringify(gameState)) as BattleshipState;
     const opponentBoard = newState.players[opponentId];
-    const myBoard = newState.players[userId];
+    const myBoard = newState.players[user.id];
     const key = getKey(x, y);
-
-    if (myBoard.shots[key]) return; // Уже стреляли сюда
-
+    if (myBoard.shots[key]) return;
     let hit = false, killed = false, hitShipIdx = -1;
-
-    // Проверка попадания
     for (let i = 0; i < opponentBoard.ships.length; i++) {
       const s = opponentBoard.ships[i];
       if (getShipCoords(s).some(c => c.x === x && c.y === y)) {
@@ -232,39 +221,25 @@ export function useBattleshipGame(lobbyId: string | null, userId: string | undef
         break;
       }
     }
-
     myBoard.shots[key] = hit ? (killed ? 'killed' : 'hit') : 'miss';
-
     if (killed) {
       opponentBoard.aliveShipsCount--;
-      newState.logs.unshift({ text: `Корабль потоплен!`, time: new Date().toLocaleTimeString() });
-
-      // Авто-промахи вокруг убитого корабля
       getShipCoords(opponentBoard.ships[hitShipIdx]).forEach(c => {
-        myBoard.shots[getKey(c.x, c.y)] = 'killed'; // Обновляем статус клетки корабля
+        myBoard.shots[getKey(c.x, c.y)] = 'killed';
         for (let dx = -1; dx <= 1; dx++) {
           for (let dy = -1; dy <= 1; dy++) {
             const nx = c.x + dx, ny = c.y + dy;
-            if (isValidCoord(nx, ny) && !myBoard.shots[getKey(nx, ny)]) {
-                myBoard.shots[getKey(nx, ny)] = 'miss';
-            }
+            if (isValidCoord(nx, ny) && !myBoard.shots[getKey(nx, ny)]) myBoard.shots[getKey(nx, ny)] = 'miss';
           }
         }
       });
-    } else if (hit) {
-        newState.logs.unshift({ text: `Попадание!`, time: new Date().toLocaleTimeString() });
-    } else {
-        newState.logs.unshift({ text: `Промах`, time: new Date().toLocaleTimeString() });
-        newState.turn = opponentId; // Переход хода только при промахе
+    } else if (!hit) {
+      newState.turn = opponentId;
     }
-
-    // Проверка победы
     if (opponentBoard.aliveShipsCount === 0) {
       newState.phase = 'finished';
-      newState.winner = userId;
-      newState.logs.unshift({ text: `ПОБЕДА АДМИРАЛА ${userId.slice(0,4)}!`, time: new Date().toLocaleTimeString() });
+      newState.winner = user.id;
     }
-
     await updateState(newState);
   };
 

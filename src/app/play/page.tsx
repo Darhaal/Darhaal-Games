@@ -5,9 +5,9 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import {
   ArrowLeft, Search, Users, Lock, Play, X, Loader2,
-  Crown, Filter, ScrollText, KeyRound, Unlock, SortAsc, SortDesc
+  Crown, Filter, ScrollText, KeyRound, Unlock, SortAsc, SortDesc,
+  Ship, Bomb
 } from 'lucide-react';
-import { GameState, Player } from '@/types/coup';
 
 type Lang = 'ru' | 'en';
 
@@ -15,10 +15,8 @@ interface LobbyRow {
   id: string;
   name: string;
   code: string;
-  game_state: {
-      gameType?: string;
-      players: Player[];
-  } & GameState;
+  // Используем any для game_state, так как структура зависит от игры
+  game_state: any;
   status: string;
   is_private: boolean;
   password?: string;
@@ -39,23 +37,18 @@ const TRANSLATIONS = {
     sortOld: 'Старые',
     sortPlayers: 'Игроки',
     modes: 'Режимы',
-    coup: 'Coup (Переворот)',
-    mafia: 'Mafia',
-    loading: 'Загрузка миров...',
-    empty: 'Ничего не найдено',
-    emptyDesc: 'Попробуйте изменить фильтры',
-    full: 'Full',
-    back: 'Вернуться',
+    coup: 'Coup',
+    battleship: 'Морской Бой',
+    mafia: 'Мафия',
+    all: 'Все',
     private: 'Приватная комната',
-    enterPass: 'Введите пароль...',
-    confirm: 'Подтвердить',
-    errorPass: 'Неверный пароль',
-    errorAuth: 'Авторизуйтесь, чтобы играть',
-    errorFull: 'Комната заполнена',
-    errorNotFound: 'Лобби с таким кодом не найдено'
+    enterPass: 'Введите пароль',
+    confirm: 'Войти',
+    cancel: 'Отмена',
+    empty: 'Лобби не найдено'
   },
   en: {
-    title: 'Game List',
+    title: 'Game Browser',
     subtitle: 'Join and conquer',
     codePlaceholder: 'CODE',
     join: 'Join',
@@ -64,21 +57,16 @@ const TRANSLATIONS = {
     sortNew: 'Newest',
     sortOld: 'Oldest',
     sortPlayers: 'Players',
-    modes: 'Game Modes',
+    modes: 'Modes',
     coup: 'Coup',
+    battleship: 'Battleship',
     mafia: 'Mafia',
-    loading: 'Loading worlds...',
-    empty: 'No games found',
-    emptyDesc: 'Try changing filters',
-    full: 'Full',
-    back: 'Return',
+    all: 'All',
     private: 'Private Room',
-    enterPass: 'Enter password...',
-    confirm: 'Confirm',
-    errorPass: 'Invalid password',
-    errorAuth: 'Login required to play',
-    errorFull: 'Room is full',
-    errorNotFound: 'Lobby not found'
+    enterPass: 'Enter Password',
+    confirm: 'Enter',
+    cancel: 'Cancel',
+    empty: 'No lobbies found'
   }
 };
 
@@ -87,322 +75,180 @@ function PlayContent() {
   const [lobbies, setLobbies] = useState<LobbyRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [lang, setLang] = useState<Lang>('ru');
+  const [filterMode, setFilterMode] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortOption, setSortOption] = useState<SortOption>('newest');
 
-  // --- Фильтры ---
-  const [search, setSearch] = useState('');
-  const [codeQuery, setCodeQuery] = useState('');
-  const [filterCoup, setFilterCoup] = useState(true);
-  const [filterMafia, setFilterMafia] = useState(true);
-  const [sortBy, setSortBy] = useState<SortOption>('newest');
-
-  // --- Приватные комнаты ---
   const [selectedLobby, setSelectedLobby] = useState<LobbyRow | null>(null);
   const [passwordInput, setPasswordInput] = useState('');
 
-  // Получаем ID пользователя для подсветки "своих" лобби
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setCurrentUserId(data.user?.id || null));
-    const savedLang = localStorage.getItem('dg_lang') as Lang;
-    if (savedLang) setLang(savedLang);
-  }, []);
-
   const t = TRANSLATIONS[lang];
 
-  const fetchLobbies = async () => {
-    const { data } = await supabase
-      .from('lobbies')
-      .select('*')
-      .neq('status', 'finished')
-      .order('created_at', { ascending: false });
-
-    if (data) setLobbies(data as unknown as LobbyRow[]);
-    setLoading(false);
-  };
-
   useEffect(() => {
+    const savedLang = localStorage.getItem('dg_lang') as Lang;
+    if (savedLang) setLang(savedLang);
     fetchLobbies();
-    const channel = supabase.channel('public_lobbies')
+
+    const ch = supabase.channel('lobbies-list')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'lobbies' }, fetchLobbies)
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    return () => { supabase.removeChannel(ch); };
   }, []);
 
-  const handleJoin = async (lobby: LobbyRow, pass?: string) => {
-    if (lobby.is_private && lobby.password !== pass) {
-      alert(t.errorPass);
-      return;
-    }
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      alert(t.errorAuth);
-      return;
-    }
-
-    // Если уже внутри — просто переходим
-    if (lobby.game_state.players.some(p => p.id === user.id)) {
-      router.push(`/game/coup?id=${lobby.id}`);
-      return;
-    }
-
-    if (lobby.game_state.players.length >= 6) {
-      alert(t.errorFull);
-      return;
-    }
-
-    const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
-
-    const newPlayer: Player = {
-      id: user.id,
-      name: profile?.username || user.user_metadata?.username || user.user_metadata?.full_name || user.email?.split('@')[0] || 'Player',
-      avatarUrl: user.user_metadata?.avatar_url || profile?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`,
-      coins: 2,
-      cards: [],
-      isDead: false,
-      isHost: false,
-      isReady: true
-    };
-
-    const newPlayers = [...lobby.game_state.players, newPlayer];
-    const newState = { ...lobby.game_state, players: newPlayers };
-
-    const { error } = await supabase
-      .from('lobbies')
-      .update({ game_state: newState })
-      .eq('id', lobby.id);
-
-    if (!error) {
-      router.push(`/game/coup?id=${lobby.id}`);
-    }
+  const fetchLobbies = async () => {
+    const { data } = await supabase
+        .from('lobbies')
+        .select('*')
+        .order('created_at', { ascending: false });
+    if (data) setLobbies(data);
+    setLoading(false);
   };
 
-  const handleCodeJoin = () => {
-      const found = lobbies.find(l => l.code === codeQuery.toUpperCase());
-      if (found) {
-          if (found.is_private) setSelectedLobby(found);
-          else handleJoin(found);
-      } else {
-          alert(t.errorNotFound);
-      }
+  const handleJoin = async (lobby: LobbyRow, password?: string) => {
+    if (lobby.is_private && lobby.password !== password) {
+        alert('Wrong password');
+        return;
+    }
+    // Определяем URL на основе gameType (который мы теперь сохраняем в game_state)
+    const gameType = lobby.game_state?.gameType || 'coup'; // Fallback to coup for old lobbies
+    router.push(`/game/${gameType}?id=${lobby.id}`);
   };
 
-  // --- Логика фильтрации и сортировки ---
-  const processedLobbies = lobbies
+  // Хелпер для подсчета игроков (работает и для массивов Coup, и для объектов Battleship)
+  const getPlayerCount = (lobby: LobbyRow) => {
+      const players = lobby.game_state?.players;
+      if (Array.isArray(players)) return players.length;
+      if (players && typeof players === 'object') return Object.keys(players).length;
+      return 0;
+  };
+
+  const filteredLobbies = lobbies
     .filter(l => {
-        const term = search.toLowerCase();
-        const matchesRoomName = l.name.toLowerCase().includes(term);
-        const matchesPlayerName = l.game_state.players.some(p => p.name.toLowerCase().includes(term));
-        const matchesSearch = matchesRoomName || matchesPlayerName;
-
-        const isCoup = !l.game_state.gameType || l.game_state.gameType === 'coup';
-        const isMafia = l.game_state.gameType === 'mafia';
-
-        const matchesType = (isCoup && filterCoup) || (isMafia && filterMafia);
-        return matchesSearch && matchesType;
+       const gameType = l.game_state?.gameType || 'coup';
+       const matchesMode = filterMode === 'all' || gameType === filterMode;
+       const matchesSearch = l.name.toLowerCase().includes(searchQuery.toLowerCase()) || l.code.includes(searchQuery.toUpperCase());
+       return matchesMode && matchesSearch && l.status === 'waiting';
     })
     .sort((a, b) => {
-        if (sortBy === 'newest') return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-        if (sortBy === 'oldest') return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-        if (sortBy === 'players-desc') return b.game_state.players.length - a.game_state.players.length;
-        if (sortBy === 'players-asc') return a.game_state.players.length - b.game_state.players.length;
+        if (sortOption === 'newest') return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        if (sortOption === 'oldest') return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        if (sortOption === 'players-desc') return getPlayerCount(b) - getPlayerCount(a);
+        if (sortOption === 'players-asc') return getPlayerCount(a) - getPlayerCount(b);
         return 0;
     });
 
+  const getGameIcon = (type: string) => {
+      switch(type) {
+          case 'battleship': return <Ship className="w-4 h-4" />;
+          case 'mafia': return <Users className="w-4 h-4" />;
+          case 'minesweeper': return <Bomb className="w-4 h-4" />;
+          default: return <ScrollText className="w-4 h-4" />;
+      }
+  };
+
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-[#1A1F26] font-sans relative overflow-x-hidden flex flex-col">
-      <div className="fixed inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-50 brightness-100 contrast-150 mix-blend-overlay pointer-events-none z-0"></div>
+    <div className="min-h-screen bg-[#F8FAFC] flex flex-col font-sans relative overflow-hidden text-[#1A1F26]">
+      <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-50 mix-blend-overlay pointer-events-none" />
 
-      {/* Sticky Header */}
-      <header className="sticky top-0 z-30 w-full bg-[#F8FAFC]/90 backdrop-blur-xl border-b border-[#E6E1DC] shadow-sm">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <button onClick={() => router.push('/')} className="group p-3 bg-white border border-[#E6E1DC] rounded-2xl hover:border-[#9e1316]/30 hover:shadow-lg hover:shadow-[#9e1316]/5 transition-all">
-                <ArrowLeft className="w-5 h-5 text-[#8A9099] group-hover:text-[#9e1316]" />
-            </button>
-            <div>
-                <h1 className="text-2xl font-black text-[#1A1F26] uppercase tracking-tight leading-none">{t.title}</h1>
-                <p className="text-[10px] font-bold text-[#8A9099] uppercase tracking-wider mt-1 hidden sm:block">{t.subtitle}</p>
-            </div>
-          </div>
+      {/* Header */}
+      <header className="w-full max-w-6xl mx-auto p-6 flex flex-col md:flex-row justify-between items-center z-10 relative gap-4">
+        <button onClick={() => router.push('/')} className="flex items-center gap-2 text-[#8A9099] hover:text-[#9e1316] transition-colors group self-start md:self-auto">
+          <div className="p-3 bg-white border border-[#E6E1DC] rounded-xl group-hover:border-[#9e1316]/50 shadow-sm transition-all"><ArrowLeft className="w-5 h-5" /></div>
+        </button>
 
-          {/* Ввод Кода */}
-          <div className="flex bg-white p-1.5 rounded-xl border border-[#E6E1DC] shadow-sm w-full md:w-auto focus-within:border-[#9e1316] transition-colors">
-             <div className="relative flex-1">
-                <KeyRound className="absolute left-3 top-2.5 w-4 h-4 text-[#E6E1DC]" />
-                <input
-                    type="text"
-                    placeholder={t.codePlaceholder}
-                    value={codeQuery}
-                    onChange={(e) => setCodeQuery(e.target.value.toUpperCase())}
-                    className="w-full md:w-32 h-full pl-9 pr-3 font-mono font-bold text-sm text-[#1A1F26] placeholder:text-[#E6E1DC] focus:outline-none bg-transparent uppercase"
-                    maxLength={6}
-                />
-             </div>
-             <button
-                onClick={handleCodeJoin}
-                disabled={codeQuery.length < 6}
-                className="bg-[#1A1F26] hover:bg-[#9e1316] text-white px-4 py-2 rounded-lg font-bold text-[10px] uppercase tracking-wider transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-             >
-                {t.join}
-             </button>
-          </div>
+        <div className="text-center">
+           <h1 className="text-3xl font-black uppercase tracking-tight">{t.title}</h1>
+           <p className="text-xs font-bold text-[#8A9099] uppercase tracking-widest">{t.subtitle}</p>
         </div>
+
+        <div className="w-12 hidden md:block"></div>
       </header>
 
-      <div className="max-w-6xl mx-auto w-full relative z-10 px-4 py-8 flex-1">
-        <div className="flex flex-col lg:flex-row gap-8 items-start">
+      {/* Filters & Content */}
+      <div className="flex-1 w-full max-w-6xl mx-auto p-4 z-10 flex flex-col gap-6">
 
-            {/* САЙДБАР ФИЛЬТРОВ */}
-            <aside className="w-full lg:w-72 space-y-6 lg:sticky lg:top-28">
+        {/* Controls */}
+        <div className="bg-white p-4 rounded-[24px] border border-[#E6E1DC] shadow-sm flex flex-col md:flex-row gap-4 justify-between items-center">
 
-                {/* Поиск */}
-                <div className="bg-white p-4 rounded-[24px] border border-[#E6E1DC] shadow-sm group focus-within:border-[#9e1316]/30 focus-within:shadow-md transition-all">
-                    <div className="flex items-center gap-3">
-                        <Search className="w-5 h-5 text-[#8A9099] group-focus-within:text-[#9e1316]" />
-                        <input
-                            type="text"
-                            placeholder={t.searchPlaceholder}
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            className="w-full font-bold text-sm text-[#1A1F26] placeholder:text-[#E6E1DC] focus:outline-none"
-                        />
-                    </div>
-                </div>
+            {/* Search */}
+            <div className="relative w-full md:w-64 group">
+                <Search className="absolute left-4 top-3.5 w-4 h-4 text-[#8A9099] group-focus-within:text-[#9e1316] transition-colors" />
+                <input
+                    type="text"
+                    placeholder={t.searchPlaceholder}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full bg-[#F5F5F0] rounded-xl pl-10 pr-4 py-3 text-sm font-bold text-[#1A1F26] placeholder:text-[#8A9099]/50 focus:bg-white focus:ring-2 focus:ring-[#9e1316]/10 outline-none transition-all"
+                />
+            </div>
 
-                {/* Сортировка */}
-                <div className="bg-white p-6 rounded-[24px] border border-[#E6E1DC] shadow-sm">
-                    <div className="flex items-center gap-2 text-xs font-black text-[#8A9099] uppercase tracking-widest mb-4">
-                        <Filter className="w-4 h-4" /> {t.sort}
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                        <button onClick={() => setSortBy('newest')} className={`p-2 rounded-lg text-[10px] font-bold uppercase transition-all ${sortBy === 'newest' ? 'bg-[#1A1F26] text-white' : 'bg-[#F5F5F0] text-[#8A9099]'}`}>{t.sortNew}</button>
-                        <button onClick={() => setSortBy('oldest')} className={`p-2 rounded-lg text-[10px] font-bold uppercase transition-all ${sortBy === 'oldest' ? 'bg-[#1A1F26] text-white' : 'bg-[#F5F5F0] text-[#8A9099]'}`}>{t.sortOld}</button>
-                        <button onClick={() => setSortBy('players-desc')} className={`p-2 rounded-lg text-[10px] font-bold uppercase transition-all flex items-center justify-center gap-1 ${sortBy === 'players-desc' ? 'bg-[#1A1F26] text-white' : 'bg-[#F5F5F0] text-[#8A9099]'}`}>
-                            {t.sortPlayers} <SortDesc className="w-3 h-3" />
-                        </button>
-                        <button onClick={() => setSortBy('players-asc')} className={`p-2 rounded-lg text-[10px] font-bold uppercase transition-all flex items-center justify-center gap-1 ${sortBy === 'players-asc' ? 'bg-[#1A1F26] text-white' : 'bg-[#F5F5F0] text-[#8A9099]'}`}>
-                            {t.sortPlayers} <SortAsc className="w-3 h-3" />
-                        </button>
-                    </div>
-                </div>
+            {/* Mode Filter */}
+            <div className="flex gap-2 bg-[#F5F5F0] p-1 rounded-xl w-full md:w-auto overflow-x-auto">
+                {['all', 'coup', 'battleship'].map(mode => (
+                    <button
+                        key={mode}
+                        onClick={() => setFilterMode(mode)}
+                        className={`px-4 py-2 rounded-lg text-xs font-bold uppercase transition-all whitespace-nowrap ${filterMode === mode ? 'bg-white text-[#1A1F26] shadow-sm' : 'text-[#8A9099] hover:text-[#1A1F26]'}`}
+                    >
+                        {t[mode as keyof typeof t] || mode}
+                    </button>
+                ))}
+            </div>
 
-                {/* Типы игр */}
-                <div className="bg-white p-6 rounded-[24px] border border-[#E6E1DC] shadow-sm space-y-4">
-                    <div className="flex items-center gap-2 text-xs font-black text-[#8A9099] uppercase tracking-widest mb-2">
-                        {t.modes}
-                    </div>
-
-                    <label className="flex items-center gap-4 cursor-pointer group hover:bg-[#F5F5F0] p-2 rounded-xl transition-colors -mx-2">
-                        <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${filterCoup ? 'bg-[#9e1316] border-[#9e1316]' : 'border-[#E6E1DC] bg-white'}`}>
-                            {filterCoup && <X className="w-4 h-4 text-white rotate-0" />}
-                        </div>
-                        <span className={`font-bold text-sm transition-colors ${filterCoup ? 'text-[#1A1F26]' : 'text-[#8A9099]'}`}>{t.coup}</span>
-                        <input type="checkbox" className="hidden" checked={filterCoup} onChange={() => setFilterCoup(!filterCoup)} />
-                    </label>
-
-                    <label className="flex items-center gap-4 cursor-pointer group hover:bg-[#F5F5F0] p-2 rounded-xl transition-colors -mx-2">
-                        <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${filterMafia ? 'bg-[#1A1F26] border-[#1A1F26]' : 'border-[#E6E1DC] bg-white'}`}>
-                            {filterMafia && <X className="w-4 h-4 text-white rotate-0" />}
-                        </div>
-                        <span className={`font-bold text-sm transition-colors ${filterMafia ? 'text-[#1A1F26]' : 'text-[#8A9099]'}`}>{t.mafia}</span>
-                        <input type="checkbox" className="hidden" checked={filterMafia} onChange={() => setFilterMafia(!filterMafia)} />
-                    </label>
-                </div>
-            </aside>
-
-            {/* СПИСОК ЛОББИ */}
-            <div className="flex-1 w-full min-h-[50vh]">
-                {loading ? (
-                    <div className="flex flex-col items-center justify-center py-20 opacity-50">
-                        <Loader2 className="w-10 h-10 animate-spin text-[#9e1316] mb-4" />
-                        <span className="text-xs font-bold uppercase tracking-widest text-[#8A9099]">{t.loading}</span>
-                    </div>
-                ) : processedLobbies.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-20 border-2 border-dashed border-[#E6E1DC] rounded-[32px] bg-white/50">
-                        <div className="w-16 h-16 bg-[#F5F5F0] rounded-full flex items-center justify-center mb-4">
-                            <Search className="w-8 h-8 text-[#E6E1DC]" />
-                        </div>
-                        <div className="text-[#1A1F26] font-black text-lg mb-1">{t.empty}</div>
-                        <div className="text-[#8A9099] text-xs font-bold uppercase tracking-widest">{t.emptyDesc}</div>
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-1 gap-4 pb-20">
-                        {processedLobbies.map(lobby => {
-                            // Ищем хоста
-                            const hostPlayer = lobby.game_state.players.find(p => p.isHost) || lobby.game_state.players[0];
-                            const isFull = lobby.game_state.players.length >= 6;
-                            const gameType = lobby.game_state.gameType || 'coup';
-                            const isAlreadyIn = lobby.game_state.players.some(p => p.id === currentUserId);
-
-                            return (
-                                <div key={lobby.id} className={`group bg-white border border-[#E6E1DC] p-5 rounded-[24px] flex flex-col sm:flex-row items-center gap-6 hover:shadow-xl hover:shadow-[#9e1316]/5 hover:border-[#9e1316]/30 transition-all duration-300 relative overflow-hidden ${isAlreadyIn ? 'ring-2 ring-emerald-500/50 border-emerald-500/20' : ''}`}>
-                                    {/* Градиент при наведении */}
-                                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-[#F5F5F0] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-
-                                    {/* Иконка */}
-                                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 shadow-inner ${gameType === 'coup' ? 'bg-[#9e1316]/10 text-[#9e1316]' : 'bg-[#1A1F26]/10 text-[#1A1F26]'}`}>
-                                        {gameType === 'coup' ? <ScrollText className="w-8 h-8" /> : <Users className="w-8 h-8" />}
-                                    </div>
-
-                                    {/* Инфо */}
-                                    <div className="flex-1 text-center sm:text-left z-10 min-w-0">
-                                        <div className="flex items-center justify-center sm:justify-start gap-2 mb-1">
-                                            <h3 className="font-black text-lg text-[#1A1F26] group-hover:text-[#9e1316] transition-colors truncate">{lobby.name}</h3>
-                                            {lobby.is_private ? <Lock className="w-4 h-4 text-[#E6E1DC] shrink-0" /> : <Unlock className="w-4 h-4 text-[#E6E1DC] opacity-50 shrink-0" />}
-                                        </div>
-
-                                        <div className="flex items-center justify-center sm:justify-start gap-3 text-xs font-bold text-[#8A9099] uppercase tracking-wide flex-wrap">
-                                            {hostPlayer && (
-                                                <div className="flex items-center gap-2 bg-[#F5F5F0] px-2 py-1 rounded-lg pr-3 max-w-full">
-                                                    <Crown className="w-3 h-3 text-[#E6E1DC] fill-current shrink-0" />
-                                                    <span className="truncate max-w-[120px] text-xs font-bold text-[#1A1F26]">{hostPlayer.name}</span>
-                                                </div>
-                                            )}
-                                            <span className="flex items-center gap-1 shrink-0">
-                                                <Users className="w-3 h-3" />
-                                                <span className={isFull ? 'text-[#9e1316]' : 'text-emerald-600'}>
-                                                    {lobby.game_state.players.length}/6
-                                                </span>
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    {/* Кнопка */}
-                                    <div className="z-10 shrink-0">
-                                        <button
-                                            onClick={() => lobby.is_private ? setSelectedLobby(lobby) : handleJoin(lobby)}
-                                            disabled={isFull && !isAlreadyIn}
-                                            className={`
-                                                px-8 py-4 rounded-xl font-black text-xs uppercase tracking-widest flex items-center gap-2 transition-all w-full sm:w-auto justify-center
-                                                ${isAlreadyIn
-                                                    ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-900/10'
-                                                    : isFull
-                                                        ? 'bg-[#F5F5F0] text-[#E6E1DC] cursor-not-allowed'
-                                                        : 'bg-[#1A1F26] text-white hover:bg-[#9e1316] shadow-lg shadow-[#1A1F26]/10 hover:shadow-[#9e1316]/20 active:scale-95'
-                                                }
-                                            `}
-                                        >
-                                            {isAlreadyIn ? t.back : (isFull ? t.full : t.join)} <Play className="w-3 h-3 fill-current" />
-                                        </button>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                )}
+            {/* Sort */}
+            <div className="flex gap-2">
+                <button onClick={() => setSortOption(prev => prev === 'newest' ? 'oldest' : 'newest')} className="p-3 bg-[#F5F5F0] rounded-xl text-[#1A1F26] hover:bg-[#E6E1DC]">
+                    {sortOption === 'newest' ? <SortDesc className="w-4 h-4" /> : <SortAsc className="w-4 h-4" />}
+                </button>
             </div>
         </div>
 
-        {/* Модальное окно пароля */}
-        {selectedLobby && (
-          <div className="fixed inset-0 bg-[#1A1F26]/60 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-            <div className="bg-white p-8 rounded-[32px] w-full max-w-sm relative shadow-2xl border border-[#E6E1DC] animate-in zoom-in-95">
-              <button onClick={() => setSelectedLobby(null)} className="absolute top-6 right-6 text-[#8A9099] hover:text-[#1A1F26] transition-colors"><X className="w-6 h-6" /></button>
+        {/* List */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {loading ? <div className="col-span-full flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-[#9e1316]" /></div> :
+             filteredLobbies.length === 0 ? <div className="col-span-full text-center py-20 text-[#8A9099] font-bold uppercase">{t.empty}</div> :
+             filteredLobbies.map(lobby => {
+                 const currentPlayers = getPlayerCount(lobby);
+                 const maxPlayers = lobby.game_state?.settings?.maxPlayers || 6;
+                 const gameType = lobby.game_state?.gameType || 'coup';
 
-              <div className="w-16 h-16 bg-[#9e1316]/5 rounded-2xl flex items-center justify-center mx-auto mb-6 text-[#9e1316]">
+                 return (
+                    <div key={lobby.id} className="group bg-white border border-[#E6E1DC] p-6 rounded-[32px] hover:border-[#9e1316] hover:shadow-xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
+                        {lobby.is_private && <div className="absolute top-4 right-4 text-[#9e1316]"><Lock className="w-4 h-4" /></div>}
+
+                        <div className="flex justify-between items-start mb-4">
+                            <div className="p-3 bg-[#F5F5F0] rounded-xl text-[#1A1F26] group-hover:bg-[#9e1316] group-hover:text-white transition-colors">
+                                {getGameIcon(gameType)}
+                            </div>
+                            <div className="text-[10px] font-black bg-[#F5F5F0] px-2 py-1 rounded text-[#8A9099] uppercase tracking-widest group-hover:bg-[#9e1316]/10 group-hover:text-[#9e1316] transition-colors">
+                                {lobby.code}
+                            </div>
+                        </div>
+
+                        <h3 className="font-black text-lg text-[#1A1F26] mb-1 truncate pr-6">{lobby.name}</h3>
+                        <div className="text-xs font-bold text-[#8A9099] uppercase tracking-wider mb-6 flex items-center gap-2">
+                            {t[gameType as keyof typeof t]} • <span className="text-[#1A1F26]">{currentPlayers}/{maxPlayers}</span>
+                        </div>
+
+                        <button
+                            onClick={() => lobby.is_private ? setSelectedLobby(lobby) : handleJoin(lobby)}
+                            className="w-full py-3 bg-[#1A1F26] text-white rounded-xl font-bold uppercase text-xs tracking-widest hover:bg-[#9e1316] transition-colors shadow-lg active:scale-[0.98] flex items-center justify-center gap-2"
+                        >
+                            {lobby.is_private ? <KeyRound className="w-3 h-3" /> : <Play className="w-3 h-3" />} {t.join}
+                        </button>
+                    </div>
+                 );
+             })}
+        </div>
+
+        {/* Private Modal */}
+        {selectedLobby && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+            <div className="bg-white p-8 rounded-[32px] w-full max-w-sm relative shadow-2xl animate-in zoom-in-95">
+              <button onClick={() => setSelectedLobby(null)} className="absolute top-4 right-4 p-2 hover:bg-[#F5F5F0] rounded-full transition-colors"><X className="w-5 h-5 text-[#8A9099]" /></button>
+
+              <div className="w-16 h-16 bg-[#9e1316]/10 rounded-full flex items-center justify-center mx-auto mb-6 text-[#9e1316]">
                   <Lock className="w-8 h-8" />
               </div>
 
