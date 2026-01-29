@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { LogOut, Crown, Copy, Check, Users, ScrollText, Ship, Bomb, Fingerprint, ShieldAlert, Skull } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { LogOut, Crown, Copy, Check, Users, ScrollText, Ship, Bomb, Fingerprint, ShieldAlert, Skull, UserPlus, UserMinus, User } from 'lucide-react';
 
 export interface LobbyPlayer {
   id: string;
@@ -34,6 +34,14 @@ const GAME_ICONS: Record<string, any> = {
   secret_hitler: Skull,
 };
 
+// --- Toast Notification Component ---
+const Toast = ({ msg, type }: { msg: string, type: 'join' | 'leave' }) => (
+    <div className={`flex items-center gap-2 px-4 py-3 rounded-xl shadow-xl border text-xs font-bold uppercase tracking-wider animate-in slide-in-from-top-4 fade-in duration-300 z-[100] ${type === 'join' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-red-50 border-red-200 text-red-700'}`}>
+        {type === 'join' ? <UserPlus className="w-4 h-4" /> : <UserMinus className="w-4 h-4" />}
+        {msg}
+    </div>
+);
+
 export default function UniversalLobby({
   roomCode,
   roomName,
@@ -47,9 +55,39 @@ export default function UniversalLobby({
   lang
 }: UniversalLobbyProps) {
   const [copied, setCopied] = useState(false);
+  const [notifications, setNotifications] = useState<{ id: number; msg: string; type: 'join' | 'leave' }[]>([]);
+  const prevPlayersRef = useRef<LobbyPlayer[]>(players);
 
   const isHost = players.find(p => p.id === currentUserId)?.isHost;
   const GameIcon = GAME_ICONS[gameType] || Users;
+
+  // --- Notification Logic ---
+  useEffect(() => {
+      const prev = prevPlayersRef.current;
+      const current = players;
+
+      // Detect Joins
+      current.forEach(p => {
+          if (!prev.find(old => old.id === p.id)) {
+              addNotification(`${p.name} ${lang === 'ru' ? 'присоединился' : 'joined'}`, 'join');
+          }
+      });
+
+      // Detect Leaves
+      prev.forEach(p => {
+          if (!current.find(newP => newP.id === p.id)) {
+              addNotification(`${p.name} ${lang === 'ru' ? 'вышел' : 'left'}`, 'leave');
+          }
+      });
+
+      prevPlayersRef.current = current;
+  }, [players, lang]);
+
+  const addNotification = (msg: string, type: 'join' | 'leave') => {
+      const id = Date.now();
+      setNotifications(prev => [...prev, { id, msg, type }]);
+      setTimeout(() => setNotifications(prev => prev.filter(n => n.id !== id)), 4000);
+  };
 
   const t = {
     ru: {
@@ -60,7 +98,8 @@ export default function UniversalLobby({
       copy: 'Скопировано',
       minPlayers: `Нужно ${minPlayers}+ игроков`,
       host: 'Хост',
-      you: 'Вы'
+      you: 'Вы',
+      playersTitle: 'Игроки'
     },
     en: {
       waiting: 'Waiting for players...',
@@ -70,7 +109,8 @@ export default function UniversalLobby({
       copy: 'Copied',
       minPlayers: `Need ${minPlayers}+ players`,
       host: 'Host',
-      you: 'You'
+      you: 'You',
+      playersTitle: 'Players'
     }
   }[lang];
 
@@ -83,6 +123,13 @@ export default function UniversalLobby({
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-[#1A1F26] flex flex-col font-sans relative overflow-hidden">
       <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-50 mix-blend-overlay pointer-events-none" />
+
+      {/* Notifications Layer */}
+      <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] flex flex-col gap-2 w-full max-w-sm px-4">
+          {notifications.map(n => (
+              <Toast key={n.id} msg={n.msg} type={n.type} />
+          ))}
+      </div>
 
       {/* HEADER */}
       <header className="w-full max-w-6xl mx-auto p-6 flex justify-between items-center z-10 relative">
@@ -116,7 +163,7 @@ export default function UniversalLobby({
           <div className="flex justify-between items-center mb-8 border-b border-[#F5F5F0] pb-4">
               <h2 className="text-xl font-black uppercase tracking-wide flex items-center gap-2 text-[#1A1F26]">
                   <Users className="w-5 h-5 text-[#9e1316]" />
-                  Игроки <span className="bg-[#F5F5F0] px-2 py-0.5 rounded-md text-base text-[#8A9099]">{players.length}/{maxPlayers}</span>
+                  {t.playersTitle} <span className="bg-[#F5F5F0] px-2 py-0.5 rounded-md text-base text-[#8A9099]">{players.length}/{maxPlayers}</span>
               </h2>
           </div>
 
@@ -124,8 +171,8 @@ export default function UniversalLobby({
             {players.map(p => (
               <div key={p.id} className="group relative bg-[#F8FAFC] p-4 rounded-2xl border border-[#E6E1DC] flex items-center gap-4 transition-all hover:border-[#9e1316]/30 hover:shadow-md hover:-translate-y-0.5">
                 <div className="relative">
-                    <div className="w-14 h-14 rounded-full bg-white border-2 border-white shadow-sm overflow-hidden">
-                        <img src={p.avatarUrl} alt={p.name} className="w-full h-full object-cover" />
+                    <div className="w-14 h-14 rounded-full bg-white border-2 border-white shadow-sm overflow-hidden bg-[#F5F5F0]">
+                         {p.avatarUrl ? <img src={p.avatarUrl} alt={p.name} className="w-full h-full object-cover" /> : <User className="w-8 h-8 text-gray-400 m-auto mt-3" />}
                     </div>
                     {p.isHost && (
                         <div className="absolute -top-1 -right-1 bg-[#9e1316] text-white p-1 rounded-full border-2 border-white shadow-sm z-10" title={t.host}>
@@ -144,7 +191,7 @@ export default function UniversalLobby({
             ))}
 
             {Array.from({ length: Math.max(0, minPlayers - players.length) }).map((_, i) => (
-                <div key={`empty-${i}`} className="border-2 border-dashed border-[#E6E1DC] bg-transparent p-4 rounded-2xl flex items-center justify-center gap-4 opacity-50">
+                <div key={`empty-${i}`} className="border-2 border-dashed border-[#E6E1DC] bg-transparent p-4 rounded-2xl flex items-center justify-center gap-4 opacity-50 min-h-[88px]">
                     <div className="w-14 h-14 rounded-full bg-[#E6E1DC]/30 animate-pulse" />
                     <div className="h-4 w-24 bg-[#E6E1DC]/30 rounded animate-pulse" />
                 </div>
@@ -195,6 +242,14 @@ export default function UniversalLobby({
                     <div className="w-2 h-2 bg-[#9e1316] rounded-full animate-bounce delay-75" />
                 </div>
             )}
+
+            <div className="px-4 text-center">
+                <p className="text-[10px] text-[#8A9099] font-bold uppercase tracking-wider leading-relaxed">
+                    {lang === 'ru'
+                        ? "Поделитесь кодом комнаты с друзьями, чтобы они могли присоединиться."
+                        : "Share the room code with friends so they can join."}
+                </p>
+            </div>
         </div>
 
       </main>

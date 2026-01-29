@@ -95,6 +95,7 @@ export default function CoupBoard() {
       resolveLoss={resolveLoss}
       resolveExchange={resolveExchange}
       leaveGame={handleLeave}
+      skipTurn={() => performAction('income')} // Simple skip for now
       lang={lang}
     />
   );
