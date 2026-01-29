@@ -1,7 +1,6 @@
-// app/game/coup/page.tsx
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { Loader2 } from 'lucide-react';
@@ -10,7 +9,7 @@ import { Lang } from '@/types/coup';
 import UniversalLobby, { LobbyPlayer } from '@/components/UniversalLobby';
 import CoupGame from '@/components/CoupGame';
 
-export default function CoupPage() {
+function CoupContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const lobbyId = searchParams.get('id');
@@ -86,5 +85,13 @@ export default function CoupPage() {
       skipTurn={skipTurn}
       lang={lang}
     />
+  );
+}
+
+export default function CoupPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]"><Loader2 className="animate-spin text-[#9e1316] w-8 h-8" /></div>}>
+      <CoupContent />
+    </Suspense>
   );
 }
