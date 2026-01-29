@@ -31,7 +31,9 @@ const DICTIONARY = {
         enemy: 'Враг',
         dragHint: 'Перетащите корабли. Пробел/Q для поворота.',
         rotate: 'Повернуть',
-        clear: 'Сброс'
+        clear: 'Сброс',
+        horizontal: 'ГОРИЗОНТАЛЬНО',
+        vertical: 'ВЕРТИКАЛЬНО'
     },
     en: {
         deployment: 'Fleet Deployment',
@@ -52,7 +54,9 @@ const DICTIONARY = {
         enemy: 'Enemy',
         dragHint: 'Drag ships. Space/Q to rotate.',
         rotate: 'Rotate',
-        clear: 'Reset'
+        clear: 'Reset',
+        horizontal: 'HORIZONTAL',
+        vertical: 'VERTICAL'
     }
 };
 
