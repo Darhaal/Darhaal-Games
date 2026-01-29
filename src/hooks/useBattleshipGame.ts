@@ -306,33 +306,75 @@ export function useBattleshipGame(lobbyId: string | null, userId: string | undef
       await updateState(newState);
   };
 
-    const startGame = async () => {
-        if (!gameState || !userId) return;
-        const newState = JSON.parse(JSON.stringify(gameState)) as BattleshipState;
 
-        // Переводим статус из ожидания в игру
-        newState.status = 'playing';
-        newState.phase = 'setup'; // Начинаем с расстановки
-        newState.lastActionTime = Date.now();
+   const [roomMeta, setRoomMeta] = useState<{ name: string; code: string; isHost: boolean } | null>(null);
 
-        await updateState(newState);
-    };
-  const leaveGame = async () => {
-      // Basic cleanup logic same as Coup
-      if (lobbyId) await supabase.from('lobbies').delete().eq('id', lobbyId);
-  };
+   const fetchLobbyState = useCallback(async () => {
+     if (!lobbyId) return;
+     try {
+       const { data, error } = await supabase
+         .from('lobbies')
+         .select('game_state, name, code, host_id')
+         .eq('id', lobbyId)
+         .single();
 
-  return {
-      gameState,
-      myShips,
-      loading,
-      initGame,
-      autoPlaceShips,
-      clearShips,
-      placeShipManual,
-      removeShip,
-      submitShips,
-      fireShot,
-      leaveGame
-  };
-}
+       if (data) {
+           setGameState(data.game_state);
+           setRoomMeta({
+               name: data.name,
+               code: data.code,
+               isHost: data.host_id === userId
+           });
+           if (userId && data.game_state?.players?.[userId]?.ships) {
+               setMyShips(data.game_state.players[userId].ships);
+           }
+       }
+     } catch (e) { console.error(e); } finally { setLoading(false); }
+   }, [lobbyId, userId]);
+
+   // Исправленная функция startGame
+   const startGame = async () => {
+       if (!gameState || !userId) return;
+       const newState = JSON.parse(JSON.stringify(gameState)) as BattleshipState;
+       newState.status = 'playing';
+       newState.phase = 'setup';
+       await updateState(newState);
+   };
+
+   // Очищенная логика проверки размещения
+   const canPlaceShip = (ships: Ship[], newShip: Ship): boolean => {
+     const newShipCoords = getShipCoords(newShip);
+
+     for (const c of newShipCoords) {
+       if (!isValidCoord(c.x, c.y)) return false;
+     }
+
+     const dangerZone = new Set<string>();
+     ships.forEach(s => {
+       getShipCoords(s).forEach(coord => {
+         for (let dx = -1; dx <= 1; dx++) {
+           for (let dy = -1; dy <= 1; dy++) {
+             dangerZone.add(getKey(coord.x + dx, coord.y + dy));
+           }
+         }
+       });
+     });
+
+     return !newShipCoords.some(c => dangerZone.has(getKey(c.x, c.y)));
+   };
+
+   return {
+       gameState,
+       roomMeta, // Добавлено
+       myShips,
+       loading,
+       initGame,
+       startGame, // Добавлено
+       autoPlaceShips,
+       clearShips,
+       placeShipManual,
+       removeShip,
+       submitShips,
+       fireShot,
+       leaveGame
+   };

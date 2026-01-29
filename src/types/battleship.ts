@@ -28,8 +28,9 @@ export interface PlayerBoard {
 }
 
 export interface BattleshipState {
-  players: Record<string, PlayerBoard>; // Key: userId
-  turn: string | null; // userId whose turn it is
+  status: 'waiting' | 'playing' | 'finished'; // Добавлено
+  players: Record<string, PlayerBoard>;
+  turn: string | null;
   phase: 'setup' | 'playing' | 'finished';
   winner: string | null;
   logs: { text: string; time: string }[];
