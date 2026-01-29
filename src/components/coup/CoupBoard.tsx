@@ -53,15 +53,21 @@ export default function CoupBoard() {
   if (!gameState) return <div className="min-h-screen flex items-center justify-center">Lobby not found</div>;
 
   if (gameState.status === 'waiting') {
-      return <CoupLobby
-        gameState={gameState}
-        roomMeta={roomMeta}
-        userId={userId}
-        startGame={startGame}
-        leaveGame={handleLeave}
-        lang={lang}
-      />;
-  }
+
+      return (
+        <UniversalLobby
+          roomCode={roomMeta?.code || ''}
+          roomName={roomMeta?.name || 'Coup'}
+          gameType="coup"
+          players={playersList}
+          currentUserId={user.id}
+          minPlayers={2}
+          maxPlayers={6}
+          onStart={startGame}
+          onLeave={handleLeave}
+          lang={lang}
+        />
+      );
 
   return <CoupGame
     gameState={gameState}

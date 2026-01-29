@@ -47,7 +47,66 @@ const GAMES: Game[] = [
     icon: <Ship className="w-8 h-8" />,
     disabled: false,
   },
-  // ... other games remain same
+  {
+    id: 'mafia',
+    name: 'Mafia',
+    desc: {
+      ru: 'Классическая мафия. Город засыпает.',
+      en: 'Classic mafia. The city falls asleep.'
+    },
+    minPlayers: 4,
+    maxPlayers: 12,
+    icon: <Users className="w-8 h-8" />,
+    disabled: true,
+  },
+  {
+    id: 'minesweeper',
+    name: 'Minesweeper',
+    desc: {
+      ru: 'Классическая головоломка. Не взорвись.',
+      en: 'Classic puzzle. Don\'t explode.'
+    },
+    minPlayers: 1,
+    maxPlayers: 1,
+    icon: <Bomb className="w-8 h-8" />,
+    disabled: true,
+  },
+  {
+    id: 'bunker',
+    name: 'Bunker',
+    desc: {
+      ru: 'Выживание после апокалипсиса. Кто попадет в бункер?',
+      en: 'Post-apocalyptic survival. Who gets into the bunker?'
+    },
+    minPlayers: 4,
+    maxPlayers: 16,
+    icon: <ShieldAlert className="w-8 h-8" />,
+    disabled: true,
+  },
+  {
+    id: 'spyfall',
+    name: 'Spyfall',
+    desc: {
+      ru: 'Один шпион, остальные знают локацию. Вычисли предателя.',
+      en: 'One spy, others know the location. Find the traitor.'
+    },
+    minPlayers: 3,
+    maxPlayers: 8,
+    icon: <Fingerprint className="w-8 h-8" />,
+    disabled: true,
+  },
+  {
+    id: 'secret_hitler',
+    name: 'Secret Hitler',
+    desc: {
+      ru: 'Политические интриги. Либералы против фашистов.',
+      en: 'Political intrigue. Liberals vs Fascists.'
+    },
+    minPlayers: 5,
+    maxPlayers: 10,
+    icon: <Skull className="w-8 h-8" />,
+    disabled: true,
+  },
 ];
 
 export default function CreatePage() {
@@ -57,7 +116,6 @@ export default function CreatePage() {
   const [step, setStep] = useState<'selection' | 'settings'>('selection');
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
 
-  // Settings
   const [isPrivate, setIsPrivate] = useState(false);
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -72,7 +130,6 @@ export default function CreatePage() {
     if (savedLang) setLang(savedLang);
   }, []);
 
-  // Set defaults
   useEffect(() => {
     if (selectedGame) {
         setMaxPlayers(selectedGame.maxPlayers);
@@ -86,36 +143,34 @@ export default function CreatePage() {
 
   const t = {
     ru: {
-      select: 'Выберите игру',
-      settings: 'Настройки комнаты',
-      create: 'Создать',
-      back: 'Назад',
+      select: 'ВЫБЕРИТЕ ИГРУ',
+      settings: 'НАСТРОЙКИ КОМНАТЫ',
+      create: 'СОЗДАТЬ',
+      back: 'НАЗАД',
       private: 'Приватная комната',
       password: 'Пароль',
       players: 'Игроков',
       comingSoon: 'Скоро',
-      error: 'Ошибка при создании: ',
-      lobbySuffix: 'Лобби',
-      enterPass: 'Придумайте пароль',
-      lobbyName: 'Название комнаты',
-      playersCount: 'Количество игроков',
+      error: 'Ошибка: ',
+      lobbyName: 'Название',
+      playersCount: 'Макс. игроков',
       enterName: 'Введите название',
+      enterPass: 'Придумайте пароль',
     },
     en: {
-      select: 'Select Game',
-      settings: 'Room Settings',
-      create: 'Create',
-      back: 'Back',
+      select: 'SELECT GAME',
+      settings: 'ROOM SETTINGS',
+      create: 'CREATE',
+      back: 'BACK',
       private: 'Private Room',
       password: 'Password',
       players: 'Players',
       comingSoon: 'Coming Soon',
-      error: 'Error creating lobby: ',
-      lobbySuffix: 'Lobby',
-      enterPass: 'Set password',
+      error: 'Error: ',
       lobbyName: 'Room Name',
       playersCount: 'Max Players',
       enterName: 'Enter room name',
+      enterPass: 'Set password',
     }
   }[lang];
 
@@ -157,7 +212,6 @@ export default function CreatePage() {
           initialState = coupState;
 
       } else if (selectedGame.id === 'battleship') {
-          // ОБНОВЛЕНО: Добавлены name и avatarUrl
           const initialHost: BattleshipPlayer = {
               userId: user.id,
               name: userName,
@@ -237,7 +291,7 @@ export default function CreatePage() {
 
           <div className="flex items-center gap-2 text-xs font-bold text-[#1A1F26] uppercase tracking-wider">
             <Users className="w-4 h-4 text-[#9e1316]" />
-            {game.minPlayers}-{game.maxPlayers} {t.players}
+            {game.minPlayers === game.maxPlayers ? game.minPlayers : `${game.minPlayers}-${game.maxPlayers}`} {t.players}
           </div>
         </button>
       ))}
@@ -246,8 +300,8 @@ export default function CreatePage() {
 
   const renderSettings = () => (
     <form onSubmit={handleCreate} className="w-full max-w-md bg-white border border-[#E6E1DC] rounded-[32px] p-8 shadow-xl animate-in slide-in-from-right-8 duration-300">
-       <div className="flex items-center justify-center mb-6">
-          <div className="w-20 h-20 bg-[#F5F5F0] rounded-full flex items-center justify-center text-[#9e1316]">
+       <div className="flex items-center justify-center mb-8">
+          <div className="w-24 h-24 bg-[#F5F5F0] rounded-full flex items-center justify-center text-[#9e1316] shadow-inner">
              {selectedGame?.icon}
           </div>
        </div>
@@ -260,17 +314,16 @@ export default function CreatePage() {
                    value={lobbyName}
                    onChange={e => setLobbyName(e.target.value)}
                    placeholder={t.enterName}
-                   className="w-full bg-[#F5F5F0] border border-transparent focus:bg-white focus:border-[#9e1316] rounded-xl py-3 px-4 font-bold text-[#1A1F26] outline-none transition-all placeholder:text-[#8A9099]/40"
+                   className="w-full bg-[#F5F5F0] border border-transparent focus:bg-white focus:border-[#9e1316] rounded-xl py-4 px-5 font-bold text-[#1A1F26] outline-none transition-all placeholder:text-[#8A9099]/40"
                    required
                />
           </div>
 
-          {/* ИСПРАВЛЕНИЕ: Скрываем слайдер если игроков фиксированное кол-во */}
           {selectedGame && selectedGame.minPlayers !== selectedGame.maxPlayers && (
             <div className="space-y-3">
                <div className="flex justify-between items-center">
                     <label className="text-[10px] font-bold text-[#8A9099] uppercase tracking-wider ml-1 flex items-center gap-1"><UserPlus className="w-3 h-3"/> {t.playersCount}</label>
-                    <span className="text-sm font-black text-[#1A1F26] bg-[#F5F5F0] px-2 py-0.5 rounded-lg">{maxPlayers}</span>
+                    <span className="text-sm font-black text-[#1A1F26] bg-[#F5F5F0] px-3 py-1 rounded-lg">{maxPlayers}</span>
                </div>
                <input
                    type="range"
@@ -288,7 +341,7 @@ export default function CreatePage() {
             </div>
           )}
 
-          <div className="h-px bg-[#F5F5F0] w-full" />
+          <div className="h-px bg-[#F5F5F0] w-full my-2" />
 
           <div className="flex items-center justify-between p-4 bg-[#F5F5F0] rounded-2xl cursor-pointer hover:bg-[#E6E1DC]/50 transition-colors" onClick={() => setIsPrivate(!isPrivate)}>
              <div className="flex items-center gap-3">
@@ -309,11 +362,11 @@ export default function CreatePage() {
                    value={password}
                    onChange={e => setPassword(e.target.value)}
                    placeholder={t.enterPass}
-                   className="w-full bg-[#F5F5F0] border border-transparent focus:bg-white focus:border-[#9e1316] rounded-xl py-3 pl-4 pr-10 font-bold text-[#1A1F26] outline-none transition-all placeholder:text-[#8A9099]/40"
+                   className="w-full bg-[#F5F5F0] border border-transparent focus:bg-white focus:border-[#9e1316] rounded-xl py-4 px-5 font-bold text-[#1A1F26] outline-none transition-all placeholder:text-[#8A9099]/40"
                    required={isPrivate}
                  />
-                 <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-3.5 text-[#8A9099] hover:text-[#1A1F26]">
-                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                 <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-4 text-[#8A9099] hover:text-[#1A1F26]">
+                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                  </button>
                </div>
             </div>
@@ -322,9 +375,9 @@ export default function CreatePage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-[#1A1F26] text-white py-4 rounded-xl font-black uppercase tracking-widest hover:bg-[#9e1316] transition-colors shadow-lg active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
+            className="w-full bg-[#1A1F26] text-white py-5 rounded-xl font-black uppercase tracking-widest hover:bg-[#9e1316] transition-colors shadow-lg shadow-[#1A1F26]/20 active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-3 mt-4"
           >
-            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <> {t.create} <ArrowRight className="w-4 h-4" /> </>}
+            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <> {t.create} <ArrowRight className="w-5 h-5" /> </>}
           </button>
        </div>
     </form>
@@ -333,19 +386,23 @@ export default function CreatePage() {
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col font-sans relative overflow-hidden">
       <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-50 mix-blend-overlay pointer-events-none" />
+
       <header className="w-full max-w-6xl mx-auto p-6 flex justify-between items-center z-10 relative">
         <button onClick={() => { if (step === 'selection') router.push('/'); else setStep('selection'); }} className="flex items-center gap-2 text-[#8A9099] hover:text-[#9e1316] transition-colors group">
           <div className="p-3 bg-white border border-[#E6E1DC] rounded-xl group-hover:border-[#9e1316]/50 shadow-sm transition-all"><ArrowLeft className="w-5 h-5" /></div>
           <span className="text-xs font-bold uppercase tracking-widest hidden sm:block">{t.back}</span>
         </button>
+
         <div className="text-xl font-black text-[#1A1F26] uppercase tracking-tight flex flex-col items-center">
            {step === 'selection' ? t.select : t.settings}
            {step === 'settings' && selectedGame && (
-             <span className="text-[10px] text-[#9e1316] tracking-widest mt-1">{selectedGame.name}</span>
+             <span className="text-[10px] text-[#9e1316] tracking-widest mt-1 uppercase">{selectedGame.name}</span>
            )}
         </div>
+
         <div className="w-12"></div>
       </header>
+
       <div className="flex-1 w-full flex flex-col items-center justify-center relative z-10 pb-10 px-4">
         {step === 'selection' && renderSelection()}
         {step === 'settings' && renderSettings()}
