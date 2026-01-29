@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
     RotateCw, Trash2, Check, Shuffle,
-    Anchor, Trophy, LogOut, Timer, Crosshair, Map, Shield
+    Anchor, Trophy, LogOut, Timer, Crosshair, Map, Shield, Target, BarChart3
 } from 'lucide-react';
 import { Ship, CellStatus, Coordinate, ShipType, FLEET_CONFIG, Orientation } from '@/types/battleship';
 import { checkPlacement } from '@/hooks/useBattleshipGame';
@@ -33,7 +33,11 @@ const DICTIONARY = {
         rotate: 'Повернуть',
         clear: 'Сброс',
         horizontal: 'ГОРИЗОНТАЛЬНО',
-        vertical: 'ВЕРТИКАЛЬНО'
+        vertical: 'ВЕРТИКАЛЬНО',
+        stats: 'Статистика боя',
+        shots: 'Выстрелы',
+        accuracy: 'Точность',
+        hits: 'Попадания'
     },
     en: {
         deployment: 'Fleet Deployment',
@@ -56,7 +60,11 @@ const DICTIONARY = {
         rotate: 'Rotate',
         clear: 'Reset',
         horizontal: 'HORIZONTAL',
-        vertical: 'VERTICAL'
+        vertical: 'VERTICAL',
+        stats: 'Battle Stats',
+        shots: 'Shots',
+        accuracy: 'Accuracy',
+        hits: 'Hits'
     }
 };
 
@@ -155,9 +163,8 @@ export default function BattleshipGame({
     // Keyboard Rotation
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
-            // Space, Q, E, R - rotate
             if (['Space', 'KeyQ', 'KeyE', 'KeyR'].includes(e.code)) {
-                e.preventDefault(); // Prevent scroll on Space
+                e.preventDefault();
                 setOrientation(prev => prev === 'horizontal' ? 'vertical' : 'horizontal');
             }
         };
@@ -165,23 +172,43 @@ export default function BattleshipGame({
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, []);
 
+    // --- Helpers for Cell Content ---
+
+    // НА МОЕЙ ДОСКЕ: Мои корабли + Выстрелы ПРОТИВНИКА
     const getMyCellContent = (x: number, y: number) => {
         const s = myShips.find((s: Ship) => {
-            // Hide ship if currently dragging it
             if (movingShipId === s.id) return false;
-
             if (s.orientation === 'horizontal') return s.position.y === y && x >= s.position.x && x < s.position.x + s.size;
             return s.position.x === x && y >= s.position.y && y < s.position.y + s.size;
         });
 
-        const shot = phase === 'playing' && me?.shots ? me.shots[`${x},${y}`] : null;
+        // Исправлено: берем выстрелы из opponent.shots (потому что opponent.shots хранит выстрелы КОТОРЫЕ ОН СДЕЛАЛ)
+        const shot = phase === 'playing' && opponent?.shots ? opponent.shots[`${x},${y}`] : null;
         return { status: shot || 'empty', shipPart: s?.type, ship: s };
     };
 
+    // НА ДОСКЕ ПРОТИВНИКА: Мои выстрелы
     const getOpponentCellContent = (x: number, y: number) => {
+        // Берем выстрелы из me.shots (потому что я стреляю и записываю это к себе)
         const shot = me?.shots[`${x},${y}`];
         return { status: shot || 'empty' };
     };
+
+    // --- Stats Calculation ---
+    const getStats = (playerBoard: any) => {
+        if (!playerBoard?.shots) return { shots: 0, hits: 0, accuracy: 0 };
+        const shots = Object.values(playerBoard.shots);
+        const total = shots.length;
+        const hits = shots.filter((s: any) => s === 'hit' || s === 'killed').length;
+        return {
+            shots: total,
+            hits: hits,
+            accuracy: total > 0 ? Math.round((hits / total) * 100) : 0
+        };
+    };
+
+    const myStats = getStats(me);
+    const enemyStats = getStats(opponent);
 
     // --- Drag & Placement Logic ---
 
@@ -231,7 +258,6 @@ export default function BattleshipGame({
     // --- Drag Handlers ---
 
     const hideDragImage = (e: React.DragEvent) => {
-        // Correct fix: check if window is available or just rely on the fact that this runs in browser
         if (typeof window !== 'undefined') {
             const img = new Image();
             img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
@@ -263,7 +289,7 @@ export default function BattleshipGame({
     };
 
     const handleDragOver = (e: React.DragEvent, x: number, y: number) => {
-        e.preventDefault(); // Allow drop
+        e.preventDefault();
         if (hoverPos?.x !== x || hoverPos?.y !== y) {
             setHoverPos({ x, y });
         }
@@ -335,8 +361,6 @@ export default function BattleshipGame({
                 {/* --- SETUP PHASE --- */}
                 {phase === 'setup' && (
                     <div className="flex flex-col lg:flex-row gap-8 items-start w-full max-w-5xl animate-in fade-in slide-in-from-bottom-4 duration-500">
-
-                        {/* BOARD */}
                         <div className="bg-white p-6 rounded-[32px] shadow-xl border border-[#E6E1DC] relative mx-auto lg:mx-0 group">
                             <div className="absolute -top-3 left-6 bg-[#1A1F26] text-white text-[10px] font-bold uppercase px-4 py-1.5 rounded-full tracking-widest shadow-lg border-2 border-white">
                                 {t.deployment}
@@ -354,7 +378,6 @@ export default function BattleshipGame({
                                     const x = i % 10;
                                     const y = Math.floor(i / 10);
                                     const { shipPart, ship } = getMyCellContent(x, y);
-
                                     const isHovered = isPhantomCell(x, y);
                                     const isValid = isHovered ? checkPhantomValidity(x, y) : false;
 
@@ -379,14 +402,13 @@ export default function BattleshipGame({
                                 })}
                             </div>
 
-                            {/* Controls Bar */}
                             <div className="flex justify-between items-center mt-6 bg-[#F8FAFC] p-2 rounded-2xl border border-[#E6E1DC]">
                                 <button
                                     onClick={() => setOrientation(o => o === 'horizontal' ? 'vertical' : 'horizontal')}
                                     className="flex items-center gap-2 text-xs font-bold uppercase text-[#1A1F26] hover:bg-white hover:shadow-sm px-4 py-2 rounded-xl transition-all"
                                 >
                                     <RotateCw className={`w-4 h-4 transition-transform duration-300 ${orientation === 'vertical' ? 'rotate-90' : ''}`} />
-                                    {t[orientation === 'horizontal' ? 'horizontal' : 'vertical']}
+                                    {t[orientation]}
                                 </button>
                                 <button onClick={clearShips} className="text-[#8A9099] hover:text-[#9e1316] hover:bg-white hover:shadow-sm p-2 rounded-xl transition-all flex items-center gap-2 text-xs font-bold uppercase px-4">
                                     <Trash2 className="w-4 h-4"/> {t.clear}
@@ -394,7 +416,6 @@ export default function BattleshipGame({
                             </div>
                         </div>
 
-                        {/* FLEET PANEL */}
                         <div className="flex-1 w-full space-y-6">
                             <div className="bg-white p-6 rounded-[32px] shadow-sm border border-[#E6E1DC]">
                                 <h3 className="text-xs font-black uppercase mb-6 text-[#8A9099] flex items-center gap-2 tracking-widest pl-2">
@@ -458,7 +479,7 @@ export default function BattleshipGame({
                 {phase === 'playing' && (
                     <div className="flex flex-col lg:flex-row gap-8 items-center lg:items-start justify-center w-full max-w-6xl animate-in fade-in">
 
-                        {/* ENEMY BOARD (RADAR) */}
+                        {/* ENEMY BOARD (RADAR) - MY SHOTS */}
                         <div className="relative group order-1 lg:order-2">
                             <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-center z-20 w-full px-4">
                                 <span className={`text-[10px] font-black uppercase tracking-[0.2em] px-6 py-2 rounded-full bg-white shadow-xl border border-[#E6E1DC] ${isMyTurn ? 'text-[#9e1316] border-[#9e1316] animate-pulse' : 'text-gray-400'}`}>
@@ -485,8 +506,10 @@ export default function BattleshipGame({
                             </div>
                         </div>
 
-                        {/* MY BOARD (STATUS) */}
+                        {/* LEFT COLUMN: MY BOARD + STATS */}
                         <div className="flex flex-col gap-6 order-2 lg:order-1 w-full max-w-xs">
+
+                            {/* MY BOARD (STATUS) - SHOWS ENEMY SHOTS */}
                             <div className="bg-white p-5 rounded-[32px] shadow-lg border border-[#E6E1DC] opacity-90 hover:opacity-100 transition-opacity relative group">
                                 <div className="absolute top-5 left-5 text-[10px] font-bold text-[#8A9099] uppercase tracking-widest flex items-center gap-2"><Shield className="w-3 h-3"/> {t.zoneMe}</div>
                                 <div className="mt-8 grid grid-cols-10 gap-px bg-[#E6E1DC] border border-[#E6E1DC] w-fit mx-auto rounded overflow-hidden">
@@ -499,14 +522,36 @@ export default function BattleshipGame({
                                 </div>
                             </div>
 
+                            {/* INFOGRAPHICS */}
                             <div className="bg-[#1A1F26] text-white p-6 rounded-[32px] shadow-xl flex flex-col gap-4 relative overflow-hidden">
                                 <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+                                <div className="flex items-center gap-2 text-xs font-black uppercase text-gray-400 tracking-widest mb-2 relative z-10">
+                                    <BarChart3 className="w-4 h-4" /> {t.stats}
+                                </div>
 
+                                {/* My Stats */}
+                                <div className="relative z-10 space-y-2">
+                                    <div className="flex justify-between items-center text-xs">
+                                        <span className="text-gray-400 uppercase font-bold">{t.shots}</span>
+                                        <span className="font-mono">{myStats.shots}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-xs">
+                                        <span className="text-gray-400 uppercase font-bold">{t.hits}</span>
+                                        <span className="font-mono text-emerald-400">{myStats.hits}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-xs">
+                                        <span className="text-gray-400 uppercase font-bold">{t.accuracy}</span>
+                                        <span className="font-mono text-[#9e1316]">{myStats.accuracy}%</span>
+                                    </div>
+                                </div>
+
+                                <div className="h-px bg-white/10 w-full my-1" />
+
+                                {/* Ships Alive */}
                                 <div className="flex justify-between items-end relative z-10">
                                     <div className="text-[10px] font-bold uppercase text-gray-400 tracking-wider">{t.shipsAlive}</div>
-                                    <div className="text-3xl font-black">{me?.aliveShipsCount}<span className="text-gray-600 text-lg">/10</span></div>
+                                    <div className="text-2xl font-black">{me?.aliveShipsCount}<span className="text-gray-600 text-sm">/10</span></div>
                                 </div>
-                                <div className="h-px bg-white/10 w-full" />
                                 <div className="flex justify-between items-end relative z-10">
                                     <div className="text-[10px] font-bold uppercase text-[#9e1316] tracking-wider">{t.enemy}</div>
                                     <div className="text-xl font-bold text-[#9e1316]">{opponent?.aliveShipsCount}/10</div>
