@@ -55,24 +55,11 @@ export default function CoupBoard() {
     };
   }, [leaveGame]);
 
-  if (loading || isLeaving) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]">
-        <Loader2 className="animate-spin text-[#9e1316] w-8 h-8" />
-      </div>
-    );
-  }
+  if (loading || isLeaving) return <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]"><Loader2 className="animate-spin text-[#9e1316] w-8 h-8" /></div>;
 
-  if (!gameState) {
-    return (
-      <div className="min-h-screen flex items-center justify-center font-bold text-gray-400 uppercase tracking-widest">
-        Lobby not found
-      </div>
-    );
-  }
+  if (!gameState) return <div className="min-h-screen flex items-center justify-center font-bold text-gray-400">LOBBY NOT FOUND</div>;
 
   if (gameState.status === 'waiting') {
-      // Преобразуем игроков Coup в формат LobbyPlayer для универсального лобби
       const playersList: LobbyPlayer[] = (gameState.players || []).map(p => ({
           id: p.id,
           name: p.name,

@@ -35,17 +35,17 @@ const GridCell = ({
     const isSmall = size === 'small';
     let content = null;
 
-    let bgClass = "bg-[#F5F5F0]"; // Paper white
+    let bgClass = "bg-[#F5F5F0]"; // Paper
     let borderClass = isSmall ? "border-[0.5px] border-[#E6E1DC]" : "border border-[#E6E1DC]";
 
     if (status === 'miss') {
-        content = <div className={`${isSmall ? 'w-1 h-1' : 'w-2 h-2'} rounded-full bg-[#8A9099]/60`} />;
+        content = <div className={`${isSmall ? 'w-1 h-1' : 'w-2 h-2'} rounded-full bg-[#8A9099]`} />;
     } else if (status === 'hit') {
         bgClass = "bg-red-50";
-        content = <span className={`${isSmall ? 'text-[10px]' : 'text-lg'} text-[#9e1316] font-bold font-mono`}>X</span>;
+        content = <span className={`${isSmall ? 'text-[10px]' : 'text-lg'} text-[#9e1316] font-bold`}>X</span>;
     } else if (status === 'killed') {
         bgClass = "bg-[#9e1316]";
-        content = <span className={`${isSmall ? 'text-[8px]' : 'text-sm'} text-white font-bold`}>☠</span>;
+        content = <span className={`${isSmall ? 'text-[8px]' : 'text-sm'} text-white`}>☠</span>;
     } else if (shipPart) {
         bgClass = getShipColor(shipPart) + " shadow-sm border-white/20";
         borderClass = "border-transparent";
@@ -190,7 +190,6 @@ export default function BattleshipGame({
 
             <main className="flex-1 flex flex-col items-center justify-center p-4 z-10 gap-6 overflow-y-auto custom-scrollbar w-full">
 
-                {/* --- SETUP UI --- */}
                 {phase === 'setup' && (
                     <div className="flex flex-col lg:flex-row gap-8 items-start w-full max-w-5xl animate-in fade-in slide-in-from-bottom-4">
 
@@ -215,7 +214,7 @@ export default function BattleshipGame({
                                             onMouseEnter={() => setHoverPos({x, y})}
                                             onContextMenu={(e) => {
                                                 e.preventDefault();
-                                                setOrientation(prev => prev === 'horizontal' ? 'vertical' : 'horizontal');
+                                                setOrientation(prev => prev === 'horizontal' ? 'vertical' : 'horizontal'); // ИСПРАВЛЕНО
                                             }}
                                             isHovered={isPhantomCell(x, y)}
                                             hoverValid={isHoverValid(x, y)}
@@ -279,7 +278,6 @@ export default function BattleshipGame({
                     </div>
                 )}
 
-                {/* --- BATTLE UI --- */}
                 {phase === 'playing' && (
                     <div className="flex flex-col md:flex-row gap-8 items-center md:items-start justify-center w-full max-w-6xl animate-in fade-in">
 

@@ -1,16 +1,14 @@
 'use client';
 
 import React, { useState } from 'react';
-import { LogOut, Crown, Copy, Check, Users, ScrollText, Ship, Bomb, Fingerprint, ShieldAlert } from 'lucide-react';
-
-export type GameType = 'coup' | 'battleship' | 'mafia' | 'minesweeper' | 'bunker' | 'spyfall' | 'secret_hitler';
+import { LogOut, Crown, Copy, Check, Users, ScrollText, Ship, Bomb, Fingerprint, ShieldAlert, Skull } from 'lucide-react';
 
 export interface LobbyPlayer {
   id: string;
   name: string;
   avatarUrl: string;
   isHost: boolean;
-  isReady?: boolean; // Опционально, если игра поддерживает готовность
+  isReady?: boolean;
 }
 
 interface UniversalLobbyProps {
@@ -33,6 +31,7 @@ const GAME_ICONS: Record<string, any> = {
   minesweeper: Bomb,
   bunker: ShieldAlert,
   spyfall: Fingerprint,
+  secret_hitler: Skull,
 };
 
 export default function UniversalLobby({
@@ -59,7 +58,7 @@ export default function UniversalLobby({
       leave: 'Покинуть',
       code: 'Код комнаты',
       copy: 'Скопировано',
-      minPlayers: `Нужно минимум ${minPlayers}`,
+      minPlayers: `Нужно ${minPlayers}+ игроков`,
       host: 'Хост',
       you: 'Вы'
     },
@@ -97,12 +96,12 @@ export default function UniversalLobby({
 
         <div className="flex flex-col items-center">
             <h1 className="text-2xl font-black uppercase tracking-tight flex items-center gap-3">
-               <div className="p-2 bg-[#1A1F26] text-white rounded-lg">
+               <div className="p-2 bg-[#1A1F26] text-white rounded-lg shadow-md">
                  <GameIcon className="w-5 h-5" />
                </div>
                {roomName}
             </h1>
-            <div className="text-[10px] font-bold text-[#9e1316] uppercase tracking-[0.2em] mt-1 bg-[#9e1316]/5 px-3 py-1 rounded-full border border-[#9e1316]/10">
+            <div className="text-[10px] font-bold text-[#9e1316] uppercase tracking-[0.2em] mt-2 bg-[#9e1316]/5 px-3 py-1 rounded-full border border-[#9e1316]/10 animate-pulse">
                 {t.waiting}
             </div>
         </div>
@@ -115,9 +114,9 @@ export default function UniversalLobby({
         {/* PLAYERS GRID */}
         <div className="w-full lg:w-2/3 bg-white border border-[#E6E1DC] rounded-[32px] p-8 shadow-xl shadow-[#1A1F26]/5 relative overflow-hidden">
           <div className="flex justify-between items-center mb-8 border-b border-[#F5F5F0] pb-4">
-              <h2 className="text-xl font-black uppercase tracking-wide flex items-center gap-2">
+              <h2 className="text-xl font-black uppercase tracking-wide flex items-center gap-2 text-[#1A1F26]">
                   <Users className="w-5 h-5 text-[#9e1316]" />
-                  Игроки <span className="bg-[#F5F5F0] px-2 py-0.5 rounded-md text-base">{players.length}/{maxPlayers}</span>
+                  Игроки <span className="bg-[#F5F5F0] px-2 py-0.5 rounded-md text-base text-[#8A9099]">{players.length}/{maxPlayers}</span>
               </h2>
           </div>
 
@@ -129,14 +128,14 @@ export default function UniversalLobby({
                         <img src={p.avatarUrl} alt={p.name} className="w-full h-full object-cover" />
                     </div>
                     {p.isHost && (
-                        <div className="absolute -top-1 -right-1 bg-[#9e1316] text-white p-1 rounded-full border-2 border-white shadow-sm" title={t.host}>
+                        <div className="absolute -top-1 -right-1 bg-[#9e1316] text-white p-1 rounded-full border-2 border-white shadow-sm z-10" title={t.host}>
                             <Crown className="w-3 h-3" />
                         </div>
                     )}
                 </div>
 
-                <div className="flex flex-col">
-                    <div className="font-black text-[#1A1F26] text-sm truncate max-w-[120px]">{p.name}</div>
+                <div className="flex flex-col overflow-hidden">
+                    <div className="font-black text-[#1A1F26] text-sm truncate">{p.name}</div>
                     <div className="text-[10px] font-bold text-[#8A9099] uppercase tracking-wider">
                         {p.id === currentUserId ? <span className="text-[#9e1316]">{t.you}</span> : (p.isHost ? t.host : 'Player')}
                     </div>
@@ -196,14 +195,6 @@ export default function UniversalLobby({
                     <div className="w-2 h-2 bg-[#9e1316] rounded-full animate-bounce delay-75" />
                 </div>
             )}
-
-            <div className="px-4 text-center">
-                <p className="text-[10px] text-[#8A9099] font-bold uppercase tracking-wider leading-relaxed">
-                    {lang === 'ru'
-                        ? "Поделитесь кодом комнаты с друзьями, чтобы они могли присоединиться."
-                        : "Share the room code with friends so they can join."}
-                </p>
-            </div>
         </div>
 
       </main>
