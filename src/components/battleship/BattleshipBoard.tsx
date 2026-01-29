@@ -112,4 +112,4 @@ export default function BattleshipBoard() {
       lang={lang}
     />
   );
-}'use client';
+}
