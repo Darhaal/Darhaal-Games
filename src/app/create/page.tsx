@@ -47,7 +47,67 @@ const GAMES: Game[] = [
     icon: <Ship className="w-8 h-8" />,
     disabled: false,
   },
-  // ... другие игры можно добавить позже
+  // ... other games can be enabled later
+  {
+    id: 'mafia',
+    name: 'Mafia',
+    desc: {
+      ru: 'Классическая мафия. Город засыпает.',
+      en: 'Classic mafia. The city falls asleep.'
+    },
+    minPlayers: 4,
+    maxPlayers: 12,
+    icon: <Users className="w-8 h-8" />,
+    disabled: true,
+  },
+  {
+    id: 'minesweeper',
+    name: 'Minesweeper',
+    desc: {
+      ru: 'Классическая головоломка. Не взорвись.',
+      en: 'Classic puzzle. Don\'t explode.'
+    },
+    minPlayers: 1,
+    maxPlayers: 1,
+    icon: <Bomb className="w-8 h-8" />,
+    disabled: true,
+  },
+  {
+    id: 'bunker',
+    name: 'Bunker',
+    desc: {
+      ru: 'Выживание после апокалипсиса. Кто попадет в бункер?',
+      en: 'Post-apocalyptic survival. Who gets into the bunker?'
+    },
+    minPlayers: 4,
+    maxPlayers: 16,
+    icon: <ShieldAlert className="w-8 h-8" />,
+    disabled: true,
+  },
+  {
+    id: 'spyfall',
+    name: 'Spyfall',
+    desc: {
+      ru: 'Один шпион, остальные знают локацию. Вычисли предателя.',
+      en: 'One spy, others know the location. Find the traitor.'
+    },
+    minPlayers: 3,
+    maxPlayers: 8,
+    icon: <Fingerprint className="w-8 h-8" />,
+    disabled: true,
+  },
+  {
+    id: 'secret_hitler',
+    name: 'Secret Hitler',
+    desc: {
+      ru: 'Политические интриги. Либералы против фашистов.',
+      en: 'Political intrigue. Liberals vs Fascists.'
+    },
+    minPlayers: 5,
+    maxPlayers: 10,
+    icon: <Skull className="w-8 h-8" />,
+    disabled: true,
+  },
 ];
 
 export default function CreatePage() {
@@ -155,7 +215,7 @@ export default function CreatePage() {
 
       } else if (selectedGame.id === 'battleship') {
           const initialHost: BattleshipPlayer = {
-              userId: user.id,
+              id: user.id, // ИСПОЛЬЗУЕМ 'id' ВМЕСТО 'userId'
               name: userName,
               avatarUrl: userAvatar,
               isHost: true,
