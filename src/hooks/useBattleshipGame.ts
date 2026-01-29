@@ -17,17 +17,23 @@ const getShipCoords = (ship: Ship): Coordinate[] => {
   return coords;
 };
 
-const canPlaceShip = (ships: Ship[], newShip: Ship): boolean => {
+// Экспортируемая функция для проверки валидности (используется и в хуке, и в UI)
+export const checkPlacement = (ships: Ship[], newShip: Ship, ignoreShipId?: string): boolean => {
   const newShipCoords = getShipCoords(newShip);
+
+  // 1. Проверка границ
   for (const c of newShipCoords) {
     if (!isValidCoord(c.x, c.y)) return false;
   }
 
+  // 2. Создаем карту занятых зон (корабли + соседи)
   const dangerZone = new Set<string>();
-  const otherShips = ships.filter(s => s.id !== newShip.id);
+  // Игнорируем сам корабль, если мы его переставляем
+  const otherShips = ships.filter(s => s.id !== ignoreShipId && s.id !== newShip.id);
 
   otherShips.forEach(s => {
     getShipCoords(s).forEach(coord => {
+      // Добавляем саму клетку и всех соседей (включая диагонали)
       for (let dx = -1; dx <= 1; dx++) {
         for (let dy = -1; dy <= 1; dy++) {
           dangerZone.add(getKey(coord.x + dx, coord.y + dy));
@@ -36,6 +42,7 @@ const canPlaceShip = (ships: Ship[], newShip: Ship): boolean => {
     });
   });
 
+  // 3. Проверяем, не попадает ли новый корабль в опасную зону
   for (const c of newShipCoords) {
     if (dangerZone.has(getKey(c.x, c.y))) return false;
   }
@@ -45,6 +52,7 @@ const canPlaceShip = (ships: Ship[], newShip: Ship): boolean => {
 const shuffleFleet = (): Ship[] => {
   const ships: Ship[] = [];
   let attempts = 0;
+  // Попытка расставить корабли случайным образом
   while (ships.length < 10 && attempts < 200) {
     ships.length = 0;
     let success = true;
@@ -64,7 +72,7 @@ const shuffleFleet = (): Ship[] => {
             position: { x, y },
             hits: 0
           };
-          if (canPlaceShip(ships, newShip)) {
+          if (checkPlacement(ships, newShip)) {
             ships.push(newShip);
             placed = true;
           }
@@ -97,6 +105,7 @@ export function useBattleshipGame(
     stateRef.current = { lobbyId, user, gameState };
   }, [lobbyId, user, gameState]);
 
+  // --- SYNC ---
   const fetchLobbyState = useCallback(async () => {
     if (!lobbyId) return;
     try {
@@ -141,31 +150,31 @@ export function useBattleshipGame(
     }
   };
 
+  // --- ACTIONS ---
+
   const initGame = async () => {
     if (!user || !stateRef.current.gameState) return;
     const currentState = stateRef.current.gameState;
 
-    // Защита от старых данных
     let playersObj = currentState.players;
     if (Array.isArray(playersObj)) playersObj = {};
 
-    // Если игрока нет или у него нет имени (старая запись), обновляем
-    const currentPlayer = playersObj[user.id];
-    if (!currentPlayer || !currentPlayer.name) {
+    if (!playersObj[user.id] || !playersObj[user.id].name) {
       const newState = JSON.parse(JSON.stringify(currentState)) as BattleshipState;
       if (Array.isArray(newState.players)) newState.players = {};
 
       const isFirst = Object.keys(newState.players).length === 0;
+      const existing = playersObj[user.id];
 
       newState.players[user.id] = {
-        id: user.id, // Теперь используем id, а не userId
+        id: user.id,
         name: user.name,
         avatarUrl: user.avatarUrl,
-        ships: currentPlayer?.ships || [],
-        shots: currentPlayer?.shots || {},
-        isReady: currentPlayer?.isReady || false,
-        isHost: isFirst || currentPlayer?.isHost,
-        aliveShipsCount: currentPlayer?.aliveShipsCount || 0
+        ships: existing?.ships || [],
+        shots: existing?.shots || {},
+        isReady: existing?.isReady || false,
+        isHost: isFirst || existing?.isHost,
+        aliveShipsCount: existing?.aliveShipsCount || 0
       };
       await updateState(newState);
     }
@@ -183,8 +192,9 @@ export function useBattleshipGame(
   const clearShips = () => setMyShips([]);
 
   const placeShipManual = (ship: Ship) => {
-      const otherShips = myShips.filter(s => s.id !== ship.id);
-      if (canPlaceShip(otherShips, ship)) {
+      // Удаляем старую версию корабля (если это перемещение) перед проверкой
+      if (checkPlacement(myShips, ship, ship.id)) {
+          const otherShips = myShips.filter(s => s.id !== ship.id);
           setMyShips([...otherShips, ship]);
           return true;
       }

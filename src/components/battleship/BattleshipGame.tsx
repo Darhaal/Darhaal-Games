@@ -1,59 +1,58 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
-    Loader2, RotateCw, Trash2, Check, Shuffle,
+    RotateCw, Trash2, Check, Shuffle,
     Anchor, Trophy, LogOut, Timer, Crosshair, Map, Shield
 } from 'lucide-react';
-import { Ship, CellStatus, Coordinate, ShipType, FLEET_CONFIG } from '@/types/battleship';
+import { Ship, CellStatus, Coordinate, ShipType, FLEET_CONFIG, Orientation } from '@/types/battleship';
+import { checkPlacement } from '@/hooks/useBattleshipGame'; // Используем логику из хука
 
-const CELL_SIZE_L = "w-8 h-8 sm:w-10 sm:h-10";
-const CELL_SIZE_S = "w-4 h-4 sm:w-5 sm:h-5";
+const CELL_SIZE_L = "w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10";
+const CELL_SIZE_S = "w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6";
 
 const DICTIONARY = {
     ru: {
-        deployment: 'РАЗВЕРТЫВАНИЕ',
-        yourTurn: 'ВАШ ХОД',
-        enemyTurn: 'ХОД ПРОТИВНИКА',
-        fleet: 'ДОСТУПНЫЙ ФЛОТ',
-        auto: 'АВТО',
-        ready: 'В БОЙ!',
-        waiting: 'ОЖИДАНИЕ...',
+        deployment: 'Развертывание Флота',
+        yourTurn: 'ВАШ ХОД - ОГОНЬ!',
+        enemyTurn: 'МАНЕВРЫ ПРОТИВНИКА...',
+        fleet: 'Верфь',
+        auto: 'Авто',
+        ready: 'В БОЙ',
+        waiting: 'Ожидание...',
         victory: 'ПОБЕДА',
         defeat: 'ПОРАЖЕНИЕ',
-        winMsg: 'ВЫ ПОБЕДИЛИ!',
-        loseMsg: 'ФЛОТ УНИЧТОЖЕН',
-        menu: 'В МЕНЮ',
-        zoneEnemy: 'ЗОНА ПРОТИВНИКА',
-        zoneMe: 'МОЙ ФЛОТ',
-        shipsAlive: 'КОРАБЛИ В СТРОЮ',
-        enemy: 'ВРАГ',
-        horizontal: 'ГОРИЗОНТАЛЬНО',
-        vertical: 'ВЕРТИКАЛЬНО',
-        dragHint: 'Перетащите корабли на поле. Q/E для поворота.',
-        hint: 'Кликните чтобы поставить или перетащить.'
+        winMsg: 'Вражеский флот уничтожен',
+        loseMsg: 'Наш флот пошел ко дну',
+        menu: 'В Меню',
+        zoneEnemy: 'Радар (Враг)',
+        zoneMe: 'Мой Флот',
+        shipsAlive: 'В строю',
+        enemy: 'Враг',
+        dragHint: 'Перетащите корабли или кликните. [Q/E] - Поворот',
+        rotate: 'Повернуть',
+        clear: 'Сброс'
     },
     en: {
-        deployment: 'DEPLOYMENT',
-        yourTurn: 'YOUR TURN',
-        enemyTurn: 'ENEMY TURN',
-        fleet: 'AVAILABLE FLEET',
-        auto: 'AUTO',
-        ready: 'BATTLE!',
-        waiting: 'WAITING...',
+        deployment: 'Fleet Deployment',
+        yourTurn: 'YOUR TURN - FIRE!',
+        enemyTurn: 'ENEMY MANEUVERS...',
+        fleet: 'Shipyard',
+        auto: 'Auto',
+        ready: 'BATTLE',
+        waiting: 'Waiting...',
         victory: 'VICTORY',
         defeat: 'DEFEAT',
-        winMsg: 'YOU WON!',
-        loseMsg: 'FLEET DESTROYED',
-        menu: 'MENU',
-        zoneEnemy: 'ENEMY ZONE',
-        zoneMe: 'MY FLEET',
-        shipsAlive: 'SHIPS ACTIVE',
-        enemy: 'ENEMY',
-        horizontal: 'HORIZONTAL',
-        vertical: 'VERTICAL',
-        dragHint: 'Drag ships to grid. Press Q/E to rotate.',
-        hint: 'Click to place or drag to move.'
+        winMsg: 'Enemy fleet destroyed',
+        loseMsg: 'Our fleet has sunk',
+        menu: 'Menu',
+        zoneEnemy: 'Radar (Enemy)',
+        zoneMe: 'My Fleet',
+        shipsAlive: 'Active',
+        enemy: 'Enemy',
+        dragHint: 'Drag ships or click to place. [Q/E] - Rotate',
+        rotate: 'Rotate',
+        clear: 'Reset'
     }
 };
 
@@ -66,34 +65,42 @@ const getShipColor = (type: ShipType) => {
     }
 };
 
+// --- КОМПОНЕНТ ЯЧЕЙКИ ---
 const GridCell = ({
-    x, y, status, shipPart, onClick, onMouseEnter, onContextMenu, onDrop, onDragOver, onDragStart, isHovered, hoverValid, size = 'large'
+    x, y, status, shipPart, onClick, onMouseEnter, onContextMenu,
+    onDrop, onDragOver, onDragStart, isHovered, hoverValid, size = 'large'
 }: any) => {
     const isSmall = size === 'small';
     let content = null;
 
+    // Стили бумаги
     let bgClass = "bg-[#F5F5F0]";
     let borderClass = isSmall ? "border-[0.5px] border-[#E6E1DC]" : "border border-[#E6E1DC]";
 
+    // Статусы выстрелов
     if (status === 'miss') {
-        content = <div className={`${isSmall ? 'w-1 h-1' : 'w-2 h-2'} rounded-full bg-[#8A9099]/60`} />;
+        content = <div className={`${isSmall ? 'w-1.5 h-1.5' : 'w-2 h-2'} rounded-full bg-[#8A9099]/40`} />;
     } else if (status === 'hit') {
         bgClass = "bg-red-50";
-        content = <span className={`${isSmall ? 'text-[10px]' : 'text-lg'} text-[#9e1316] font-bold font-mono`}>X</span>;
+        content = <span className={`${isSmall ? 'text-[10px]' : 'text-xl'} text-[#9e1316] font-black leading-none`}>✕</span>;
     } else if (status === 'killed') {
-        bgClass = "bg-[#9e1316]";
+        bgClass = "bg-[#1A1F26]";
         content = <span className={`${isSmall ? 'text-[8px]' : 'text-sm'} text-white font-bold`}>☠</span>;
     } else if (shipPart) {
-        bgClass = getShipColor(shipPart) + " shadow-sm border-white/20";
-        borderClass = "border-transparent";
+        // Корабль (если не убит и не ранен)
+        if (status === 'empty') {
+            bgClass = getShipColor(shipPart) + " shadow-sm border-white/20";
+            borderClass = "border-transparent";
+        }
     }
 
+    // Подсветка при расстановке (Призрак)
     if (isHovered) {
-        bgClass = hoverValid ? "bg-emerald-200" : "bg-red-200";
+        bgClass = hoverValid ? "bg-emerald-500/20 ring-2 ring-emerald-500 inset" : "bg-red-500/20 ring-2 ring-red-500 inset";
     }
 
-    const cursorClass = onClick && status === 'empty' ? 'cursor-crosshair hover:bg-gray-100' : 'cursor-default';
-    const draggable = !!shipPart && !isSmall;
+    const cursorClass = onClick && status === 'empty' ? 'cursor-crosshair' : 'cursor-default';
+    const draggable = !!shipPart && !isSmall && status === 'empty';
 
     return (
         <div
@@ -109,7 +116,8 @@ const GridCell = ({
                 ${borderClass}
                 ${bgClass}
                 ${cursorClass}
-                flex items-center justify-center transition-colors duration-150 select-none
+                flex items-center justify-center transition-all duration-150 select-none relative
+                ${draggable ? 'cursor-grab active:cursor-grabbing hover:brightness-110' : ''}
             `}
         >
             {content}
@@ -121,12 +129,13 @@ export default function BattleshipGame({
     gameState, userId, myShips, autoPlaceShips, clearShips,
     placeShipManual, removeShip, submitShips, fireShot, leaveGame, lang
 }: any) {
-    const [orientation, setOrientation] = useState<'horizontal' | 'vertical'>('horizontal');
+    const [orientation, setOrientation] = useState<Orientation>('horizontal');
     const [selectedType, setSelectedType] = useState<ShipType | null>(null);
     const [hoverPos, setHoverPos] = useState<Coordinate | null>(null);
     const [timeLeft, setTimeLeft] = useState(60);
-    // Для перетаскивания уже поставленных
-    const [movingShip, setMovingShip] = useState<Ship | null>(null);
+
+    // Стейт для временного хранения "взятого" корабля с доски
+    const [movingShipId, setMovingShipId] = useState<string | null>(null);
 
     const t = DICTIONARY[lang as 'ru' | 'en'] || DICTIONARY['ru'];
 
@@ -136,6 +145,7 @@ export default function BattleshipGame({
     const isMyTurn = gameState.turn === userId;
     const phase = gameState.phase;
 
+    // --- ЭФФЕКТЫ ---
     useEffect(() => {
         if (phase !== 'playing') return;
         const interval = setInterval(() => {
@@ -145,10 +155,10 @@ export default function BattleshipGame({
         return () => clearInterval(interval);
     }, [gameState.lastActionTime, phase]);
 
-    // KEYBOARD ROTATION
+    // Клавиши для поворота
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'q' || e.key === 'e' || e.key === 'r') {
+            if (['q', 'e', 'r'].includes(e.key.toLowerCase())) {
                 setOrientation(prev => prev === 'horizontal' ? 'vertical' : 'horizontal');
             }
         };
@@ -156,12 +166,17 @@ export default function BattleshipGame({
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, []);
 
+    // --- ЛОГИКА ---
+
     const getMyCellContent = (x: number, y: number) => {
-        const s = myShips.find((s: Ship) =>
-            s.orientation === 'horizontal'
-                ? (s.position.y === y && x >= s.position.x && x < s.position.x + s.size)
-                : (s.position.x === x && y >= s.position.y && y < s.position.y + s.size)
-        );
+        const s = myShips.find((s: Ship) => {
+            // Если мы сейчас перемещаем этот корабль (визуально он у нас в "руке"), не рисуем его на поле
+            if (movingShipId === s.id) return false;
+
+            if (s.orientation === 'horizontal') return s.position.y === y && x >= s.position.x && x < s.position.x + s.size;
+            return s.position.x === x && y >= s.position.y && y < s.position.y + s.size;
+        });
+
         const shot = phase === 'playing' && me?.shots ? me.shots[`${x},${y}`] : null;
         return { status: shot || 'empty', shipPart: s?.type, ship: s };
     };
@@ -171,20 +186,21 @@ export default function BattleshipGame({
         return { status: shot || 'empty' };
     };
 
-    // --- PLACEMENT LOGIC ---
+    // --- Drag & Placement Logic ---
 
-    const tryPlaceShip = (x: number, y: number, type: ShipType, shipId?: string) => {
+    // Попытка поставить корабль
+    const tryPlaceShip = (x: number, y: number, type: ShipType, existingId?: string) => {
         const config = FLEET_CONFIG.find(c => c.type === type);
         if (!config) return;
 
-        // Если это новый корабль, проверяем лимит
-        if (!shipId) {
-            const currentCount = myShips.filter((s: Ship) => s.type === type).length;
-            if (currentCount >= config.count) return;
+        // Если это новый корабль, проверяем лимиты
+        if (!existingId) {
+            const count = myShips.filter((s: Ship) => s.type === type).length;
+            if (count >= config.count) return;
         }
 
-        const newShip = {
-            id: shipId || `${type}-${Date.now()}`,
+        const newShip: Ship = {
+            id: existingId || `${type}-${Date.now()}`,
             type: type,
             size: config.size,
             orientation,
@@ -194,68 +210,60 @@ export default function BattleshipGame({
 
         const success = placeShipManual(newShip);
 
-        // Если успех и это новый корабль - сбрасываем выбор, если лимит исчерпан
-        if (success && !shipId) {
-             const newCount = myShips.filter((s: Ship) => s.type === type).length + 1;
-             if (newCount >= config.count) setSelectedType(null);
+        if (success) {
+            // Если успешно поставили новый - проверяем, не надо ли сбросить выбор
+            if (!existingId) {
+                const newCount = myShips.filter((s: Ship) => s.type === type).length + 1;
+                if (newCount >= config.count) setSelectedType(null);
+            }
+            setMovingShipId(null);
         }
-
-        setMovingShip(null);
     };
 
-    const handleSetupClick = (x: number, y: number) => {
-        // Если кликнули по пустому месту с выбранным типом - ставим
+    const handleCellClick = (x: number, y: number) => {
+        // 1. Если выбран тип из меню - ставим новый
         if (selectedType) {
             tryPlaceShip(x, y, selectedType);
             return;
         }
 
-        // Если кликнули по существующему кораблю - берем его (удаляем и выбираем тип)
+        // 2. Если кликнули по кораблю на поле - забираем его ("Move")
         const { ship } = getMyCellContent(x, y);
         if (ship) {
+            // "Забираем" корабль в руку:
+            // Удаляем с поля
             removeShip(ship.id);
+            // Устанавливаем параметры выбора
             setSelectedType(ship.type);
             setOrientation(ship.orientation);
-            setHoverPos({ x, y }); // Сразу показываем призрак
+            setHoverPos({ x, y });
         }
     };
 
-    // --- DRAG AND DROP ---
-
-    const handleDragStartFromMenu = (e: React.DragEvent, type: ShipType) => {
+    // Drag from Menu
+    const handleDragStartMenu = (e: React.DragEvent, type: ShipType) => {
         setSelectedType(type);
-        e.dataTransfer.setData('shipType', type);
+        e.dataTransfer.setData('type', type);
     };
 
-    const handleDragStartFromBoard = (e: React.DragEvent, ship: Ship) => {
-        setMovingShip(ship);
-        setSelectedType(ship.type);
+    // Drag from Board
+    const handleDragStartBoard = (e: React.DragEvent, ship: Ship) => {
+        setMovingShipId(ship.id); // Скрываем с доски визуально
         setOrientation(ship.orientation);
-        e.dataTransfer.setData('shipId', ship.id);
-        e.dataTransfer.setData('shipType', ship.type);
-        // Не удаляем сразу, только при успешном дропе
+        e.dataTransfer.setData('type', ship.type);
+        e.dataTransfer.setData('id', ship.id);
     };
 
     const handleDrop = (e: React.DragEvent, x: number, y: number) => {
         e.preventDefault();
-        const type = e.dataTransfer.getData('shipType') as ShipType;
-        const id = e.dataTransfer.getData('shipId'); // Может быть пустым
+        const type = e.dataTransfer.getData('type') as ShipType;
+        const id = e.dataTransfer.getData('id'); // Может быть пустым (новый корабль)
 
         if (type) tryPlaceShip(x, y, type, id || undefined);
+        setMovingShipId(null);
     };
 
-    const handleDragOver = (e: React.DragEvent, x: number, y: number) => {
-        e.preventDefault();
-        setHoverPos({ x, y });
-    };
-
-    const isHoverValid = (x: number, y: number) => {
-        if (!selectedType || !hoverPos) return false;
-        const config = FLEET_CONFIG.find(c => c.type === selectedType)!;
-        if (orientation === 'horizontal') return x + config.size <= 10;
-        return y + config.size <= 10;
-    };
-
+    // Визуализация "Призрака"
     const isPhantomCell = (x: number, y: number) => {
         if (!hoverPos || !selectedType) return false;
         const config = FLEET_CONFIG.find(c => c.type === selectedType)!;
@@ -266,8 +274,38 @@ export default function BattleshipGame({
         }
     };
 
+    const checkPhantomValidity = (x: number, y: number) => {
+        if (!selectedType || !hoverPos) return false;
+        const config = FLEET_CONFIG.find(c => c.type === selectedType)!;
+
+        // Создаем временный корабль для проверки через хук
+        const tempShip: Ship = {
+            id: 'temp', // ID не важен для валидации новой позиции (кроме игнорирования самого себя)
+            type: selectedType,
+            size: config.size,
+            orientation,
+            position: { x: hoverPos.x, y: hoverPos.y },
+            hits: 0
+        };
+
+        // Используем функцию из хука (она экспортирована)
+        // Важно: если мы сейчас перетаскиваем корабль (movingShipId), мы должны его игнорировать при проверке
+        // Но myShips уже может не содержать его если мы сделали removeShip при клике.
+        // Если это Drag, то movingShipId установлен, но корабль ЕЩЕ в myShips.
+        // checkPlacement фильтрует по ID, так что передадим 'temp' как newShip
+
+        // Нюанс: checkPlacement в хуке принимает ID, который нужно игнорировать (старую позицию).
+        // Если это новый корабль, ignoreId не нужен. Если перестановка - нужен.
+        // Но так как у tempShip ID='temp', он не совпадет с реальным ID в myShips.
+        // Нам нужно передать ID перетаскиваемого корабля в ignoreId.
+
+        // Однако myShips в пропсах. Мы можем использовать checkPlacement напрямую.
+        return checkPlacement(myShips, tempShip, movingShipId || undefined);
+    };
+
+    // --- FINISHED SCREEN ---
     if (phase === 'finished') return (
-        <div className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 font-sans">
+        <div className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 font-sans animate-in fade-in">
             <div className="bg-white p-10 rounded-[32px] text-center animate-in zoom-in duration-300 border-4 border-[#9e1316] shadow-2xl max-w-sm w-full relative overflow-hidden">
                 <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none" />
                 <div className="relative z-10">
@@ -282,112 +320,142 @@ export default function BattleshipGame({
         </div>
     );
 
+    // --- GAME SCREEN ---
     return (
-        <div className="min-h-screen bg-[#F8FAFC] text-[#1A1F26] flex flex-col font-sans overflow-hidden relative">
+        <div className="min-h-screen bg-[#F8FAFC] text-[#1A1F26] flex flex-col font-sans overflow-hidden relative selection:bg-[#9e1316] selection:text-white">
             <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-50 mix-blend-overlay pointer-events-none" />
 
+            {/* HEADER */}
             <header className="w-full max-w-6xl mx-auto p-4 flex justify-between items-center z-10 relative">
-                <button onClick={leaveGame} className="p-2 text-gray-400 hover:text-[#9e1316] transition-colors"><LogOut className="w-5 h-5" /></button>
+                <button onClick={() => { leaveGame(); window.location.href='/play' }} className="p-3 bg-white border border-[#E6E1DC] rounded-xl text-gray-400 hover:text-[#9e1316] hover:border-[#9e1316]/30 transition-all shadow-sm"><LogOut className="w-5 h-5" /></button>
                 <div className="text-center">
-                    <h1 className="font-black text-xl flex items-center gap-2 justify-center text-[#1A1F26]">
-                        <Anchor className="w-5 h-5 text-[#9e1316]"/> BATTLESHIP
+                    <h1 className="font-black text-2xl flex items-center gap-2 justify-center text-[#1A1F26] tracking-tight">
+                        <Anchor className="w-6 h-6 text-[#9e1316]"/> BATTLESHIP
                     </h1>
-                    <div className="text-[10px] font-bold text-[#9e1316] uppercase flex items-center gap-2 justify-center mt-1">
+                    <div className="text-[10px] font-bold text-[#9e1316] uppercase flex items-center gap-2 justify-center mt-1 bg-[#9e1316]/5 px-3 py-1 rounded-full border border-[#9e1316]/10">
                         {phase === 'setup' ? t.deployment : (isMyTurn ? t.yourTurn : t.enemyTurn)}
-                        {phase === 'playing' && <span className={`flex items-center gap-1 bg-white px-2 py-0.5 rounded border border-[#E6E1DC] ${timeLeft < 15 ? 'text-red-600 animate-pulse' : ''}`}><Timer className="w-3 h-3"/> {timeLeft}s</span>}
+                        {phase === 'playing' && <span className={`flex items-center gap-1 ml-2 ${timeLeft < 15 ? 'text-red-600 animate-pulse' : 'text-gray-500'}`}><Timer className="w-3 h-3"/> {timeLeft}s</span>}
                     </div>
                 </div>
-                <div className="w-8" />
+                <div className="w-12" />
             </header>
 
             <main className="flex-1 flex flex-col items-center justify-center p-4 z-10 gap-6 overflow-y-auto custom-scrollbar w-full">
 
+                {/* --- SETUP PHASE --- */}
                 {phase === 'setup' && (
-                    <div className="flex flex-col lg:flex-row gap-8 items-start w-full max-w-5xl animate-in fade-in slide-in-from-bottom-4">
+                    <div className="flex flex-col lg:flex-row gap-8 items-start w-full max-w-5xl animate-in fade-in slide-in-from-bottom-4 duration-500">
 
-                        <div className="bg-white p-6 rounded-[32px] shadow-xl border border-[#E6E1DC] relative mx-auto lg:mx-0">
-                            <div className="absolute -top-3 left-6 bg-[#9e1316] text-white text-[10px] font-bold uppercase px-3 py-1 rounded-full tracking-wider shadow-sm">
+                        {/* BOARD */}
+                        <div className="bg-white p-6 rounded-[32px] shadow-xl border border-[#E6E1DC] relative mx-auto lg:mx-0 group">
+                            <div className="absolute -top-3 left-6 bg-[#1A1F26] text-white text-[10px] font-bold uppercase px-4 py-1.5 rounded-full tracking-widest shadow-lg border-2 border-white">
                                 {t.deployment}
                             </div>
+
+                            <div className="flex items-center justify-between mb-4 px-2">
+                                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t.dragHint}</div>
+                            </div>
+
                             <div
-                                className="grid grid-cols-10 gap-px bg-[#E6E1DC] border-2 border-[#1A1F26] overflow-hidden rounded-lg cursor-crosshair"
+                                className="grid grid-cols-10 gap-px bg-[#E6E1DC] border-4 border-[#1A1F26] overflow-hidden rounded-xl cursor-crosshair shadow-inner"
                                 onMouseLeave={() => setHoverPos(null)}
                             >
                                 {Array.from({ length: 100 }).map((_, i) => {
                                     const x = i % 10;
                                     const y = Math.floor(i / 10);
                                     const { shipPart, ship } = getMyCellContent(x, y);
+
+                                    const isHovered = isPhantomCell(x, y);
+                                    const isValid = isHovered ? checkPhantomValidity(x, y) : false;
+
                                     return (
                                         <GridCell
                                             key={i} x={x} y={y}
                                             status={'empty'}
                                             shipPart={shipPart}
-                                            onClick={() => handleSetupClick(x, y)}
+                                            onClick={() => handleCellClick(x, y)}
                                             onMouseEnter={() => setHoverPos({x, y})}
                                             onDrop={(e: any) => handleDrop(e, x, y)}
-                                            onDragOver={(e: any) => handleDragOver(e, x, y)}
-                                            onDragStart={(e: any) => ship && handleDragStartFromBoard(e, ship)}
+                                            onDragOver={(e: any) => { e.preventDefault(); setHoverPos({x, y}); }}
+                                            onDragStart={(e: any) => ship && handleDragStartBoard(e, ship)}
                                             onContextMenu={(e: any) => {
                                                 e.preventDefault();
                                                 setOrientation(prev => prev === 'horizontal' ? 'vertical' : 'horizontal');
                                             }}
-                                            isHovered={isPhantomCell(x, y)}
-                                            hoverValid={isHoverValid(x, y)}
+                                            isHovered={isHovered}
+                                            hoverValid={isValid}
                                         />
                                     );
                                 })}
                             </div>
-                            <div className="flex justify-between items-center mt-4 px-2">
-                                <button onClick={() => setOrientation(o => o === 'horizontal' ? 'vertical' : 'horizontal')} className="flex items-center gap-2 text-xs font-bold uppercase text-[#1A1F26] hover:text-[#9e1316] transition-colors bg-[#F5F5F0] px-3 py-2 rounded-lg border border-[#E6E1DC]">
-                                    <RotateCw className={`w-4 h-4 transition-transform ${orientation === 'vertical' ? 'rotate-90' : ''}`} />
-                                    {t[orientation]}
+
+                            {/* Controls Bar */}
+                            <div className="flex justify-between items-center mt-6 bg-[#F8FAFC] p-2 rounded-2xl border border-[#E6E1DC]">
+                                <button
+                                    onClick={() => setOrientation(o => o === 'horizontal' ? 'vertical' : 'horizontal')}
+                                    className="flex items-center gap-2 text-xs font-bold uppercase text-[#1A1F26] hover:bg-white hover:shadow-sm px-4 py-2 rounded-xl transition-all"
+                                >
+                                    <RotateCw className={`w-4 h-4 transition-transform duration-300 ${orientation === 'vertical' ? 'rotate-90' : ''}`} />
+                                    {t.rotate}
                                 </button>
-                                <div className="text-[9px] text-gray-400 font-bold uppercase mx-auto px-4">{t.dragHint}</div>
-                                <button onClick={clearShips} className="text-gray-400 hover:text-red-500 p-2"><Trash2 className="w-4 h-4"/></button>
+                                <button onClick={clearShips} className="text-[#8A9099] hover:text-[#9e1316] hover:bg-white hover:shadow-sm p-2 rounded-xl transition-all flex items-center gap-2 text-xs font-bold uppercase px-4">
+                                    <Trash2 className="w-4 h-4"/> {t.clear}
+                                </button>
                             </div>
                         </div>
 
-                        <div className="flex-1 w-full space-y-4">
-                            <div className="bg-white p-6 rounded-[24px] shadow-sm border border-[#E6E1DC]">
-                                <h3 className="text-xs font-black uppercase mb-4 text-[#8A9099] flex items-center gap-2"><Map className="w-4 h-4"/> {t.fleet}</h3>
-                                <div className="space-y-2">
+                        {/* FLEET PANEL */}
+                        <div className="flex-1 w-full space-y-6">
+                            <div className="bg-white p-6 rounded-[32px] shadow-sm border border-[#E6E1DC]">
+                                <h3 className="text-xs font-black uppercase mb-6 text-[#8A9099] flex items-center gap-2 tracking-widest pl-2">
+                                    <Map className="w-4 h-4 text-[#1A1F26]"/> {t.fleet}
+                                </h3>
+                                <div className="space-y-3">
                                     {FLEET_CONFIG.map(ship => {
                                         const placedCount = myShips.filter((s: Ship) => s.type === ship.type).length;
                                         const isFull = placedCount >= ship.count;
                                         const isSelected = selectedType === ship.type;
 
                                         return (
-                                            <button
+                                            <div
                                                 key={ship.type}
                                                 draggable={!isFull}
-                                                onDragStart={(e) => handleDragStartFromMenu(e, ship.type)}
+                                                onDragStart={(e) => handleDragStartMenu(e, ship.type)}
                                                 onClick={() => !isFull && setSelectedType(ship.type)}
-                                                disabled={isFull}
                                                 className={`
-                                                    w-full flex items-center justify-between p-3 rounded-xl border-2 transition-all duration-200 cursor-grab active:cursor-grabbing
-                                                    ${isFull ? 'bg-gray-50 border-transparent opacity-40 grayscale cursor-default' : ''}
+                                                    w-full flex items-center justify-between p-3 rounded-2xl border-2 transition-all duration-200 cursor-pointer
+                                                    ${isFull ? 'bg-[#F8FAFC] border-transparent opacity-40 grayscale cursor-default' : ''}
                                                     ${isSelected ? 'bg-[#1A1F26] text-white border-[#1A1F26] shadow-lg scale-[1.02]' : 'bg-white border-[#F5F5F0] hover:border-[#E6E1DC]'}
                                                 `}
                                             >
-                                                <div className="flex items-center gap-3">
-                                                    <div className={`h-2 rounded-full ${isFull ? 'bg-gray-400' : (isSelected ? 'bg-[#9e1316]' : 'bg-[#1A1F26]')}`} style={{ width: ship.size * 10 }} />
-                                                    <span className="text-[10px] font-bold uppercase">{ship.type}</span>
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-8 h-8 rounded-full bg-[#F5F5F0] flex items-center justify-center text-[10px] font-black text-[#8A9099]">
+                                                        {ship.size}x
+                                                    </div>
+                                                    <div className="flex flex-col">
+                                                        <span className="text-[10px] font-bold uppercase tracking-wider">{ship.type}</span>
+                                                        <div className="flex gap-1 mt-1">
+                                                            {Array.from({length: ship.size}).map((_, i) => (
+                                                                <div key={i} className={`w-3 h-3 rounded-sm ${isSelected ? 'bg-[#9e1316]' : 'bg-[#1A1F26]'}`} />
+                                                            ))}
+                                                        </div>
+                                                    </div>
                                                 </div>
                                                 <span className="text-xs font-black">{placedCount}/{ship.count}</span>
-                                            </button>
+                                            </div>
                                         );
                                     })}
                                 </div>
                             </div>
 
-                            <div className="flex gap-3">
-                                <button onClick={autoPlaceShips} className="flex-1 py-4 bg-white border-2 border-[#E6E1DC] text-[#1A1F26] rounded-xl font-bold text-xs uppercase hover:bg-gray-50 hover:border-gray-300 flex items-center justify-center gap-2 transition-all">
+                            <div className="flex gap-4">
+                                <button onClick={autoPlaceShips} className="flex-1 py-4 bg-white border-2 border-[#E6E1DC] text-[#1A1F26] rounded-2xl font-bold text-xs uppercase hover:bg-[#F8FAFC] hover:border-gray-300 flex items-center justify-center gap-2 transition-all active:scale-95">
                                     <Shuffle className="w-4 h-4" /> {t.auto}
                                 </button>
                                 <button
                                     onClick={submitShips}
                                     disabled={myShips.length < 10 || me?.isReady}
-                                    className="flex-[2] py-4 bg-[#1A1F26] text-white rounded-xl font-black text-xs uppercase hover:bg-[#9e1316] disabled:opacity-50 disabled:hover:bg-[#1A1F26] transition-all shadow-lg flex items-center justify-center gap-2 active:scale-95"
+                                    className="flex-[2] py-4 bg-[#1A1F26] text-white rounded-2xl font-black text-xs uppercase hover:bg-[#9e1316] disabled:opacity-50 disabled:hover:bg-[#1A1F26] transition-all shadow-lg flex items-center justify-center gap-2 active:scale-95 tracking-widest"
                                 >
                                     {me?.isReady ? t.waiting : t.ready} <Check className="w-4 h-4" />
                                 </button>
@@ -396,20 +464,21 @@ export default function BattleshipGame({
                     </div>
                 )}
 
-                {/* --- BATTLE UI --- */}
+                {/* --- BATTLE PHASE --- */}
                 {phase === 'playing' && (
-                    <div className="flex flex-col md:flex-row gap-8 items-center md:items-start justify-center w-full max-w-6xl animate-in fade-in">
+                    <div className="flex flex-col lg:flex-row gap-8 items-center lg:items-start justify-center w-full max-w-6xl animate-in fade-in">
 
-                        <div className="relative group order-1 md:order-2">
-                            <div className="absolute -top-10 left-0 right-0 text-center">
-                                <span className={`text-xs font-black uppercase tracking-[0.2em] px-4 py-2 rounded-full bg-white shadow-sm border border-[#E6E1DC] ${isMyTurn ? 'text-[#9e1316] border-[#9e1316]' : 'text-gray-400'}`}>
+                        {/* ENEMY BOARD (RADAR) */}
+                        <div className="relative group order-1 lg:order-2">
+                            <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-center z-20 w-full px-4">
+                                <span className={`text-[10px] font-black uppercase tracking-[0.2em] px-6 py-2 rounded-full bg-white shadow-xl border border-[#E6E1DC] ${isMyTurn ? 'text-[#9e1316] border-[#9e1316] animate-pulse' : 'text-gray-400'}`}>
                                     {isMyTurn ? t.yourTurn : t.enemyTurn}
                                 </span>
                             </div>
 
-                            <div className={`bg-white p-4 sm:p-6 rounded-[32px] shadow-2xl border-4 transition-all duration-500 relative ${isMyTurn ? 'border-[#9e1316] shadow-[#9e1316]/20 scale-[1.02] z-20' : 'border-[#E6E1DC] opacity-90 grayscale-[0.5] scale-95'}`}>
-                                <div className="absolute top-6 left-6 text-[10px] font-bold text-[#8A9099] uppercase tracking-widest flex items-center gap-2"><Crosshair className="w-4 h-4"/> {t.zoneEnemy}</div>
-                                <div className="mt-8 grid grid-cols-10 gap-px bg-[#E6E1DC] border-2 border-[#1A1F26] rounded-lg overflow-hidden cursor-crosshair">
+                            <div className={`bg-white p-6 rounded-[40px] shadow-2xl border-4 transition-all duration-500 relative mt-4 ${isMyTurn ? 'border-[#9e1316] shadow-[#9e1316]/20 scale-[1.02] z-10' : 'border-[#E6E1DC] opacity-90 scale-95'}`}>
+                                <div className="absolute top-8 left-8 text-[10px] font-bold text-[#8A9099] uppercase tracking-widest flex items-center gap-2"><Crosshair className="w-4 h-4"/> {t.zoneEnemy}</div>
+                                <div className="mt-8 grid grid-cols-10 gap-px bg-[#E6E1DC] border-2 border-[#1A1F26] rounded-xl overflow-hidden cursor-crosshair">
                                     {Array.from({ length: 100 }).map((_, i) => {
                                         const x = i % 10;
                                         const y = Math.floor(i / 10);
@@ -426,10 +495,11 @@ export default function BattleshipGame({
                             </div>
                         </div>
 
-                        <div className="flex flex-col gap-4 order-2 md:order-1">
-                            <div className="bg-white p-4 rounded-[24px] shadow-md border border-[#E6E1DC] opacity-90 hover:opacity-100 transition-opacity relative">
-                                <div className="absolute top-4 left-4 text-[10px] font-bold text-[#8A9099] uppercase tracking-widest flex items-center gap-2"><Shield className="w-3 h-3"/> {t.zoneMe}</div>
-                                <div className="mt-6 grid grid-cols-10 gap-px bg-[#E6E1DC] border border-[#E6E1DC] w-fit mx-auto rounded overflow-hidden">
+                        {/* MY BOARD (STATUS) */}
+                        <div className="flex flex-col gap-6 order-2 lg:order-1 w-full max-w-xs">
+                            <div className="bg-white p-5 rounded-[32px] shadow-lg border border-[#E6E1DC] opacity-90 hover:opacity-100 transition-opacity relative group">
+                                <div className="absolute top-5 left-5 text-[10px] font-bold text-[#8A9099] uppercase tracking-widest flex items-center gap-2"><Shield className="w-3 h-3"/> {t.zoneMe}</div>
+                                <div className="mt-8 grid grid-cols-10 gap-px bg-[#E6E1DC] border border-[#E6E1DC] w-fit mx-auto rounded overflow-hidden">
                                     {Array.from({ length: 100 }).map((_, i) => {
                                         const x = i % 10;
                                         const y = Math.floor(i / 10);
@@ -439,14 +509,16 @@ export default function BattleshipGame({
                                 </div>
                             </div>
 
-                            <div className="bg-[#1A1F26] text-white p-6 rounded-[24px] shadow-lg flex flex-col gap-3">
-                                <div className="flex justify-between items-end">
-                                    <div className="text-[10px] font-bold uppercase text-gray-400">{t.shipsAlive}</div>
-                                    <div className="text-2xl font-black">{me?.aliveShipsCount}/10</div>
+                            <div className="bg-[#1A1F26] text-white p-6 rounded-[32px] shadow-xl flex flex-col gap-4 relative overflow-hidden">
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+
+                                <div className="flex justify-between items-end relative z-10">
+                                    <div className="text-[10px] font-bold uppercase text-gray-400 tracking-wider">{t.shipsAlive}</div>
+                                    <div className="text-3xl font-black">{me?.aliveShipsCount}<span className="text-gray-600 text-lg">/10</span></div>
                                 </div>
-                                <div className="h-px bg-white/20 w-full" />
-                                <div className="flex justify-between items-end">
-                                    <div className="text-[10px] font-bold uppercase text-[#9e1316]">{t.enemy}</div>
+                                <div className="h-px bg-white/10 w-full" />
+                                <div className="flex justify-between items-end relative z-10">
+                                    <div className="text-[10px] font-bold uppercase text-[#9e1316] tracking-wider">{t.enemy}</div>
                                     <div className="text-xl font-bold text-[#9e1316]">{opponent?.aliveShipsCount}/10</div>
                                 </div>
                             </div>
