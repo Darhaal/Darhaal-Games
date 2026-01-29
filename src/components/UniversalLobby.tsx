@@ -1,9 +1,9 @@
+// components/UniversalLobby.tsx
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
 import { LogOut, Crown, Copy, Check, Users, ScrollText, Ship, Bomb, Fingerprint, ShieldAlert, Skull, UserPlus, UserMinus, User, Play } from 'lucide-react';
 
-// Универсальный интерфейс игрока для отображения в лобби
 export interface LobbyPlayer {
   id: string;
   name: string;
@@ -35,7 +35,6 @@ const GAME_ICONS: Record<string, any> = {
   secret_hitler: Skull,
 };
 
-// Компонент уведомления (Toast)
 const Toast = ({ msg, type }: { msg: string, type: 'join' | 'leave' }) => (
     <div className={`flex items-center gap-2 px-4 py-3 rounded-xl shadow-xl border text-xs font-bold uppercase tracking-wider animate-in slide-in-from-top-4 fade-in duration-300 z-[100] ${type === 'join' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-red-50 border-red-200 text-red-700'}`}>
         {type === 'join' ? <UserPlus className="w-4 h-4" /> : <UserMinus className="w-4 h-4" />}
@@ -68,44 +67,37 @@ export default function UniversalLobby({
       start: 'Начать игру',
       leave: 'Покинуть',
       code: 'Код комнаты',
-      copy: 'Скопировано',
       minPlayers: `Нужно ${minPlayers}+ игроков`,
       host: 'Хост',
       you: 'Вы',
       playersTitle: 'Игроки',
       joined: 'присоединился',
-      left: 'вышел',
-      ready: 'Готов'
+      left: 'вышел'
     },
     en: {
       waiting: 'Waiting for players...',
       start: 'Start Game',
       leave: 'Leave',
       code: 'Room Code',
-      copy: 'Copied',
       minPlayers: `Need ${minPlayers}+ players`,
       host: 'Host',
       you: 'You',
       playersTitle: 'Players',
       joined: 'joined',
-      left: 'left',
-      ready: 'Ready'
+      left: 'left'
     }
   }[lang];
 
-  // Логика уведомлений о входе/выходе
   useEffect(() => {
       const prev = prevPlayersRef.current;
       const current = players;
 
-      // Кто зашел?
       current.forEach(p => {
           if (!prev.find(old => old.id === p.id)) {
               addNotification(`${p.name} ${t.joined}`, 'join');
           }
       });
 
-      // Кто вышел?
       prev.forEach(p => {
           if (!current.find(newP => newP.id === p.id)) {
               addNotification(`${p.name} ${t.left}`, 'leave');
@@ -131,19 +123,14 @@ export default function UniversalLobby({
     <div className="min-h-screen bg-[#F8FAFC] text-[#1A1F26] flex flex-col font-sans relative overflow-hidden">
       <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-50 mix-blend-overlay pointer-events-none" />
 
-      {/* Слой уведомлений */}
       <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] flex flex-col gap-2 w-full max-w-sm px-4 pointer-events-none">
           {notifications.map(n => (
               <Toast key={n.id} msg={n.msg} type={n.type} />
           ))}
       </div>
 
-      {/* HEADER */}
       <header className="w-full max-w-6xl mx-auto p-6 flex justify-between items-center z-10 relative">
-        <button
-          onClick={onLeave}
-          className="group flex items-center gap-2 px-4 py-2 bg-white border border-[#E6E1DC] rounded-xl hover:border-red-200 hover:bg-red-50 transition-all shadow-sm"
-        >
+        <button onClick={onLeave} className="group flex items-center gap-2 px-4 py-2 bg-white border border-[#E6E1DC] rounded-xl hover:border-red-200 hover:bg-red-50 transition-all shadow-sm">
             <LogOut className="w-4 h-4 text-[#8A9099] group-hover:text-[#9e1316] transition-colors" />
             <span className="text-xs font-bold uppercase tracking-widest text-[#8A9099] group-hover:text-[#9e1316] hidden sm:block">{t.leave}</span>
         </button>
@@ -164,8 +151,6 @@ export default function UniversalLobby({
       </header>
 
       <main className="flex-1 w-full max-w-5xl mx-auto p-4 z-10 flex flex-col lg:flex-row gap-8 items-start justify-center pt-8 lg:pt-16">
-
-        {/* СПИСОК ИГРОКОВ */}
         <div className="w-full lg:w-2/3 bg-white border border-[#E6E1DC] rounded-[32px] p-8 shadow-xl shadow-[#1A1F26]/5 relative overflow-hidden">
           <div className="flex justify-between items-center mb-8 border-b border-[#F5F5F0] pb-4">
               <h2 className="text-xl font-black uppercase tracking-wide flex items-center gap-2 text-[#1A1F26]">
@@ -196,8 +181,6 @@ export default function UniversalLobby({
                 </div>
               </div>
             ))}
-
-            {/* Пустые слоты */}
             {Array.from({ length: Math.max(0, minPlayers - players.length) }).map((_, i) => (
                 <div key={`empty-${i}`} className="border-2 border-dashed border-[#E6E1DC] bg-transparent p-4 rounded-2xl flex items-center justify-center gap-4 opacity-50 min-h-[88px]">
                     <div className="w-14 h-14 rounded-full bg-[#E6E1DC]/30 animate-pulse" />
@@ -207,26 +190,19 @@ export default function UniversalLobby({
           </div>
         </div>
 
-        {/* САЙДБАР С КОДОМ И КНОПКОЙ */}
         <div className="w-full lg:w-1/3 flex flex-col gap-6">
-
-            {/* Карточка кода */}
             <div
                 onClick={handleCopy}
                 className="bg-[#1A1F26] text-white p-8 rounded-[32px] shadow-2xl shadow-[#1A1F26]/20 text-center cursor-pointer group relative overflow-hidden transition-transform active:scale-[0.98]"
             >
                 <div className="absolute inset-0 bg-gradient-to-tr from-[#9e1316]/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-
                 <div className="relative z-10">
                     <div className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-4 group-hover:text-white/80 transition-colors">{t.code}</div>
                     <div className="text-5xl font-black tracking-widest font-mono group-hover:scale-110 transition-transform duration-300">
                         {roomCode}
                     </div>
-
                     <div className={`absolute top-4 right-4 transition-all duration-300 ${copied ? 'opacity-100 scale-100' : 'opacity-0 scale-50'}`}>
-                        <div className="bg-emerald-500 text-white p-1.5 rounded-full shadow-lg">
-                            <Check className="w-4 h-4" />
-                        </div>
+                        <div className="bg-emerald-500 text-white p-1.5 rounded-full shadow-lg"><Check className="w-4 h-4" /></div>
                     </div>
                     <div className={`absolute top-4 right-4 transition-all duration-300 ${!copied ? 'opacity-0 group-hover:opacity-100 scale-100' : 'opacity-0 scale-50'}`}>
                         <Copy className="w-4 h-4 text-gray-400" />
@@ -234,7 +210,6 @@ export default function UniversalLobby({
                 </div>
             </div>
 
-            {/* Кнопка Старта */}
             {isHost ? (
                 <button
                     onClick={onStart}
@@ -250,14 +225,7 @@ export default function UniversalLobby({
                     <div className="w-2 h-2 bg-[#9e1316] rounded-full animate-bounce delay-75" />
                 </div>
             )}
-
-            <div className="px-4 text-center">
-                <p className="text-[10px] text-[#8A9099] font-bold uppercase tracking-wider leading-relaxed">
-                    Поделитесь кодом с друзьями
-                </p>
-            </div>
         </div>
-
       </main>
     </div>
   );

@@ -1,7 +1,8 @@
+// components/Settings.tsx
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { X, Volume2, Music, Globe, Shield, User, Mail, Upload, Loader2, Trash2, Check, Edit2 } from 'lucide-react';
+import { X, Volume2, Music, Globe, Shield, User, Mail, Upload, Loader2, Check, Edit2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 type Lang = 'ru' | 'en';
@@ -27,12 +28,11 @@ export default function Settings({ isOpen, onClose, user, currentLang, setLang, 
   const [resetCooldown, setResetCooldown] = useState(0);
   const [customAvatars, setCustomAvatars] = useState<string[]>([]);
 
-  // Никнейм
+  // Nickname editing
   const [username, setUsername] = useState('');
   const [isEditingName, setIsEditingName] = useState(false);
   const [savingName, setSavingName] = useState(false);
 
-  // Синхронизация локального стейта
   useEffect(() => {
     if (user && user.name) {
       setUsername(user.name);
@@ -120,6 +120,7 @@ export default function Settings({ isOpen, onClose, user, currentLang, setLang, 
       const { error: authError } = await supabase.auth.updateUser({ data: { username: username } });
       if (authError) throw authError;
 
+      // Ensure profile table sync if used
       await supabase.from('profiles').update({ username: username }).eq('id', user.id);
 
       onProfileUpdate({ name: username });
@@ -170,6 +171,7 @@ export default function Settings({ isOpen, onClose, user, currentLang, setLang, 
     if (!fileName) return;
     await supabase.storage.from('avatars').remove([fileName]);
     await fetchCustomAvatars();
+    // Reset to random if current was deleted
     if (user.avatarUrl === url) saveAvatar(`https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}&backgroundColor=transparent`);
   };
 
@@ -196,7 +198,6 @@ export default function Settings({ isOpen, onClose, user, currentLang, setLang, 
         {/* Sidebar */}
         <div className="w-full md:w-64 bg-[#F5F5F0] p-8 border-b md:border-b-0 md:border-r border-[#E6E1DC] flex flex-row md:flex-col gap-3">
           <div className="hidden md:flex items-center gap-2 text-lg font-black text-[#1A1F26] mb-8 px-2 tracking-tight">
-            <img src="/logo512.png" alt="Logo" className="w-6 h-6 object-contain" onError={(e) => e.currentTarget.style.display = 'none'} />
             Darhaal<span className="text-[#9e1316]">System</span>
           </div>
 
@@ -220,7 +221,7 @@ export default function Settings({ isOpen, onClose, user, currentLang, setLang, 
           ))}
         </div>
 
-        {/* Content */}
+        {/* Content Area */}
         <div className="flex-1 p-10 relative overflow-y-auto custom-scrollbar">
           <button onClick={onClose} className="absolute top-8 right-8 p-2 text-[#8A9099] hover:text-[#9e1316] hover:bg-[#F5F5F0] rounded-full transition-all">
             <X className="w-6 h-6" />
@@ -228,7 +229,7 @@ export default function Settings({ isOpen, onClose, user, currentLang, setLang, 
 
           <h2 className="text-3xl font-black text-[#1A1F26] mb-8 tracking-tight">{t.tabs[activeTab]}</h2>
 
-          {/* GENERAL */}
+          {/* GENERAL TAB */}
           {activeTab === 'general' && (
             <div className="space-y-10 animate-in slide-in-from-bottom-4 duration-500">
               <div className="space-y-4">
@@ -278,7 +279,7 @@ export default function Settings({ isOpen, onClose, user, currentLang, setLang, 
             </div>
           )}
 
-          {/* PROFILE */}
+          {/* PROFILE TAB */}
           {activeTab === 'profile' && (
             <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500">
               {!user.isAnonymous && (
@@ -322,7 +323,6 @@ export default function Settings({ isOpen, onClose, user, currentLang, setLang, 
                 </div>
               )}
 
-              {/* ... (остальной код аватаров) ... */}
               {!user.isAnonymous && (
                 <div className="flex items-center justify-between mb-6">
                   <span className="text-xs text-[#8A9099] font-bold uppercase tracking-wider pl-1">{t.deleteHint}</span>
@@ -384,7 +384,7 @@ export default function Settings({ isOpen, onClose, user, currentLang, setLang, 
             </div>
           )}
 
-          {/* SECURITY */}
+          {/* SECURITY TAB */}
           {activeTab === 'security' && (
             <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500">
               {user.isAnonymous ? (

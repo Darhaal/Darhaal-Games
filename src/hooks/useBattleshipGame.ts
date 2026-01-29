@@ -1,8 +1,12 @@
+// hooks/useBattleshipGame.ts
+
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
-import { BattleshipState, Ship, Coordinate, Orientation, FLEET_CONFIG, PlayerBoard } from '@/types/battleship';
+import { BattleshipState, Ship, Coordinate, Orientation, FLEET_CONFIG } from '@/types/battleship';
 
 const BOARD_SIZE = 10;
+const TURN_DURATION_SEC = 60;
+
 const getKey = (x: number, y: number) => `${x},${y}`;
 const isValidCoord = (x: number, y: number) => x >= 0 && x < BOARD_SIZE && y >= 0 && y < BOARD_SIZE;
 
@@ -17,7 +21,7 @@ const getShipCoords = (ship: Ship): Coordinate[] => {
   return coords;
 };
 
-// Экспортируем для использования в UI для подсветки
+// Check placement rules (boundaries, collision, buffer zone)
 export const checkPlacement = (ships: Ship[], newShip: Ship, ignoreShipId?: string): boolean => {
   const newShipCoords = getShipCoords(newShip);
   for (const c of newShipCoords) {
@@ -29,7 +33,7 @@ export const checkPlacement = (ships: Ship[], newShip: Ship, ignoreShipId?: stri
 
   otherShips.forEach(s => {
     getShipCoords(s).forEach(coord => {
-      // 3x3 зона вокруг каждой клетки корабля
+      // 3x3 buffer around every ship segment
       for (let dx = -1; dx <= 1; dx++) {
         for (let dy = -1; dy <= 1; dy++) {
           dangerZone.add(getKey(coord.x + dx, coord.y + dy));
@@ -99,7 +103,28 @@ export function useBattleshipGame(
     stateRef.current = { lobbyId, user, gameState };
   }, [lobbyId, user, gameState]);
 
-  // --- SYNC ---
+  // --- STATE SYNC & OPTIMISTIC LOCKING ---
+
+  const updateState = async (newState: BattleshipState) => {
+    if (!lobbyId) return;
+
+    // Increment version
+    newState.version = (newState.version || 0) + 1;
+    newState.lastActionTime = Date.now();
+
+    setGameState(newState);
+
+    const { error } = await supabase
+        .from('lobbies')
+        .update({ game_state: newState })
+        .eq('id', lobbyId);
+
+    if (error) {
+        console.error("State update failed:", error);
+        fetchLobbyState(); // Revert on failure
+    }
+  };
+
   const fetchLobbyState = useCallback(async () => {
     if (!lobbyId) return;
     try {
@@ -108,14 +133,13 @@ export function useBattleshipGame(
         setRoomMeta({ name: data.name, code: data.code, isHost: data.host_id === user?.id });
         if (data.game_state) {
            setGameState(data.game_state);
-           // Restore local ships if available
            if (user?.id && data.game_state.players) {
               const p = data.game_state.players[user.id];
               if (p?.ships) setMyShips(p.ships);
            }
         }
       } else {
-          setGameState(null); // Deleted
+          setGameState(null);
       }
     } catch (e) { console.error(e); } finally { setLoading(false); }
   }, [lobbyId, user?.id]);
@@ -130,12 +154,16 @@ export function useBattleshipGame(
         const newState = payload.new.game_state as BattleshipState;
         if (newState) {
           setGameState(prev => {
-            // For lobby joining (waiting), accept immediately to see new players
-            if (newState.status === 'waiting') return newState;
-            // For game state, prevent overwriting with older state
-            if (prev && (newState.version || 0) < (prev.version || 0)) return prev;
+            // Drop outdated packets (unless in lobby waiting mode)
+            if (prev && newState.status !== 'waiting' && (newState.version || 0) < (prev.version || 0)) {
+                return prev;
+            }
             return newState;
           });
+
+          if (user?.id && newState.players?.[user.id]?.ships) {
+              setMyShips(newState.players[user.id].ships);
+          }
         }
       })
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'lobbies', filter: `id=eq.${lobbyId}` },
@@ -143,45 +171,29 @@ export function useBattleshipGame(
       .subscribe();
 
     return () => { supabase.removeChannel(ch); };
-  }, [lobbyId, fetchLobbyState]);
+  }, [lobbyId, fetchLobbyState, user?.id]);
 
-  const updateState = async (newState: BattleshipState) => {
-    newState.version = (newState.version || 0) + 1;
-    newState.lastActionTime = Date.now();
-    setGameState(newState);
-    if (stateRef.current.lobbyId) {
-       await supabase.from('lobbies').update({ game_state: newState }).eq('id', stateRef.current.lobbyId);
-    }
-  };
-
-  // --- ACTIONS ---
+  // --- LOGIC ---
 
   const initGame = async () => {
     if (!user || !stateRef.current.gameState) return;
     const currentState = stateRef.current.gameState;
 
-    // Fix for legacy array players if any
-    let playersObj = currentState.players;
-    if (Array.isArray(playersObj)) playersObj = {};
+    if (Array.isArray(currentState.players)) currentState.players = {};
 
-    // Update or add player
-    const existing = playersObj[user.id];
-    // If not exists or missing name/avatar (update legacy data)
-    if (!existing || !existing.name) {
+    if (!currentState.players[user.id]) {
       const newState = JSON.parse(JSON.stringify(currentState)) as BattleshipState;
-      if (Array.isArray(newState.players)) newState.players = {};
-
       const isFirst = Object.keys(newState.players).length === 0;
 
       newState.players[user.id] = {
         id: user.id,
         name: user.name,
         avatarUrl: user.avatarUrl,
-        ships: existing?.ships || [],
-        shots: existing?.shots || {},
-        isReady: existing?.isReady || false,
-        isHost: isFirst || existing?.isHost,
-        aliveShipsCount: existing?.aliveShipsCount || 0
+        ships: [],
+        shots: {},
+        isReady: false,
+        isHost: isFirst || newState.players[user.id]?.isHost,
+        aliveShipsCount: 0
       };
       await updateState(newState);
     }
@@ -193,11 +205,13 @@ export function useBattleshipGame(
     newState.status = 'playing';
     newState.phase = 'setup';
     newState.logs = [];
+    newState.turnDeadline = undefined;
     await updateState(newState);
   };
 
   const autoPlaceShips = () => setMyShips(shuffleFleet());
   const clearShips = () => setMyShips([]);
+  const removeShip = (id: string) => setMyShips(myShips.filter(s => s.id !== id));
 
   const placeShipManual = (ship: Ship) => {
       const otherShips = myShips.filter(s => s.id !== ship.id);
@@ -207,8 +221,6 @@ export function useBattleshipGame(
       }
       return false;
   };
-
-  const removeShip = (id: string) => setMyShips(myShips.filter(s => s.id !== id));
 
   const submitShips = async () => {
     if (!user?.id || !gameState) return;
@@ -221,13 +233,19 @@ export function useBattleshipGame(
     const playersArr = Object.values(newState.players);
     if (playersArr.length === 2 && playersArr.every(p => p.isReady)) {
       newState.phase = 'playing';
-      newState.turn = playersArr[0].id; // First player starts
+      newState.turn = playersArr[0].id;
+      newState.turnDeadline = Date.now() + (TURN_DURATION_SEC * 1000); // Start timer
     }
     await updateState(newState);
   };
 
   const fireShot = async (x: number, y: number) => {
+    const { gameState, user } = stateRef.current;
     if (!user?.id || !gameState || gameState.turn !== user.id || gameState.phase !== 'playing') return;
+
+    // Check Timer (Grace period 2s)
+    if (gameState.turnDeadline && Date.now() > gameState.turnDeadline + 2000) return;
+
     const opponentId = Object.keys(gameState.players).find(id => id !== user.id);
     if (!opponentId) return;
 
@@ -252,61 +270,70 @@ export function useBattleshipGame(
 
     if (killed) {
       opponentBoard.aliveShipsCount--;
-      // Mark surroundings as miss
+      // Auto-reveal surroundings
       getShipCoords(opponentBoard.ships[hitShipIdx]).forEach(c => {
         myBoard.shots[getKey(c.x, c.y)] = 'killed';
         for (let dx = -1; dx <= 1; dx++) {
           for (let dy = -1; dy <= 1; dy++) {
             const nx = c.x + dx, ny = c.y + dy;
-            if (isValidCoord(nx, ny) && !myBoard.shots[getKey(nx, ny)]) myBoard.shots[getKey(nx, ny)] = 'miss';
+            if (isValidCoord(nx, ny) && !myBoard.shots[getKey(nx, ny)]) {
+                myBoard.shots[getKey(nx, ny)] = 'miss';
+            }
           }
         }
       });
     } else if (!hit) {
       newState.turn = opponentId;
+      newState.turnDeadline = Date.now() + (TURN_DURATION_SEC * 1000); // Reset timer on miss
     }
 
     if (opponentBoard.aliveShipsCount === 0) {
       newState.phase = 'finished';
       newState.winner = user.id;
+      newState.turnDeadline = undefined;
     }
     await updateState(newState);
   };
 
   const handleTimeout = async () => {
-    const currentGs = stateRef.current.gameState;
-    const currentUser = stateRef.current.user;
-    if (!currentGs || !currentUser || currentGs.phase !== 'playing' || currentGs.turn !== currentUser.id) return;
+    const { gameState, user } = stateRef.current;
+    if (!gameState || !user || gameState.phase !== 'playing') return;
 
-    const opponentId = Object.keys(currentGs.players).find(id => id !== currentUser.id);
-    const newState: BattleshipState = {
-        ...currentGs,
-        phase: 'finished',
-        winner: opponentId || null,
-    };
-    await updateState(newState);
+    // Active player handles timeout (passes turn)
+    if (gameState.turn === user.id) {
+         const opponentId = Object.keys(gameState.players).find(id => id !== user.id);
+         const newState = JSON.parse(JSON.stringify(gameState)) as BattleshipState;
+         if (opponentId) {
+             newState.turn = opponentId;
+             newState.turnDeadline = Date.now() + (TURN_DURATION_SEC * 1000);
+             await updateState(newState);
+         }
+    }
   };
 
   const leaveGame = async () => {
-     const currentGs = stateRef.current.gameState;
-     if (!lobbyId || !user || !currentGs) return;
+     const { gameState, user, lobbyId } = stateRef.current;
+     if (!lobbyId || !user || !gameState) return;
 
      const isHost = roomMeta?.isHost;
+
      if (isHost) {
          await supabase.from('lobbies').delete().eq('id', lobbyId);
-     } else {
-         const newState = JSON.parse(JSON.stringify(currentGs));
-         delete newState.players[user.id];
+         return;
+     }
 
-         if (Object.keys(newState.players).length === 0) {
-             await supabase.from('lobbies').delete().eq('id', lobbyId);
-         } else {
-             if (newState.status === 'playing') {
-                 newState.phase = 'finished';
-                 newState.winner = Object.keys(newState.players)[0]; // Opponent wins
-             }
-             await updateState(newState);
+     const newState = JSON.parse(JSON.stringify(gameState));
+     delete newState.players[user.id];
+
+     if (Object.keys(newState.players).length === 0) {
+         await supabase.from('lobbies').delete().eq('id', lobbyId);
+     } else {
+         if (newState.status === 'playing' || newState.phase === 'setup') {
+             newState.phase = 'finished';
+             newState.status = 'finished';
+             newState.winner = Object.keys(newState.players)[0];
          }
+         await updateState(newState);
      }
   };
 

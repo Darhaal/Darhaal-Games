@@ -19,7 +19,7 @@ export interface Ship {
 }
 
 export interface PlayerBoard {
-  id: string;         // Renamed from userId for consistency
+  id: string;
   name: string;
   avatarUrl: string;
   ships: Ship[];
@@ -37,6 +37,10 @@ export interface BattleshipState {
   winner: string | null;
   logs: { text: string; time: string }[];
   lastActionTime: number;
+  // Absolute timestamp (epoch ms) when the current turn must end.
+  // This ensures server-authoritative timing across all clients.
+  turnDeadline?: number;
+  // Version control for optimistic locking to prevent race conditions
   version: number;
   gameType: 'battleship';
   settings: {

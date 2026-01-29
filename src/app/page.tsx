@@ -1,3 +1,4 @@
+// app/page.tsx
 'use client';
 
 import React, { useState, useEffect, Suspense } from 'react';
@@ -89,7 +90,6 @@ function HomeContent() {
     await supabase.auth.signOut();
   };
 
-  // Обработчик обновления профиля из настроек
   const handleProfileUpdate = (updates: { name?: string; avatarUrl?: string }) => {
     if (!user) return;
     setUser((prev: any) => ({
@@ -121,7 +121,7 @@ function HomeContent() {
       title: t.menu.achievements.title,
       subtitle: t.menu.achievements.sub,
       icon: <Trophy className="w-8 h-8 mb-4 text-[#8A9099] group-hover:text-[#9e1316] transition-colors duration-300" />,
-      action: () => router.push('/achievements'),
+      action: () => router.push('/achievements'), // Optional page
     },
     {
       title: t.menu.settings.title,
@@ -153,7 +153,7 @@ function HomeContent() {
   return (
     <main className="min-h-screen bg-white text-[#1A1F26] flex flex-col items-center relative overflow-hidden font-sans selection:bg-[#9e1316] selection:text-white">
 
-      {/* Texture & Ambient */}
+      {/* Background Ambience */}
       <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-40 brightness-100 contrast-150 mix-blend-overlay pointer-events-none"></div>
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-[#9e1316]/5 rounded-full blur-[120px] pointer-events-none" />
 
@@ -189,10 +189,9 @@ function HomeContent() {
           </div>
         </button>
 
-        {/* Desktop Logo */}
+        {/* Brand Logo */}
         <div className="hidden md:flex flex-col items-center absolute left-1/2 -translate-x-1/2 pointer-events-none">
            <div className="flex items-center gap-3 opacity-90 bg-white/50 backdrop-blur-sm px-6 py-2 rounded-full border border-transparent">
-             <img src="/logo512.png" alt="Logo" className="w-8 h-8 object-contain" onError={(e) => e.currentTarget.style.display = 'none'} />
              <span className="text-xl font-black tracking-widest font-sans text-[#1A1F26]">DARHAAL GAMES</span>
            </div>
         </div>
@@ -205,7 +204,7 @@ function HomeContent() {
         </button>
       </header>
 
-      {/* Main Content */}
+      {/* Menu Grid */}
       <div className="flex-1 flex flex-col items-center justify-center w-full max-w-6xl px-4 z-10 py-12">
         <div className="text-center mb-12 animate-in slide-in-from-bottom-8 duration-700 fade-in">
           <h1 className="text-5xl md:text-7xl font-black mb-4 tracking-tight text-[#1A1F26]">

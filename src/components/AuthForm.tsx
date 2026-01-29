@@ -1,3 +1,4 @@
+// components/AuthForm.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -82,6 +83,7 @@ export default function AuthForm() {
 
     try {
       if (isSignUp) {
+        // Unique username check (needs a 'profiles' table with 'username' column in Supabase)
         const { data: existingUser } = await supabase.from('profiles').select('username').eq('username', username).single();
         if (existingUser) throw new Error(lang === 'ru' ? 'Имя занято' : 'Username taken');
 
@@ -98,6 +100,7 @@ export default function AuthForm() {
         setSuccessMsg(t.successReg);
         setTimeout(() => setIsSignUp(false), 2000);
       } else {
+        // Login Logic (Support login by Username OR Email)
         let loginEmail = email;
         if (!email.includes('@')) {
              const { data: profile, error: profileError } = await supabase.from('profiles').select('email').eq('username', username).single();
@@ -106,7 +109,6 @@ export default function AuthForm() {
         }
 
         const finalEmail = loginEmail || username;
-
         const { error } = await supabase.auth.signInWithPassword({ email: finalEmail, password });
         if (error) throw error;
       }
@@ -119,10 +121,9 @@ export default function AuthForm() {
 
   const handleGoogleLogin = async () => {
     setLoading(true);
-    const redirectTo = getRedirectUrl();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo },
+      options: { redirectTo: getRedirectUrl() },
     });
     if (error) { setErrorMsg(error.message); setLoading(false); }
   };

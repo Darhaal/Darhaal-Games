@@ -1,7 +1,9 @@
+// types/coup.ts
+
 export type Lang = 'ru' | 'en';
 export type Role = 'duke' | 'assassin' | 'captain' | 'ambassador' | 'contessa';
 
-export type GamePhase = 
+export type GamePhase =
   | 'choosing_action'
   | 'waiting_for_challenges'
   | 'waiting_for_blocks'
@@ -48,16 +50,18 @@ export interface GameState {
   logs: GameLog[];
   status: 'waiting' | 'playing' | 'finished';
   winner?: string;
-
-  // State Machine
-  phase: GamePhase;
   currentAction: PendingAction | null;
+  pendingPlayerId?: string; // Player who needs to respond (lose card, exchange, etc)
+  exchangeBuffer?: Role[]; // Temp cards during exchange
 
-  // Кто сейчас должен совершить действие
-  pendingPlayerId?: string;
-  exchangeBuffer?: Role[];
+  lastActionTime: number;
+  // Critical: Server timestamp when the current decision phase must end
+  turnDeadline?: number;
+  // Critical: Optimistic locking version
+  version: number;
 
-  // Anti-AFK & Sync
-  lastActionTime: number; // Timestamp последнего действия
-  version: number; // Для предотвращения Race Conditions
+  gameType: 'coup';
+  settings: {
+    maxPlayers: number;
+  };
 }

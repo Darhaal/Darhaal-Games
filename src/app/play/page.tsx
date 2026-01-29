@@ -1,3 +1,4 @@
+// app/play/page.tsx
 'use client';
 
 import React, { useState, useEffect, Suspense } from 'react';
@@ -5,8 +6,8 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import {
   ArrowLeft, Search, Users, Lock, Play, X, Loader2,
-  Crown, Filter, ScrollText, KeyRound, Unlock, SortAsc, SortDesc,
-  Ship, Bomb, Fingerprint, ShieldAlert, Skull
+  Crown, Filter, KeyRound, Unlock, SortAsc, SortDesc,
+  Ship, Bomb, Fingerprint, ShieldAlert, Skull, ScrollText
 } from 'lucide-react';
 
 type Lang = 'ru' | 'en';
@@ -17,7 +18,7 @@ interface LobbyRow {
   code: string;
   game_state: {
       gameType?: string;
-      players: any; // Поддержка и массива (Coup), и объекта (Battleship)
+      players: any;
       settings?: { maxPlayers?: number };
   };
   status: string;
@@ -28,6 +29,7 @@ interface LobbyRow {
 
 type SortOption = 'newest' | 'oldest' | 'players-desc' | 'players-asc';
 
+// Translation Constants
 const TRANSLATIONS = {
   ru: {
     title: 'Игровой Зал',
@@ -57,7 +59,8 @@ const TRANSLATIONS = {
     errorAuth: 'Авторизуйтесь, чтобы играть',
     errorFull: 'Комната заполнена',
     errorNotFound: 'Лобби с таким кодом не найдено',
-    create: 'Создать'
+    create: 'Создать',
+    blocked: 'Скоро'
   },
   en: {
     title: 'Game Hall',
@@ -87,7 +90,8 @@ const TRANSLATIONS = {
     errorAuth: 'Login required to play',
     errorFull: 'Room is full',
     errorNotFound: 'Lobby not found',
-    create: 'Create'
+    create: 'Create',
+    blocked: 'Coming Soon'
   }
 };
 
@@ -97,11 +101,13 @@ function PlayContent() {
   const [loading, setLoading] = useState(true);
   const [lang, setLang] = useState<Lang>('ru');
 
+  // Filters State
   const [search, setSearch] = useState('');
   const [codeQuery, setCodeQuery] = useState('');
   const [filterMode, setFilterMode] = useState<string>('all');
   const [sortBy, setSortBy] = useState<SortOption>('newest');
 
+  // Interaction State
   const [selectedLobby, setSelectedLobby] = useState<LobbyRow | null>(null);
   const [passwordInput, setPasswordInput] = useState('');
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -112,6 +118,7 @@ function PlayContent() {
     if (savedLang) setLang(savedLang);
     fetchLobbies();
 
+    // Subscribe to realtime updates for the lobby list
     const ch = supabase.channel('public_lobbies')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'lobbies' }, fetchLobbies)
       .subscribe();
@@ -121,6 +128,7 @@ function PlayContent() {
 
   const t = TRANSLATIONS[lang];
 
+  // Fetch only active games (not finished)
   const fetchLobbies = async () => {
     const { data } = await supabase
       .from('lobbies')
@@ -132,6 +140,7 @@ function PlayContent() {
     setLoading(false);
   };
 
+  // Helper to extract player array regardless of structure
   const getPlayers = (lobby: LobbyRow): any[] => {
       const p = lobby.game_state.players;
       if (Array.isArray(p)) return p;
@@ -158,29 +167,44 @@ function PlayContent() {
       return;
     }
 
-    const gameType = lobby.game_state.gameType || 'coup';
-    const players = getPlayers(lobby);
+    // Race Condition Check: Fetch fresh lobby state before joining
+    const { data: freshLobby, error: fetchError } = await supabase
+        .from('lobbies')
+        .select('game_state, status')
+        .eq('id', lobby.id)
+        .single();
 
-    // Уже в игре?
+    if (fetchError || !freshLobby) {
+        alert(t.errorNotFound);
+        fetchLobbies();
+        return;
+    }
+
+    const gameType = lobby.game_state.gameType || 'coup';
+    const players = getPlayers({ ...lobby, game_state: freshLobby.game_state });
+
+    // Check if I am already in the game
     if (players.some((p: any) => p.id === user.id || p.userId === user.id)) {
       router.push(`/game/${gameType}?id=${lobby.id}`);
       return;
     }
 
-    const maxPlayers = lobby.game_state.settings?.maxPlayers || (gameType === 'battleship' ? 2 : 6);
+    const maxPlayers = freshLobby.game_state.settings?.maxPlayers || (gameType === 'battleship' ? 2 : 6);
     if (players.length >= maxPlayers) {
       alert(t.errorFull);
+      fetchLobbies();
       return;
     }
 
-    // Если игра идет, нельзя войти (если не реконнект)
-    if (lobby.status === 'playing') {
+    // Do not allow joining active games unless handled by specific game logic (reconnect)
+    if (freshLobby.status === 'playing') {
         return;
     }
 
-    // ЛОГИКА ДЛЯ COUP (нужно добавить игрока в массив здесь, для Battleship это делает сам компонент игры)
+    // --- JOIN LOGIC FOR COUP ---
+    // (Battleship logic is handled inside the game component on init)
     if (gameType === 'coup') {
-        const userName = user.user_metadata?.username || user.user_metadata?.full_name || user.email?.split('@')[0] || 'Player';
+        const userName = user.user_metadata?.username || user.user_metadata?.full_name || 'Player';
         const userAvatar = user.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`;
 
         const newPlayer = {
@@ -194,8 +218,9 @@ function PlayContent() {
             isReady: true
         };
 
-        const newPlayers = [...(lobby.game_state.players as any[]), newPlayer];
-        const newState = { ...lobby.game_state, players: newPlayers };
+        const currentPlayers = Array.isArray(freshLobby.game_state.players) ? freshLobby.game_state.players : [];
+        const newPlayers = [...currentPlayers, newPlayer];
+        const newState = { ...freshLobby.game_state, players: newPlayers };
 
         const { error } = await supabase
             .from('lobbies')
@@ -244,7 +269,7 @@ function PlayContent() {
         const gameType = l.game_state.gameType || 'coup';
         const matchesMode = filterMode === 'all' || gameType === filterMode;
 
-        // Не показываем игры, которые уже идут, если мы не в них
+        // Hide playing games unless I'm participating
         const isAlreadyIn = players.some((p: any) => p.id === currentUserId || p.userId === currentUserId);
         if (l.status === 'playing' && !isAlreadyIn) return false;
 
@@ -258,10 +283,20 @@ function PlayContent() {
         return 0;
     });
 
+  // Filter List with "Coming Soon" badges
+  const MODES_LIST = [
+      { id: 'all', label: t.all },
+      { id: 'coup', label: t.coup },
+      { id: 'battleship', label: t.battleship },
+      { id: 'mafia', label: t.mafia, disabled: true },
+      { id: 'minesweeper', label: 'Minesweeper', disabled: true },
+  ];
+
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-[#1A1F26] font-sans relative overflow-x-hidden flex flex-col">
       <div className="fixed inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-50 brightness-100 contrast-150 mix-blend-overlay pointer-events-none z-0"></div>
 
+      {/* Header */}
       <header className="sticky top-0 z-30 w-full bg-[#F8FAFC]/90 backdrop-blur-xl border-b border-[#E6E1DC] shadow-sm">
         <div className="max-w-6xl mx-auto px-4 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
@@ -299,6 +334,7 @@ function PlayContent() {
 
       <div className="max-w-6xl mx-auto w-full relative z-10 px-4 py-8 flex-1">
         <div className="flex flex-col lg:flex-row gap-8 items-start">
+            {/* Sidebar Filters */}
             <aside className="w-full lg:w-72 space-y-6 lg:sticky lg:top-28">
                 <div className="bg-white p-4 rounded-[24px] border border-[#E6E1DC] shadow-sm group focus-within:border-[#9e1316]/30 focus-within:shadow-md transition-all">
                     <div className="flex items-center gap-3">
@@ -333,20 +369,22 @@ function PlayContent() {
                     <div className="flex items-center gap-2 text-xs font-black text-[#8A9099] uppercase tracking-widest mb-2">
                         {t.modes}
                     </div>
-                    {['all', 'coup', 'battleship', 'mafia'].map(mode => (
-                        <label key={mode} className="flex items-center gap-4 cursor-pointer group hover:bg-[#F5F5F0] p-2 rounded-xl transition-colors -mx-2">
-                            <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${filterMode === mode ? 'bg-[#1A1F26] border-[#1A1F26]' : 'border-[#E6E1DC] bg-white'}`}>
-                                {filterMode === mode && <div className="w-2 h-2 bg-white rounded-full" />}
+                    {MODES_LIST.map(mode => (
+                        <label key={mode.id} className={`flex items-center gap-4 cursor-pointer group hover:bg-[#F5F5F0] p-2 rounded-xl transition-colors -mx-2 ${mode.disabled ? 'opacity-50 pointer-events-none' : ''}`}>
+                            <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${filterMode === mode.id ? 'bg-[#1A1F26] border-[#1A1F26]' : 'border-[#E6E1DC] bg-white'}`}>
+                                {filterMode === mode.id && <div className="w-2 h-2 bg-white rounded-full" />}
                             </div>
-                            <span className={`font-bold text-sm transition-colors ${filterMode === mode ? 'text-[#1A1F26]' : 'text-[#8A9099]'}`}>
-                                {t[mode as keyof typeof t] || mode}
+                            <span className={`font-bold text-sm transition-colors ${filterMode === mode.id ? 'text-[#1A1F26]' : 'text-[#8A9099]'}`}>
+                                {mode.label}
                             </span>
-                            <input type="radio" name="mode" className="hidden" checked={filterMode === mode} onChange={() => setFilterMode(mode)} />
+                            {mode.disabled && <span className="ml-auto text-[8px] font-bold uppercase bg-gray-100 px-2 py-0.5 rounded text-gray-400 border border-gray-200">{t.blocked}</span>}
+                            <input type="radio" name="mode" className="hidden" checked={filterMode === mode.id} onChange={() => setFilterMode(mode.id)} disabled={mode.disabled} />
                         </label>
                     ))}
                 </div>
             </aside>
 
+            {/* Game Grid */}
             <div className="flex-1 w-full min-h-[50vh]">
                 {loading ? (
                     <div className="flex flex-col items-center justify-center py-20 opacity-50">
@@ -430,6 +468,7 @@ function PlayContent() {
             </div>
         </div>
 
+        {/* Private Room Modal */}
         {selectedLobby && (
           <div className="fixed inset-0 bg-[#1A1F26]/60 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
             <div className="bg-white p-8 rounded-[32px] w-full max-w-sm relative shadow-2xl border border-[#E6E1DC] animate-in zoom-in-95">

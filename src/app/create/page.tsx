@@ -23,6 +23,7 @@ type Game = {
   disabled?: boolean;
 };
 
+// Config for all games, including future ones
 const GAMES: Game[] = [
   {
     id: 'coup',
@@ -47,7 +48,6 @@ const GAMES: Game[] = [
     icon: <Ship className="w-8 h-8" />,
     disabled: false,
   },
-  // ... other games can be enabled later
   {
     id: 'mafia',
     name: 'Mafia',
@@ -58,7 +58,7 @@ const GAMES: Game[] = [
     minPlayers: 4,
     maxPlayers: 12,
     icon: <Users className="w-8 h-8" />,
-    disabled: true,
+    disabled: true, // BLOCKED
   },
   {
     id: 'minesweeper',
@@ -70,7 +70,7 @@ const GAMES: Game[] = [
     minPlayers: 1,
     maxPlayers: 1,
     icon: <Bomb className="w-8 h-8" />,
-    disabled: true,
+    disabled: true, // BLOCKED
   },
   {
     id: 'bunker',
@@ -82,7 +82,7 @@ const GAMES: Game[] = [
     minPlayers: 4,
     maxPlayers: 16,
     icon: <ShieldAlert className="w-8 h-8" />,
-    disabled: true,
+    disabled: true, // BLOCKED
   },
   {
     id: 'spyfall',
@@ -94,7 +94,7 @@ const GAMES: Game[] = [
     minPlayers: 3,
     maxPlayers: 8,
     icon: <Fingerprint className="w-8 h-8" />,
-    disabled: true,
+    disabled: true, // BLOCKED
   },
   {
     id: 'secret_hitler',
@@ -106,7 +106,7 @@ const GAMES: Game[] = [
     minPlayers: 5,
     maxPlayers: 10,
     icon: <Skull className="w-8 h-8" />,
-    disabled: true,
+    disabled: true, // BLOCKED
   },
 ];
 
@@ -184,10 +184,10 @@ export default function CreatePage() {
       const code = Math.random().toString(36).substring(2, 8).toUpperCase();
       let initialState: any;
 
-      // Получаем нормальное имя и аватар
       const userName = user.user_metadata?.username || user.user_metadata?.full_name || user.email?.split('@')[0] || 'Player';
       const userAvatar = user.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`;
 
+      // COUPE INIT
       if (selectedGame.id === 'coup') {
           const initialHost: CoupPlayer = {
             id: user.id,
@@ -210,12 +210,14 @@ export default function CreatePage() {
             currentAction: null,
             lastActionTime: Date.now(),
             version: 1,
+            turnDeadline: undefined, // Setup phase has no timer
           };
           initialState = coupState;
 
       } else if (selectedGame.id === 'battleship') {
+          // BATTLESHIP INIT
           const initialHost: BattleshipPlayer = {
-              id: user.id, // ИСПОЛЬЗУЕМ 'id' ВМЕСТО 'userId'
+              id: user.id,
               name: userName,
               avatarUrl: userAvatar,
               isHost: true,
@@ -235,7 +237,8 @@ export default function CreatePage() {
               lastActionTime: Date.now(),
               version: 1,
               gameType: 'battleship',
-              settings: { maxPlayers: 2 }
+              settings: { maxPlayers: 2 },
+              turnDeadline: undefined // Setup phase
           };
           initialState = battleshipState;
       }
@@ -286,7 +289,7 @@ export default function CreatePage() {
              <div className={`p-4 rounded-2xl ${game.disabled ? 'bg-gray-100' : 'bg-[#F5F5F0] group-hover:bg-[#9e1316]/5 transition-colors'}`}>
                {game.icon}
              </div>
-             {game.disabled && <span className="text-[10px] font-bold uppercase bg-gray-100 px-2 py-1 rounded text-gray-400">{t.comingSoon}</span>}
+             {game.disabled && <span className="text-[10px] font-bold uppercase bg-gray-100 px-2 py-1 rounded text-gray-400 border border-gray-200">{t.comingSoon}</span>}
           </div>
           <h3 className="text-2xl font-black text-[#1A1F26] mb-2">{game.name}</h3>
           <p className="text-sm text-[#8A9099] font-medium leading-relaxed mb-4">{game.desc[lang]}</p>
