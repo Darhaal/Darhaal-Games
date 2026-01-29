@@ -26,26 +26,26 @@ type SortOption = 'newest' | 'oldest' | 'players-desc' | 'players-asc';
 
 const TRANSLATIONS = {
   ru: {
-    title: 'Список Игр',
-    subtitle: 'Присоединяйся и побеждай',
+    title: 'Игровой Зал',
+    subtitle: 'Выбери свою битву',
     join: 'Войти',
-    searchPlaceholder: 'Название или код...',
+    searchPlaceholder: 'Поиск комнаты...',
     all: 'Все',
-    private: 'Приватная комната',
-    enterPass: 'Введите пароль',
-    confirm: 'Войти',
-    empty: 'Лобби не найдено'
+    private: 'Приватная',
+    enterPass: 'Пароль',
+    confirm: 'Вход',
+    empty: 'Нет активных игр'
   },
   en: {
-    title: 'Game Browser',
-    subtitle: 'Join and conquer',
+    title: 'Game Hall',
+    subtitle: 'Choose your battle',
     join: 'Join',
-    searchPlaceholder: 'Name or code...',
+    searchPlaceholder: 'Search room...',
     all: 'All',
-    private: 'Private Room',
-    enterPass: 'Enter Password',
+    private: 'Private',
+    enterPass: 'Password',
     confirm: 'Enter',
-    empty: 'No lobbies found'
+    empty: 'No active games'
   }
 };
 
@@ -82,7 +82,7 @@ function PlayContent() {
 
   const handleJoin = async (lobby: LobbyRow, password?: string) => {
     if (lobby.is_private && lobby.password !== password) {
-        alert('Wrong password');
+        alert('Неверный пароль');
         return;
     }
     const gameType = lobby.game_state?.gameType || 'coup';
@@ -127,7 +127,6 @@ function PlayContent() {
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col font-sans relative overflow-hidden text-[#1A1F26]">
       <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-50 mix-blend-overlay pointer-events-none" />
 
-      {/* Header */}
       <header className="w-full max-w-6xl mx-auto p-6 flex justify-between items-center z-10 relative">
         <button onClick={() => router.push('/')} className="flex items-center gap-2 group">
           <div className="p-3 bg-white border border-[#E6E1DC] rounded-xl group-hover:border-[#9e1316]/50 shadow-sm transition-all"><ArrowLeft className="w-5 h-5 text-[#8A9099] group-hover:text-[#9e1316]" /></div>
@@ -139,11 +138,9 @@ function PlayContent() {
         <div className="w-12"></div>
       </header>
 
-      {/* Content */}
       <div className="flex-1 w-full max-w-6xl mx-auto p-4 z-10 flex flex-col gap-6">
-
         {/* Controls */}
-        <div className="bg-white p-4 rounded-[32px] border border-[#E6E1DC] shadow-xl shadow-[#1A1F26]/5 flex flex-col md:flex-row gap-4 justify-between items-center">
+        <div className="bg-white/80 backdrop-blur-sm p-4 rounded-[32px] border border-[#E6E1DC] shadow-sm flex flex-col md:flex-row gap-4 justify-between items-center">
             <div className="relative w-full md:w-64 group">
                 <Search className="absolute left-4 top-3.5 w-4 h-4 text-[#8A9099] group-focus-within:text-[#9e1316] transition-colors" />
                 <input
@@ -162,7 +159,7 @@ function PlayContent() {
                         onClick={() => setFilterMode(mode)}
                         className={`px-5 py-2 rounded-xl text-xs font-bold uppercase transition-all whitespace-nowrap ${filterMode === mode ? 'bg-white text-[#1A1F26] shadow-sm' : 'text-[#8A9099] hover:text-[#1A1F26]'}`}
                     >
-                        {mode}
+                        {mode === 'all' ? t.all : mode}
                     </button>
                 ))}
             </div>

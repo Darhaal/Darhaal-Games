@@ -76,7 +76,6 @@ const shuffleFleet = (): Ship[] => {
   return [];
 };
 
-// ОБНОВЛЕНО: Принимает полный профиль пользователя
 export function useBattleshipGame(
     lobbyId: string | null,
     user: { id: string; name: string; avatarUrl: string } | null
@@ -102,7 +101,6 @@ export function useBattleshipGame(
         setRoomMeta({ name: data.name, code: data.code, isHost: data.host_id === user?.id });
         if (data.game_state) {
           setGameState(data.game_state);
-          // Восстанавливаем расстановку
           if (user?.id && data.game_state.players && !Array.isArray(data.game_state.players)) {
              if (data.game_state.players[user.id]?.ships) {
                 setMyShips(data.game_state.players[user.id].ships);
@@ -143,7 +141,6 @@ export function useBattleshipGame(
     if (!user || !stateRef.current.gameState) return;
     const currentState = stateRef.current.gameState;
 
-    // Защита от битого стейта
     let playersObj = currentState.players;
     if (Array.isArray(playersObj)) playersObj = {};
 
@@ -153,7 +150,6 @@ export function useBattleshipGame(
 
       const isFirst = Object.keys(newState.players).length === 0;
 
-      // ОБНОВЛЕНО: Сохраняем имя и аватар
       newState.players[user.id] = {
         userId: user.id,
         name: user.name,
@@ -178,6 +174,7 @@ export function useBattleshipGame(
 
   const autoPlaceShips = () => setMyShips(shuffleFleet());
   const clearShips = () => setMyShips([]);
+
   const placeShipManual = (ship: Ship) => {
       if (canPlaceShip(myShips, ship)) {
           setMyShips([...myShips, ship]);
@@ -185,6 +182,7 @@ export function useBattleshipGame(
       }
       return false;
   };
+
   const removeShip = (id: string) => setMyShips(myShips.filter(s => s.id !== id));
 
   const submitShips = async () => {

@@ -21,13 +21,14 @@ const getShipColor = (type: ShipType) => {
 };
 
 const GridCell = ({
-    x, y, status, shipPart, onClick, onMouseEnter, isHovered, hoverValid, size = 'large'
+    x, y, status, shipPart, onClick, onMouseEnter, onContextMenu, isHovered, hoverValid, size = 'large'
 }: {
     x: number; y: number;
     status: CellStatus;
     shipPart?: ShipType;
     onClick?: () => void;
-    onMouseEnter?: () => void; // Добавлено поле в тип
+    onMouseEnter?: () => void;
+    onContextMenu?: (e: React.MouseEvent) => void;
     isHovered?: boolean;
     hoverValid?: boolean;
     size?: 'large' | 'small';
@@ -64,7 +65,8 @@ const GridCell = ({
     return (
         <div
             onClick={onClick}
-            onMouseEnter={onMouseEnter} // Передаем обработчик в DOM
+            onMouseEnter={onMouseEnter}
+            onContextMenu={onContextMenu}
             className={`
                 ${isSmall ? CELL_SIZE_S : CELL_SIZE_L}
                 ${borderClass}
@@ -150,7 +152,8 @@ export default function BattleshipGame({
     const isHoverValid = (x: number, y: number) => {
         if (!selectedType || !hoverPos) return false;
         const config = FLEET_CONFIG.find(c => c.type === selectedType)!;
-        // Simple bounds check for visual
+        // Check collision (using same logic as hook if possible, but simple check here)
+        // Note: Real validation happens in placeShipManual
         if (orientation === 'horizontal') return x + config.size <= 10;
         return y + config.size <= 10;
     };
@@ -228,6 +231,7 @@ export default function BattleshipGame({
                                             shipPart={shipPart}
                                             onClick={() => handleSetupClick(x, y)}
                                             onMouseEnter={() => setHoverPos({x, y})}
+                                            onContextMenu={(e) => { e.preventDefault(); setOrientation(o => o === 'h' ? 'v' : 'h'); }}
                                             isHovered={isPhantomCell(x, y)}
                                             hoverValid={isHoverValid(x, y)}
                                         />
