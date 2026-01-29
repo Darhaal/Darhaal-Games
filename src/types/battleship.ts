@@ -1,0 +1,46 @@
+export type Lang = 'ru' | 'en';
+
+export type ShipType = 'battleship' | 'cruiser' | 'destroyer' | 'submarine';
+export type Orientation = 'horizontal' | 'vertical';
+export type CellStatus = 'empty' | 'ship' | 'hit' | 'miss' | 'killed';
+
+export interface Coordinate {
+  x: number;
+  y: number;
+}
+
+export interface Ship {
+  id: string;
+  type: ShipType;
+  size: number;
+  orientation: Orientation;
+  position: Coordinate; // Top-left coordinate
+  hits: number;
+}
+
+export interface PlayerBoard {
+  ships: Ship[];
+  shots: Record<string, CellStatus>; // Key: "x,y", Value: status
+  isReady: boolean;
+  isHost: boolean;
+  userId: string;
+  aliveShipsCount: number;
+}
+
+export interface BattleshipState {
+  players: Record<string, PlayerBoard>; // Key: userId
+  turn: string | null; // userId whose turn it is
+  phase: 'setup' | 'playing' | 'finished';
+  winner: string | null;
+  logs: { text: string; time: string }[];
+  lastActionTime: number;
+  version: number;
+}
+
+// Конфигурация флота
+export const FLEET_CONFIG: { type: ShipType; size: number; count: number }[] = [
+  { type: 'battleship', size: 4, count: 1 },
+  { type: 'cruiser', size: 3, count: 2 },
+  { type: 'destroyer', size: 2, count: 3 },
+  { type: 'submarine', size: 1, count: 4 },
+];
