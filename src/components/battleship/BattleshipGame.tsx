@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, memo } from 'react';
 import {
     RotateCw, Trash2, Check, Shuffle,
-    Trophy, LogOut, Timer, Crosshair, Map, Shield, BarChart3, User, AlertCircle
+    Anchor, Trophy, LogOut, Timer, Crosshair, Map, Shield, BarChart3, User, AlertCircle
 } from 'lucide-react';
 import { Ship, CellStatus, Coordinate, ShipType, FLEET_CONFIG, Orientation } from '@/types/battleship';
 import { checkPlacement } from '@/hooks/useBattleshipGame';
