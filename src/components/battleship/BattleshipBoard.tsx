@@ -42,7 +42,7 @@ export default function BattleshipBoard() {
 
   const {
       gameState, roomMeta, loading, initGame, startGame, leaveGame,
-      autoPlaceShips, clearShips, submitShips, fireShot, myShips, placeShipManual, removeShip
+      autoPlaceShips, clearShips, submitShips, fireShot, myShips, placeShipManual, removeShip, handleTimeout
   } = useBattleshipGame(lobbyId, user);
 
   useEffect(() => {
@@ -85,7 +85,6 @@ export default function BattleshipBoard() {
   }
 
   if (gameState.status === 'waiting') {
-      // Mapping fix: handle both 'id' and 'userId' for safety
       const playersList: LobbyPlayer[] = Object.values(gameState.players).map((p: any) => ({
           id: p.id || p.userId,
           name: p.name || 'Unknown',
@@ -122,6 +121,7 @@ export default function BattleshipBoard() {
       submitShips={submitShips}
       fireShot={fireShot}
       leaveGame={handleLeave}
+      handleTimeout={handleTimeout}
       lang={lang}
     />
   );

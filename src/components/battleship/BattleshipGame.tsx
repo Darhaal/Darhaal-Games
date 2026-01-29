@@ -140,7 +140,7 @@ const GridCell = memo(({
 });
 GridCell.displayName = 'GridCell';
 
-// --- КОМПОНЕНТ СПИСКА КОРАБЛЕЙ (Fleet Status) ---
+// --- FLEET LIST ---
 const FleetStatusList = ({ ships, isEnemy = false }: { ships: Ship[], isEnemy?: boolean }) => {
     const groups = FLEET_CONFIG.map(config => {
         const typeShips = ships.filter(s => s.type === config.type);
@@ -159,12 +159,11 @@ const FleetStatusList = ({ ships, isEnemy = false }: { ships: Ship[], isEnemy?: 
                     <div className="flex gap-1">
                         {g.ships.map((s, i) => {
                             const isDead = s.hits >= s.size;
-                            // Исправлено: если мертв, то ширина 100% красная, иначе процент здоровья
                             const hpPercent = isDead ? 100 : Math.max(0, (s.size - s.hits) / s.size) * 100;
 
                             if (isEnemy) {
                                 return (
-                                    <div key={i} className={`w-8 h-2 rounded-sm border ${isDead ? 'bg-[#9e1316]/20 border-[#9e1316] relative overflow-hidden' : 'bg-[#F5F5F0] border-[#E6E1DC]'}`}>
+                                    <div key={i} className={`w-8 h-2 rounded-sm border ${isDead ? 'bg-[#9e1316]/20 border-[#9e1316]' : 'bg-[#F5F5F0] border-[#E6E1DC]'}`}>
                                         {isDead && <div className="absolute inset-0 flex items-center justify-center text-[8px] text-[#9e1316] font-bold">✕</div>}
                                     </div>
                                 );
@@ -183,7 +182,7 @@ const FleetStatusList = ({ ships, isEnemy = false }: { ships: Ship[], isEnemy?: 
                             }
                         })}
                         {Array.from({ length: Math.max(0, g.count - g.ships.length) }).map((_, i) => (
-                             <div key={`placeholder-${i}`} className="w-8 h-2 rounded-sm bg-gray-100 border border-dashed border-gray-300" />
+                             <div key={`ph-${i}`} className="w-8 h-2 rounded-sm bg-gray-100 border border-dashed border-gray-300" />
                         ))}
                     </div>
                 </div>
@@ -192,35 +191,9 @@ const FleetStatusList = ({ ships, isEnemy = false }: { ships: Ship[], isEnemy?: 
     );
 };
 
-// --- MINI SHIP STRIP (Under avatar) ---
-const MiniShipStrip = ({ ships }: { ships: Ship[] }) => {
-    // Показываем просто точки/квадратики: зеленый (жив), красный (убит)
-    // Сортируем: сначала линкоры, потом крейсеры и т.д.
-    const sortedShips = [...ships].sort((a, b) => b.size - a.size);
-
-    return (
-        <div className="flex flex-wrap gap-1 mt-1 max-w-[120px]">
-            {sortedShips.map((ship, i) => {
-                const isDead = ship.hits >= ship.size;
-                return (
-                    <div
-                        key={i}
-                        className={`h-1.5 rounded-full transition-colors ${isDead ? 'bg-[#9e1316] w-1.5' : 'bg-emerald-500 w-3'}`}
-                        title={ship.type}
-                    />
-                );
-            })}
-            {/* Заполнители если флот не полный (фаза расстановки) */}
-            {Array.from({length: 10 - sortedShips.length}).map((_, i) => (
-                <div key={`ph-${i}`} className="h-1.5 w-1.5 rounded-full bg-gray-200" />
-            ))}
-        </div>
-    );
-};
-
 export default function BattleshipGame({
     gameState, userId, myShips, autoPlaceShips, clearShips,
-    placeShipManual, removeShip, submitShips, fireShot, leaveGame, lang
+    placeShipManual, removeShip, submitShips, fireShot, leaveGame, handleTimeout, lang
 }: any) {
     const [orientation, setOrientation] = useState<Orientation>('horizontal');
     const [selectedType, setSelectedType] = useState<ShipType | null>(null);
@@ -229,7 +202,6 @@ export default function BattleshipGame({
     const [movingShipId, setMovingShipId] = useState<string | null>(null);
 
     const t = DICTIONARY[lang as 'ru' | 'en'] || DICTIONARY['ru'];
-
     const me = userId ? gameState.players[userId] : null;
     const opponentId = Object.keys(gameState.players).find(id => id !== userId);
     const opponent = opponentId ? gameState.players[opponentId] : null;
@@ -240,12 +212,14 @@ export default function BattleshipGame({
         if (phase !== 'playing') return;
         const interval = setInterval(() => {
             const elapsed = Math.floor((Date.now() - (gameState.lastActionTime || Date.now())) / 1000);
-            setTimeLeft(Math.max(0, 60 - elapsed));
+            const remaining = Math.max(0, 60 - elapsed);
+            setTimeLeft(remaining);
+            if (remaining === 0 && isMyTurn) handleTimeout();
         }, 1000);
         return () => clearInterval(interval);
-    }, [gameState.lastActionTime, phase]);
+    }, [gameState.lastActionTime, phase, isMyTurn, handleTimeout]);
 
-    // Keyboard Rotation
+    // Keyboard
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (['Space', 'KeyQ', 'KeyE', 'KeyR'].includes(e.code)) {
@@ -272,44 +246,28 @@ export default function BattleshipGame({
         return { status: shot || 'empty' };
     }, [me?.shots]);
 
-    // --- Stats Calculation ---
     const getStats = (playerBoard: any) => {
         if (!playerBoard?.shots) return { shots: 0, hits: 0, accuracy: 0 };
         const shots = Object.values(playerBoard.shots);
         const total = shots.length;
         const hits = shots.filter((s: any) => s === 'hit' || s === 'killed').length;
-        return {
-            shots: total,
-            hits: hits,
-            accuracy: total > 0 ? Math.round((hits / total) * 100) : 0
-        };
+        return { shots: total, hits, accuracy: total > 0 ? Math.round((hits / total) * 100) : 0 };
     };
-
     const myStats = getStats(me);
 
-    // --- Drag & Placement Logic ---
-
+    // --- Logic ---
     const tryPlaceShip = (x: number, y: number, type: ShipType, existingId?: string) => {
         const config = FLEET_CONFIG.find(c => c.type === type);
         if (!config) return;
-
         if (!existingId) {
             const count = myShips.filter((s: Ship) => s.type === type).length;
             if (count >= config.count) return;
         }
-
         const newShip: Ship = {
             id: existingId || `${type}-${Date.now()}`,
-            type: type,
-            size: config.size,
-            orientation,
-            position: { x, y },
-            hits: 0
+            type, size: config.size, orientation, position: { x, y }, hits: 0
         };
-
-        const success = placeShipManual(newShip);
-
-        if (success) {
+        if (placeShipManual(newShip)) {
             if (!existingId) {
                 const newCount = myShips.filter((s: Ship) => s.type === type).length + 1;
                 if (newCount >= config.count) setSelectedType(null);
@@ -319,43 +277,30 @@ export default function BattleshipGame({
     };
 
     const handleCellClick = (x: number, y: number) => {
-        if (selectedType) {
-            tryPlaceShip(x, y, selectedType);
-            return;
-        }
-        const { ship } = getMyCellContent(x, y);
-        if (ship) {
-            removeShip(ship.id);
-            setSelectedType(ship.type);
-            setOrientation(ship.orientation);
-            setHoverPos({ x, y });
-        }
-    };
-
-    // --- Drag Handlers ---
-
-    const hideDragImage = (e: React.DragEvent) => {
-        if (typeof window !== 'undefined') {
-            const img = new Image();
-            img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-            e.dataTransfer.setDragImage(img, 0, 0);
+        if (selectedType) tryPlaceShip(x, y, selectedType);
+        else {
+            const { ship } = getMyCellContent(x, y);
+            if (ship) {
+                removeShip(ship.id);
+                setSelectedType(ship.type);
+                setOrientation(ship.orientation);
+                setHoverPos({ x, y });
+            }
         }
     };
 
     const handleDragStartMenu = (e: React.DragEvent, type: ShipType) => {
-        hideDragImage(e);
+        if (typeof window !== 'undefined') e.dataTransfer.setDragImage(new Image(), 0, 0);
         setSelectedType(type);
         e.dataTransfer.setData('type', type);
     };
-
     const handleDragStartBoard = (e: React.DragEvent, ship: Ship) => {
-        hideDragImage(e);
+        if (typeof window !== 'undefined') e.dataTransfer.setDragImage(new Image(), 0, 0);
         setMovingShipId(ship.id);
         setOrientation(ship.orientation);
         e.dataTransfer.setData('type', ship.type);
         e.dataTransfer.setData('id', ship.id);
     };
-
     const handleDrop = (e: React.DragEvent, x: number, y: number) => {
         e.preventDefault();
         const type = e.dataTransfer.getData('type') as ShipType;
@@ -364,67 +309,39 @@ export default function BattleshipGame({
         setMovingShipId(null);
     };
 
-    const handleDragOver = (e: React.DragEvent, x: number, y: number) => {
-        e.preventDefault();
-        if (hoverPos?.x !== x || hoverPos?.y !== y) {
-            setHoverPos({ x, y });
-        }
-    };
-
     const isPhantomCell = useCallback((x: number, y: number) => {
         if (!hoverPos || !selectedType) return false;
         const config = FLEET_CONFIG.find(c => c.type === selectedType)!;
-        if (orientation === 'horizontal') {
-             return y === hoverPos.y && x >= hoverPos.x && x < hoverPos.x + config.size;
-        } else {
-             return x === hoverPos.x && y >= hoverPos.y && y < hoverPos.y + config.size;
-        }
+        if (orientation === 'horizontal') return y === hoverPos.y && x >= hoverPos.x && x < hoverPos.x + config.size;
+        else return x === hoverPos.x && y >= hoverPos.y && y < hoverPos.y + config.size;
     }, [hoverPos, selectedType, orientation]);
 
     const checkPhantomValidity = (x: number, y: number) => {
         if (!selectedType || !hoverPos) return false;
         const config = FLEET_CONFIG.find(c => c.type === selectedType)!;
-        const tempShip: Ship = {
-            id: 'temp',
-            type: selectedType,
-            size: config.size,
-            orientation,
-            position: { x: hoverPos.x, y: hoverPos.y },
-            hits: 0
-        };
-        return checkPlacement(myShips, tempShip, movingShipId || undefined);
+        return checkPlacement(myShips, {id:'temp', type:selectedType, size:config.size, orientation, position:{x,y}, hits:0}, movingShipId||undefined);
     };
 
-    // --- FINISHED SCREEN ---
     if (phase === 'finished') return (
         <div className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 font-sans animate-in fade-in">
             <div className="bg-white p-10 rounded-[32px] text-center animate-in zoom-in duration-300 border-4 border-[#9e1316] shadow-2xl max-w-sm w-full relative overflow-hidden">
-                <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none" />
                 <div className="relative z-10">
-                    <Trophy className="w-24 h-24 text-yellow-500 mx-auto mb-6 animate-bounce drop-shadow-md" />
+                    <Trophy className="w-24 h-24 text-yellow-500 mx-auto mb-6 animate-bounce" />
                     <h2 className="text-xs font-black uppercase tracking-[0.2em] text-gray-400 mb-2">{gameState.winner === userId ? t.victory : t.defeat}</h2>
-                    <p className="text-3xl font-black text-[#1A1F26] mb-8">
-                        {gameState.winner === userId ? t.winMsg : (gameState.winner === 'surrender' ? t.loseMsg : t.loseMsg)}
-                    </p>
-                    <button onClick={() => { leaveGame(); window.location.href='/'; }} className="w-full py-4 bg-[#1A1F26] text-white rounded-xl font-black uppercase tracking-widest hover:bg-[#9e1316] transition-colors shadow-lg">
-                        {t.menu}
-                    </button>
+                    <p className="text-3xl font-black text-[#1A1F26] mb-8">{gameState.winner === userId ? t.winMsg : t.loseMsg}</p>
+                    <button onClick={() => { leaveGame(); window.location.href='/'; }} className="w-full py-4 bg-[#1A1F26] text-white rounded-xl font-black uppercase tracking-widest hover:bg-[#9e1316] transition-colors">{t.menu}</button>
                 </div>
             </div>
         </div>
     );
 
     return (
-        <div className="min-h-screen bg-[#F8FAFC] text-[#1A1F26] flex flex-col font-sans overflow-hidden relative selection:bg-[#9e1316] selection:text-white">
+        <div className="min-h-screen bg-[#F8FAFC] text-[#1A1F26] flex flex-col font-sans overflow-hidden relative">
             <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-50 mix-blend-overlay pointer-events-none" />
-
-            {/* HEADER */}
             <header className="w-full max-w-6xl mx-auto p-4 flex justify-between items-center z-10 relative">
-                <button onClick={() => { leaveGame(); window.location.href='/play' }} className="p-3 bg-white border border-[#E6E1DC] rounded-xl text-gray-400 hover:text-[#9e1316] hover:border-[#9e1316]/30 transition-all shadow-sm"><LogOut className="w-5 h-5" /></button>
+                <button onClick={() => { leaveGame(); window.location.href='/play' }} className="p-3 bg-white border border-[#E6E1DC] rounded-xl text-gray-400 hover:text-[#9e1316] transition-all"><LogOut className="w-5 h-5" /></button>
                 <div className="text-center">
-                    <h1 className="font-black text-2xl flex items-center gap-2 justify-center text-[#1A1F26] tracking-tight">
-                        <Anchor className="w-6 h-6 text-[#9e1316]"/> BATTLESHIP
-                    </h1>
+                    <h1 className="font-black text-2xl flex items-center gap-2 justify-center text-[#1A1F26] tracking-tight"><Anchor className="w-6 h-6 text-[#9e1316]"/> BATTLESHIP</h1>
                     <div className="text-[10px] font-bold text-[#9e1316] uppercase flex items-center gap-2 justify-center mt-1 bg-[#9e1316]/5 px-3 py-1 rounded-full border border-[#9e1316]/10">
                         {phase === 'setup' ? t.deployment : (isMyTurn ? t.yourTurn : t.enemyTurn)}
                         {phase === 'playing' && <span className={`flex items-center gap-1 ml-2 ${timeLeft < 15 ? 'text-red-600 animate-pulse' : 'text-gray-500'}`}><Timer className="w-3 h-3"/> {timeLeft}s</span>}
@@ -434,38 +351,19 @@ export default function BattleshipGame({
             </header>
 
             <main className="flex-1 flex flex-col items-center justify-center p-4 z-10 gap-6 overflow-y-auto custom-scrollbar w-full">
-
-                {/* --- SETUP PHASE --- */}
                 {phase === 'setup' && (
                     <div className="flex flex-col w-full max-w-5xl gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        {/* HEADER with READY STATUS */}
                         <div className="flex justify-between items-center bg-white p-4 rounded-[24px] border border-[#E6E1DC] shadow-sm w-full">
                             <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-full bg-[#F5F5F0] overflow-hidden border-2 border-white shadow-md">
-                                    {me?.avatarUrl ? <img src={me.avatarUrl} className="w-full h-full object-cover" /> : <User className="w-6 h-6 m-auto mt-2 text-gray-400"/>}
-                                </div>
-                                <div>
-                                    <div className="font-black text-sm uppercase">{me?.name || 'You'}</div>
-                                    <div className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-md inline-block mt-1 ${me?.isReady ? 'bg-emerald-100 text-emerald-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                                        {me?.isReady ? t.ready : t.placing}
-                                    </div>
-                                </div>
+                                <div className="w-12 h-12 rounded-full bg-[#F5F5F0] overflow-hidden border-2 border-white shadow-md">{me?.avatarUrl ? <img src={me.avatarUrl} className="w-full h-full object-cover" /> : <User className="w-6 h-6 m-auto mt-2 text-gray-400"/>}</div>
+                                <div><div className="font-black text-sm uppercase">{me?.name || 'You'}</div><div className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-md inline-block mt-1 ${me?.isReady ? 'bg-emerald-100 text-emerald-700' : 'bg-yellow-100 text-yellow-700'}`}>{me?.isReady ? t.ready : t.placing}</div></div>
                             </div>
                             <div className="flex items-center gap-4 text-right">
-                                <div>
-                                    <div className="font-black text-sm uppercase">{opponent?.name || t.enemy}</div>
-                                    <div className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-md inline-block mt-1 ${opponent?.isReady ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
-                                        {opponent?.isReady ? t.ready : (!opponent ? t.waiting : t.placing)}
-                                    </div>
-                                </div>
-                                <div className="w-12 h-12 rounded-full bg-[#F5F5F0] overflow-hidden border-2 border-white shadow-md opacity-80">
-                                    {opponent?.avatarUrl ? <img src={opponent.avatarUrl} className="w-full h-full object-cover" /> : <User className="w-6 h-6 m-auto mt-2 text-gray-400"/>}
-                                </div>
+                                <div><div className="font-black text-sm uppercase">{opponent?.name || t.enemy}</div><div className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-md inline-block mt-1 ${opponent?.isReady ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>{opponent?.isReady ? t.ready : (!opponent ? t.waiting : t.placing)}</div></div>
+                                <div className="w-12 h-12 rounded-full bg-[#F5F5F0] overflow-hidden border-2 border-white shadow-md opacity-80">{opponent?.avatarUrl ? <img src={opponent.avatarUrl} className="w-full h-full object-cover" /> : <User className="w-6 h-6 m-auto mt-2 text-gray-400"/>}</div>
                             </div>
                         </div>
-
                         <div className="flex flex-col lg:flex-row gap-8 items-start w-full">
-                            {/* Setup Board (Same as before) */}
                             <div className="bg-white p-6 rounded-[32px] shadow-xl border border-[#E6E1DC] relative mx-auto lg:mx-0 group w-full lg:w-auto">
                                 <div className="grid grid-cols-10 gap-px bg-[#E6E1DC] border-4 border-[#1A1F26] overflow-hidden rounded-xl cursor-crosshair shadow-inner" onMouseLeave={() => setHoverPos(null)}>
                                     {Array.from({ length: 100 }).map((_, i) => {
@@ -479,8 +377,6 @@ export default function BattleshipGame({
                                     <button onClick={clearShips} className="text-[#8A9099] hover:text-red-500 p-2 rounded-xl"><Trash2 className="w-4 h-4"/> {t.clear}</button>
                                 </div>
                             </div>
-
-                            {/* Fleet Panel */}
                             <div className="flex-1 w-full space-y-6">
                                 <div className="bg-white p-6 rounded-[32px] shadow-sm border border-[#E6E1DC]">
                                     <h3 className="text-xs font-black uppercase mb-6 text-[#8A9099] flex items-center gap-2 tracking-widest pl-2"><Map className="w-4 h-4 text-[#1A1F26]"/> {t.fleet}</h3>
@@ -505,118 +401,55 @@ export default function BattleshipGame({
                         </div>
                     </div>
                 )}
-
-                {/* --- BATTLE PHASE --- */}
                 {phase === 'playing' && (
                     <div className="flex flex-col w-full max-w-6xl gap-6 animate-in fade-in">
-
-                        {/* TOP STATUS PANEL */}
                         <div className="flex flex-col md:flex-row justify-between items-center bg-white p-4 rounded-[32px] border border-[#E6E1DC] shadow-sm w-full gap-4">
-                            {/* MY PROFILE */}
                             <div className="flex items-center gap-4 w-full md:w-1/3">
-                                <div className="relative">
-                                    <div className="w-14 h-14 rounded-full border-2 border-white shadow-md overflow-hidden bg-[#F5F5F0]">
-                                        {me?.avatarUrl ? <img src={me.avatarUrl} alt="Me" className="w-full h-full object-cover" /> : <User className="w-8 h-8 text-gray-400 m-auto mt-2" />}
-                                    </div>
-                                    {isMyTurn && <div className="absolute bottom-0 right-0 w-4 h-4 bg-emerald-500 border-2 border-white rounded-full animate-pulse shadow-sm"></div>}
-                                </div>
-                                <div className="flex flex-col">
-                                    <span className="font-black text-[#1A1F26] text-sm uppercase tracking-tight">{me?.name || 'You'}</span>
-                                    <MiniShipStrip ships={myShips} />
-                                </div>
+                                <div className="relative"><div className="w-14 h-14 rounded-full border-2 border-white shadow-md overflow-hidden bg-[#F5F5F0]">{me?.avatarUrl ? <img src={me.avatarUrl} className="w-full h-full object-cover" /> : <User className="w-8 h-8 text-gray-400 m-auto mt-2" />}</div>{isMyTurn && <div className="absolute bottom-0 right-0 w-4 h-4 bg-emerald-500 border-2 border-white rounded-full animate-pulse shadow-sm"></div>}</div>
+                                <div className="flex flex-col"><span className="font-black text-[#1A1F26] text-sm uppercase tracking-tight">{me?.name || 'You'}</span><div className="flex items-center gap-2 text-xs font-bold text-[#8A9099] bg-[#F5F5F0] px-2 py-0.5 rounded-lg mt-1"><Shield className="w-3 h-3 text-emerald-600" /><span>{me?.aliveShipsCount}/10</span></div></div>
                             </div>
-
-                            {/* CENTER STATUS */}
-                            <div className="flex flex-col items-center justify-center w-full md:w-1/3 order-first md:order-none">
-                                <div className={`text-[10px] font-black uppercase tracking-[0.2em] px-6 py-2 rounded-full border shadow-sm transition-all duration-300 ${isMyTurn ? 'bg-[#9e1316] text-white border-[#9e1316] scale-105' : 'bg-white text-[#8A9099] border-[#E6E1DC]'}`}>
-                                    {isMyTurn ? t.yourTurn : t.enemyTurn}
-                                </div>
-                            </div>
-
-                            {/* ENEMY PROFILE */}
+                            <div className="flex flex-col items-center justify-center w-full md:w-1/3 order-first md:order-none"><div className={`text-[10px] font-black uppercase tracking-[0.2em] px-6 py-2 rounded-full border shadow-sm transition-all duration-300 ${isMyTurn ? 'bg-[#9e1316] text-white border-[#9e1316] scale-105' : 'bg-white text-[#8A9099] border-[#E6E1DC]'}`}>{isMyTurn ? t.yourTurn : t.enemyTurn}</div></div>
                             <div className="flex items-center gap-4 w-full md:w-1/3 justify-end">
-                                <div className="flex flex-col items-end">
-                                    <span className="font-black text-[#1A1F26] text-sm uppercase tracking-tight">{opponent?.name || t.enemy}</span>
-                                    <MiniShipStrip ships={opponent?.ships || []} />
-                                </div>
-                                <div className="relative">
-                                    <div className="w-14 h-14 rounded-full border-2 border-white shadow-md overflow-hidden bg-[#F5F5F0]">
-                                        {opponent?.avatarUrl ? <img src={opponent.avatarUrl} alt="Enemy" className="w-full h-full object-cover" /> : <User className="w-8 h-8 text-gray-400 m-auto mt-2" />}
-                                    </div>
-                                    {!isMyTurn && <div className="absolute bottom-0 right-0 w-4 h-4 bg-[#9e1316] border-2 border-white rounded-full animate-pulse shadow-sm"></div>}
-                                </div>
+                                <div className="flex flex-col items-end"><span className="font-black text-[#1A1F26] text-sm uppercase tracking-tight">{opponent?.name || t.enemy}</span><div className="flex items-center gap-2 text-xs font-bold text-[#8A9099] bg-[#F5F5F0] px-2 py-0.5 rounded-lg mt-1"><span>{opponent?.aliveShipsCount}/10</span><Crosshair className="w-3 h-3 text-[#9e1316]" /></div></div>
+                                <div className="relative"><div className="w-14 h-14 rounded-full border-2 border-white shadow-md overflow-hidden bg-[#F5F5F0]">{opponent?.avatarUrl ? <img src={opponent.avatarUrl} className="w-full h-full object-cover" /> : <User className="w-8 h-8 text-gray-400 m-auto mt-2" />}</div>{!isMyTurn && <div className="absolute bottom-0 right-0 w-4 h-4 bg-[#9e1316] border-2 border-white rounded-full animate-pulse shadow-sm"></div>}</div>
                             </div>
                         </div>
-
                         <div className="flex flex-col lg:flex-row gap-8 items-start justify-center w-full">
-
-                            {/* ENEMY BOARD (RADAR) */}
                             <div className="flex-1 w-full max-w-lg mx-auto lg:order-2">
                                 <div className={`bg-white p-6 rounded-[40px] shadow-2xl border-4 transition-all duration-500 relative ${isMyTurn ? 'border-[#9e1316] shadow-[#9e1316]/20 z-10' : 'border-[#E6E1DC] opacity-95'}`}>
-                                    <div className="absolute top-8 left-8 text-[10px] font-bold text-[#8A9099] uppercase tracking-widest flex items-center gap-2">
-                                        <Crosshair className="w-4 h-4"/> {t.zoneEnemy}
-                                    </div>
+                                    <div className="absolute top-8 left-8 text-[10px] font-bold text-[#8A9099] uppercase tracking-widest flex items-center gap-2"><Crosshair className="w-4 h-4"/> {t.zoneEnemy}</div>
                                     <div className="mt-8 grid grid-cols-10 gap-px bg-[#E6E1DC] border-2 border-[#1A1F26] rounded-xl overflow-hidden cursor-crosshair">
                                         {Array.from({ length: 100 }).map((_, i) => {
-                                            const x = i % 10;
-                                            const y = Math.floor(i / 10);
+                                            const x = i % 10, y = Math.floor(i / 10);
                                             const { status } = getOpponentCellContent(x, y);
-                                            return (
-                                                <GridCell
-                                                    key={i} x={x} y={y}
-                                                    status={status}
-                                                    onClick={() => isMyTurn && status === 'empty' && fireShot(x, y)}
-                                                />
-                                            );
+                                            return <GridCell key={i} x={x} y={y} status={status} onClick={() => isMyTurn && status === 'empty' && fireShot(x, y)} />;
                                         })}
                                     </div>
                                 </div>
                             </div>
-
-                            {/* LEFT COLUMN: MY BOARD + STATS */}
                             <div className="flex flex-col gap-6 lg:order-1 w-full max-w-xs mx-auto lg:mx-0">
-
-                                {/* MY BOARD (STATUS) */}
                                 <div className="bg-white p-5 rounded-[32px] shadow-lg border border-[#E6E1DC] opacity-90 hover:opacity-100 transition-opacity relative group">
                                     <div className="absolute top-5 left-5 text-[10px] font-bold text-[#8A9099] uppercase tracking-widest flex items-center gap-2"><Shield className="w-3 h-3"/> {t.zoneMe}</div>
                                     <div className="mt-8 grid grid-cols-10 gap-px bg-[#E6E1DC] border border-[#E6E1DC] w-fit mx-auto rounded overflow-hidden">
                                         {Array.from({ length: 100 }).map((_, i) => {
-                                            const x = i % 10;
-                                            const y = Math.floor(i / 10);
+                                            const x = i % 10, y = Math.floor(i / 10);
                                             const { status, shipPart } = getMyCellContent(x, y);
                                             return <GridCell key={i} x={x} y={y} status={status} shipPart={shipPart} size="small" />;
                                         })}
                                     </div>
                                 </div>
-
-                                {/* LIGHT STATS PANEL (FIXED COLOR) */}
                                 <div className="bg-white border border-[#E6E1DC] p-6 rounded-[32px] shadow-sm flex flex-col gap-4 relative overflow-hidden">
-                                    <div className="flex items-center gap-2 text-xs font-black uppercase text-[#1A1F26] tracking-widest mb-2 relative z-10">
-                                        <BarChart3 className="w-4 h-4 text-[#9e1316]" /> {t.stats}
-                                    </div>
-
+                                    <div className="flex items-center gap-2 text-xs font-black uppercase text-[#1A1F26] tracking-widest mb-2 relative z-10"><BarChart3 className="w-4 h-4 text-[#9e1316]" /> {t.stats}</div>
                                     <div className="space-y-4">
-                                        {/* My Fleet Status */}
-                                        <div className="space-y-1">
-                                            <div className="text-[9px] font-bold uppercase text-[#8A9099] mb-2">{t.zoneMe}</div>
-                                            <FleetStatusList ships={myShips} isEnemy={false} />
-                                        </div>
-
+                                        <div className="space-y-1"><div className="text-[9px] font-bold uppercase text-[#8A9099] mb-2">{t.zoneMe}</div><FleetStatusList ships={myShips} isEnemy={false} /></div>
                                         <div className="h-px bg-[#F5F5F0] w-full" />
-
-                                        {/* Enemy Fleet Status */}
-                                        <div className="space-y-1">
-                                            <div className="text-[9px] font-bold uppercase text-[#8A9099] mb-2">{t.enemy}</div>
-                                            <FleetStatusList ships={opponent?.ships || []} isEnemy={true} />
-                                        </div>
+                                        <div className="space-y-1"><div className="text-[9px] font-bold uppercase text-[#8A9099] mb-2">{t.enemy}</div><FleetStatusList ships={opponent?.ships || []} isEnemy={true} /></div>
                                     </div>
                                 </div>
                             </div>
-
                         </div>
                     </div>
                 )}
-
             </main>
         </div>
     );

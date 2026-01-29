@@ -8,7 +8,6 @@ import {
   Crown, Filter, ScrollText, KeyRound, Unlock, SortAsc, SortDesc,
   Ship, Bomb, Fingerprint, ShieldAlert, Skull
 } from 'lucide-react';
-import { Player } from '@/types/coup';
 
 type Lang = 'ru' | 'en';
 
@@ -18,7 +17,7 @@ interface LobbyRow {
   code: string;
   game_state: {
       gameType?: string;
-      players: any;
+      players: any; // Поддержка и массива (Coup), и объекта (Battleship)
       settings?: { maxPlayers?: number };
   };
   status: string;
@@ -61,7 +60,7 @@ const TRANSLATIONS = {
     create: 'Создать'
   },
   en: {
-    title: 'Game List',
+    title: 'Game Hall',
     subtitle: 'Join and conquer',
     codePlaceholder: 'CODE',
     join: 'Join',
@@ -79,7 +78,7 @@ const TRANSLATIONS = {
     empty: 'No games found',
     emptyDesc: 'Try changing filters',
     full: 'Full',
-    started: 'In Progress',
+    started: 'Started',
     back: 'Return',
     private: 'Private Room',
     enterPass: 'Enter password...',
@@ -113,11 +112,11 @@ function PlayContent() {
     if (savedLang) setLang(savedLang);
     fetchLobbies();
 
-    const channel = supabase.channel('public_lobbies')
+    const ch = supabase.channel('public_lobbies')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'lobbies' }, fetchLobbies)
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    return () => { supabase.removeChannel(ch); };
   }, []);
 
   const t = TRANSLATIONS[lang];
@@ -126,7 +125,7 @@ function PlayContent() {
     const { data } = await supabase
       .from('lobbies')
       .select('*')
-      .neq('status', 'finished') // Не показываем завершенные
+      .neq('status', 'finished')
       .order('created_at', { ascending: false });
 
     if (data) setLobbies(data as unknown as LobbyRow[]);
@@ -162,7 +161,7 @@ function PlayContent() {
     const gameType = lobby.game_state.gameType || 'coup';
     const players = getPlayers(lobby);
 
-    // Если уже внутри
+    // Уже в игре?
     if (players.some((p: any) => p.id === user.id || p.userId === user.id)) {
       router.push(`/game/${gameType}?id=${lobby.id}`);
       return;
@@ -174,18 +173,17 @@ function PlayContent() {
       return;
     }
 
-    // Если игра уже началась, нельзя войти (если только не реконнект, но реконнект выше)
+    // Если игра идет, нельзя войти (если не реконнект)
     if (lobby.status === 'playing') {
-        alert('Игра уже идет!');
         return;
     }
 
-    // ЛОГИКА ПРИСОЕДИНЕНИЯ (ДЛЯ COUP)
+    // ЛОГИКА ДЛЯ COUP (нужно добавить игрока в массив здесь, для Battleship это делает сам компонент игры)
     if (gameType === 'coup') {
         const userName = user.user_metadata?.username || user.user_metadata?.full_name || user.email?.split('@')[0] || 'Player';
         const userAvatar = user.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`;
 
-        const newPlayer: Player = {
+        const newPlayer = {
             id: user.id,
             name: userName,
             avatarUrl: userAvatar,
@@ -196,7 +194,7 @@ function PlayContent() {
             isReady: true
         };
 
-        const newPlayers = [...(lobby.game_state.players as Player[]), newPlayer];
+        const newPlayers = [...(lobby.game_state.players as any[]), newPlayer];
         const newState = { ...lobby.game_state, players: newPlayers };
 
         const { error } = await supabase
@@ -246,7 +244,7 @@ function PlayContent() {
         const gameType = l.game_state.gameType || 'coup';
         const matchesMode = filterMode === 'all' || gameType === filterMode;
 
-        // 4. БЛОКИРОВКА ЛОББИ: Не показываем игры в статусе 'playing' если мы не в них
+        // Не показываем игры, которые уже идут, если мы не в них
         const isAlreadyIn = players.some((p: any) => p.id === currentUserId || p.userId === currentUserId);
         if (l.status === 'playing' && !isAlreadyIn) return false;
 
@@ -301,7 +299,6 @@ function PlayContent() {
 
       <div className="max-w-6xl mx-auto w-full relative z-10 px-4 py-8 flex-1">
         <div className="flex flex-col lg:flex-row gap-8 items-start">
-
             <aside className="w-full lg:w-72 space-y-6 lg:sticky lg:top-28">
                 <div className="bg-white p-4 rounded-[24px] border border-[#E6E1DC] shadow-sm group focus-within:border-[#9e1316]/30 focus-within:shadow-md transition-all">
                     <div className="flex items-center gap-3">
@@ -433,19 +430,15 @@ function PlayContent() {
             </div>
         </div>
 
-        {/* Modal */}
         {selectedLobby && (
           <div className="fixed inset-0 bg-[#1A1F26]/60 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
             <div className="bg-white p-8 rounded-[32px] w-full max-w-sm relative shadow-2xl border border-[#E6E1DC] animate-in zoom-in-95">
               <button onClick={() => setSelectedLobby(null)} className="absolute top-6 right-6 text-[#8A9099] hover:text-[#1A1F26] transition-colors"><X className="w-6 h-6" /></button>
-
               <div className="w-16 h-16 bg-[#9e1316]/5 rounded-2xl flex items-center justify-center mx-auto mb-6 text-[#9e1316]">
                   <Lock className="w-8 h-8" />
               </div>
-
               <h3 className="text-xl font-black mb-2 uppercase text-center text-[#1A1F26] tracking-tight">{selectedLobby.name}</h3>
               <p className="text-xs text-center text-[#8A9099] font-bold uppercase tracking-wider mb-8">{t.private}</p>
-
               <div className="space-y-4">
                   <input
                     type="password"
