@@ -21,12 +21,13 @@ const getShipColor = (type: ShipType) => {
 };
 
 const GridCell = ({
-    x, y, status, shipPart, onClick, isHovered, hoverValid, size = 'large'
+    x, y, status, shipPart, onClick, onMouseEnter, isHovered, hoverValid, size = 'large'
 }: {
     x: number; y: number;
     status: CellStatus;
     shipPart?: ShipType;
     onClick?: () => void;
+    onMouseEnter?: () => void; // Добавлено поле в тип
     isHovered?: boolean;
     hoverValid?: boolean;
     size?: 'large' | 'small';
@@ -63,6 +64,7 @@ const GridCell = ({
     return (
         <div
             onClick={onClick}
+            onMouseEnter={onMouseEnter} // Передаем обработчик в DOM
             className={`
                 ${isSmall ? CELL_SIZE_S : CELL_SIZE_L}
                 ${borderClass}
@@ -115,8 +117,7 @@ export default function BattleshipGame({
 
     const getOpponentCellContent = (x: number, y: number) => {
         // Мы видим только свои выстрелы по врагу
-        // me.shots - это МОИ выстрелы ПО ВРАГУ (в логике хука shot записывается в myBoard.shots)
-        // ВНИМАНИЕ: В хуке useBattleshipGame.ts выстрелы пишутся в myBoard.shots
+        // me.shots - это МОИ выстрелы ПО ВРАГУ
         const shot = me?.shots[`${x},${y}`];
         return { status: shot || 'empty' };
     };
