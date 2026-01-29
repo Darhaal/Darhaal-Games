@@ -62,9 +62,6 @@ export interface GameState {
   turnDeadline?: number; // Server-authoritative timer
   version: number; // Optimistic locking
 
-  // Optional because legacy/create might not set it immediately,
-  // but strictly it should be there.
-  // In create/page.tsx we set it, but we need to make sure the interface allows it.
   gameType?: 'coup';
   settings?: {
     maxPlayers: number;
