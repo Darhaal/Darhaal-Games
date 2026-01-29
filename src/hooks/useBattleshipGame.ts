@@ -17,7 +17,6 @@ const getShipCoords = (ship: Ship): Coordinate[] => {
   return coords;
 };
 
-// Проверка валидности (для всех)
 const canPlaceShip = (ships: Ship[], newShip: Ship): boolean => {
   const newShipCoords = getShipCoords(newShip);
   for (const c of newShipCoords) {
@@ -25,7 +24,6 @@ const canPlaceShip = (ships: Ship[], newShip: Ship): boolean => {
   }
 
   const dangerZone = new Set<string>();
-  // Фильтруем самого себя, если корабль уже есть в списке (для перемещения)
   const otherShips = ships.filter(s => s.id !== newShip.id);
 
   otherShips.forEach(s => {
@@ -147,24 +145,27 @@ export function useBattleshipGame(
     if (!user || !stateRef.current.gameState) return;
     const currentState = stateRef.current.gameState;
 
+    // Защита от старых данных
     let playersObj = currentState.players;
     if (Array.isArray(playersObj)) playersObj = {};
 
-    if (!playersObj[user.id]) {
+    // Если игрока нет или у него нет имени (старая запись), обновляем
+    const currentPlayer = playersObj[user.id];
+    if (!currentPlayer || !currentPlayer.name) {
       const newState = JSON.parse(JSON.stringify(currentState)) as BattleshipState;
       if (Array.isArray(newState.players)) newState.players = {};
 
       const isFirst = Object.keys(newState.players).length === 0;
 
       newState.players[user.id] = {
-        userId: user.id,
+        id: user.id, // Теперь используем id, а не userId
         name: user.name,
         avatarUrl: user.avatarUrl,
-        ships: [],
-        shots: {},
-        isReady: false,
-        isHost: isFirst,
-        aliveShipsCount: 0
+        ships: currentPlayer?.ships || [],
+        shots: currentPlayer?.shots || {},
+        isReady: currentPlayer?.isReady || false,
+        isHost: isFirst || currentPlayer?.isHost,
+        aliveShipsCount: currentPlayer?.aliveShipsCount || 0
       };
       await updateState(newState);
     }
@@ -182,9 +183,7 @@ export function useBattleshipGame(
   const clearShips = () => setMyShips([]);
 
   const placeShipManual = (ship: Ship) => {
-      // Поддержка перемещения: убираем старый корабль (по ID), если он есть
       const otherShips = myShips.filter(s => s.id !== ship.id);
-
       if (canPlaceShip(otherShips, ship)) {
           setMyShips([...otherShips, ship]);
           return true;
@@ -204,7 +203,7 @@ export function useBattleshipGame(
     const playersArr = Object.values(newState.players);
     if (playersArr.length === 2 && playersArr.every(p => p.isReady)) {
       newState.phase = 'playing';
-      newState.turn = playersArr[0].userId;
+      newState.turn = playersArr[0].id;
       newState.logs.push({ text: 'Battle started!', time: new Date().toLocaleTimeString() });
     }
     await updateState(newState);

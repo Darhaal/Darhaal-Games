@@ -85,11 +85,13 @@ export default function BattleshipBoard() {
   }
 
   if (gameState.status === 'waiting') {
-      const playersList: LobbyPlayer[] = Object.values(gameState.players).map(p => ({
-          id: p.userId,
-          name: p.name,
-          avatarUrl: p.avatarUrl,
-          isHost: p.isHost
+      // Mapping fix: handle both 'id' and 'userId' for safety
+      const playersList: LobbyPlayer[] = Object.values(gameState.players).map((p: any) => ({
+          id: p.id || p.userId,
+          name: p.name || 'Unknown',
+          avatarUrl: p.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${p.id || p.userId}`,
+          isHost: p.isHost,
+          isReady: p.isReady
       }));
 
       return (

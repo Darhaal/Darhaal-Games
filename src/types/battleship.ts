@@ -19,9 +19,9 @@ export interface Ship {
 }
 
 export interface PlayerBoard {
-  userId: string;
-  name: string;       // Добавлено
-  avatarUrl: string;  // Добавлено
+  id: string;         // Renamed from userId for consistency
+  name: string;
+  avatarUrl: string;
   ships: Ship[];
   shots: Record<string, CellStatus>;
   isReady: boolean;
