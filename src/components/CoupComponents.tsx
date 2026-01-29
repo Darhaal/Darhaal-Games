@@ -1,8 +1,11 @@
-// components/CoupComponents.tsx
 'use client';
 
 import React, { useState } from 'react';
-import { Crown, Shield, History, Book, HelpCircle, Swords, Skull, X } from 'lucide-react';
+import {
+  Crown, Shield, History,
+  Book, HelpCircle,
+  Swords, Skull, X
+} from 'lucide-react';
 import { ROLE_CONFIG, DICTIONARY } from '@/constants/coup';
 import { Role, Lang } from '@/types/coup';
 
@@ -51,6 +54,7 @@ export const GameCard = ({ role, revealed, isMe, onClick, selected, lang, small 
                     <config.icon className={`${small ? 'w-5 h-5 sm:w-6 sm:h-6' : 'w-8 h-8 sm:w-10 sm:h-10'}`} style={{ color: config.color }} />
                 </div>
             </div>
+            {/* Stats - INTERNAL */}
             {!small && (
                 <div className="z-10 w-full space-y-1 mt-auto">
                     <div className="flex items-center gap-1 bg-gray-50/90 backdrop-blur-sm rounded p-1 border border-gray-100 shadow-sm">
@@ -86,12 +90,88 @@ export const GameCard = ({ role, revealed, isMe, onClick, selected, lang, small 
   );
 };
 
+// --- ACTION BUTTON ---
 export const ActionBtn = ({ label, onClick, disabled, color = 'bg-white', icon: Icon }: any) => (
   <button onClick={onClick} disabled={disabled} className={`flex flex-col items-center justify-center gap-1 p-2 rounded-xl border-b-[3px] transition-all active:translate-y-0.5 active:border-b-0 h-full relative overflow-hidden w-full ${disabled ? 'opacity-40 cursor-not-allowed bg-gray-100 border-gray-200 text-gray-400' : `${color} hover:brightness-95 text-[#1A1F26] shadow-sm`}`}>
     {Icon && <Icon className="w-4 h-4 mb-0.5" />}
     <span className="text-[9px] font-black uppercase leading-none text-center">{label}</span>
   </button>
 );
+
+// --- MODALS ---
+export const RulesModal = ({ onClose, lang }: { onClose: () => void, lang: Lang }) => {
+  const content = DICTIONARY[lang].rules;
+  return (
+    <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
+      <div className="bg-white rounded-[32px] w-full max-w-lg max-h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95">
+        <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-white">
+          <h2 className="text-xl font-black uppercase flex items-center gap-2"><HelpCircle className="w-6 h-6 text-[#9e1316]" /> {content.title}</h2>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full"><X className="w-5 h-5 text-gray-400" /></button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar text-sm text-gray-600">
+           <section>
+             <h3 className="font-bold text-[#1A1F26] mb-1">{content.objective.title}</h3>
+             <p className="bg-yellow-50 p-3 rounded-xl border border-yellow-100 text-yellow-800">{content.objective.text}</p>
+           </section>
+           <section>
+              <h3 className="font-bold text-[#1A1F26] mb-1">{content.general?.title}</h3>
+              <p className="mb-2">{content.general?.text}</p>
+           </section>
+           <section>
+             <h3 className="font-bold text-[#1A1F26] mb-2">{DICTIONARY[lang].ui.code} Actions</h3>
+             <ul className="space-y-2">
+               {content.actions.map((act, i) => (
+                 <li key={i} className="flex gap-2 text-xs bg-gray-50 p-2 rounded-lg border border-gray-100">
+                    <div className="w-1.5 h-1.5 mt-1.5 rounded-full bg-[#1A1F26] shrink-0" />
+                    <span><strong>{act.name}:</strong> {act.effect}</span>
+                 </li>
+               ))}
+             </ul>
+           </section>
+           <section>
+             <h3 className="font-bold text-[#1A1F26] mb-1">{content.challenge.title}</h3>
+             <p className="bg-red-50 p-3 rounded-xl border border-red-100 text-red-800 text-xs">{content.challenge.text}</p>
+           </section>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export const GuideModal = ({ onClose, lang }: { onClose: () => void, lang: Lang }) => {
+  const roles: Role[] = ['duke', 'assassin', 'captain', 'ambassador', 'contessa'];
+  return (
+    <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
+      <div className="bg-white rounded-[32px] w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95">
+        <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-white">
+          <h2 className="text-xl font-black uppercase flex items-center gap-2"><Book className="w-6 h-6 text-[#9e1316]" /> {lang === 'ru' ? 'Справочник' : 'Guide'}</h2>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full"><X className="w-5 h-5 text-gray-400" /></button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-6 custom-scrollbar bg-gray-50">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {roles.map(role => {
+              const info = DICTIONARY[lang].roles[role];
+              const config = ROLE_CONFIG[role];
+              return (
+                <div key={role} className="bg-white p-4 rounded-2xl border border-gray-200 flex items-center gap-4 hover:shadow-md transition-shadow">
+                   <div className="shrink-0"><GameCard role={role} revealed={false} isMe={true} lang={lang} small={true} /></div>
+                   <div className="flex-1 min-w-0">
+                      <div className="font-black text-sm uppercase truncate" style={{ color: config.color }}>{info.name}</div>
+                      <p className="text-[10px] text-gray-500 leading-tight mt-1 mb-2 line-clamp-3">{info.desc}</p>
+                      <div className="flex flex-wrap gap-1">
+                          <span className="text-[9px] font-bold bg-gray-100 px-2 py-1 rounded text-gray-600 border border-gray-200 truncate max-w-full">{info.action}</span>
+                          {info.block !== '-' && <span className="text-[9px] font-bold bg-red-50 text-red-600 px-2 py-1 rounded border border-red-100 truncate max-w-full">Block: {info.block}</span>}
+                      </div>
+                   </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export const LogPanel = ({ logs, lang }: { logs: any[], lang: Lang }) => {
   const [isOpen, setIsOpen] = useState(false);
