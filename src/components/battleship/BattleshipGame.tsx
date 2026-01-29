@@ -30,7 +30,8 @@ const DICTIONARY = {
         enemy: 'ВРАГ',
         horizontal: 'ГОРИЗОНТАЛЬНО',
         vertical: 'ВЕРТИКАЛЬНО',
-        dragHint: 'Перетащите корабли на поле. Q/E для поворота.'
+        dragHint: 'Перетащите корабли на поле. Q/E для поворота.',
+        hint: 'Кликните чтобы поставить или перетащить.'
     },
     en: {
         deployment: 'DEPLOYMENT',
@@ -51,7 +52,8 @@ const DICTIONARY = {
         enemy: 'ENEMY',
         horizontal: 'HORIZONTAL',
         vertical: 'VERTICAL',
-        dragHint: 'Drag ships to grid. Press Q/E to rotate.'
+        dragHint: 'Drag ships to grid. Press Q/E to rotate.',
+        hint: 'Click to place or drag to move.'
     }
 };
 
@@ -65,20 +67,8 @@ const getShipColor = (type: ShipType) => {
 };
 
 const GridCell = ({
-    x, y, status, shipPart, onClick, onMouseEnter, onContextMenu, onDrop, onDragOver, isHovered, hoverValid, size = 'large'
-}: {
-    x: number; y: number;
-    status: CellStatus;
-    shipPart?: ShipType;
-    onClick?: () => void;
-    onMouseEnter?: () => void;
-    onContextMenu?: (e: React.MouseEvent) => void;
-    onDrop?: (e: React.DragEvent) => void;
-    onDragOver?: (e: React.DragEvent) => void;
-    isHovered?: boolean;
-    hoverValid?: boolean;
-    size?: 'large' | 'small';
-}) => {
+    x, y, status, shipPart, onClick, onMouseEnter, onContextMenu, onDrop, onDragOver, onDragStart, isHovered, hoverValid, size = 'large'
+}: any) => {
     const isSmall = size === 'small';
     let content = null;
 
@@ -103,6 +93,7 @@ const GridCell = ({
     }
 
     const cursorClass = onClick && status === 'empty' ? 'cursor-crosshair hover:bg-gray-100' : 'cursor-default';
+    const draggable = !!shipPart && !isSmall;
 
     return (
         <div
@@ -111,6 +102,8 @@ const GridCell = ({
             onContextMenu={onContextMenu}
             onDrop={onDrop}
             onDragOver={onDragOver}
+            onDragStart={draggable ? onDragStart : undefined}
+            draggable={draggable}
             className={`
                 ${isSmall ? CELL_SIZE_S : CELL_SIZE_L}
                 ${borderClass}
@@ -132,6 +125,8 @@ export default function BattleshipGame({
     const [selectedType, setSelectedType] = useState<ShipType | null>(null);
     const [hoverPos, setHoverPos] = useState<Coordinate | null>(null);
     const [timeLeft, setTimeLeft] = useState(60);
+    // Для перетаскивания уже поставленных
+    const [movingShip, setMovingShip] = useState<Ship | null>(null);
 
     const t = DICTIONARY[lang as 'ru' | 'en'] || DICTIONARY['ru'];
 
@@ -168,7 +163,7 @@ export default function BattleshipGame({
                 : (s.position.x === x && y >= s.position.y && y < s.position.y + s.size)
         );
         const shot = phase === 'playing' && me?.shots ? me.shots[`${x},${y}`] : null;
-        return { status: shot || 'empty', shipPart: s?.type };
+        return { status: shot || 'empty', shipPart: s?.type, ship: s };
     };
 
     const getOpponentCellContent = (x: number, y: number) => {
@@ -178,15 +173,18 @@ export default function BattleshipGame({
 
     // --- PLACEMENT LOGIC ---
 
-    const tryPlaceShip = (x: number, y: number, type: ShipType) => {
+    const tryPlaceShip = (x: number, y: number, type: ShipType, shipId?: string) => {
         const config = FLEET_CONFIG.find(c => c.type === type);
         if (!config) return;
 
-        const currentCount = myShips.filter((s: Ship) => s.type === type).length;
-        if (currentCount >= config.count) return;
+        // Если это новый корабль, проверяем лимит
+        if (!shipId) {
+            const currentCount = myShips.filter((s: Ship) => s.type === type).length;
+            if (currentCount >= config.count) return;
+        }
 
         const newShip = {
-            id: `${type}-${Date.now()}`,
+            id: shipId || `${type}-${Date.now()}`,
             type: type,
             size: config.size,
             orientation,
@@ -195,27 +193,55 @@ export default function BattleshipGame({
         };
 
         const success = placeShipManual(newShip);
-        if (success && currentCount + 1 >= config.count) {
-            setSelectedType(null);
+
+        // Если успех и это новый корабль - сбрасываем выбор, если лимит исчерпан
+        if (success && !shipId) {
+             const newCount = myShips.filter((s: Ship) => s.type === type).length + 1;
+             if (newCount >= config.count) setSelectedType(null);
         }
+
+        setMovingShip(null);
     };
 
     const handleSetupClick = (x: number, y: number) => {
-        if (!selectedType) return;
-        tryPlaceShip(x, y, selectedType);
+        // Если кликнули по пустому месту с выбранным типом - ставим
+        if (selectedType) {
+            tryPlaceShip(x, y, selectedType);
+            return;
+        }
+
+        // Если кликнули по существующему кораблю - берем его (удаляем и выбираем тип)
+        const { ship } = getMyCellContent(x, y);
+        if (ship) {
+            removeShip(ship.id);
+            setSelectedType(ship.type);
+            setOrientation(ship.orientation);
+            setHoverPos({ x, y }); // Сразу показываем призрак
+        }
     };
 
     // --- DRAG AND DROP ---
 
-    const handleDragStart = (e: React.DragEvent, type: ShipType) => {
+    const handleDragStartFromMenu = (e: React.DragEvent, type: ShipType) => {
         setSelectedType(type);
         e.dataTransfer.setData('shipType', type);
+    };
+
+    const handleDragStartFromBoard = (e: React.DragEvent, ship: Ship) => {
+        setMovingShip(ship);
+        setSelectedType(ship.type);
+        setOrientation(ship.orientation);
+        e.dataTransfer.setData('shipId', ship.id);
+        e.dataTransfer.setData('shipType', ship.type);
+        // Не удаляем сразу, только при успешном дропе
     };
 
     const handleDrop = (e: React.DragEvent, x: number, y: number) => {
         e.preventDefault();
         const type = e.dataTransfer.getData('shipType') as ShipType;
-        if (type) tryPlaceShip(x, y, type);
+        const id = e.dataTransfer.getData('shipId'); // Может быть пустым
+
+        if (type) tryPlaceShip(x, y, type, id || undefined);
     };
 
     const handleDragOver = (e: React.DragEvent, x: number, y: number) => {
@@ -290,7 +316,7 @@ export default function BattleshipGame({
                                 {Array.from({ length: 100 }).map((_, i) => {
                                     const x = i % 10;
                                     const y = Math.floor(i / 10);
-                                    const { shipPart } = getMyCellContent(x, y);
+                                    const { shipPart, ship } = getMyCellContent(x, y);
                                     return (
                                         <GridCell
                                             key={i} x={x} y={y}
@@ -298,9 +324,10 @@ export default function BattleshipGame({
                                             shipPart={shipPart}
                                             onClick={() => handleSetupClick(x, y)}
                                             onMouseEnter={() => setHoverPos({x, y})}
-                                            onDrop={(e) => handleDrop(e, x, y)}
-                                            onDragOver={(e) => handleDragOver(e, x, y)}
-                                            onContextMenu={(e) => {
+                                            onDrop={(e: any) => handleDrop(e, x, y)}
+                                            onDragOver={(e: any) => handleDragOver(e, x, y)}
+                                            onDragStart={(e: any) => ship && handleDragStartFromBoard(e, ship)}
+                                            onContextMenu={(e: any) => {
                                                 e.preventDefault();
                                                 setOrientation(prev => prev === 'horizontal' ? 'vertical' : 'horizontal');
                                             }}
@@ -315,9 +342,9 @@ export default function BattleshipGame({
                                     <RotateCw className={`w-4 h-4 transition-transform ${orientation === 'vertical' ? 'rotate-90' : ''}`} />
                                     {t[orientation]}
                                 </button>
+                                <div className="text-[9px] text-gray-400 font-bold uppercase mx-auto px-4">{t.dragHint}</div>
                                 <button onClick={clearShips} className="text-gray-400 hover:text-red-500 p-2"><Trash2 className="w-4 h-4"/></button>
                             </div>
-                            <div className="text-center mt-2 text-[9px] text-gray-400 font-bold uppercase">{t.dragHint}</div>
                         </div>
 
                         <div className="flex-1 w-full space-y-4">
@@ -333,7 +360,7 @@ export default function BattleshipGame({
                                             <button
                                                 key={ship.type}
                                                 draggable={!isFull}
-                                                onDragStart={(e) => handleDragStart(e, ship.type)}
+                                                onDragStart={(e) => handleDragStartFromMenu(e, ship.type)}
                                                 onClick={() => !isFull && setSelectedType(ship.type)}
                                                 disabled={isFull}
                                                 className={`
@@ -369,6 +396,7 @@ export default function BattleshipGame({
                     </div>
                 )}
 
+                {/* --- BATTLE UI --- */}
                 {phase === 'playing' && (
                     <div className="flex flex-col md:flex-row gap-8 items-center md:items-start justify-center w-full max-w-6xl animate-in fade-in">
 

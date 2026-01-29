@@ -17,13 +17,18 @@ const getShipCoords = (ship: Ship): Coordinate[] => {
   return coords;
 };
 
+// Проверка валидности (для всех)
 const canPlaceShip = (ships: Ship[], newShip: Ship): boolean => {
   const newShipCoords = getShipCoords(newShip);
   for (const c of newShipCoords) {
     if (!isValidCoord(c.x, c.y)) return false;
   }
+
   const dangerZone = new Set<string>();
-  ships.forEach(s => {
+  // Фильтруем самого себя, если корабль уже есть в списке (для перемещения)
+  const otherShips = ships.filter(s => s.id !== newShip.id);
+
+  otherShips.forEach(s => {
     getShipCoords(s).forEach(coord => {
       for (let dx = -1; dx <= 1; dx++) {
         for (let dy = -1; dy <= 1; dy++) {
@@ -32,6 +37,7 @@ const canPlaceShip = (ships: Ship[], newShip: Ship): boolean => {
       }
     });
   });
+
   for (const c of newShipCoords) {
     if (dangerZone.has(getKey(c.x, c.y))) return false;
   }
@@ -176,8 +182,11 @@ export function useBattleshipGame(
   const clearShips = () => setMyShips([]);
 
   const placeShipManual = (ship: Ship) => {
-      if (canPlaceShip(myShips, ship)) {
-          setMyShips([...myShips, ship]);
+      // Поддержка перемещения: убираем старый корабль (по ID), если он есть
+      const otherShips = myShips.filter(s => s.id !== ship.id);
+
+      if (canPlaceShip(otherShips, ship)) {
+          setMyShips([...otherShips, ship]);
           return true;
       }
       return false;

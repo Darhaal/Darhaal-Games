@@ -8,6 +8,7 @@ import {
   Crown, Filter, ScrollText, KeyRound, Unlock, SortAsc, SortDesc,
   Ship, Bomb, Fingerprint, ShieldAlert, Skull
 } from 'lucide-react';
+import { Player } from '@/types/coup';
 
 type Lang = 'ru' | 'en';
 
@@ -17,7 +18,7 @@ interface LobbyRow {
   code: string;
   game_state: {
       gameType?: string;
-      players: any; // Поддержка и массива (Coup), и объекта (Battleship)
+      players: any; // Поддержка массива и объекта
       settings?: { maxPlayers?: number };
   };
   status: string;
@@ -30,7 +31,7 @@ type SortOption = 'newest' | 'oldest' | 'players-desc' | 'players-asc';
 
 const TRANSLATIONS = {
   ru: {
-    title: 'Список Игр',
+    title: 'Игровой Зал',
     subtitle: 'Присоединяйся и побеждай',
     codePlaceholder: 'КОД',
     join: 'Войти',
@@ -47,7 +48,7 @@ const TRANSLATIONS = {
     loading: 'Загрузка миров...',
     empty: 'Ничего не найдено',
     emptyDesc: 'Попробуйте изменить фильтры',
-    full: 'Full',
+    full: 'Мест нет',
     back: 'Вернуться',
     private: 'Приватная комната',
     enterPass: 'Введите пароль...',
@@ -95,23 +96,26 @@ function PlayContent() {
   const [loading, setLoading] = useState(true);
   const [lang, setLang] = useState<Lang>('ru');
 
-  // --- Фильтры ---
   const [search, setSearch] = useState('');
   const [codeQuery, setCodeQuery] = useState('');
   const [filterMode, setFilterMode] = useState<string>('all');
   const [sortBy, setSortBy] = useState<SortOption>('newest');
 
-  // --- Приватные комнаты ---
   const [selectedLobby, setSelectedLobby] = useState<LobbyRow | null>(null);
   const [passwordInput, setPasswordInput] = useState('');
-
-  // Получаем ID пользователя для подсветки "своих" лобби
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setCurrentUserId(data.user?.id || null));
     const savedLang = localStorage.getItem('dg_lang') as Lang;
     if (savedLang) setLang(savedLang);
+    fetchLobbies();
+
+    const channel = supabase.channel('public_lobbies')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'lobbies' }, fetchLobbies)
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
   const t = TRANSLATIONS[lang];
@@ -127,16 +131,6 @@ function PlayContent() {
     setLoading(false);
   };
 
-  useEffect(() => {
-    fetchLobbies();
-    const channel = supabase.channel('public_lobbies')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'lobbies' }, fetchLobbies)
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
-  }, []);
-
-  // Универсальный подсчет игроков
   const getPlayers = (lobby: LobbyRow): any[] => {
       const p = lobby.game_state.players;
       if (Array.isArray(p)) return p;
@@ -164,6 +158,53 @@ function PlayContent() {
     }
 
     const gameType = lobby.game_state.gameType || 'coup';
+    const players = getPlayers(lobby);
+
+    // Если уже внутри
+    if (players.some((p: any) => p.id === user.id || p.userId === user.id)) {
+      router.push(`/game/${gameType}?id=${lobby.id}`);
+      return;
+    }
+
+    const maxPlayers = lobby.game_state.settings?.maxPlayers || (gameType === 'battleship' ? 2 : 6);
+    if (players.length >= maxPlayers) {
+      alert(t.errorFull);
+      return;
+    }
+
+    // ЛОГИКА ПРИСОЕДИНЕНИЯ (ДЛЯ COUP)
+    // Для Battleship присоединение обрабатывается внутри компонента игры (initGame),
+    // но для Coup мы должны добавить игрока здесь, чтобы зарезервировать слот.
+    if (gameType === 'coup') {
+        const userName = user.user_metadata?.username || user.user_metadata?.full_name || user.email?.split('@')[0] || 'Player';
+        const userAvatar = user.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`;
+
+        const newPlayer: Player = {
+            id: user.id,
+            name: userName,
+            avatarUrl: userAvatar,
+            coins: 2,
+            cards: [],
+            isDead: false,
+            isHost: false,
+            isReady: true
+        };
+
+        const newPlayers = [...(lobby.game_state.players as Player[]), newPlayer];
+        const newState = { ...lobby.game_state, players: newPlayers };
+
+        const { error } = await supabase
+            .from('lobbies')
+            .update({ game_state: newState })
+            .eq('id', lobby.id);
+
+        if (error) {
+            console.error('Failed to join lobby:', error);
+            return;
+        }
+    }
+
+    // Переходим в игру
     router.push(`/game/${gameType}?id=${lobby.id}`);
   };
 
@@ -189,7 +230,6 @@ function PlayContent() {
       }
   };
 
-  // --- Логика фильтрации и сортировки ---
   const processedLobbies = lobbies
     .filter(l => {
         const term = search.toLowerCase();
@@ -228,7 +268,6 @@ function PlayContent() {
             </div>
           </div>
 
-          {/* Ввод Кода */}
           <div className="flex bg-white p-1.5 rounded-xl border border-[#E6E1DC] shadow-sm w-full md:w-auto focus-within:border-[#9e1316] transition-colors">
              <div className="relative flex-1">
                 <KeyRound className="absolute left-3 top-2.5 w-4 h-4 text-[#E6E1DC]" />
@@ -255,10 +294,9 @@ function PlayContent() {
       <div className="max-w-6xl mx-auto w-full relative z-10 px-4 py-8 flex-1">
         <div className="flex flex-col lg:flex-row gap-8 items-start">
 
-            {/* САЙДБАР ФИЛЬТРОВ */}
+            {/* SIDEBAR */}
             <aside className="w-full lg:w-72 space-y-6 lg:sticky lg:top-28">
-
-                {/* Поиск */}
+                {/* Search */}
                 <div className="bg-white p-4 rounded-[24px] border border-[#E6E1DC] shadow-sm group focus-within:border-[#9e1316]/30 focus-within:shadow-md transition-all">
                     <div className="flex items-center gap-3">
                         <Search className="w-5 h-5 text-[#8A9099] group-focus-within:text-[#9e1316]" />
@@ -272,7 +310,7 @@ function PlayContent() {
                     </div>
                 </div>
 
-                {/* Сортировка */}
+                {/* Sort */}
                 <div className="bg-white p-6 rounded-[24px] border border-[#E6E1DC] shadow-sm">
                     <div className="flex items-center gap-2 text-xs font-black text-[#8A9099] uppercase tracking-widest mb-4">
                         <Filter className="w-4 h-4" /> {t.sort}
@@ -289,12 +327,11 @@ function PlayContent() {
                     </div>
                 </div>
 
-                {/* Типы игр */}
+                {/* Filters */}
                 <div className="bg-white p-6 rounded-[24px] border border-[#E6E1DC] shadow-sm space-y-4">
                     <div className="flex items-center gap-2 text-xs font-black text-[#8A9099] uppercase tracking-widest mb-2">
                         {t.modes}
                     </div>
-
                     {['all', 'coup', 'battleship', 'mafia'].map(mode => (
                         <label key={mode} className="flex items-center gap-4 cursor-pointer group hover:bg-[#F5F5F0] p-2 rounded-xl transition-colors -mx-2">
                             <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${filterMode === mode ? 'bg-[#1A1F26] border-[#1A1F26]' : 'border-[#E6E1DC] bg-white'}`}>
@@ -309,7 +346,7 @@ function PlayContent() {
                 </div>
             </aside>
 
-            {/* СПИСОК ЛОББИ */}
+            {/* LIST */}
             <div className="flex-1 w-full min-h-[50vh]">
                 {loading ? (
                     <div className="flex flex-col items-center justify-center py-20 opacity-50">
@@ -330,10 +367,9 @@ function PlayContent() {
                 ) : (
                     <div className="grid grid-cols-1 gap-4 pb-20">
                         {processedLobbies.map(lobby => {
-                            // Ищем хоста
                             const players = getPlayers(lobby);
-                            const hostPlayer = players.find(p => p.isHost) || players[0];
-                            const maxPlayers = lobby.game_state.settings?.maxPlayers || (lobby.game_state.gameType === 'battleship' ? 2 : 6);
+                            const hostPlayer = players.find((p:any) => p.isHost) || players[0];
+                            const maxPlayers = lobby.game_state.settings?.maxPlayers || 6;
                             const isFull = players.length >= maxPlayers;
                             const gameType = lobby.game_state.gameType || 'coup';
                             const isAlreadyIn = players.some((p: any) => p.id === currentUserId || p.userId === currentUserId);

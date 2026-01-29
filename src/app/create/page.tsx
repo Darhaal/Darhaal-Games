@@ -47,66 +47,7 @@ const GAMES: Game[] = [
     icon: <Ship className="w-8 h-8" />,
     disabled: false,
   },
-  {
-    id: 'mafia',
-    name: 'Mafia',
-    desc: {
-      ru: 'Классическая мафия. Город засыпает.',
-      en: 'Classic mafia. The city falls asleep.'
-    },
-    minPlayers: 4,
-    maxPlayers: 12,
-    icon: <Users className="w-8 h-8" />,
-    disabled: true,
-  },
-  {
-    id: 'minesweeper',
-    name: 'Minesweeper',
-    desc: {
-      ru: 'Классическая головоломка. Не взорвись.',
-      en: 'Classic puzzle. Don\'t explode.'
-    },
-    minPlayers: 1,
-    maxPlayers: 1,
-    icon: <Bomb className="w-8 h-8" />,
-    disabled: true,
-  },
-  {
-    id: 'bunker',
-    name: 'Bunker',
-    desc: {
-      ru: 'Выживание после апокалипсиса. Кто попадет в бункер?',
-      en: 'Post-apocalyptic survival. Who gets into the bunker?'
-    },
-    minPlayers: 4,
-    maxPlayers: 16,
-    icon: <ShieldAlert className="w-8 h-8" />,
-    disabled: true,
-  },
-  {
-    id: 'spyfall',
-    name: 'Spyfall',
-    desc: {
-      ru: 'Один шпион, остальные знают локацию. Вычисли предателя.',
-      en: 'One spy, others know the location. Find the traitor.'
-    },
-    minPlayers: 3,
-    maxPlayers: 8,
-    icon: <Fingerprint className="w-8 h-8" />,
-    disabled: true,
-  },
-  {
-    id: 'secret_hitler',
-    name: 'Secret Hitler',
-    desc: {
-      ru: 'Политические интриги. Либералы против фашистов.',
-      en: 'Political intrigue. Liberals vs Fascists.'
-    },
-    minPlayers: 5,
-    maxPlayers: 10,
-    icon: <Skull className="w-8 h-8" />,
-    disabled: true,
-  },
+  // ... другие игры можно добавить позже
 ];
 
 export default function CreatePage() {
@@ -134,7 +75,7 @@ export default function CreatePage() {
     if (selectedGame) {
         setMaxPlayers(selectedGame.maxPlayers);
         if (!lobbyName && user) {
-            const userName = user.user_metadata?.username || user.email?.split('@')[0] || 'Host';
+            const userName = user.user_metadata?.username || user.email?.split('@')[0] || 'Player';
             const suffix = lang === 'ru' ? 'Лобби' : 'Lobby';
             setLobbyName(`${selectedGame.name} ${suffix} - ${userName}`);
         }
@@ -144,7 +85,7 @@ export default function CreatePage() {
   const t = {
     ru: {
       select: 'ВЫБЕРИТЕ ИГРУ',
-      settings: 'НАСТРОЙКИ КОМНАТЫ',
+      settings: 'НАСТРОЙКИ',
       create: 'СОЗДАТЬ',
       back: 'НАЗАД',
       private: 'Приватная комната',
@@ -159,7 +100,7 @@ export default function CreatePage() {
     },
     en: {
       select: 'SELECT GAME',
-      settings: 'ROOM SETTINGS',
+      settings: 'SETTINGS',
       create: 'CREATE',
       back: 'BACK',
       private: 'Private Room',
@@ -183,7 +124,8 @@ export default function CreatePage() {
       const code = Math.random().toString(36).substring(2, 8).toUpperCase();
       let initialState: any;
 
-      const userName = user.user_metadata?.username || user.email?.split('@')[0] || 'Host';
+      // Получаем нормальное имя и аватар
+      const userName = user.user_metadata?.username || user.user_metadata?.full_name || user.email?.split('@')[0] || 'Player';
       const userAvatar = user.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`;
 
       if (selectedGame.id === 'coup') {
@@ -291,7 +233,7 @@ export default function CreatePage() {
 
           <div className="flex items-center gap-2 text-xs font-bold text-[#1A1F26] uppercase tracking-wider">
             <Users className="w-4 h-4 text-[#9e1316]" />
-            {game.minPlayers === game.maxPlayers ? game.minPlayers : `${game.minPlayers}-${game.maxPlayers}`} {t.players}
+            {game.minPlayers === game.maxPlayers ? game.minPlayers : `${game.minPlayers}-${game.maxPlayers}`}
           </div>
         </button>
       ))}
