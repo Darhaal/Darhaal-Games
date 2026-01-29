@@ -18,18 +18,15 @@ export default function BattleshipBoard() {
   const [lang, setLang] = useState<Lang>('ru');
   const [isLeaving, setIsLeaving] = useState(false);
 
-  // Используем наш хук для морского боя
   const {
       gameState,
       roomMeta,
       loading,
       initGame,
-      startGame, // Нужно будет добавить в хук для перевода status в 'playing'
+      startGame,
       leaveGame,
       autoPlaceShips,
       clearShips,
-      placeShipManual,
-      removeShip,
       submitShips,
       fireShot,
       myShips
@@ -41,7 +38,6 @@ export default function BattleshipBoard() {
     if (savedLang === 'en' || savedLang === 'ru') setLang(savedLang);
   }, []);
 
-  // Инициализация игрока в лобби
   useEffect(() => {
     if (userId && gameState && !gameState.players?.[userId]) {
         initGame();
@@ -55,7 +51,6 @@ export default function BattleshipBoard() {
       router.push('/play');
   };
 
-  // Обработка закрытия вкладки
   useEffect(() => {
     const handlePopState = async () => {
         await leaveGame();
@@ -77,12 +72,11 @@ export default function BattleshipBoard() {
   if (!gameState) {
       return (
         <div className="min-h-screen flex items-center justify-center font-bold text-gray-400 uppercase tracking-widest">
-            Лобби не найдено
+            Lobby not found
         </div>
       );
   }
 
-  // Если игра еще в режиме ожидания — показываем лобби
   if (gameState.status === 'waiting') {
       return (
         <BattleshipLobby
@@ -96,7 +90,6 @@ export default function BattleshipBoard() {
       );
   }
 
-  // Основной экран игры (Расстановка или Бой)
   return (
     <BattleshipGame
       gameState={gameState}
@@ -104,8 +97,6 @@ export default function BattleshipBoard() {
       myShips={myShips}
       autoPlaceShips={autoPlaceShips}
       clearShips={clearShips}
-      placeShipManual={placeShipManual}
-      removeShip={removeShip}
       submitShips={submitShips}
       fireShot={fireShot}
       leaveGame={handleLeave}
