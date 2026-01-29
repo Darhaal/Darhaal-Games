@@ -11,10 +11,6 @@ import { checkPlacement } from '@/hooks/useBattleshipGame';
 const CELL_SIZE_L = "w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10";
 const CELL_SIZE_S = "w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6";
 
-// Preload empty image for drag ghost to remove "floating" element
-const EMPTY_IMG = new Image();
-EMPTY_IMG.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-
 const DICTIONARY = {
     ru: {
         deployment: 'Развертывание Флота',
@@ -156,7 +152,7 @@ export default function BattleshipGame({
         return () => clearInterval(interval);
     }, [gameState.lastActionTime, phase]);
 
-    // Keyboard Rotation (Fix: use e.code for layout independence)
+    // Keyboard Rotation
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             // Space, Q, E, R - rotate
@@ -234,14 +230,23 @@ export default function BattleshipGame({
 
     // --- Drag Handlers ---
 
+    const hideDragImage = (e: React.DragEvent) => {
+        // Correct fix: check if window is available or just rely on the fact that this runs in browser
+        if (typeof window !== 'undefined') {
+            const img = new Image();
+            img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+            e.dataTransfer.setDragImage(img, 0, 0);
+        }
+    };
+
     const handleDragStartMenu = (e: React.DragEvent, type: ShipType) => {
-        e.dataTransfer.setDragImage(EMPTY_IMG, 0, 0); // Fix: Remove default ghost
+        hideDragImage(e);
         setSelectedType(type);
         e.dataTransfer.setData('type', type);
     };
 
     const handleDragStartBoard = (e: React.DragEvent, ship: Ship) => {
-        e.dataTransfer.setDragImage(EMPTY_IMG, 0, 0); // Fix: Remove default ghost
+        hideDragImage(e);
         setMovingShipId(ship.id);
         setOrientation(ship.orientation);
         e.dataTransfer.setData('type', ship.type);
@@ -381,7 +386,7 @@ export default function BattleshipGame({
                                     className="flex items-center gap-2 text-xs font-bold uppercase text-[#1A1F26] hover:bg-white hover:shadow-sm px-4 py-2 rounded-xl transition-all"
                                 >
                                     <RotateCw className={`w-4 h-4 transition-transform duration-300 ${orientation === 'vertical' ? 'rotate-90' : ''}`} />
-                                    {orientation === 'horizontal' ? t.horizontal : t.vertical}
+                                    {t[orientation === 'horizontal' ? 'horizontal' : 'vertical']}
                                 </button>
                                 <button onClick={clearShips} className="text-[#8A9099] hover:text-[#9e1316] hover:bg-white hover:shadow-sm p-2 rounded-xl transition-all flex items-center gap-2 text-xs font-bold uppercase px-4">
                                     <Trash2 className="w-4 h-4"/> {t.clear}
