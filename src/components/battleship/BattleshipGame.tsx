@@ -11,6 +11,10 @@ import { checkPlacement } from '@/hooks/useBattleshipGame';
 const CELL_SIZE_L = "w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10";
 const CELL_SIZE_S = "w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6";
 
+// Preload empty image for drag ghost to remove "floating" element
+const EMPTY_IMG = new Image();
+EMPTY_IMG.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+
 const DICTIONARY = {
     ru: {
         deployment: 'Развертывание Флота',
@@ -152,12 +156,12 @@ export default function BattleshipGame({
         return () => clearInterval(interval);
     }, [gameState.lastActionTime, phase]);
 
-    // Keyboard Rotation
+    // Keyboard Rotation (Fix: use e.code for layout independence)
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
-            // Пробел, Q, E, R - поворот
-            if ([' ', 'q', 'e', 'r'].includes(e.key.toLowerCase())) {
-                e.preventDefault(); // Предотвращаем скролл пробелом
+            // Space, Q, E, R - rotate
+            if (['Space', 'KeyQ', 'KeyE', 'KeyR'].includes(e.code)) {
+                e.preventDefault(); // Prevent scroll on Space
                 setOrientation(prev => prev === 'horizontal' ? 'vertical' : 'horizontal');
             }
         };
@@ -167,7 +171,7 @@ export default function BattleshipGame({
 
     const getMyCellContent = (x: number, y: number) => {
         const s = myShips.find((s: Ship) => {
-            // Скрываем корабль, если он "в руке" (перетаскивается)
+            // Hide ship if currently dragging it
             if (movingShipId === s.id) return false;
 
             if (s.orientation === 'horizontal') return s.position.y === y && x >= s.position.x && x < s.position.x + s.size;
@@ -230,21 +234,14 @@ export default function BattleshipGame({
 
     // --- Drag Handlers ---
 
-    // Убираем стандартную картинку призрака
-    const hideDragImage = (e: React.DragEvent) => {
-        const img = new Image();
-        img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-        e.dataTransfer.setDragImage(img, 0, 0);
-    };
-
     const handleDragStartMenu = (e: React.DragEvent, type: ShipType) => {
-        hideDragImage(e);
+        e.dataTransfer.setDragImage(EMPTY_IMG, 0, 0); // Fix: Remove default ghost
         setSelectedType(type);
         e.dataTransfer.setData('type', type);
     };
 
     const handleDragStartBoard = (e: React.DragEvent, ship: Ship) => {
-        hideDragImage(e);
+        e.dataTransfer.setDragImage(EMPTY_IMG, 0, 0); // Fix: Remove default ghost
         setMovingShipId(ship.id);
         setOrientation(ship.orientation);
         e.dataTransfer.setData('type', ship.type);
@@ -261,7 +258,7 @@ export default function BattleshipGame({
     };
 
     const handleDragOver = (e: React.DragEvent, x: number, y: number) => {
-        e.preventDefault(); // Разрешаем дроп
+        e.preventDefault(); // Allow drop
         if (hoverPos?.x !== x || hoverPos?.y !== y) {
             setHoverPos({ x, y });
         }
@@ -290,7 +287,6 @@ export default function BattleshipGame({
             hits: 0
         };
 
-        // Используем функцию из хука (она экспортирована)
         return checkPlacement(myShips, tempShip, movingShipId || undefined);
     };
 
@@ -385,7 +381,7 @@ export default function BattleshipGame({
                                     className="flex items-center gap-2 text-xs font-bold uppercase text-[#1A1F26] hover:bg-white hover:shadow-sm px-4 py-2 rounded-xl transition-all"
                                 >
                                     <RotateCw className={`w-4 h-4 transition-transform duration-300 ${orientation === 'vertical' ? 'rotate-90' : ''}`} />
-                                    {t[orientation === 'horizontal' ? 'horizontal' : 'vertical']}
+                                    {orientation === 'horizontal' ? t.horizontal : t.vertical}
                                 </button>
                                 <button onClick={clearShips} className="text-[#8A9099] hover:text-[#9e1316] hover:bg-white hover:shadow-sm p-2 rounded-xl transition-all flex items-center gap-2 text-xs font-bold uppercase px-4">
                                     <Trash2 className="w-4 h-4"/> {t.clear}
