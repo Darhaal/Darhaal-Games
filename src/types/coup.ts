@@ -50,18 +50,23 @@ export interface GameState {
   logs: GameLog[];
   status: 'waiting' | 'playing' | 'finished';
   winner?: string;
+
+  // Added missing phase property
+  phase: GamePhase;
+
   currentAction: PendingAction | null;
-  pendingPlayerId?: string; // Player who needs to respond (lose card, exchange, etc)
-  exchangeBuffer?: Role[]; // Temp cards during exchange
+  pendingPlayerId?: string;
+  exchangeBuffer?: Role[];
 
   lastActionTime: number;
-  // Critical: Server timestamp when the current decision phase must end
-  turnDeadline?: number;
-  // Critical: Optimistic locking version
-  version: number;
+  turnDeadline?: number; // Server-authoritative timer
+  version: number; // Optimistic locking
 
-  gameType: 'coup';
-  settings: {
+  // Optional because legacy/create might not set it immediately,
+  // but strictly it should be there.
+  // In create/page.tsx we set it, but we need to make sure the interface allows it.
+  gameType?: 'coup';
+  settings?: {
     maxPlayers: number;
   };
 }

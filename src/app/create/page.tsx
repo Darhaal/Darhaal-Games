@@ -1,3 +1,4 @@
+// app/create/page.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -8,6 +9,7 @@ import {
   ScrollText, ArrowRight, Eye, EyeOff, Loader2, Type, UserPlus,
   Bomb, Ship, ShieldAlert, Fingerprint, Skull
 } from 'lucide-react';
+// Types needed for initial state creation
 import { GameState as CoupState, Player as CoupPlayer } from '@/types/coup';
 import { BattleshipState, PlayerBoard as BattleshipPlayer } from '@/types/battleship';
 
@@ -20,10 +22,10 @@ type Game = {
   minPlayers: number;
   maxPlayers: number;
   icon: React.ReactNode;
-  disabled?: boolean;
+  disabled?: boolean; // Flag to block games in development
 };
 
-// Config for all games, including future ones
+// Configuration including blocked games
 const GAMES: Game[] = [
   {
     id: 'coup',
@@ -48,6 +50,7 @@ const GAMES: Game[] = [
     icon: <Ship className="w-8 h-8" />,
     disabled: false,
   },
+  // --- BLOCKED GAMES (Coming Soon) ---
   {
     id: 'mafia',
     name: 'Mafia',
@@ -58,7 +61,7 @@ const GAMES: Game[] = [
     minPlayers: 4,
     maxPlayers: 12,
     icon: <Users className="w-8 h-8" />,
-    disabled: true, // BLOCKED
+    disabled: true,
   },
   {
     id: 'minesweeper',
@@ -70,7 +73,7 @@ const GAMES: Game[] = [
     minPlayers: 1,
     maxPlayers: 1,
     icon: <Bomb className="w-8 h-8" />,
-    disabled: true, // BLOCKED
+    disabled: true,
   },
   {
     id: 'bunker',
@@ -82,7 +85,7 @@ const GAMES: Game[] = [
     minPlayers: 4,
     maxPlayers: 16,
     icon: <ShieldAlert className="w-8 h-8" />,
-    disabled: true, // BLOCKED
+    disabled: true,
   },
   {
     id: 'spyfall',
@@ -94,7 +97,7 @@ const GAMES: Game[] = [
     minPlayers: 3,
     maxPlayers: 8,
     icon: <Fingerprint className="w-8 h-8" />,
-    disabled: true, // BLOCKED
+    disabled: true,
   },
   {
     id: 'secret_hitler',
@@ -106,7 +109,7 @@ const GAMES: Game[] = [
     minPlayers: 5,
     maxPlayers: 10,
     icon: <Skull className="w-8 h-8" />,
-    disabled: true, // BLOCKED
+    disabled: true,
   },
 ];
 
@@ -187,7 +190,8 @@ export default function CreatePage() {
       const userName = user.user_metadata?.username || user.user_metadata?.full_name || user.email?.split('@')[0] || 'Player';
       const userAvatar = user.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`;
 
-      // COUPE INIT
+      // --- INITIAL STATE GENERATION ---
+
       if (selectedGame.id === 'coup') {
           const initialHost: CoupPlayer = {
             id: user.id,
@@ -210,12 +214,14 @@ export default function CreatePage() {
             currentAction: null,
             lastActionTime: Date.now(),
             version: 1,
-            turnDeadline: undefined, // Setup phase has no timer
+            // Timer is undefined during setup
+            turnDeadline: undefined,
+            gameType: 'coup',
+            settings: { maxPlayers: maxPlayers }
           };
           initialState = coupState;
 
       } else if (selectedGame.id === 'battleship') {
-          // BATTLESHIP INIT
           const initialHost: BattleshipPlayer = {
               id: user.id,
               name: userName,
@@ -238,11 +244,12 @@ export default function CreatePage() {
               version: 1,
               gameType: 'battleship',
               settings: { maxPlayers: 2 },
-              turnDeadline: undefined // Setup phase
+              turnDeadline: undefined
           };
           initialState = battleshipState;
       }
 
+      // Explicitly construct the game state to ensure it matches the JSONB expectations
       const finalGameState = {
           ...initialState,
           gameType: selectedGame.id,
@@ -289,6 +296,7 @@ export default function CreatePage() {
              <div className={`p-4 rounded-2xl ${game.disabled ? 'bg-gray-100' : 'bg-[#F5F5F0] group-hover:bg-[#9e1316]/5 transition-colors'}`}>
                {game.icon}
              </div>
+             {/* BLOCKED BADGE */}
              {game.disabled && <span className="text-[10px] font-bold uppercase bg-gray-100 px-2 py-1 rounded text-gray-400 border border-gray-200">{t.comingSoon}</span>}
           </div>
           <h3 className="text-2xl font-black text-[#1A1F26] mb-2">{game.name}</h3>
