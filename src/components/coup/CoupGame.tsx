@@ -20,7 +20,7 @@ interface CoupGameProps {
   resolveLoss: (cardIndex: number) => Promise<void>;
   resolveExchange: (selectedIndices: number[]) => Promise<void>;
   leaveGame: () => Promise<void>;
-  skipTurn?: () => Promise<void>; // Новая функция для пропуска
+  skipTurn?: () => Promise<void>;
   lang: Lang;
 }
 
@@ -30,8 +30,6 @@ export default function CoupGame({
   const [targetMode, setTargetMode] = useState<'coup' | 'steal' | 'assassinate' | null>(null);
   const [activeModal, setActiveModal] = useState<'rules' | 'guide' | null>(null);
   const [selectedExchangeIndices, setSelectedExchangeIndices] = useState<number[]>([]);
-
-  // AFK Timer Display
   const [timeLeft, setTimeLeft] = useState(60);
 
   const players = gameState.players || [];
@@ -45,7 +43,11 @@ export default function CoupGame({
 
   const phase = gameState.phase;
   const isActor = gameState.currentAction?.player === userId;
-  const canBlock = (gameState.currentAction?.target === userId) || (gameState.currentAction?.type === 'foreign_aid');
+  // 1. ИСПРАВЛЕНИЕ БЛОКА:
+  // Иностранная помощь (foreign_aid): блокирует любой (Герцог).
+  // Кража (steal) / Убийство (assassinate): блокирует ТОЛЬКО цель.
+  const canBlock = (gameState.currentAction?.type === 'foreign_aid') || (gameState.currentAction?.target === userId);
+
   const isLosing = phase === 'losing_influence' && gameState.pendingPlayerId === userId;
   const isExchanging = phase === 'resolving_exchange' && gameState.pendingPlayerId === userId;
 
@@ -55,21 +57,34 @@ export default function CoupGame({
   const isReactionPhase = phase === 'waiting_for_challenges' || phase === 'waiting_for_blocks' || phase === 'waiting_for_block_challenges';
   const isBlocker = gameState.currentAction?.blockedBy === userId;
 
-  // --- AFK Logic (Fix Issue 6) ---
+  // 2. ИСПРАВЛЕНИЕ ТАЙМЕРА:
   useEffect(() => {
-      // Сбрасываем таймер при каждом обновлении lastActionTime
-      const now = Date.now();
-      const elapsed = Math.floor((now - (gameState.lastActionTime || now)) / 1000);
-      setTimeLeft(Math.max(0, 60 - elapsed));
-
       const interval = setInterval(() => {
-          const currentElapsed = Math.floor((Date.now() - (gameState.lastActionTime || Date.now())) / 1000);
-          const remaining = 60 - currentElapsed;
-          setTimeLeft(Math.max(0, remaining));
+          const now = Date.now();
+          const elapsed = Math.floor((now - (gameState.lastActionTime || now)) / 1000);
+          const remaining = Math.max(0, 60 - elapsed);
+          setTimeLeft(remaining);
+
+          // Авто-скип, если время вышло и это мой ход (или я должен реагировать)
+          // Проверяем: таймер 0, игра идет, и это моя ответственность
+          if (remaining === 0 && gameState.status === 'playing' && skipTurn) {
+              // Если мой ход выбирать действие
+              if (phase === 'choosing_action' && isMyTurn) {
+                  skipTurn();
+              }
+              // Если я должен потерять карту
+              else if (isLosing) {
+                  // Авто-выбор первой карты для потери (грубо, но эффективно)
+                  resolveLoss(0);
+              }
+              // Если я должен отвечать (pass/challenge) - тут сложнее, так как отвечать могут все.
+              // Обычно хост форсит скип для всех, но здесь оставим на откуп серверу/хосту
+          }
+
       }, 1000);
 
       return () => clearInterval(interval);
-  }, [gameState.lastActionTime]);
+  }, [gameState.lastActionTime, gameState.status, phase, isMyTurn, isLosing, skipTurn]);
 
   const showChallengeBtn =
       (phase === 'waiting_for_challenges' && !isActor && !isForeignAid) ||
@@ -78,7 +93,7 @@ export default function CoupGame({
 
   const showBlockBtn =
       !isActor &&
-      canBlock &&
+      canBlock && // <--- Проверка исправлена выше
       !isBlocker &&
       (isForeignAid || isActionWithBlockAndChallenge) &&
       (phase === 'waiting_for_challenges' || phase === 'waiting_for_blocks');
@@ -94,7 +109,6 @@ export default function CoupGame({
   };
 
   const handleTarget = (targetId: string) => {
-    // Fix Issue 5: Проверка на мертвого игрока перед отправкой действия
     const targetPlayer = players.find(p => p.id === targetId);
     if (!targetPlayer || targetPlayer.isDead) return;
 
@@ -126,22 +140,20 @@ export default function CoupGame({
       {activeModal === 'guide' && <GuideModal onClose={() => setActiveModal(null)} lang={lang} />}
 
       <header className="w-full max-w-6xl mx-auto p-4 flex justify-between items-center z-10 relative">
-          <button onClick={leaveGame}><LogOut className="w-5 h-5 text-gray-500" /></button>
+          <button onClick={leaveGame} className="p-2 text-gray-400 hover:text-[#9e1316]"><LogOut className="w-5 h-5" /></button>
           <div className="text-center">
              <h1 className="font-black text-xl">COUP</h1>
              <div className="text-[10px] font-bold text-[#9e1316] uppercase flex items-center justify-center gap-2">
-                 {isLosing ? 'LOSE INFLUENCE!' : (gameState.status === 'playing' ? `Turn: ${currentPlayer?.name}` : 'End')}
-                 {/* AFK Timer Indicator */}
+                 {isLosing ? t.loseInfluence : (gameState.status === 'playing' ? `Turn: ${currentPlayer?.name}` : 'End')}
                  {gameState.status === 'playing' && (
                      <span className={`flex items-center gap-1 ${timeLeft < 15 ? 'text-red-600 animate-pulse' : 'text-gray-400'}`}>
                          <Timer className="w-3 h-3" /> {timeLeft}s
                      </span>
                  )}
              </div>
-             {/* Host Kick Button */}
              {isHost && timeLeft === 0 && gameState.status === 'playing' && skipTurn && (
                  <button onClick={skipTurn} className="mt-1 text-[9px] bg-red-100 text-red-600 px-2 py-0.5 rounded border border-red-200 uppercase font-bold hover:bg-red-200">
-                     Force Skip AFK
+                     Force Skip
                  </button>
              )}
           </div>

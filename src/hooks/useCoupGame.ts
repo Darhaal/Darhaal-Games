@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { GameState, Player, Role } from '@/types/coup';
 import { DICTIONARY } from '@/constants/coup';
 
-// Алгоритм Фишера-Йейтса для честной тасовки (Fix Issue 4)
+// Фишер-Йейтс
 const shuffleDeck = (deck: Role[]): Role[] => {
   const newDeck = [...deck];
   for (let i = newDeck.length - 1; i > 0; i--) {
@@ -18,7 +18,6 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
   const [roomMeta, setRoomMeta] = useState<{ name: string; code: string; isHost: boolean } | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Используем Ref для доступа к актуальному стейту внутри замыканий (Fix Issue 3 - Race Conditions mitigation)
   const stateRef = useRef<{ lobbyId: string | null; userId: string | undefined; gameState: GameState | null }>({
     lobbyId, userId, gameState: null
   });
@@ -27,7 +26,7 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
     stateRef.current = { lobbyId, userId, gameState };
   }, [lobbyId, userId, gameState]);
 
-  // --- 1. Sync ---
+  // --- SYNC ---
   const fetchLobbyState = useCallback(async () => {
     if (!lobbyId) return;
     try {
@@ -35,6 +34,9 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
       if (data) {
         setRoomMeta({ name: data.name, code: data.code, isHost: data.host_id === userId });
         if (data.game_state) setGameState(data.game_state);
+      } else {
+        // Лобби не найдено (удалено)
+        setGameState(null);
       }
     } catch (e) { console.error(e); } finally { setLoading(false); }
   }, [lobbyId, userId]);
@@ -46,22 +48,24 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'lobbies', filter: `id=eq.${lobbyId}` },
       (payload) => {
           if (payload.new.game_state) {
-            // Простая проверка версии, чтобы не перезатереть стейт старым, если пришел пакет с задержкой
-            // (В идеале это делается на бэкенде, но здесь client-side защита)
             setGameState(prev => {
-                if (prev && payload.new.game_state.version < prev.version) return prev;
+                // Защита от race conditions
+                if (prev && (payload.new.game_state.version || 0) < (prev.version || 0)) return prev;
                 return payload.new.game_state;
             });
           }
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'lobbies', filter: `id=eq.${lobbyId}` },
+      () => {
+          setGameState(null); // Лобби удалено
       })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [lobbyId, fetchLobbyState]);
 
   const updateState = async (newState: GameState) => {
-    // Инкремент версии и обновление таймстампа (Fix Issue 6 - AFK/Timeout baseline)
     newState.version = (newState.version || 0) + 1;
-    newState.lastActionTime = Date.now();
+    newState.lastActionTime = Date.now(); // Обновляем время действия
 
     setGameState(newState);
     if (stateRef.current.lobbyId) {
@@ -79,9 +83,9 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
 
   const nextTurn = (state: GameState) => {
     const alivePlayers = state.players.filter(p => !p.isDead);
-    if (alivePlayers.length === 1) {
+    if (alivePlayers.length <= 1) {
       state.status = 'finished';
-      state.winner = alivePlayers[0].name;
+      state.winner = alivePlayers[0]?.name || 'Unknown';
       state.phase = 'choosing_action';
       addLog(state, '🏆', `Победитель: ${state.winner}!`);
       return;
@@ -97,27 +101,22 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
     state.currentAction = null;
     state.pendingPlayerId = undefined;
     state.exchangeBuffer = undefined;
-    state.lastActionTime = Date.now(); // Сброс таймера для следующего хода
+    state.lastActionTime = Date.now(); // Сброс таймера
   };
 
   // --- ACTIONS ---
   const performAction = async (actionType: string, targetId?: string) => {
-    // Читаем из Ref, чтобы избежать Stale Closure
     const currentGs = stateRef.current.gameState;
     if (!currentGs || !userId) return;
 
-    // Глубокое копирование
     const newState: GameState = JSON.parse(JSON.stringify(currentGs));
     const player = newState.players.find(p => p.id === userId);
     if (!player) return;
 
-    // Валидация цели (Fix Issue 5 - Server-side simulation check)
+    // Валидация цели
     if (targetId) {
         const targetPlayer = newState.players.find(p => p.id === targetId);
-        if (!targetPlayer || targetPlayer.isDead) {
-            console.error("Target is dead or invalid");
-            return;
-        }
+        if (!targetPlayer || targetPlayer.isDead) return;
     }
 
     const targetName = targetId ? newState.players.find(p => p.id === targetId)?.name : '';
@@ -199,21 +198,16 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
 
     addLog(newState, challenger.name, `НЕ ВЕРИТ игроку ${accused.name}!`);
 
-    // Fix Issue 1: Поддержка нескольких ролей для блока (Ambassador или Captain для блока кражи)
     const requiredRoles = getRequiredRoles(newState.currentAction.type, isBlockChallenge);
-
-    // Проверяем, есть ли у обвиняемого ХОТЯ БЫ ОДНА из нужных карт
     const hasRole = accused.cards.some(c => !c.revealed && requiredRoles.includes(c.role));
 
     if (hasRole) {
-      // Игрок доказал наличие карты
-      // Находим карту, которую он может показать (первую подходящую)
+      // Блеф не удался (карта есть) -> Челленджер теряет влияние
       const cardIdx = accused.cards.findIndex(c => !c.revealed && requiredRoles.includes(c.role));
       const oldRole = accused.cards[cardIdx].role;
-
       addLog(newState, accused.name, `Показал карту: ${getRoleName(oldRole)}!`);
 
-      // Замешиваем карту обратно и даем новую (Fisher-Yates)
+      // Замешиваем
       newState.deck.push(oldRole);
       newState.deck = shuffleDeck(newState.deck);
       accused.cards[cardIdx].role = newState.deck.pop() as Role;
@@ -223,8 +217,8 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
       newState.currentAction.nextPhase = isBlockChallenge ? 'blocked_end' : 'continue_action';
 
     } else {
+      // Блеф удался (карты нет) -> Обвиняемый теряет влияние
       addLog(newState, accused.name, `БЛЕФОВАЛ! (Нет нужной карты)`);
-
       newState.phase = 'losing_influence';
       newState.pendingPlayerId = accused.id;
       newState.currentAction.nextPhase = isBlockChallenge ? 'continue_action' : 'action_cancelled';
@@ -289,9 +283,18 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
                  nextTurn(newState);
              } else if (next === 'continue_action') {
                  if (action.blockedBy) {
-                     applyActionEffect(newState);
+                     // Если это был челлендж на блок и блок доказан, действие отменяется
+                     addLog(newState, 'Система', 'Блок подтвержден');
+                     nextTurn(newState);
                  } else {
                      if (['steal', 'assassinate'].includes(action.type)) {
+                         // После неудачного челленджа действия переходим к блоку (если еще не блочили)
+                         // Но здесь упростим: если челлендж провален, действие выполняется, если только жертва не хочет блокировать.
+                         // В Coup, если вы проиграли челлендж на Assassinate, вы теряете карту, а потом вас убивают (теряете вторую).
+                         // Если мы здесь, значит челлендж завершен.
+                         // Если это Steal/Assassinate, жертва все еще может заблокировать?
+                         // Обычно последовательность: Action -> Challenge -> Block -> Challenge Block.
+                         // Если Action Challenge failed -> Action continues -> Opportunity to Block.
                          newState.phase = 'waiting_for_blocks';
                      } else {
                          applyActionEffect(newState);
@@ -330,7 +333,7 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
 
       const remainingRoles = buffer.filter((_, idx) => !selectedIndices.includes(idx));
       newState.deck.push(...remainingRoles);
-      newState.deck = shuffleDeck(newState.deck); // Fix Issue 4
+      newState.deck = shuffleDeck(newState.deck);
 
       newState.exchangeBuffer = undefined;
       addLog(newState, player.name, 'Обменял карты');
@@ -387,14 +390,12 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
       }
   };
 
-  // Fix Issue 1: Теперь возвращаем массив ролей.
-  // Кражу блокирует Капитан ИЛИ Посол.
   const getRequiredRoles = (action: string, isBlock: boolean): Role[] => {
     if (isBlock) {
         if (action === 'foreign_aid') return ['duke'];
         if (action === 'assassinate') return ['contessa'];
         if (action === 'steal') return ['captain', 'ambassador'];
-        return ['duke']; // Fallback (не должно случаться)
+        return ['duke'];
     } else {
         if (action === 'tax') return ['duke'];
         if (action === 'steal') return ['captain'];
@@ -404,21 +405,21 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
     }
   };
 
-  // Fix Issue 6: AFK Skip function
+  // 2. ПОЧИНКА ТАЙМЕРА (SKIP)
   const skipTurn = async () => {
       const currentGs = stateRef.current.gameState;
       if (!currentGs) return;
       const newState: GameState = JSON.parse(JSON.stringify(currentGs));
 
-      addLog(newState, 'Система', 'Ход пропущен из-за бездействия');
-      nextTurn(newState); // Просто передаем ход
+      addLog(newState, 'Система', 'Время вышло! Ход пропущен.');
+      nextTurn(newState);
       await updateState(newState);
   };
 
   const startGame = async () => {
     if (!gameState) return;
     const roles: Role[] = ['duke', 'duke', 'duke', 'assassin', 'assassin', 'assassin', 'captain', 'captain', 'captain', 'ambassador', 'ambassador', 'ambassador', 'contessa', 'contessa', 'contessa'];
-    const shuffled = shuffleDeck(roles); // Fix Issue 4
+    const shuffled = shuffleDeck(roles);
 
     const newPlayers = gameState.players.map(p => ({
       ...p, coins: 2, isDead: false,
@@ -434,8 +435,33 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
     await updateState(newState);
   };
 
+  // 3. ПОЧИНКА ВЫХОДА ИЗ ЛОББИ
   const leaveGame = async () => {
-     if (lobbyId) await supabase.from('lobbies').delete().eq('id', lobbyId);
+     const currentGs = stateRef.current.gameState;
+     if (!lobbyId || !userId || !currentGs) return;
+
+     // Если хост выходит - удаляем лобби для всех
+     const isHost = roomMeta?.isHost;
+
+     if (isHost) {
+         await supabase.from('lobbies').delete().eq('id', lobbyId);
+     } else {
+         // Иначе удаляем только себя из списка игроков
+         const newState = JSON.parse(JSON.stringify(currentGs));
+         newState.players = newState.players.filter((p: Player) => p.id !== userId);
+
+         // Если игроков не осталось (на всякий случай)
+         if (newState.players.length === 0) {
+             await supabase.from('lobbies').delete().eq('id', lobbyId);
+         } else {
+             // Если игра идет, и игрок вышел - он "умирает"
+             if (newState.status === 'playing') {
+                 addLog(newState, 'Система', 'Игрок покинул матч');
+                 // Можно реализовать логику "сдачи", но просто удаление тоже сработает
+             }
+             await updateState(newState);
+         }
+     }
   };
 
   return { gameState, roomMeta, loading, performAction, startGame, leaveGame, pass, challenge, block, resolveLoss, resolveExchange, skipTurn };

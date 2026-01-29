@@ -18,7 +18,7 @@ interface LobbyRow {
   code: string;
   game_state: {
       gameType?: string;
-      players: any; // Поддержка массива и объекта
+      players: any;
       settings?: { maxPlayers?: number };
   };
   status: string;
@@ -49,6 +49,7 @@ const TRANSLATIONS = {
     empty: 'Ничего не найдено',
     emptyDesc: 'Попробуйте изменить фильтры',
     full: 'Мест нет',
+    started: 'Игра идет',
     back: 'Вернуться',
     private: 'Приватная комната',
     enterPass: 'Введите пароль...',
@@ -78,6 +79,7 @@ const TRANSLATIONS = {
     empty: 'No games found',
     emptyDesc: 'Try changing filters',
     full: 'Full',
+    started: 'In Progress',
     back: 'Return',
     private: 'Private Room',
     enterPass: 'Enter password...',
@@ -124,7 +126,7 @@ function PlayContent() {
     const { data } = await supabase
       .from('lobbies')
       .select('*')
-      .neq('status', 'finished')
+      .neq('status', 'finished') // Не показываем завершенные
       .order('created_at', { ascending: false });
 
     if (data) setLobbies(data as unknown as LobbyRow[]);
@@ -172,9 +174,13 @@ function PlayContent() {
       return;
     }
 
+    // Если игра уже началась, нельзя войти (если только не реконнект, но реконнект выше)
+    if (lobby.status === 'playing') {
+        alert('Игра уже идет!');
+        return;
+    }
+
     // ЛОГИКА ПРИСОЕДИНЕНИЯ (ДЛЯ COUP)
-    // Для Battleship присоединение обрабатывается внутри компонента игры (initGame),
-    // но для Coup мы должны добавить игрока здесь, чтобы зарезервировать слот.
     if (gameType === 'coup') {
         const userName = user.user_metadata?.username || user.user_metadata?.full_name || user.email?.split('@')[0] || 'Player';
         const userAvatar = user.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`;
@@ -204,7 +210,6 @@ function PlayContent() {
         }
     }
 
-    // Переходим в игру
     router.push(`/game/${gameType}?id=${lobby.id}`);
   };
 
@@ -241,6 +246,10 @@ function PlayContent() {
         const gameType = l.game_state.gameType || 'coup';
         const matchesMode = filterMode === 'all' || gameType === filterMode;
 
+        // 4. БЛОКИРОВКА ЛОББИ: Не показываем игры в статусе 'playing' если мы не в них
+        const isAlreadyIn = players.some((p: any) => p.id === currentUserId || p.userId === currentUserId);
+        if (l.status === 'playing' && !isAlreadyIn) return false;
+
         return matchesSearch && matchesMode;
     })
     .sort((a, b) => {
@@ -255,7 +264,6 @@ function PlayContent() {
     <div className="min-h-screen bg-[#F8FAFC] text-[#1A1F26] font-sans relative overflow-x-hidden flex flex-col">
       <div className="fixed inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-50 brightness-100 contrast-150 mix-blend-overlay pointer-events-none z-0"></div>
 
-      {/* Sticky Header */}
       <header className="sticky top-0 z-30 w-full bg-[#F8FAFC]/90 backdrop-blur-xl border-b border-[#E6E1DC] shadow-sm">
         <div className="max-w-6xl mx-auto px-4 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
@@ -294,9 +302,7 @@ function PlayContent() {
       <div className="max-w-6xl mx-auto w-full relative z-10 px-4 py-8 flex-1">
         <div className="flex flex-col lg:flex-row gap-8 items-start">
 
-            {/* SIDEBAR */}
             <aside className="w-full lg:w-72 space-y-6 lg:sticky lg:top-28">
-                {/* Search */}
                 <div className="bg-white p-4 rounded-[24px] border border-[#E6E1DC] shadow-sm group focus-within:border-[#9e1316]/30 focus-within:shadow-md transition-all">
                     <div className="flex items-center gap-3">
                         <Search className="w-5 h-5 text-[#8A9099] group-focus-within:text-[#9e1316]" />
@@ -310,7 +316,6 @@ function PlayContent() {
                     </div>
                 </div>
 
-                {/* Sort */}
                 <div className="bg-white p-6 rounded-[24px] border border-[#E6E1DC] shadow-sm">
                     <div className="flex items-center gap-2 text-xs font-black text-[#8A9099] uppercase tracking-widest mb-4">
                         <Filter className="w-4 h-4" /> {t.sort}
@@ -327,7 +332,6 @@ function PlayContent() {
                     </div>
                 </div>
 
-                {/* Filters */}
                 <div className="bg-white p-6 rounded-[24px] border border-[#E6E1DC] shadow-sm space-y-4">
                     <div className="flex items-center gap-2 text-xs font-black text-[#8A9099] uppercase tracking-widest mb-2">
                         {t.modes}
@@ -346,7 +350,6 @@ function PlayContent() {
                 </div>
             </aside>
 
-            {/* LIST */}
             <div className="flex-1 w-full min-h-[50vh]">
                 {loading ? (
                     <div className="flex flex-col items-center justify-center py-20 opacity-50">
@@ -371,6 +374,7 @@ function PlayContent() {
                             const hostPlayer = players.find((p:any) => p.isHost) || players[0];
                             const maxPlayers = lobby.game_state.settings?.maxPlayers || 6;
                             const isFull = players.length >= maxPlayers;
+                            const isPlaying = lobby.status === 'playing';
                             const gameType = lobby.game_state.gameType || 'coup';
                             const isAlreadyIn = players.some((p: any) => p.id === currentUserId || p.userId === currentUserId);
 
@@ -407,18 +411,18 @@ function PlayContent() {
                                     <div className="z-10 shrink-0 w-full sm:w-auto">
                                         <button
                                             onClick={() => lobby.is_private ? setSelectedLobby(lobby) : handleJoin(lobby)}
-                                            disabled={isFull && !isAlreadyIn}
+                                            disabled={(isFull || isPlaying) && !isAlreadyIn}
                                             className={`
                                                 px-8 py-4 rounded-xl font-black text-xs uppercase tracking-widest flex items-center gap-2 transition-all w-full justify-center
                                                 ${isAlreadyIn
                                                     ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-900/10'
-                                                    : isFull
+                                                    : (isFull || isPlaying)
                                                         ? 'bg-[#F5F5F0] text-[#E6E1DC] cursor-not-allowed'
                                                         : 'bg-[#1A1F26] text-white hover:bg-[#9e1316] shadow-lg shadow-[#1A1F26]/10 hover:shadow-[#9e1316]/20 active:scale-95'
                                                 }
                                             `}
                                         >
-                                            {isAlreadyIn ? t.back : (isFull ? t.full : t.join)} <Play className="w-3 h-3 fill-current" />
+                                            {isAlreadyIn ? t.back : (isFull ? t.full : (isPlaying ? t.started : t.join))} <Play className="w-3 h-3 fill-current" />
                                         </button>
                                     </div>
                                 </div>

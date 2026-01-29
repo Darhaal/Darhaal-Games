@@ -17,23 +17,18 @@ const getShipCoords = (ship: Ship): Coordinate[] => {
   return coords;
 };
 
-// Экспортируемая функция для проверки валидности (используется и в хуке, и в UI)
+// Экспортируем для UI
 export const checkPlacement = (ships: Ship[], newShip: Ship, ignoreShipId?: string): boolean => {
   const newShipCoords = getShipCoords(newShip);
-
-  // 1. Проверка границ
   for (const c of newShipCoords) {
     if (!isValidCoord(c.x, c.y)) return false;
   }
 
-  // 2. Создаем карту занятых зон (корабли + соседи)
   const dangerZone = new Set<string>();
-  // Игнорируем сам корабль, если мы его переставляем
-  const otherShips = ships.filter(s => s.id !== ignoreShipId && s.id !== newShip.id);
+  const otherShips = ships.filter(s => s.id !== newShip.id && s.id !== ignoreShipId);
 
   otherShips.forEach(s => {
     getShipCoords(s).forEach(coord => {
-      // Добавляем саму клетку и всех соседей (включая диагонали)
       for (let dx = -1; dx <= 1; dx++) {
         for (let dy = -1; dy <= 1; dy++) {
           dangerZone.add(getKey(coord.x + dx, coord.y + dy));
@@ -42,7 +37,6 @@ export const checkPlacement = (ships: Ship[], newShip: Ship, ignoreShipId?: stri
     });
   });
 
-  // 3. Проверяем, не попадает ли новый корабль в опасную зону
   for (const c of newShipCoords) {
     if (dangerZone.has(getKey(c.x, c.y))) return false;
   }
@@ -52,7 +46,6 @@ export const checkPlacement = (ships: Ship[], newShip: Ship, ignoreShipId?: stri
 const shuffleFleet = (): Ship[] => {
   const ships: Ship[] = [];
   let attempts = 0;
-  // Попытка расставить корабли случайным образом
   while (ships.length < 10 && attempts < 200) {
     ships.length = 0;
     let success = true;
@@ -120,6 +113,9 @@ export function useBattleshipGame(
              }
           }
         }
+      } else {
+          // Lobby deleted
+          setGameState(null);
       }
     } catch (e) { console.error(e); } finally { setLoading(false); }
   }, [lobbyId, user?.id]);
@@ -127,6 +123,8 @@ export function useBattleshipGame(
   useEffect(() => {
     if (!lobbyId) return;
     fetchLobbyState();
+
+    // Listen for updates AND deletes
     const ch = supabase.channel(`lobby-bs:${lobbyId}`)
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'lobbies', filter: `id=eq.${lobbyId}` },
       (payload) => {
@@ -137,7 +135,13 @@ export function useBattleshipGame(
             return newState;
           });
         }
-      }).subscribe();
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'lobbies', filter: `id=eq.${lobbyId}` },
+      () => {
+          setGameState(null); // Lobby deleted
+      })
+      .subscribe();
+
     return () => { supabase.removeChannel(ch); };
   }, [lobbyId, fetchLobbyState]);
 
@@ -149,8 +153,6 @@ export function useBattleshipGame(
        await supabase.from('lobbies').update({ game_state: newState }).eq('id', stateRef.current.lobbyId);
     }
   };
-
-  // --- ACTIONS ---
 
   const initGame = async () => {
     if (!user || !stateRef.current.gameState) return;
@@ -192,9 +194,10 @@ export function useBattleshipGame(
   const clearShips = () => setMyShips([]);
 
   const placeShipManual = (ship: Ship) => {
-      // Удаляем старую версию корабля (если это перемещение) перед проверкой
-      if (checkPlacement(myShips, ship, ship.id)) {
-          const otherShips = myShips.filter(s => s.id !== ship.id);
+      // Remove old version if moving
+      const otherShips = myShips.filter(s => s.id !== ship.id);
+
+      if (checkPlacement(otherShips, ship)) {
           setMyShips([...otherShips, ship]);
           return true;
       }
@@ -213,6 +216,7 @@ export function useBattleshipGame(
     const playersArr = Object.values(newState.players);
     if (playersArr.length === 2 && playersArr.every(p => p.isReady)) {
       newState.phase = 'playing';
+      // First player (usually host) starts
       newState.turn = playersArr[0].id;
       newState.logs.push({ text: 'Battle started!', time: new Date().toLocaleTimeString() });
     }
@@ -228,6 +232,7 @@ export function useBattleshipGame(
     const myBoard = newState.players[user.id];
     const key = getKey(x, y);
     if (myBoard.shots[key]) return;
+
     let hit = false, killed = false, hitShipIdx = -1;
     for (let i = 0; i < opponentBoard.ships.length; i++) {
       const s = opponentBoard.ships[i];
@@ -260,7 +265,35 @@ export function useBattleshipGame(
   };
 
   const leaveGame = async () => {
-    if (lobbyId) await supabase.from('lobbies').delete().eq('id', lobbyId);
+    if (!lobbyId || !user) return;
+
+    // If waiting, allow delete/leave
+    if (gameState?.status === 'waiting') {
+        // If host leaves, delete lobby. If guest, just remove from players?
+        // For simplicity, lobby is deleted if host leaves.
+        if (roomMeta?.isHost) {
+            await supabase.from('lobbies').delete().eq('id', lobbyId);
+        } else {
+            // Guest leaving: remove self from players
+            if (gameState) {
+                const newState = JSON.parse(JSON.stringify(gameState));
+                delete newState.players[user.id];
+                await updateState(newState);
+            }
+        }
+    } else if (gameState?.status === 'playing') {
+        // If playing, surrender
+        const opponentId = Object.keys(gameState.players).find(id => id !== user.id);
+        const newState = {
+            ...gameState,
+            phase: 'finished',
+            status: 'finished',
+            winner: opponentId, // Opponent wins
+            logs: [...gameState.logs, { text: 'Opponent surrendered', time: new Date().toLocaleTimeString() }]
+        };
+        // Update DB without user's player data if needed, or just set winner
+        await updateState(newState as BattleshipState);
+    }
   };
 
   return {
