@@ -4,9 +4,9 @@ import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import {
-  ArrowLeft, Search, Lock, Play, X, Loader2,
-  ScrollText, KeyRound, SortAsc, SortDesc,
-  Ship, Bomb, Fingerprint, ShieldAlert, Skull, Users
+  ArrowLeft, Search, Users, Lock, Play, X, Loader2,
+  Crown, Filter, ScrollText, KeyRound, Unlock, SortAsc, SortDesc,
+  Ship, Bomb, Fingerprint, ShieldAlert, Skull
 } from 'lucide-react';
 
 type Lang = 'ru' | 'en';
@@ -15,7 +15,11 @@ interface LobbyRow {
   id: string;
   name: string;
   code: string;
-  game_state: any;
+  game_state: {
+      gameType?: string;
+      players: any; // Поддержка и массива (Coup), и объекта (Battleship)
+      settings?: { maxPlayers?: number };
+  };
   status: string;
   is_private: boolean;
   password?: string;
@@ -26,27 +30,61 @@ type SortOption = 'newest' | 'oldest' | 'players-desc' | 'players-asc';
 
 const TRANSLATIONS = {
   ru: {
-    title: 'Игровой Зал',
-    subtitle: 'Выбери свою битву',
+    title: 'Список Игр',
+    subtitle: 'Присоединяйся и побеждай',
+    codePlaceholder: 'КОД',
     join: 'Войти',
-    searchPlaceholder: 'Поиск комнаты...',
+    searchPlaceholder: 'Название или ник...',
+    sort: 'Сортировка',
+    sortNew: 'Новые',
+    sortOld: 'Старые',
+    sortPlayers: 'Игроки',
+    modes: 'Режимы',
+    coup: 'Coup (Переворот)',
+    battleship: 'Морской Бой',
+    mafia: 'Мафия',
     all: 'Все',
-    private: 'Приватная',
-    enterPass: 'Пароль',
-    confirm: 'Вход',
-    empty: 'Нет активных игр',
+    loading: 'Загрузка миров...',
+    empty: 'Ничего не найдено',
+    emptyDesc: 'Попробуйте изменить фильтры',
+    full: 'Full',
+    back: 'Вернуться',
+    private: 'Приватная комната',
+    enterPass: 'Введите пароль...',
+    confirm: 'Подтвердить',
+    errorPass: 'Неверный пароль',
+    errorAuth: 'Авторизуйтесь, чтобы играть',
+    errorFull: 'Комната заполнена',
+    errorNotFound: 'Лобби с таким кодом не найдено',
     create: 'Создать'
   },
   en: {
-    title: 'Game Hall',
-    subtitle: 'Choose your battle',
+    title: 'Game List',
+    subtitle: 'Join and conquer',
+    codePlaceholder: 'CODE',
     join: 'Join',
-    searchPlaceholder: 'Search room...',
+    searchPlaceholder: 'Name or host...',
+    sort: 'Sort By',
+    sortNew: 'Newest',
+    sortOld: 'Oldest',
+    sortPlayers: 'Players',
+    modes: 'Game Modes',
+    coup: 'Coup',
+    battleship: 'Battleship',
+    mafia: 'Mafia',
     all: 'All',
-    private: 'Private',
-    enterPass: 'Password',
-    confirm: 'Enter',
-    empty: 'No active games',
+    loading: 'Loading worlds...',
+    empty: 'No games found',
+    emptyDesc: 'Try changing filters',
+    full: 'Full',
+    back: 'Return',
+    private: 'Private Room',
+    enterPass: 'Enter password...',
+    confirm: 'Confirm',
+    errorPass: 'Invalid password',
+    errorAuth: 'Login required to play',
+    errorFull: 'Room is full',
+    errorNotFound: 'Lobby not found',
     create: 'Create'
   }
 };
@@ -56,62 +94,88 @@ function PlayContent() {
   const [lobbies, setLobbies] = useState<LobbyRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [lang, setLang] = useState<Lang>('ru');
+
+  // --- Фильтры ---
+  const [search, setSearch] = useState('');
+  const [codeQuery, setCodeQuery] = useState('');
   const [filterMode, setFilterMode] = useState<string>('all');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [sortOption, setSortOption] = useState<SortOption>('newest');
+  const [sortBy, setSortBy] = useState<SortOption>('newest');
+
+  // --- Приватные комнаты ---
   const [selectedLobby, setSelectedLobby] = useState<LobbyRow | null>(null);
   const [passwordInput, setPasswordInput] = useState('');
 
-  const t = TRANSLATIONS[lang];
+  // Получаем ID пользователя для подсветки "своих" лобби
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setCurrentUserId(data.user?.id || null));
     const savedLang = localStorage.getItem('dg_lang') as Lang;
     if (savedLang) setLang(savedLang);
-    fetchLobbies();
-
-    const ch = supabase.channel('lobbies-list')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'lobbies' }, fetchLobbies)
-      .subscribe();
-
-    return () => { supabase.removeChannel(ch); };
   }, []);
 
+  const t = TRANSLATIONS[lang];
+
   const fetchLobbies = async () => {
-    const { data } = await supabase.from('lobbies').select('*').order('created_at', { ascending: false });
-    if (data) setLobbies(data);
+    const { data } = await supabase
+      .from('lobbies')
+      .select('*')
+      .neq('status', 'finished')
+      .order('created_at', { ascending: false });
+
+    if (data) setLobbies(data as unknown as LobbyRow[]);
     setLoading(false);
   };
 
-  const handleJoin = async (lobby: LobbyRow, password?: string) => {
-    if (lobby.is_private && lobby.password !== password) {
-        alert('Неверный пароль');
-        return;
-    }
-    const gameType = lobby.game_state?.gameType || 'coup';
-    router.push(`/game/${gameType}?id=${lobby.id}`);
+  useEffect(() => {
+    fetchLobbies();
+    const channel = supabase.channel('public_lobbies')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'lobbies' }, fetchLobbies)
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, []);
+
+  // Универсальный подсчет игроков
+  const getPlayers = (lobby: LobbyRow): any[] => {
+      const p = lobby.game_state.players;
+      if (Array.isArray(p)) return p;
+      if (typeof p === 'object' && p !== null) return Object.values(p);
+      return [];
   };
 
   const getPlayerCount = (lobby: LobbyRow) => {
-      const players = lobby.game_state?.players;
-      if (Array.isArray(players)) return players.length;
-      if (players && typeof players === 'object') return Object.keys(players).length;
+      const p = lobby.game_state.players;
+      if (Array.isArray(p)) return p.length;
+      if (typeof p === 'object' && p !== null) return Object.keys(p).length;
       return 0;
   };
 
-  const filteredLobbies = lobbies
-    .filter(l => {
-       const gameType = l.game_state?.gameType || 'coup';
-       const matchesMode = filterMode === 'all' || gameType === filterMode;
-       const matchesSearch = l.name.toLowerCase().includes(searchQuery.toLowerCase()) || l.code.includes(searchQuery.toUpperCase());
-       return matchesMode && matchesSearch && l.status === 'waiting';
-    })
-    .sort((a, b) => {
-        if (sortOption === 'newest') return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-        if (sortOption === 'oldest') return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-        if (sortOption === 'players-desc') return getPlayerCount(b) - getPlayerCount(a);
-        if (sortOption === 'players-asc') return getPlayerCount(a) - getPlayerCount(b);
-        return 0;
-    });
+  const handleJoin = async (lobby: LobbyRow, pass?: string) => {
+    if (lobby.is_private && lobby.password !== pass) {
+      alert(t.errorPass);
+      return;
+    }
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      alert(t.errorAuth);
+      return;
+    }
+
+    const gameType = lobby.game_state.gameType || 'coup';
+    router.push(`/game/${gameType}?id=${lobby.id}`);
+  };
+
+  const handleCodeJoin = () => {
+      const found = lobbies.find(l => l.code === codeQuery.toUpperCase());
+      if (found) {
+          if (found.is_private) setSelectedLobby(found);
+          else handleJoin(found);
+      } else {
+          alert(t.errorNotFound);
+      }
+  };
 
   const getGameIcon = (type: string) => {
       switch(type) {
@@ -125,127 +189,234 @@ function PlayContent() {
       }
   };
 
+  // --- Логика фильтрации и сортировки ---
+  const processedLobbies = lobbies
+    .filter(l => {
+        const term = search.toLowerCase();
+        const players = getPlayers(l);
+        const matchesRoomName = l.name.toLowerCase().includes(term);
+        const matchesPlayerName = players.some((p: any) => (p.name || '').toLowerCase().includes(term));
+        const matchesSearch = matchesRoomName || matchesPlayerName;
+
+        const gameType = l.game_state.gameType || 'coup';
+        const matchesMode = filterMode === 'all' || gameType === filterMode;
+
+        return matchesSearch && matchesMode;
+    })
+    .sort((a, b) => {
+        if (sortBy === 'newest') return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        if (sortBy === 'oldest') return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        if (sortBy === 'players-desc') return getPlayerCount(b) - getPlayerCount(a);
+        if (sortBy === 'players-asc') return getPlayerCount(a) - getPlayerCount(b);
+        return 0;
+    });
+
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex flex-col font-sans relative overflow-hidden text-[#1A1F26]">
-      <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-50 mix-blend-overlay pointer-events-none" />
+    <div className="min-h-screen bg-[#F8FAFC] text-[#1A1F26] font-sans relative overflow-x-hidden flex flex-col">
+      <div className="fixed inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-50 brightness-100 contrast-150 mix-blend-overlay pointer-events-none z-0"></div>
 
-      <header className="w-full max-w-6xl mx-auto p-6 flex justify-between items-center z-10 relative">
-        <button onClick={() => router.push('/')} className="flex items-center gap-2 group">
-          <div className="p-3 bg-white border border-[#E6E1DC] rounded-xl group-hover:border-[#9e1316]/50 shadow-sm transition-all"><ArrowLeft className="w-5 h-5 text-[#8A9099] group-hover:text-[#9e1316]" /></div>
-        </button>
-        <div className="text-center">
-           <h1 className="text-3xl font-black uppercase tracking-tight text-[#1A1F26]">{t.title}</h1>
-           <p className="text-xs font-bold text-[#8A9099] uppercase tracking-widest mt-1">{t.subtitle}</p>
-        </div>
-        <div className="w-12"></div>
-      </header>
+      {/* Sticky Header */}
+      <header className="sticky top-0 z-30 w-full bg-[#F8FAFC]/90 backdrop-blur-xl border-b border-[#E6E1DC] shadow-sm">
+        <div className="max-w-6xl mx-auto px-4 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <button onClick={() => router.push('/')} className="group p-3 bg-white border border-[#E6E1DC] rounded-2xl hover:border-[#9e1316]/30 hover:shadow-lg hover:shadow-[#9e1316]/5 transition-all">
+                <ArrowLeft className="w-5 h-5 text-[#8A9099] group-hover:text-[#9e1316]" />
+            </button>
+            <div>
+                <h1 className="text-2xl font-black text-[#1A1F26] uppercase tracking-tight leading-none">{t.title}</h1>
+                <p className="text-[10px] font-bold text-[#8A9099] uppercase tracking-wider mt-1 hidden sm:block">{t.subtitle}</p>
+            </div>
+          </div>
 
-      <div className="flex-1 w-full max-w-6xl mx-auto p-4 z-10 flex flex-col gap-6">
-
-        {/* Controls */}
-        <div className="bg-white/80 backdrop-blur-sm p-4 rounded-[32px] border border-[#E6E1DC] shadow-sm flex flex-col md:flex-row gap-4 justify-between items-center">
-            <div className="relative w-full md:w-64 group">
-                <Search className="absolute left-4 top-3.5 w-4 h-4 text-[#8A9099] group-focus-within:text-[#9e1316] transition-colors" />
+          {/* Ввод Кода */}
+          <div className="flex bg-white p-1.5 rounded-xl border border-[#E6E1DC] shadow-sm w-full md:w-auto focus-within:border-[#9e1316] transition-colors">
+             <div className="relative flex-1">
+                <KeyRound className="absolute left-3 top-2.5 w-4 h-4 text-[#E6E1DC]" />
                 <input
                     type="text"
-                    placeholder={t.searchPlaceholder}
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full bg-[#F5F5F0] rounded-2xl pl-10 pr-4 py-3 text-sm font-bold text-[#1A1F26] placeholder:text-[#8A9099]/50 focus:bg-white focus:ring-2 focus:ring-[#9e1316]/10 outline-none transition-all border border-transparent focus:border-[#9e1316]/20"
+                    placeholder={t.codePlaceholder}
+                    value={codeQuery}
+                    onChange={(e) => setCodeQuery(e.target.value.toUpperCase())}
+                    className="w-full md:w-32 h-full pl-9 pr-3 font-mono font-bold text-sm text-[#1A1F26] placeholder:text-[#E6E1DC] focus:outline-none bg-transparent uppercase"
+                    maxLength={6}
                 />
-            </div>
-
-            <div className="flex gap-2 bg-[#F5F5F0] p-1.5 rounded-2xl w-full md:w-auto overflow-x-auto custom-scrollbar">
-                {['all', 'coup', 'battleship'].map(mode => (
-                    <button
-                        key={mode}
-                        onClick={() => setFilterMode(mode)}
-                        className={`px-5 py-2 rounded-xl text-xs font-bold uppercase transition-all whitespace-nowrap ${filterMode === mode ? 'bg-white text-[#1A1F26] shadow-sm' : 'text-[#8A9099] hover:text-[#1A1F26]'}`}
-                    >
-                        {mode === 'all' ? t.all : mode}
-                    </button>
-                ))}
-            </div>
-
-            <button onClick={() => setSortOption(prev => prev === 'newest' ? 'oldest' : 'newest')} className="p-3 bg-[#F5F5F0] rounded-2xl text-[#1A1F26] hover:bg-[#E6E1DC] hover:text-[#9e1316] transition-colors">
-                {sortOption === 'newest' ? <SortDesc className="w-5 h-5" /> : <SortAsc className="w-5 h-5" />}
-            </button>
+             </div>
+             <button
+                onClick={handleCodeJoin}
+                disabled={codeQuery.length < 6}
+                className="bg-[#1A1F26] hover:bg-[#9e1316] text-white px-4 py-2 rounded-lg font-bold text-[10px] uppercase tracking-wider transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+             >
+                {t.join}
+             </button>
+          </div>
         </div>
+      </header>
 
-        {/* Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {loading ? <div className="col-span-full flex justify-center py-20"><Loader2 className="w-10 h-10 animate-spin text-[#9e1316]" /></div> :
-             filteredLobbies.length === 0 ? (
-                <div className="col-span-full flex flex-col items-center justify-center py-20 opacity-50">
-                    <div className="w-20 h-20 bg-[#E6E1DC] rounded-full flex items-center justify-center mb-4">
-                        <Search className="w-8 h-8 text-white" />
+      <div className="max-w-6xl mx-auto w-full relative z-10 px-4 py-8 flex-1">
+        <div className="flex flex-col lg:flex-row gap-8 items-start">
+
+            {/* САЙДБАР ФИЛЬТРОВ */}
+            <aside className="w-full lg:w-72 space-y-6 lg:sticky lg:top-28">
+
+                {/* Поиск */}
+                <div className="bg-white p-4 rounded-[24px] border border-[#E6E1DC] shadow-sm group focus-within:border-[#9e1316]/30 focus-within:shadow-md transition-all">
+                    <div className="flex items-center gap-3">
+                        <Search className="w-5 h-5 text-[#8A9099] group-focus-within:text-[#9e1316]" />
+                        <input
+                            type="text"
+                            placeholder={t.searchPlaceholder}
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="w-full font-bold text-sm text-[#1A1F26] placeholder:text-[#E6E1DC] focus:outline-none"
+                        />
                     </div>
-                    <div className="text-[#8A9099] font-bold uppercase tracking-widest">{t.empty}</div>
-                    <button onClick={() => router.push('/create')} className="mt-4 px-6 py-2 bg-[#1A1F26] text-white rounded-xl font-bold uppercase text-xs tracking-widest hover:bg-[#9e1316] transition-colors">{t.create}</button>
                 </div>
-             ) :
-             filteredLobbies.map(lobby => {
-                 const currentPlayers = getPlayerCount(lobby);
-                 const maxPlayers = lobby.game_state?.settings?.maxPlayers || 6;
-                 const gameType = lobby.game_state?.gameType || 'coup';
 
-                 return (
-                    <div key={lobby.id} className="group bg-white border border-[#E6E1DC] p-6 rounded-[32px] hover:border-[#9e1316] hover:shadow-2xl hover:shadow-[#9e1316]/10 hover:-translate-y-1 transition-all duration-300 relative overflow-hidden flex flex-col justify-between h-full min-h-[220px]">
-                        {lobby.is_private && <div className="absolute top-6 right-6 text-[#9e1316]"><Lock className="w-4 h-4" /></div>}
-
-                        <div>
-                            <div className="flex justify-between items-start mb-4">
-                                <div className="p-3 bg-[#F5F5F0] rounded-2xl text-[#1A1F26] group-hover:bg-[#9e1316] group-hover:text-white transition-colors duration-300">
-                                    {getGameIcon(gameType)}
-                                </div>
-                                <div className="text-[10px] font-black bg-[#F5F5F0] px-3 py-1.5 rounded-lg text-[#8A9099] uppercase tracking-widest group-hover:bg-[#9e1316]/5 group-hover:text-[#9e1316] transition-colors">
-                                    {lobby.code}
-                                </div>
-                            </div>
-
-                            <h3 className="font-black text-xl text-[#1A1F26] mb-1 truncate pr-6 group-hover:text-[#9e1316] transition-colors">{lobby.name}</h3>
-                            <div className="text-xs font-bold text-[#8A9099] uppercase tracking-wider mb-6 flex items-center gap-2">
-                                <span className="bg-[#F5F5F0] px-2 py-0.5 rounded text-[#1A1F26]">{gameType}</span>
-                                <span>{currentPlayers}/{maxPlayers}</span>
-                            </div>
-                        </div>
-
-                        <button
-                            onClick={() => lobby.is_private ? setSelectedLobby(lobby) : handleJoin(lobby)}
-                            className="w-full py-4 bg-[#1A1F26] text-white rounded-2xl font-bold uppercase text-xs tracking-[0.15em] hover:bg-[#9e1316] transition-all shadow-lg active:scale-[0.98] flex items-center justify-center gap-3"
-                        >
-                            {lobby.is_private ? <KeyRound className="w-4 h-4" /> : <Play className="w-4 h-4" />} {t.join}
+                {/* Сортировка */}
+                <div className="bg-white p-6 rounded-[24px] border border-[#E6E1DC] shadow-sm">
+                    <div className="flex items-center gap-2 text-xs font-black text-[#8A9099] uppercase tracking-widest mb-4">
+                        <Filter className="w-4 h-4" /> {t.sort}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                        <button onClick={() => setSortBy('newest')} className={`p-2 rounded-lg text-[10px] font-bold uppercase transition-all ${sortBy === 'newest' ? 'bg-[#1A1F26] text-white' : 'bg-[#F5F5F0] text-[#8A9099]'}`}>{t.sortNew}</button>
+                        <button onClick={() => setSortBy('oldest')} className={`p-2 rounded-lg text-[10px] font-bold uppercase transition-all ${sortBy === 'oldest' ? 'bg-[#1A1F26] text-white' : 'bg-[#F5F5F0] text-[#8A9099]'}`}>{t.sortOld}</button>
+                        <button onClick={() => setSortBy('players-desc')} className={`p-2 rounded-lg text-[10px] font-bold uppercase transition-all flex items-center justify-center gap-1 ${sortBy === 'players-desc' ? 'bg-[#1A1F26] text-white' : 'bg-[#F5F5F0] text-[#8A9099]'}`}>
+                            {t.sortPlayers} <SortDesc className="w-3 h-3" />
+                        </button>
+                        <button onClick={() => setSortBy('players-asc')} className={`p-2 rounded-lg text-[10px] font-bold uppercase transition-all flex items-center justify-center gap-1 ${sortBy === 'players-asc' ? 'bg-[#1A1F26] text-white' : 'bg-[#F5F5F0] text-[#8A9099]'}`}>
+                            {t.sortPlayers} <SortAsc className="w-3 h-3" />
                         </button>
                     </div>
-                 );
-             })}
+                </div>
+
+                {/* Типы игр */}
+                <div className="bg-white p-6 rounded-[24px] border border-[#E6E1DC] shadow-sm space-y-4">
+                    <div className="flex items-center gap-2 text-xs font-black text-[#8A9099] uppercase tracking-widest mb-2">
+                        {t.modes}
+                    </div>
+
+                    {['all', 'coup', 'battleship', 'mafia'].map(mode => (
+                        <label key={mode} className="flex items-center gap-4 cursor-pointer group hover:bg-[#F5F5F0] p-2 rounded-xl transition-colors -mx-2">
+                            <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${filterMode === mode ? 'bg-[#1A1F26] border-[#1A1F26]' : 'border-[#E6E1DC] bg-white'}`}>
+                                {filterMode === mode && <div className="w-2 h-2 bg-white rounded-full" />}
+                            </div>
+                            <span className={`font-bold text-sm transition-colors ${filterMode === mode ? 'text-[#1A1F26]' : 'text-[#8A9099]'}`}>
+                                {t[mode as keyof typeof t] || mode}
+                            </span>
+                            <input type="radio" name="mode" className="hidden" checked={filterMode === mode} onChange={() => setFilterMode(mode)} />
+                        </label>
+                    ))}
+                </div>
+            </aside>
+
+            {/* СПИСОК ЛОББИ */}
+            <div className="flex-1 w-full min-h-[50vh]">
+                {loading ? (
+                    <div className="flex flex-col items-center justify-center py-20 opacity-50">
+                        <Loader2 className="w-10 h-10 animate-spin text-[#9e1316] mb-4" />
+                        <span className="text-xs font-bold uppercase tracking-widest text-[#8A9099]">{t.loading}</span>
+                    </div>
+                ) : processedLobbies.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-20 border-2 border-dashed border-[#E6E1DC] rounded-[32px] bg-white/50">
+                        <div className="w-16 h-16 bg-[#F5F5F0] rounded-full flex items-center justify-center mb-4">
+                            <Search className="w-8 h-8 text-[#E6E1DC]" />
+                        </div>
+                        <div className="text-[#1A1F26] font-black text-lg mb-1">{t.empty}</div>
+                        <div className="text-[#8A9099] text-xs font-bold uppercase tracking-widest">{t.emptyDesc}</div>
+                        <button onClick={() => router.push('/create')} className="mt-6 px-6 py-3 bg-[#1A1F26] text-white rounded-xl font-bold uppercase text-xs tracking-widest hover:bg-[#9e1316] transition-colors shadow-lg">
+                            {t.create}
+                        </button>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 gap-4 pb-20">
+                        {processedLobbies.map(lobby => {
+                            // Ищем хоста
+                            const players = getPlayers(lobby);
+                            const hostPlayer = players.find(p => p.isHost) || players[0];
+                            const maxPlayers = lobby.game_state.settings?.maxPlayers || (lobby.game_state.gameType === 'battleship' ? 2 : 6);
+                            const isFull = players.length >= maxPlayers;
+                            const gameType = lobby.game_state.gameType || 'coup';
+                            const isAlreadyIn = players.some((p: any) => p.id === currentUserId || p.userId === currentUserId);
+
+                            return (
+                                <div key={lobby.id} className={`group bg-white border border-[#E6E1DC] p-5 rounded-[24px] flex flex-col sm:flex-row items-center gap-6 hover:shadow-xl hover:shadow-[#9e1316]/5 hover:border-[#9e1316]/30 transition-all duration-300 relative overflow-hidden ${isAlreadyIn ? 'ring-2 ring-emerald-500/50 border-emerald-500/20' : ''}`}>
+                                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-[#F5F5F0] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+
+                                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 shadow-inner ${gameType === 'coup' ? 'bg-[#9e1316]/10 text-[#9e1316]' : 'bg-[#1A1F26]/10 text-[#1A1F26]'}`}>
+                                        {getGameIcon(gameType)}
+                                    </div>
+
+                                    <div className="flex-1 text-center sm:text-left z-10 min-w-0 w-full">
+                                        <div className="flex items-center justify-center sm:justify-start gap-2 mb-1">
+                                            <h3 className="font-black text-lg text-[#1A1F26] group-hover:text-[#9e1316] transition-colors truncate">{lobby.name}</h3>
+                                            {lobby.is_private ? <Lock className="w-4 h-4 text-[#E6E1DC] shrink-0" /> : <Unlock className="w-4 h-4 text-[#E6E1DC] opacity-50 shrink-0" />}
+                                        </div>
+
+                                        <div className="flex items-center justify-center sm:justify-start gap-3 text-xs font-bold text-[#8A9099] uppercase tracking-wide flex-wrap">
+                                            {hostPlayer && (
+                                                <div className="flex items-center gap-2 bg-[#F5F5F0] px-2 py-1 rounded-lg pr-3 max-w-full">
+                                                    <Crown className="w-3 h-3 text-[#E6E1DC] fill-current shrink-0" />
+                                                    <span className="truncate max-w-[120px] text-xs font-bold text-[#1A1F26]">{hostPlayer.name}</span>
+                                                </div>
+                                            )}
+                                            <span className="flex items-center gap-1 shrink-0">
+                                                <Users className="w-3 h-3" />
+                                                <span className={isFull ? 'text-[#9e1316]' : 'text-emerald-600'}>
+                                                    {players.length}/{maxPlayers}
+                                                </span>
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div className="z-10 shrink-0 w-full sm:w-auto">
+                                        <button
+                                            onClick={() => lobby.is_private ? setSelectedLobby(lobby) : handleJoin(lobby)}
+                                            disabled={isFull && !isAlreadyIn}
+                                            className={`
+                                                px-8 py-4 rounded-xl font-black text-xs uppercase tracking-widest flex items-center gap-2 transition-all w-full justify-center
+                                                ${isAlreadyIn
+                                                    ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-900/10'
+                                                    : isFull
+                                                        ? 'bg-[#F5F5F0] text-[#E6E1DC] cursor-not-allowed'
+                                                        : 'bg-[#1A1F26] text-white hover:bg-[#9e1316] shadow-lg shadow-[#1A1F26]/10 hover:shadow-[#9e1316]/20 active:scale-95'
+                                                }
+                                            `}
+                                        >
+                                            {isAlreadyIn ? t.back : (isFull ? t.full : t.join)} <Play className="w-3 h-3 fill-current" />
+                                        </button>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
+            </div>
         </div>
 
         {/* Modal */}
         {selectedLobby && (
-          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
-            <div className="bg-white p-8 rounded-[40px] w-full max-w-sm relative shadow-2xl animate-in zoom-in-95 duration-300 border border-[#E6E1DC]">
-              <button onClick={() => setSelectedLobby(null)} className="absolute top-6 right-6 p-2 hover:bg-[#F5F5F0] rounded-full transition-colors"><X className="w-6 h-6 text-[#8A9099]" /></button>
+          <div className="fixed inset-0 bg-[#1A1F26]/60 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+            <div className="bg-white p-8 rounded-[32px] w-full max-w-sm relative shadow-2xl border border-[#E6E1DC] animate-in zoom-in-95">
+              <button onClick={() => setSelectedLobby(null)} className="absolute top-6 right-6 text-[#8A9099] hover:text-[#1A1F26] transition-colors"><X className="w-6 h-6" /></button>
 
-              <div className="w-20 h-20 bg-[#9e1316]/5 rounded-full flex items-center justify-center mx-auto mb-6 text-[#9e1316] shadow-inner">
+              <div className="w-16 h-16 bg-[#9e1316]/5 rounded-2xl flex items-center justify-center mx-auto mb-6 text-[#9e1316]">
                   <Lock className="w-8 h-8" />
               </div>
 
-              <h3 className="text-2xl font-black mb-2 uppercase text-center text-[#1A1F26] tracking-tight">{selectedLobby.name}</h3>
-              <p className="text-xs text-center text-[#8A9099] font-bold uppercase tracking-widest mb-8">{t.private}</p>
+              <h3 className="text-xl font-black mb-2 uppercase text-center text-[#1A1F26] tracking-tight">{selectedLobby.name}</h3>
+              <p className="text-xs text-center text-[#8A9099] font-bold uppercase tracking-wider mb-8">{t.private}</p>
 
               <div className="space-y-4">
                   <input
                     type="password"
                     placeholder={t.enterPass}
-                    className="w-full bg-[#F5F5F0] border border-transparent focus:bg-white focus:border-[#9e1316] rounded-2xl py-5 px-6 text-center text-[#1A1F26] font-bold text-lg transition-all outline-none placeholder:text-[#8A9099]/40"
+                    className="w-full bg-[#F5F5F0] border border-transparent focus:bg-white focus:border-[#9e1316] rounded-xl py-4 px-5 text-center text-[#1A1F26] font-bold text-lg transition-all outline-none placeholder:text-[#E6E1DC] placeholder:font-medium"
                     value={passwordInput}
                     onChange={e => setPasswordInput(e.target.value)}
-                    autoFocus
                   />
                   <button
                     onClick={() => handleJoin(selectedLobby, passwordInput)}
-                    className="w-full bg-[#1A1F26] text-white py-5 rounded-2xl font-black uppercase tracking-widest hover:bg-[#9e1316] transition-all shadow-lg active:scale-95"
+                    className="w-full bg-[#1A1F26] text-white py-4 rounded-xl font-bold uppercase tracking-widest hover:bg-[#9e1316] transition-colors shadow-lg active:scale-95"
                   >
                     {t.confirm}
                   </button>
