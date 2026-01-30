@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { GameState, Player, Role } from '@/types/coup';
 import { DICTIONARY } from '@/constants/coup';
 
+// Фишер-Йейтс
 const shuffleDeck = (deck: Role[]): Role[] => {
   const newDeck = [...deck];
   for (let i = newDeck.length - 1; i > 0; i--) {
@@ -26,6 +27,7 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
     stateRef.current = { lobbyId, userId, gameState };
   }, [lobbyId, userId, gameState]);
 
+  // --- SYNC ---
   const fetchLobbyState = useCallback(async () => {
     if (!lobbyId) return;
     try {
@@ -49,9 +51,13 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
       (payload) => {
           if (payload.new.game_state) {
             setGameState(prev => {
+                // ФИКС 1: В лобби всегда принимаем состояние, даже если версии совпадают или меньше.
+                // Это решает проблему, когда новый игрок заходит, но версия стейта не меняется.
                 if (payload.new.status === 'waiting') {
                     return payload.new.game_state;
                 }
+
+                // В игре защищаемся от старых пакетов (Race Conditions)
                 if (prev && (payload.new.game_state.version || 0) < (prev.version || 0)) return prev;
                 return payload.new.game_state;
             });
@@ -73,17 +79,10 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
 
     setGameState(newState);
     if (stateRef.current.lobbyId) {
-       // Also update host_id if it changed in the state logic
-       const hostPlayer = newState.players.find(p => p.isHost);
-       const updatePayload: any = {
+       await supabase.from('lobbies').update({
            game_state: newState,
            status: newState.status
-       };
-       if (hostPlayer) {
-           updatePayload.host_id = hostPlayer.id;
-       }
-
-       await supabase.from('lobbies').update(updatePayload).eq('id', stateRef.current.lobbyId);
+       }).eq('id', stateRef.current.lobbyId);
     }
   };
 
@@ -119,6 +118,7 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
     state.turnDeadline = Date.now() + (60 * 1000);
   };
 
+  // --- ACTIONS ---
   const performAction = async (actionType: string, targetId?: string) => {
     const currentGs = stateRef.current.gameState;
     if (!currentGs || !userId) return;
@@ -174,33 +174,33 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
   const pass = async () => {
     const currentGs = stateRef.current.gameState;
     if (!currentGs || !userId) return;
-    // Don't update state for pass (just local UI hide in component), UNLESS I am the target and blocking phase
-    // We rely on component state 'hasPassed' to hide buttons locally.
-    // However, if I am the target of an action like Steal, my pass means "I allow it".
 
-    // NOTE: This function is only called if user explicitly clicks Pass.
-    // We check if this pass has game logic consequences.
+    // ФИКС 2: Логика паса.
+    // Если игрок нажал "Пасс", мы не обязательно обновляем стейт в базе.
+    // Но если этот игрок - цель действия, то его пас означает "я пропускаю/соглашаюсь".
 
     const newState: GameState = JSON.parse(JSON.stringify(currentGs));
     if (!newState.currentAction) return;
 
     const isTarget = newState.currentAction.target === userId;
-
     let shouldUpdate = false;
 
     if (isTarget) {
         if (newState.phase === 'waiting_for_challenges') {
+             // Цель не оспаривает -> ждем блока
              if (['steal', 'assassinate'].includes(newState.currentAction.type)) {
                  newState.phase = 'waiting_for_blocks';
-                 addLog(newState, 'Система', 'Цель не оспаривает роль. Ждем блок.');
+                 // addLog(newState, 'Система', 'Цель не оспаривает. Ждем блок.'); // Слишком много спама
                  shouldUpdate = true;
              }
         } else if (newState.phase === 'waiting_for_blocks') {
+             // Цель не блокирует -> действие выполняется
              applyActionEffect(newState);
              shouldUpdate = true;
         }
     }
 
+    // Если активный игрок не челенджит блок -> блок успешен
     if (newState.phase === 'waiting_for_block_challenges' && newState.currentAction.player === userId) {
         addLog(newState, 'Система', 'Блок принят. Действие отменено.');
         nextTurn(newState);
