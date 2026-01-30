@@ -73,10 +73,17 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
 
     setGameState(newState);
     if (stateRef.current.lobbyId) {
-       await supabase.from('lobbies').update({
+       // Also update host_id if it changed in the state logic
+       const hostPlayer = newState.players.find(p => p.isHost);
+       const updatePayload: any = {
            game_state: newState,
            status: newState.status
-       }).eq('id', stateRef.current.lobbyId);
+       };
+       if (hostPlayer) {
+           updatePayload.host_id = hostPlayer.id;
+       }
+
+       await supabase.from('lobbies').update(updatePayload).eq('id', stateRef.current.lobbyId);
     }
   };
 
@@ -120,6 +127,11 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
     const player = newState.players.find(p => p.id === userId);
     if (!player) return;
 
+    if (targetId) {
+        const targetPlayer = newState.players.find(p => p.id === targetId);
+        if (!targetPlayer || targetPlayer.isDead) return;
+    }
+
     const targetName = targetId ? newState.players.find(p => p.id === targetId)?.name : '';
 
     if (actionType === 'coup') {
@@ -162,28 +174,42 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
   const pass = async () => {
     const currentGs = stateRef.current.gameState;
     if (!currentGs || !userId) return;
+    // Don't update state for pass (just local UI hide in component), UNLESS I am the target and blocking phase
+    // We rely on component state 'hasPassed' to hide buttons locally.
+    // However, if I am the target of an action like Steal, my pass means "I allow it".
+
+    // NOTE: This function is only called if user explicitly clicks Pass.
+    // We check if this pass has game logic consequences.
+
     const newState: GameState = JSON.parse(JSON.stringify(currentGs));
     if (!newState.currentAction) return;
 
     const isTarget = newState.currentAction.target === userId;
+
+    let shouldUpdate = false;
 
     if (isTarget) {
         if (newState.phase === 'waiting_for_challenges') {
              if (['steal', 'assassinate'].includes(newState.currentAction.type)) {
                  newState.phase = 'waiting_for_blocks';
                  addLog(newState, 'Система', 'Цель не оспаривает роль. Ждем блок.');
+                 shouldUpdate = true;
              }
         } else if (newState.phase === 'waiting_for_blocks') {
              applyActionEffect(newState);
+             shouldUpdate = true;
         }
     }
 
     if (newState.phase === 'waiting_for_block_challenges' && newState.currentAction.player === userId) {
         addLog(newState, 'Система', 'Блок принят. Действие отменено.');
         nextTurn(newState);
+        shouldUpdate = true;
     }
 
-    await updateState(newState);
+    if (shouldUpdate) {
+        await updateState(newState);
+    }
   };
 
   const challenge = async () => {
@@ -444,12 +470,17 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
      if (!lobbyId || !userId || !currentGs) return;
 
      const newState = JSON.parse(JSON.stringify(currentGs));
+     const wasHost = newState.players.find((p: Player) => p.id === userId)?.isHost;
+
+     // Remove player
      newState.players = newState.players.filter((p: Player) => p.id !== userId);
 
      if (newState.players.length === 0) {
+         // No players left -> delete lobby
          await supabase.from('lobbies').delete().eq('id', lobbyId);
      } else {
-         if (roomMeta?.isHost) {
+         // Host migration logic
+         if (wasHost && newState.players.length > 0) {
             newState.players[0].isHost = true;
             addLog(newState, 'Система', `Хост вышел. Новый хост: ${newState.players[0].name}`);
          }
@@ -458,7 +489,7 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
              addLog(newState, 'Система', 'Игрок покинул матч');
              const alivePlayers = newState.players.filter((p: Player) => !p.isDead);
              if (alivePlayers.length === 1) {
-                 newState.status = 'finished'; // !!! ВАЖНО !!!
+                 newState.status = 'finished';
                  newState.winner = alivePlayers[0].name;
                  addLog(newState, '🏆', `Победитель: ${newState.winner}!`);
              }

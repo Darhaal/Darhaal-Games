@@ -136,29 +136,19 @@ export function useBattleshipGame(
         if (newState) {
           setGameState(prev => {
             if (newState.status === 'waiting') return newState;
-            // Optimistic locking check
             if (prev && (newState.version || 0) < (prev.version || 0)) return prev;
             return newState;
           });
 
-          // ФИКС СБРОСА КОРАБЛЕЙ (ULTIMATE FIX):
-          // Если мы в фазе 'setup', мы ВООБЩЕ НЕ СЛУШАЕМ изменения наших кораблей с сервера,
-          // если у нас уже есть локальные корабли.
-          // Сервер в фазе setup может прислать пустой массив (от оппонента).
           if (user?.id && newState.players?.[user.id]?.ships) {
               const serverShips = newState.players[user.id].ships;
 
               if (newState.phase === 'playing') {
-                  // Игра началась - верим серверу на 100%
                   setMyShips(serverShips);
               } else if (newState.phase === 'setup') {
-                  // Фаза расстановки.
-                  // Принимаем с сервера ТОЛЬКО если у нас пусто (мы только зашли или рефрешнули).
                   if (stateRef.current.myShips.length === 0 && serverShips.length > 0) {
                       setMyShips(serverShips);
                   }
-                  // ВО ВСЕХ ОСТАЛЬНЫХ СЛУЧАЯХ В SETUP МЫ ИГНОРИРУЕМ СЕРВЕР.
-                  // Наш локальный стейт - главный.
               }
           }
         }
@@ -178,11 +168,15 @@ export function useBattleshipGame(
     newState.lastActionTime = Date.now();
     setGameState(newState);
     if (stateRef.current.lobbyId) {
-       // ОБНОВЛЯЕМ status ТОЖЕ
-       await supabase.from('lobbies').update({
+       // Also update host_id if needed
+       const hostPlayerId = Object.values(newState.players).find(p => p.isHost)?.id;
+       const updatePayload: any = {
            game_state: newState,
            status: newState.status
-       }).eq('id', stateRef.current.lobbyId);
+       };
+       if (hostPlayerId) updatePayload.host_id = hostPlayerId;
+
+       await supabase.from('lobbies').update(updatePayload).eq('id', stateRef.current.lobbyId);
     }
   };
 
@@ -337,24 +331,26 @@ export function useBattleshipGame(
      const currentGs = stateRef.current.gameState;
      if (!lobbyId || !user || !currentGs) return;
 
-     const isHost = roomMeta?.isHost;
-     if (isHost) {
+     const newState = JSON.parse(JSON.stringify(currentGs));
+     const wasHost = newState.players[user.id]?.isHost;
+
+     delete newState.players[user.id];
+
+     if (Object.keys(newState.players).length === 0) {
          await supabase.from('lobbies').delete().eq('id', lobbyId);
      } else {
-         const newState = JSON.parse(JSON.stringify(currentGs));
-         delete newState.players[user.id];
-
-         if (Object.keys(newState.players).length === 0) {
-             await supabase.from('lobbies').delete().eq('id', lobbyId);
-         } else {
-             // Если игра шла, засчитываем победу оставшемуся и ЗАКРЫВАЕМ лобби
-             if (newState.status === 'playing' || newState.phase === 'setup') {
-                 newState.phase = 'finished';
-                 newState.status = 'finished'; // !!! ВАЖНО !!!
-                 newState.winner = Object.keys(newState.players)[0];
-             }
-             await updateState(newState);
+         // Migration logic
+         if (wasHost) {
+             const nextHostId = Object.keys(newState.players)[0];
+             if (nextHostId) newState.players[nextHostId].isHost = true;
          }
+
+         if (newState.status === 'playing' || newState.phase === 'setup') {
+             newState.phase = 'finished';
+             newState.status = 'finished';
+             newState.winner = Object.keys(newState.players)[0];
+         }
+         await updateState(newState);
      }
   };
 

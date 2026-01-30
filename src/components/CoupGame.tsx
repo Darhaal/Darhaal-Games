@@ -31,7 +31,9 @@ export default function CoupGame({
   const [activeModal, setActiveModal] = useState<'rules' | 'guide' | null>(null);
   const [selectedExchangeIndices, setSelectedExchangeIndices] = useState<number[]>([]);
   const [timeLeft, setTimeLeft] = useState(60);
-  const [hasPassed, setHasPassed] = useState(false); // Local UI state for pass
+
+  // Removed local hasPassed state to fix "jumping" UI issue.
+  // We rely on the game logic now. If you pass, you wait for server update.
 
   const players = gameState.players || [];
   const me = players.find(p => p.id === userId);
@@ -55,11 +57,6 @@ export default function CoupGame({
   const isReactionPhase = phase === 'waiting_for_challenges' || phase === 'waiting_for_blocks' || phase === 'waiting_for_block_challenges';
   const isBlocker = gameState.currentAction?.blockedBy === userId;
 
-  // Reset pass state when action changes
-  useEffect(() => {
-      setHasPassed(false);
-  }, [gameState.currentAction, phase]);
-
   useEffect(() => {
       if (gameState.status !== 'playing') return;
       const interval = setInterval(() => {
@@ -75,23 +72,22 @@ export default function CoupGame({
       return () => clearInterval(interval);
   }, [gameState.turnDeadline, gameState.status, phase, isMyTurn, isLosing, isExchanging, skipTurn]);
 
-  // FIX 1: Simplified Button Logic. If you are not the active actor/blocker in a reaction phase, you can pass.
-  // This ensures the button appears even if specific role logic is complex.
-  const isInteractivePhase =
-      (phase === 'waiting_for_challenges') ||
-      (phase === 'waiting_for_blocks') ||
-      (phase === 'waiting_for_block_challenges');
+  // Can I challenge? (Not actor, not blocker, and it's a phase where challenges are allowed)
+  const showChallengeBtn = isReactionPhase && !isActor && !isBlocker && (
+      phase === 'waiting_for_challenges' ||
+      phase === 'waiting_for_block_challenges' ||
+      (phase === 'waiting_for_blocks' && !isForeignAid) // Foreign aid blocks can be challenged, but foreign aid itself can't be challenged (Duke blocks it)
+  );
 
-  // Can I challenge? (Not actor, not foreign aid if strictly blocking phase, generally anyone can challenge bluff)
-  const showChallengeBtn = !hasPassed && isInteractivePhase && !isActor && !isBlocker;
-
-  // Can I block? (Not actor, I am target OR it's foreign aid, and no one blocked yet)
-  const showBlockBtn = !hasPassed && !isActor && canBlock && !isBlocker &&
+  // Can I block? (Not actor, not blocker yet, and I am target OR it's foreign aid)
+  const showBlockBtn = !isActor && !isBlocker && canBlock &&
       (isForeignAid || isActionWithBlockAndChallenge) &&
       (phase === 'waiting_for_challenges' || phase === 'waiting_for_blocks');
 
-  // Can I pass? (If I'm not the one who must act/respond to my own action)
-  const showPassBtn = !hasPassed && isInteractivePhase && !isActor && !isBlocker;
+  // Can I pass? (Anyone can pass in reaction phase except the one who must act)
+  // Logic: "Pass" means "I do not object".
+  // If I am the target, my pass might progress the game. If bystander, it just does nothing (effectively waiting).
+  const showPassBtn = isReactionPhase && !isActor && !isBlocker;
 
   const handleAction = (action: string) => {
     if (['coup', 'steal', 'assassinate'].includes(action)) setTargetMode(action as any);
@@ -113,11 +109,6 @@ export default function CoupGame({
               setSelectedExchangeIndices(prev => [...prev, index]);
           }
       }
-  };
-
-  const handlePass = () => {
-      setHasPassed(true);
-      pass();
   };
 
   const shouldShowReactionPanel =
@@ -195,7 +186,7 @@ export default function CoupGame({
                     <div className="flex gap-2 pointer-events-auto">
                         {showChallengeBtn && <button onClick={challenge} className="bg-red-100 text-red-700 px-4 py-2 rounded-lg font-bold text-xs hover:bg-red-200 flex gap-2"><AlertOctagon className="w-4 h-4"/> {t.challenge}</button>}
                         {showBlockBtn && <button onClick={block} className="bg-purple-100 text-purple-700 px-4 py-2 rounded-lg font-bold text-xs hover:bg-purple-200 flex gap-2"><Shield className="w-4 h-4"/> {t.block}</button>}
-                        {showPassBtn && <button onClick={handlePass} className="bg-emerald-100 text-emerald-700 px-4 py-2 rounded-lg font-bold text-xs hover:bg-emerald-200 flex gap-2"><ThumbsUp className="w-4 h-4"/> {t.pass}</button>}
+                        {showPassBtn && <button onClick={pass} className="bg-emerald-100 text-emerald-700 px-4 py-2 rounded-lg font-bold text-xs hover:bg-emerald-200 flex gap-2"><ThumbsUp className="w-4 h-4"/> {t.pass}</button>}
                     </div>
                 </div>
             </div>
