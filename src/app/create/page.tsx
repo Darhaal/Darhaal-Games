@@ -1,4 +1,3 @@
-// app/create/page.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -217,7 +216,8 @@ export default function CreatePage() {
             // Timer is undefined during setup
             turnDeadline: undefined,
             gameType: 'coup',
-            settings: { maxPlayers: maxPlayers }
+            settings: { maxPlayers: maxPlayers },
+            passedPlayers: [] // Initialize passedPlayers
           };
           initialState = coupState;
 
