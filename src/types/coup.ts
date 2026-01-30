@@ -51,16 +51,18 @@ export interface GameState {
   status: 'waiting' | 'playing' | 'finished';
   winner?: string;
 
-  // Added missing phase property
   phase: GamePhase;
 
   currentAction: PendingAction | null;
   pendingPlayerId?: string;
   exchangeBuffer?: Role[];
 
+  // Track who passed to allow non-targeted actions to proceed when everyone passes
+  passedPlayers: string[];
+
   lastActionTime: number;
-  turnDeadline?: number; // Server-authoritative timer
-  version: number; // Optimistic locking
+  turnDeadline?: number;
+  version: number;
 
   gameType?: 'coup';
   settings?: {

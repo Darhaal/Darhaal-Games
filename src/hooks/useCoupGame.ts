@@ -111,69 +111,78 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
     state.currentAction = null;
     state.pendingPlayerId = undefined;
     state.exchangeBuffer = undefined;
+    state.passedPlayers = []; // Сброс списка пасовавших
     state.turnDeadline = Date.now() + (60 * 1000);
   };
 
   // --- LOGIC: TIMEOUT / SKIP / KICK ---
   const skipTurn = async () => {
       const currentGs = stateRef.current.gameState;
-      const uid = stateRef.current.userId;
       if (!currentGs) return;
       const newState: GameState = JSON.parse(JSON.stringify(currentGs));
 
-      // 1. Если фаза выбора действия - просто пропускаем ход
-      if (newState.phase === 'choosing_action') {
-          addLog(newState, 'Система', 'Время вышло! Ход пропущен.');
-          nextTurn(newState);
-      }
-      // 2. Если фаза потери влияния - заставляем сбросить первую живую карту
-      else if (newState.phase === 'losing_influence') {
-          const victim = newState.players.find(p => p.id === newState.pendingPlayerId);
-          if (victim) {
-              const cardIdx = victim.cards.findIndex(c => !c.revealed);
-              if (cardIdx !== -1) {
-                  victim.cards[cardIdx].revealed = true;
-                  addLog(newState, 'Система', `Время вышло! ${victim.name} теряет карту.`);
+      // 1. ЛОГИКА КИКА (если таймер истек на выборе действия, потере влияния или обмене)
+      if (['choosing_action', 'losing_influence', 'resolving_exchange'].includes(newState.phase)) {
+          let culpritId = newState.players[newState.turnIndex].id;
+          if (newState.phase === 'losing_influence' || newState.phase === 'resolving_exchange') {
+             if (newState.pendingPlayerId) culpritId = newState.pendingPlayerId;
+          }
 
-                  if (victim.cards.every(c => c.revealed)) {
-                      victim.isDead = true;
-                      addLog(newState, victim.name, 'Выбывает (AFK) ☠️');
-                  }
-              }
+          const culprit = newState.players.find(p => p.id === culpritId);
+          if (culprit) {
+             addLog(newState, 'Система', `Игрок ${culprit.name} кикнут за AFK.`);
+
+             // Удаляем игрока из списка
+             const culpritIdx = newState.players.findIndex(p => p.id === culpritId);
+             newState.players = newState.players.filter(p => p.id !== culpritId);
+
+             // Корректируем turnIndex, если удаленный был до текущего
+             if (culpritIdx < newState.turnIndex) {
+                 newState.turnIndex--;
+             }
+
+             // Если индекс вышел за пределы (удален последний игрок)
+             if (newState.turnIndex >= newState.players.length) {
+                 newState.turnIndex = 0;
+             }
+
+             // Проверка победы
+             const alive = newState.players.filter(p => !p.isDead);
+             if (alive.length <= 1) {
+                 newState.status = 'finished';
+                 newState.winner = alive[0]?.name || 'Unknown';
+                 addLog(newState, '🏆', `Победитель: ${newState.winner}!`);
+             } else {
+                 // Принудительно передаем ход СЛЕДУЮЩЕМУ (который теперь на turnIndex)
+                 // Важно: мы не вызываем nextTurn(), так как индекс уже указывает на "следующего" после удаления
+                 // Но нужно пропустить мертвых, если они остались
+                 while (newState.players[newState.turnIndex].isDead) {
+                    newState.turnIndex = (newState.turnIndex + 1) % newState.players.length;
+                 }
+
+                 newState.phase = 'choosing_action';
+                 newState.currentAction = null;
+                 newState.pendingPlayerId = undefined;
+                 newState.exchangeBuffer = undefined;
+                 newState.passedPlayers = [];
+                 newState.turnDeadline = Date.now() + (60 * 1000);
+             }
           }
-          // После потери карты пробуем завершить действие/ход
-          nextTurn(newState);
       }
-      // 3. Если обмен карт - просто отменяем обмен
-      else if (newState.phase === 'resolving_exchange') {
-          const player = newState.players.find(p => p.id === newState.pendingPlayerId);
-          if (player && newState.exchangeBuffer) {
-              // Возвращаем лишние карты в колоду
-              const drawn = newState.exchangeBuffer.slice(-2); // Предполагаем последние 2 были взяты
-              newState.deck.push(...drawn);
-              newState.exchangeBuffer = undefined;
-              addLog(newState, 'Система', 'Время вышло! Обмен отменен.');
-              nextTurn(newState);
-          }
-      }
-      // 4. Если фаза реакции (блок/челлендж) - считаем это за ПАС
+      // 2. АВТО-ПАС (если таймер истек на реакции)
       else if (['waiting_for_challenges', 'waiting_for_blocks', 'waiting_for_block_challenges'].includes(newState.phase)) {
-          // Вызываем логику паса (автоматически)
-          // Если это блокировка (waiting_for_blocks), и время вышло -> действие проходит
+          // Считаем, что все спасовали
           if (newState.phase === 'waiting_for_blocks') {
               applyActionEffect(newState);
-          }
-          // Если waiting_for_challenges, и время вышло -> переходим к блоку (для steal/assassin) или действию
-          else if (newState.phase === 'waiting_for_challenges') {
+          } else if (newState.phase === 'waiting_for_challenges') {
               if (['steal', 'assassinate'].includes(newState.currentAction?.type || '')) {
                   newState.phase = 'waiting_for_blocks';
+                  newState.passedPlayers = [];
                   newState.turnDeadline = Date.now() + (30 * 1000);
               } else {
                   applyActionEffect(newState);
               }
-          }
-          // Если waiting_for_block_challenges (кто-то заблокировал, остальные думают, верить ли) -> блок успешен
-          else if (newState.phase === 'waiting_for_block_challenges') {
+          } else if (newState.phase === 'waiting_for_block_challenges') {
               addLog(newState, 'Система', 'Время вышло. Блок принят.');
               nextTurn(newState);
           }
@@ -208,6 +217,7 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
 
     const action = { type: actionType, player: userId, target: targetId };
     newState.currentAction = action;
+    newState.passedPlayers = []; // Сброс пасов при новом действии
 
     switch (actionType) {
         case 'income': addLog(newState, player.name, 'Взял Доход (+1)'); break;
@@ -241,22 +251,38 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
     const newState: GameState = JSON.parse(JSON.stringify(currentGs));
     if (!newState.currentAction) return;
 
+    // 1. Добавляем игрока в список пасовавших
+    if (!newState.passedPlayers) newState.passedPlayers = [];
+    if (!newState.passedPlayers.includes(userId)) {
+        newState.passedPlayers.push(userId);
+    }
+
+    // 2. Проверяем, спасовали ли все остальные активные игроки
+    const activePlayersCount = newState.players.filter(p => !p.isDead).length;
+    // Активный игрок (кто ходит) не пасует на свое действие (кроме блока).
+    // Если все остальные нажали пас, действие проходит.
+    const allOthersPassed = newState.passedPlayers.length >= (activePlayersCount - 1);
+
     const isTarget = newState.currentAction.target === userId;
 
-    if (isTarget) {
+    // Если Я цель и я пас -> действие проходит (ускорение)
+    // ИЛИ если ВСЕ остальные спасовали -> действие проходит
+    if (isTarget || allOthersPassed) {
         if (newState.phase === 'waiting_for_challenges') {
              if (['steal', 'assassinate'].includes(newState.currentAction.type)) {
                  newState.phase = 'waiting_for_blocks';
-                 addLog(newState, 'Система', 'Цель не оспаривает роль. Ждем блок.');
+                 newState.passedPlayers = []; // Сброс для фазы блоков
+                 newState.turnDeadline = Date.now() + (30 * 1000);
+             } else {
+                 applyActionEffect(newState);
              }
         } else if (newState.phase === 'waiting_for_blocks') {
              applyActionEffect(newState);
+        } else if (newState.phase === 'waiting_for_block_challenges') {
+             // Если никто не оспорил блок
+             addLog(newState, 'Система', 'Блок принят. Действие отменено.');
+             nextTurn(newState);
         }
-    }
-
-    if (newState.phase === 'waiting_for_block_challenges' && newState.currentAction.player === userId) {
-        addLog(newState, 'Система', 'Блок принят. Действие отменено.');
-        nextTurn(newState);
     }
 
     await updateState(newState);
@@ -317,6 +343,7 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
 
     newState.currentAction.blockedBy = userId;
     newState.phase = 'waiting_for_block_challenges';
+    newState.passedPlayers = []; // Сброс пасов для челленджа блока
     newState.turnDeadline = Date.now() + (30 * 1000);
 
     const blockerName = newState.players.find(p => p.id === userId)?.name || '?';
@@ -499,7 +526,8 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
     const newState: GameState = {
       ...currentGs, status: 'playing', players: newPlayers, deck: shuffled, turnIndex: 0,
       phase: 'choosing_action', currentAction: null, logs: [], winner: undefined,
-      lastActionTime: Date.now(), version: 1, turnDeadline: Date.now() + (60 * 1000)
+      lastActionTime: Date.now(), version: 1, turnDeadline: Date.now() + (60 * 1000),
+      passedPlayers: []
     };
     addLog(newState, 'Система', 'Игра началась! Всем удачи.');
     await updateState(newState);
@@ -507,7 +535,7 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
 
   const leaveGame = async () => {
      const currentGs = stateRef.current.gameState;
-     if (!lobbyId || !userId || !currentGs) return; // FIX: user -> userId
+     if (!lobbyId || !userId || !currentGs) return;
 
      const newState = JSON.parse(JSON.stringify(currentGs));
      const wasHost = newState.players.find((p: Player) => p.id === userId)?.isHost;
