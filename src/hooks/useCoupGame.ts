@@ -73,7 +73,11 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
 
     setGameState(newState);
     if (stateRef.current.lobbyId) {
-       await supabase.from('lobbies').update({ game_state: newState }).eq('id', stateRef.current.lobbyId);
+       // ВАЖНО: Обновляем и 'status' колонку в таблице, чтобы лобби помечалось как playing/finished в списке
+       await supabase.from('lobbies').update({
+           game_state: newState,
+           status: newState.status
+       }).eq('id', stateRef.current.lobbyId);
     }
   };
 
@@ -116,6 +120,11 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
     const newState: GameState = JSON.parse(JSON.stringify(currentGs));
     const player = newState.players.find(p => p.id === userId);
     if (!player) return;
+
+    if (targetId) {
+        const targetPlayer = newState.players.find(p => p.id === targetId);
+        if (!targetPlayer || targetPlayer.isDead) return;
+    }
 
     const targetName = targetId ? newState.players.find(p => p.id === targetId)?.name : '';
 
@@ -440,24 +449,29 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
      const currentGs = stateRef.current.gameState;
      if (!lobbyId || !userId || !currentGs) return;
 
-     const isHost = roomMeta?.isHost;
-     if (isHost) {
+     const newState = JSON.parse(JSON.stringify(currentGs));
+     newState.players = newState.players.filter((p: Player) => p.id !== userId);
+
+     if (newState.players.length === 0) {
          await supabase.from('lobbies').delete().eq('id', lobbyId);
      } else {
-         const newState = JSON.parse(JSON.stringify(currentGs));
-         newState.players = newState.players.filter((p: Player) => p.id !== userId);
-
-         if (newState.players.length === 0) {
-             await supabase.from('lobbies').delete().eq('id', lobbyId);
-         } else {
-             if (roomMeta?.isHost) {
-                newState.players[0].isHost = true;
-                addLog(newState, 'Система', `Хост вышел. Новый хост: ${newState.players[0].name}`);
-             }
-
-             if (newState.status === 'playing') addLog(newState, 'Система', 'Игрок покинул матч');
-             await updateState(newState);
+         if (roomMeta?.isHost) {
+            newState.players[0].isHost = true;
+            addLog(newState, 'Система', `Хост вышел. Новый хост: ${newState.players[0].name}`);
          }
+
+         if (newState.status === 'playing') {
+             addLog(newState, 'Система', 'Игрок покинул матч');
+
+             // Check if only one player remains alive after someone leaves
+             const alivePlayers = newState.players.filter((p: Player) => !p.isDead);
+             if (alivePlayers.length === 1) {
+                 newState.status = 'finished';
+                 newState.winner = alivePlayers[0].name;
+                 addLog(newState, '🏆', `Победитель: ${newState.winner}!`);
+             }
+         }
+         await updateState(newState);
      }
   };
 
