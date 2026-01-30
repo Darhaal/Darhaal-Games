@@ -507,7 +507,7 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
 
   const leaveGame = async () => {
      const currentGs = stateRef.current.gameState;
-     if (!lobbyId || !user || !currentGs) return;
+     if (!lobbyId || !userId || !currentGs) return; // FIX: user -> userId
 
      const newState = JSON.parse(JSON.stringify(currentGs));
      const wasHost = newState.players.find((p: Player) => p.id === userId)?.isHost;
