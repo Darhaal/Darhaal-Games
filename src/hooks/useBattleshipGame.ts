@@ -29,6 +29,7 @@ export const checkPlacement = (ships: Ship[], newShip: Ship, ignoreShipId?: stri
 
   otherShips.forEach(s => {
     getShipCoords(s).forEach(coord => {
+      // 3x3 зона вокруг каждой клетки корабля
       for (let dx = -1; dx <= 1; dx++) {
         for (let dy = -1; dy <= 1; dy++) {
           dangerZone.add(getKey(coord.x + dx, coord.y + dy));
@@ -108,9 +109,10 @@ export function useBattleshipGame(
         setRoomMeta({ name: data.name, code: data.code, isHost: data.host_id === user?.id });
         if (data.game_state) {
            setGameState(data.game_state);
-           // Восстанавливаем корабли только если локально пусто (реконнект)
+           // Restore local ships ONLY if we have none (initial load)
            if (user?.id && data.game_state.players) {
               const p = data.game_state.players[user.id];
+              // Restore ships if we have none locally AND game has started OR we have them saved
               if (p?.ships && p.ships.length > 0 && stateRef.current.myShips.length === 0) {
                   setMyShips(p.ships);
               }
@@ -134,25 +136,29 @@ export function useBattleshipGame(
         if (newState) {
           setGameState(prev => {
             if (newState.status === 'waiting') return newState;
+            // Optimistic locking check
             if (prev && (newState.version || 0) < (prev.version || 0)) return prev;
             return newState;
           });
 
-          // ФИКС СБРОСА КОРАБЛЕЙ:
-          // Если сервер присылает обновление (например, противник нажал "Готов"),
-          // в этом обновлении массив ships вашего игрока может быть пустым (т.к. противник его не знает).
-          // Мы обновляем setMyShips из сервера ТОЛЬКО если:
-          // 1. Игра уже идет (playing) - значит это реконнект или синхронизация.
-          // 2. Либо мы еще ничего не расставили (setup), а на сервере уже есть данные.
-          // В остальных случаях (фаза setup, у нас есть корабли) мы ИГНОРИРУЕМ данные о кораблях с сервера,
-          // чтобы не затереть нашу текущую расстановку.
+          // ФИКС СБРОСА КОРАБЛЕЙ (ULTIMATE FIX):
+          // Если мы в фазе 'setup', мы ВООБЩЕ НЕ СЛУШАЕМ изменения наших кораблей с сервера,
+          // если у нас уже есть локальные корабли.
+          // Сервер в фазе setup может прислать пустой массив (от оппонента).
           if (user?.id && newState.players?.[user.id]?.ships) {
               const serverShips = newState.players[user.id].ships;
 
               if (newState.phase === 'playing') {
+                  // Игра началась - верим серверу на 100%
                   setMyShips(serverShips);
-              } else if (newState.phase === 'setup' && stateRef.current.myShips.length === 0 && serverShips.length > 0) {
-                  setMyShips(serverShips);
+              } else if (newState.phase === 'setup') {
+                  // Фаза расстановки.
+                  // Принимаем с сервера ТОЛЬКО если у нас пусто (мы только зашли или рефрешнули).
+                  if (stateRef.current.myShips.length === 0 && serverShips.length > 0) {
+                      setMyShips(serverShips);
+                  }
+                  // ВО ВСЕХ ОСТАЛЬНЫХ СЛУЧАЯХ В SETUP МЫ ИГНОРИРУЕМ СЕРВЕР.
+                  // Наш локальный стейт - главный.
               }
           }
         }
@@ -172,7 +178,11 @@ export function useBattleshipGame(
     newState.lastActionTime = Date.now();
     setGameState(newState);
     if (stateRef.current.lobbyId) {
-       await supabase.from('lobbies').update({ game_state: newState }).eq('id', stateRef.current.lobbyId);
+       // ОБНОВЛЯЕМ status ТОЖЕ
+       await supabase.from('lobbies').update({
+           game_state: newState,
+           status: newState.status
+       }).eq('id', stateRef.current.lobbyId);
     }
   };
 
@@ -190,7 +200,7 @@ export function useBattleshipGame(
     if (!existing || !existing.name) {
       // БЛОКИРОВКА ВХОДА В ИДУЩУЮ ИГРУ
       if (currentState.status === 'playing') {
-          return; // Не добавляем игрока, если игра уже идет
+          return;
       }
 
       const newState = JSON.parse(JSON.stringify(currentState)) as BattleshipState;
@@ -250,6 +260,7 @@ export function useBattleshipGame(
     const playersArr = Object.values(newState.players);
     if (playersArr.length === 2 && playersArr.every(p => p.isReady)) {
       newState.phase = 'playing';
+      newState.status = 'playing'; // Явно ставим статус
       newState.turn = playersArr[0].id;
       newState.turnDeadline = Date.now() + (60 * 1000);
     }
@@ -301,6 +312,7 @@ export function useBattleshipGame(
 
     if (opponentBoard.aliveShipsCount === 0) {
       newState.phase = 'finished';
+      newState.status = 'finished'; // Явно ставим статус
       newState.winner = user.id;
     }
     await updateState(newState);
@@ -327,7 +339,6 @@ export function useBattleshipGame(
 
      const isHost = roomMeta?.isHost;
      if (isHost) {
-         // Хост удаляет лобби целиком
          await supabase.from('lobbies').delete().eq('id', lobbyId);
      } else {
          const newState = JSON.parse(JSON.stringify(currentGs));
@@ -336,9 +347,10 @@ export function useBattleshipGame(
          if (Object.keys(newState.players).length === 0) {
              await supabase.from('lobbies').delete().eq('id', lobbyId);
          } else {
-             // Если игра шла, засчитываем победу оставшемуся
+             // Если игра шла, засчитываем победу оставшемуся и ЗАКРЫВАЕМ лобби
              if (newState.status === 'playing' || newState.phase === 'setup') {
                  newState.phase = 'finished';
+                 newState.status = 'finished'; // !!! ВАЖНО !!!
                  newState.winner = Object.keys(newState.players)[0];
              }
              await updateState(newState);

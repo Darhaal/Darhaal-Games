@@ -73,7 +73,6 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
 
     setGameState(newState);
     if (stateRef.current.lobbyId) {
-       // ВАЖНО: Обновляем и 'status' колонку в таблице, чтобы лобби помечалось как playing/finished в списке
        await supabase.from('lobbies').update({
            game_state: newState,
            status: newState.status
@@ -120,11 +119,6 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
     const newState: GameState = JSON.parse(JSON.stringify(currentGs));
     const player = newState.players.find(p => p.id === userId);
     if (!player) return;
-
-    if (targetId) {
-        const targetPlayer = newState.players.find(p => p.id === targetId);
-        if (!targetPlayer || targetPlayer.isDead) return;
-    }
 
     const targetName = targetId ? newState.players.find(p => p.id === targetId)?.name : '';
 
@@ -462,11 +456,9 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
 
          if (newState.status === 'playing') {
              addLog(newState, 'Система', 'Игрок покинул матч');
-
-             // Check if only one player remains alive after someone leaves
              const alivePlayers = newState.players.filter((p: Player) => !p.isDead);
              if (alivePlayers.length === 1) {
-                 newState.status = 'finished';
+                 newState.status = 'finished'; // !!! ВАЖНО !!!
                  newState.winner = alivePlayers[0].name;
                  addLog(newState, '🏆', `Победитель: ${newState.winner}!`);
              }

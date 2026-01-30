@@ -28,7 +28,6 @@ interface LobbyRow {
 
 type SortOption = 'newest' | 'oldest' | 'players-desc' | 'players-asc';
 
-// Translation Constants
 const TRANSLATIONS = {
   ru: {
     title: 'Игровой Зал',
@@ -100,13 +99,11 @@ function PlayContent() {
   const [loading, setLoading] = useState(true);
   const [lang, setLang] = useState<Lang>('ru');
 
-  // Filters State
   const [search, setSearch] = useState('');
   const [codeQuery, setCodeQuery] = useState('');
   const [filterMode, setFilterMode] = useState<string>('all');
   const [sortBy, setSortBy] = useState<SortOption>('newest');
 
-  // Interaction State
   const [selectedLobby, setSelectedLobby] = useState<LobbyRow | null>(null);
   const [passwordInput, setPasswordInput] = useState('');
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -117,7 +114,6 @@ function PlayContent() {
     if (savedLang) setLang(savedLang);
     fetchLobbies();
 
-    // Subscribe to realtime updates for the lobby list
     const ch = supabase.channel('public_lobbies')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'lobbies' }, fetchLobbies)
       .subscribe();
@@ -127,7 +123,6 @@ function PlayContent() {
 
   const t = TRANSLATIONS[lang];
 
-  // Fetch only active games (not finished)
   const fetchLobbies = async () => {
     const { data } = await supabase
       .from('lobbies')
@@ -139,7 +134,6 @@ function PlayContent() {
     setLoading(false);
   };
 
-  // Helper to extract player array regardless of structure
   const getPlayers = (lobby: LobbyRow): any[] => {
       const p = lobby.game_state.players;
       if (Array.isArray(p)) return p;
@@ -166,7 +160,6 @@ function PlayContent() {
       return;
     }
 
-    // Race Condition Check: Fetch fresh lobby state before joining
     const { data: freshLobby, error: fetchError } = await supabase
         .from('lobbies')
         .select('game_state, status')
@@ -179,10 +172,15 @@ function PlayContent() {
         return;
     }
 
+    if (freshLobby.status === 'finished') {
+        alert("Игра уже закончилась");
+        fetchLobbies();
+        return;
+    }
+
     const gameType = lobby.game_state.gameType || 'coup';
     const players = getPlayers({ ...lobby, game_state: freshLobby.game_state });
 
-    // Check if I am already in the game
     if (players.some((p: any) => p.id === user.id || p.userId === user.id)) {
       router.push(`/game/${gameType}?id=${lobby.id}`);
       return;
@@ -195,14 +193,11 @@ function PlayContent() {
       return;
     }
 
-    // LOCKING: Do not allow joining active games
     if (freshLobby.status === 'playing') {
-        alert(t.started); // "Game Started"
+        alert(t.started);
         return;
     }
 
-    // --- JOIN LOGIC FOR COUP ---
-    // (Battleship logic is handled inside the game component on init)
     if (gameType === 'coup') {
         const userName = user.user_metadata?.username || user.user_metadata?.full_name || 'Player';
         const userAvatar = user.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`;
@@ -269,9 +264,10 @@ function PlayContent() {
         const gameType = l.game_state.gameType || 'coup';
         const matchesMode = filterMode === 'all' || gameType === filterMode;
 
-        // Hide playing games unless I'm participating
         const isAlreadyIn = players.some((p: any) => p.id === currentUserId || p.userId === currentUserId);
-        if (l.status === 'playing' && !isAlreadyIn) return false;
+
+        // Hide playing OR finished games unless participating
+        if ((l.status === 'playing' || l.status === 'finished') && !isAlreadyIn) return false;
 
         return matchesSearch && matchesMode;
     })
@@ -283,7 +279,6 @@ function PlayContent() {
         return 0;
     });
 
-  // Filter List with "Coming Soon" badges
   const MODES_LIST = [
       { id: 'all', label: t.all },
       { id: 'coup', label: t.coup },
@@ -296,7 +291,6 @@ function PlayContent() {
     <div className="min-h-screen bg-[#F8FAFC] text-[#1A1F26] font-sans relative overflow-x-hidden flex flex-col">
       <div className="fixed inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-50 brightness-100 contrast-150 mix-blend-overlay pointer-events-none z-0"></div>
 
-      {/* Header */}
       <header className="sticky top-0 z-30 w-full bg-[#F8FAFC]/90 backdrop-blur-xl border-b border-[#E6E1DC] shadow-sm">
         <div className="max-w-6xl mx-auto px-4 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
@@ -334,7 +328,6 @@ function PlayContent() {
 
       <div className="max-w-6xl mx-auto w-full relative z-10 px-4 py-8 flex-1">
         <div className="flex flex-col lg:flex-row gap-8 items-start">
-            {/* Sidebar Filters */}
             <aside className="w-full lg:w-72 space-y-6 lg:sticky lg:top-28">
                 <div className="bg-white p-4 rounded-[24px] border border-[#E6E1DC] shadow-sm group focus-within:border-[#9e1316]/30 focus-within:shadow-md transition-all">
                     <div className="flex items-center gap-3">
@@ -384,7 +377,6 @@ function PlayContent() {
                 </div>
             </aside>
 
-            {/* Game Grid */}
             <div className="flex-1 w-full min-h-[50vh]">
                 {loading ? (
                     <div className="flex flex-col items-center justify-center py-20 opacity-50">
