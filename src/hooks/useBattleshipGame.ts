@@ -1,5 +1,3 @@
-// hooks/useBattleshipGame.ts
-
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { BattleshipState, Ship, Coordinate, Orientation, FLEET_CONFIG, PlayerBoard } from '@/types/battleship';
@@ -31,7 +29,6 @@ export const checkPlacement = (ships: Ship[], newShip: Ship, ignoreShipId?: stri
 
   otherShips.forEach(s => {
     getShipCoords(s).forEach(coord => {
-      // 3x3 зона вокруг каждой клетки корабля
       for (let dx = -1; dx <= 1; dx++) {
         for (let dy = -1; dy <= 1; dy++) {
           dangerZone.add(getKey(coord.x + dx, coord.y + dy));
@@ -92,14 +89,15 @@ export function useBattleshipGame(
   const [roomMeta, setRoomMeta] = useState<{ name: string; code: string; isHost: boolean } | null>(null);
   const [myShips, setMyShips] = useState<Ship[]>([]);
   const [loading, setLoading] = useState(true);
+  const [lobbyDeleted, setLobbyDeleted] = useState(false);
 
-  const stateRef = useRef<{ lobbyId: string | null; user: typeof user; gameState: BattleshipState | null }>({
-    lobbyId, user, gameState: null
+  const stateRef = useRef<{ lobbyId: string | null; user: typeof user; gameState: BattleshipState | null; myShips: Ship[] }>({
+    lobbyId, user, gameState: null, myShips: []
   });
 
   useEffect(() => {
-    stateRef.current = { lobbyId, user, gameState };
-  }, [lobbyId, user, gameState]);
+    stateRef.current = { lobbyId, user, gameState, myShips };
+  }, [lobbyId, user, gameState, myShips]);
 
   // --- SYNC ---
   const fetchLobbyState = useCallback(async () => {
@@ -110,16 +108,17 @@ export function useBattleshipGame(
         setRoomMeta({ name: data.name, code: data.code, isHost: data.host_id === user?.id });
         if (data.game_state) {
            setGameState(data.game_state);
-           // Restore local ships if available
+           // Восстанавливаем корабли только если локально пусто (реконнект)
            if (user?.id && data.game_state.players) {
               const p = data.game_state.players[user.id];
-              if (p?.ships && p.ships.length > 0) {
+              if (p?.ships && p.ships.length > 0 && stateRef.current.myShips.length === 0) {
                   setMyShips(p.ships);
               }
            }
         }
       } else {
-          setGameState(null); // Deleted
+          setGameState(null);
+          setLobbyDeleted(true);
       }
     } catch (e) { console.error(e); } finally { setLoading(false); }
   }, [lobbyId, user?.id]);
@@ -134,48 +133,46 @@ export function useBattleshipGame(
         const newState = payload.new.game_state as BattleshipState;
         if (newState) {
           setGameState(prev => {
-            // Для лобби (waiting) принимаем сразу, чтобы видеть статус готовности
-            if (newState.status === 'waiting') {
-                return newState;
-            }
-            // В игре защищаемся от старых пакетов
+            if (newState.status === 'waiting') return newState;
             if (prev && (newState.version || 0) < (prev.version || 0)) return prev;
             return newState;
           });
 
-          // ВАЖНО: Если сервер обновил стейт, и там есть мои корабли (например, после реконнекта или если я нажал "Готов" и это улетело на сервер),
-          // нужно обновить локальный стейт myShips, чтобы не было рассинхрона.
-          // НО, нужно быть осторожным, чтобы не перезатереть текущую расстановку пустым массивом при чужом апдейте.
-          // Поэтому обновляем myShips из сервера ТОЛЬКО если локально пусто, а на сервере есть,
-          // ИЛИ если мы в фазе игры.
-          // В фазе 'setup', пока мы не нажали Ready, локальный стейт myShips главный.
+          // ФИКС СБРОСА КОРАБЛЕЙ:
+          // Если сервер присылает обновление (например, противник нажал "Готов"),
+          // в этом обновлении массив ships вашего игрока может быть пустым (т.к. противник его не знает).
+          // Мы обновляем setMyShips из сервера ТОЛЬКО если:
+          // 1. Игра уже идет (playing) - значит это реконнект или синхронизация.
+          // 2. Либо мы еще ничего не расставили (setup), а на сервере уже есть данные.
+          // В остальных случаях (фаза setup, у нас есть корабли) мы ИГНОРИРУЕМ данные о кораблях с сервера,
+          // чтобы не затереть нашу текущую расстановку.
           if (user?.id && newState.players?.[user.id]?.ships) {
               const serverShips = newState.players[user.id].ships;
-              // Если игра уже идет, всегда верим серверу
-              if (newState.status === 'playing') {
+
+              if (newState.phase === 'playing') {
+                  setMyShips(serverShips);
+              } else if (newState.phase === 'setup' && stateRef.current.myShips.length === 0 && serverShips.length > 0) {
                   setMyShips(serverShips);
               }
           }
         }
       })
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'lobbies', filter: `id=eq.${lobbyId}` },
-      () => setGameState(null))
+      () => {
+          setGameState(null);
+          setLobbyDeleted(true);
+      })
       .subscribe();
 
     return () => { supabase.removeChannel(ch); };
-  }, [lobbyId, fetchLobbyState]);
+  }, [lobbyId, fetchLobbyState, user?.id]);
 
   const updateState = async (newState: BattleshipState) => {
     newState.version = (newState.version || 0) + 1;
     newState.lastActionTime = Date.now();
-
-    // Оптимистичное обновление UI
     setGameState(newState);
-
     if (stateRef.current.lobbyId) {
-       const { error } = await supabase.from('lobbies').update({ game_state: newState }).eq('id', stateRef.current.lobbyId);
-       // Если ошибка (например, версия устарела), по-хорошему надо сделать refetch, но в MVP оставим так
-       if (error) console.error("Update failed", error);
+       await supabase.from('lobbies').update({ game_state: newState }).eq('id', stateRef.current.lobbyId);
     }
   };
 
@@ -189,8 +186,13 @@ export function useBattleshipGame(
     if (Array.isArray(playersObj)) playersObj = {};
 
     const existing = playersObj[user.id];
-    // Если игрока нет или неполные данные
+    // Если игрока нет в списке
     if (!existing || !existing.name) {
+      // БЛОКИРОВКА ВХОДА В ИДУЩУЮ ИГРУ
+      if (currentState.status === 'playing') {
+          return; // Не добавляем игрока, если игра уже идет
+      }
+
       const newState = JSON.parse(JSON.stringify(currentState)) as BattleshipState;
       if (Array.isArray(newState.players)) newState.players = {};
 
@@ -236,20 +238,19 @@ export function useBattleshipGame(
   const submitShips = async () => {
     if (!user?.id || !gameState) return;
 
-    // ВАЖНО: Берем самый свежий стейт из ref, чтобы не затереть чужие изменения
+    // Берем актуальный стейт, чтобы не перезаписать чужой isReady
     const currentGs = stateRef.current.gameState || gameState;
     const newState = JSON.parse(JSON.stringify(currentGs)) as BattleshipState;
 
-    // Обновляем ТОЛЬКО свои данные
+    // Вписываем свои корабли в глобальный стейт
     newState.players[user.id].ships = myShips;
     newState.players[user.id].isReady = true;
     newState.players[user.id].aliveShipsCount = myShips.length;
 
     const playersArr = Object.values(newState.players);
-    // Проверяем, готовы ли ОБА
     if (playersArr.length === 2 && playersArr.every(p => p.isReady)) {
       newState.phase = 'playing';
-      newState.turn = playersArr[0].id; // Первый игрок начинает
+      newState.turn = playersArr[0].id;
       newState.turnDeadline = Date.now() + (60 * 1000);
     }
 
@@ -282,7 +283,6 @@ export function useBattleshipGame(
 
     if (killed) {
       opponentBoard.aliveShipsCount--;
-      // Mark surroundings as miss
       getShipCoords(opponentBoard.ships[hitShipIdx]).forEach(c => {
         myBoard.shots[getKey(c.x, c.y)] = 'killed';
         for (let dx = -1; dx <= 1; dx++) {
@@ -296,7 +296,6 @@ export function useBattleshipGame(
       newState.turn = opponentId;
       newState.turnDeadline = Date.now() + (60 * 1000);
     } else {
-        // При попадании таймер обновляется для ТЕКУЩЕГО игрока (продолжает ход)
         newState.turnDeadline = Date.now() + (60 * 1000);
     }
 
@@ -312,7 +311,6 @@ export function useBattleshipGame(
     const currentUser = stateRef.current.user;
     if (!currentGs || !currentUser || currentGs.phase !== 'playing' || currentGs.turn !== currentUser.id) return;
 
-    // Если время вышло, передаем ход (или можно засчитывать поражение, но передача хода мягче)
     const opponentId = Object.keys(currentGs.players).find(id => id !== currentUser.id);
     const newState = JSON.parse(JSON.stringify(currentGs)) as BattleshipState;
 
@@ -329,6 +327,7 @@ export function useBattleshipGame(
 
      const isHost = roomMeta?.isHost;
      if (isHost) {
+         // Хост удаляет лобби целиком
          await supabase.from('lobbies').delete().eq('id', lobbyId);
      } else {
          const newState = JSON.parse(JSON.stringify(currentGs));
@@ -337,9 +336,10 @@ export function useBattleshipGame(
          if (Object.keys(newState.players).length === 0) {
              await supabase.from('lobbies').delete().eq('id', lobbyId);
          } else {
+             // Если игра шла, засчитываем победу оставшемуся
              if (newState.status === 'playing' || newState.phase === 'setup') {
                  newState.phase = 'finished';
-                 newState.winner = Object.keys(newState.players)[0]; // Opponent wins
+                 newState.winner = Object.keys(newState.players)[0];
              }
              await updateState(newState);
          }
@@ -347,7 +347,7 @@ export function useBattleshipGame(
   };
 
   return {
-      gameState, roomMeta, myShips, loading,
+      gameState, roomMeta, myShips, loading, lobbyDeleted,
       initGame, startGame, autoPlaceShips, clearShips,
       placeShipManual, removeShip, submitShips, fireShot, leaveGame,
       handleTimeout

@@ -3,7 +3,6 @@ import { supabase } from '@/lib/supabase';
 import { GameState, Player, Role } from '@/types/coup';
 import { DICTIONARY } from '@/constants/coup';
 
-// Fisher-Yates Shuffle
 const shuffleDeck = (deck: Role[]): Role[] => {
   const newDeck = [...deck];
   for (let i = newDeck.length - 1; i > 0; i--) {
@@ -17,6 +16,7 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [roomMeta, setRoomMeta] = useState<{ name: string; code: string; isHost: boolean } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [lobbyDeleted, setLobbyDeleted] = useState(false);
 
   const stateRef = useRef<{ lobbyId: string | null; userId: string | undefined; gameState: GameState | null }>({
     lobbyId, userId, gameState: null
@@ -26,7 +26,6 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
     stateRef.current = { lobbyId, userId, gameState };
   }, [lobbyId, userId, gameState]);
 
-  // --- SYNC ---
   const fetchLobbyState = useCallback(async () => {
     if (!lobbyId) return;
     try {
@@ -36,6 +35,7 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
         if (data.game_state) setGameState(data.game_state);
       } else {
         setGameState(null);
+        setLobbyDeleted(true);
       }
     } catch (e) { console.error(e); } finally { setLoading(false); }
   }, [lobbyId, userId]);
@@ -60,6 +60,7 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'lobbies', filter: `id=eq.${lobbyId}` },
       () => {
           setGameState(null);
+          setLobbyDeleted(true);
       })
       .subscribe();
 
@@ -108,7 +109,6 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
     state.turnDeadline = Date.now() + (60 * 1000);
   };
 
-  // --- ACTIONS ---
   const performAction = async (actionType: string, targetId?: string) => {
     const currentGs = stateRef.current.gameState;
     if (!currentGs || !userId) return;
@@ -116,11 +116,6 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
     const newState: GameState = JSON.parse(JSON.stringify(currentGs));
     const player = newState.players.find(p => p.id === userId);
     if (!player) return;
-
-    if (targetId) {
-        const targetPlayer = newState.players.find(p => p.id === targetId);
-        if (!targetPlayer || targetPlayer.isDead) return;
-    }
 
     const targetName = targetId ? newState.players.find(p => p.id === targetId)?.name : '';
 
@@ -171,19 +166,15 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
 
     if (isTarget) {
         if (newState.phase === 'waiting_for_challenges') {
-             // If target doesn't challenge steal/assassinate, wait for block
              if (['steal', 'assassinate'].includes(newState.currentAction.type)) {
                  newState.phase = 'waiting_for_blocks';
                  addLog(newState, 'Система', 'Цель не оспаривает роль. Ждем блок.');
              }
         } else if (newState.phase === 'waiting_for_blocks') {
-             // Target doesn't block -> Action succeeds
              applyActionEffect(newState);
         }
     }
-    // Note: Bystanders passing just hide their UI (handled in component)
 
-    // If block challenge phase and active player passes (doesn't challenge block) -> block succeeds
     if (newState.phase === 'waiting_for_block_challenges' && newState.currentAction.player === userId) {
         addLog(newState, 'Система', 'Блок принят. Действие отменено.');
         nextTurn(newState);
@@ -290,10 +281,10 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
              delete action.nextPhase;
 
              if (next === 'action_cancelled') {
-                 addLog(newState, 'Система', 'Действие отменено из-за неудачного блефа');
+                 addLog(newState, 'Система', 'Действие отменено');
                  nextTurn(newState);
              } else if (next === 'blocked_end') {
-                 addLog(newState, 'Система', 'Блок успешен (челлендж провален), действие отменено');
+                 addLog(newState, 'Система', 'Блок успешен, действие отменено');
                  nextTurn(newState);
              } else if (next === 'continue_action') {
                  if (action.blockedBy) {
@@ -449,21 +440,26 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
      const currentGs = stateRef.current.gameState;
      if (!lobbyId || !userId || !currentGs) return;
 
-     const newState = JSON.parse(JSON.stringify(currentGs));
-     newState.players = newState.players.filter((p: Player) => p.id !== userId);
-
-     if (newState.players.length === 0) {
+     const isHost = roomMeta?.isHost;
+     if (isHost) {
          await supabase.from('lobbies').delete().eq('id', lobbyId);
      } else {
-         if (roomMeta?.isHost) {
-            newState.players[0].isHost = true;
-            addLog(newState, 'Система', `Хост вышел. Новый хост: ${newState.players[0].name}`);
-         }
+         const newState = JSON.parse(JSON.stringify(currentGs));
+         newState.players = newState.players.filter((p: Player) => p.id !== userId);
 
-         if (newState.status === 'playing') addLog(newState, 'Система', 'Игрок покинул матч');
-         await updateState(newState);
+         if (newState.players.length === 0) {
+             await supabase.from('lobbies').delete().eq('id', lobbyId);
+         } else {
+             if (roomMeta?.isHost) {
+                newState.players[0].isHost = true;
+                addLog(newState, 'Система', `Хост вышел. Новый хост: ${newState.players[0].name}`);
+             }
+
+             if (newState.status === 'playing') addLog(newState, 'Система', 'Игрок покинул матч');
+             await updateState(newState);
+         }
      }
   };
 
-  return { gameState, roomMeta, loading, performAction, startGame, leaveGame, pass, challenge, block, resolveLoss, resolveExchange, skipTurn };
+  return { gameState, roomMeta, loading, lobbyDeleted, performAction, startGame, leaveGame, pass, challenge, block, resolveLoss, resolveExchange, skipTurn };
 }
