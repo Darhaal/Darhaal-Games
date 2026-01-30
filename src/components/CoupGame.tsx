@@ -75,9 +75,23 @@ export default function CoupGame({
       return () => clearInterval(interval);
   }, [gameState.turnDeadline, gameState.status, phase, isMyTurn, isLosing, isExchanging, skipTurn]);
 
-  const showChallengeBtn = !hasPassed && ((phase === 'waiting_for_challenges' && !isActor && !isForeignAid) || (phase === 'waiting_for_block_challenges' && !isBlocker) || (phase === 'waiting_for_blocks' && !isActor && !isForeignAid));
-  const showBlockBtn = !hasPassed && !isActor && canBlock && !isBlocker && (isForeignAid || isActionWithBlockAndChallenge) && (phase === 'waiting_for_challenges' || phase === 'waiting_for_blocks');
-  const showPassBtn = !hasPassed && ((phase === 'waiting_for_challenges' && !isActor) || (phase === 'waiting_for_blocks' && !isActor) || (phase === 'waiting_for_block_challenges' && !isBlocker));
+  // FIX 1: Simplified Button Logic. If you are not the active actor/blocker in a reaction phase, you can pass.
+  // This ensures the button appears even if specific role logic is complex.
+  const isInteractivePhase =
+      (phase === 'waiting_for_challenges') ||
+      (phase === 'waiting_for_blocks') ||
+      (phase === 'waiting_for_block_challenges');
+
+  // Can I challenge? (Not actor, not foreign aid if strictly blocking phase, generally anyone can challenge bluff)
+  const showChallengeBtn = !hasPassed && isInteractivePhase && !isActor && !isBlocker;
+
+  // Can I block? (Not actor, I am target OR it's foreign aid, and no one blocked yet)
+  const showBlockBtn = !hasPassed && !isActor && canBlock && !isBlocker &&
+      (isForeignAid || isActionWithBlockAndChallenge) &&
+      (phase === 'waiting_for_challenges' || phase === 'waiting_for_blocks');
+
+  // Can I pass? (If I'm not the one who must act/respond to my own action)
+  const showPassBtn = !hasPassed && isInteractivePhase && !isActor && !isBlocker;
 
   const handleAction = (action: string) => {
     if (['coup', 'steal', 'assassinate'].includes(action)) setTargetMode(action as any);
@@ -126,7 +140,7 @@ export default function CoupGame({
              <div className="text-[10px] font-bold text-[#9e1316] uppercase flex items-center justify-center gap-2">
                  {isLosing ? t.loseInfluence : (gameState.status === 'playing' ? `Turn: ${currentPlayer?.name}` : 'End')}
                  {gameState.status === 'playing' && (
-                     <span className={`flex items-center gap-1 ${timeLeft < 15 ? 'text-red-600 animate-pulse' : 'text-gray-400'}`}>
+                     <span className={`flex items-center gap-1 ${timeLeft < 15 ? 'text-red-600 animate-pulse' : 'text-gray-500'}`}>
                          <Timer className="w-3 h-3" /> {timeLeft}s
                      </span>
                  )}

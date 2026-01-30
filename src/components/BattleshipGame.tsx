@@ -85,7 +85,7 @@ const getShipColor = (type: ShipType) => {
     }
 };
 
-// --- GRID CELL ---
+// --- КОМПОНЕНТ ЯЧЕЙКИ (MEMOIZED) ---
 const GridCell = memo(({
     x, y, status, shipPart, onClick, onMouseEnter, onContextMenu,
     onDrop, onDragOver, onDragStart, isHovered, hoverValid, size = 'large'
@@ -111,8 +111,8 @@ const GridCell = memo(({
         }
     }
 
-    // Phantom / Hover Logic
     if (isHovered) {
+        // FIX 2: Correct Phantom Styling
         bgClass = hoverValid
             ? "bg-emerald-500/30 ring-2 ring-emerald-500 inset z-10"
             : "bg-red-500/30 ring-2 ring-red-500 inset z-10";
@@ -251,6 +251,25 @@ export default function BattleshipGame({
         return { status: shot || 'empty' };
     }, [me?.shots]);
 
+    // FIX 2: Check placement for the whole ship, not just the hovered cell
+    const isPlacementValid = React.useMemo(() => {
+        if (!selectedType || !hoverPos) return false;
+        const config = FLEET_CONFIG.find(c => c.type === selectedType);
+        if (!config) return false;
+        return checkPlacement(
+            myShips,
+            {
+                id: 'temp',
+                type: selectedType,
+                size: config.size,
+                orientation,
+                position: hoverPos,
+                hits: 0
+            },
+            movingShipId || undefined
+        );
+    }, [selectedType, hoverPos, orientation, myShips, movingShipId]);
+
     // --- Logic ---
     const tryPlaceShip = (x: number, y: number, type: ShipType, existingId?: string) => {
         const config = FLEET_CONFIG.find(c => c.type === type);
@@ -312,12 +331,6 @@ export default function BattleshipGame({
         else return x === hoverPos.x && y >= hoverPos.y && y < hoverPos.y + config.size;
     }, [hoverPos, selectedType, orientation]);
 
-    const checkPhantomValidity = (x: number, y: number) => {
-        if (!selectedType || !hoverPos) return false;
-        const config = FLEET_CONFIG.find(c => c.type === selectedType)!;
-        return checkPlacement(myShips, {id:'temp', type:selectedType, size:config.size, orientation, position:{x,y}, hits:0}, movingShipId||undefined);
-    };
-
     if (phase === 'finished') {
         const isWinner = gameState.winner === userId;
         const enemyShipsSunk = opponent?.aliveShipsCount === 0;
@@ -373,6 +386,7 @@ export default function BattleshipGame({
                                 <div className="w-12 h-12 rounded-full bg-[#F5F5F0] overflow-hidden border-2 border-white shadow-md opacity-80">{opponent?.avatarUrl ? <img src={opponent.avatarUrl} className="w-full h-full object-cover" /> : <User className="w-6 h-6 m-auto mt-2 text-gray-400"/>}</div>
                             </div>
                         </div>
+                        {/* FIX 3: MOBILE LAYOUT (flex-col puts board first, then dock) */}
                         <div className="flex flex-col lg:flex-row gap-8 items-start w-full">
                             <div className="bg-white p-6 rounded-[32px] shadow-xl border border-[#E6E1DC] relative mx-auto lg:mx-0 group w-full lg:w-auto">
                                 <div className="grid grid-cols-10 gap-px bg-[#E6E1DC] border-4 border-[#1A1F26] overflow-hidden rounded-xl cursor-crosshair shadow-inner" onMouseLeave={() => setHoverPos(null)}>
@@ -380,7 +394,7 @@ export default function BattleshipGame({
                                         const x = i % 10, y = Math.floor(i / 10);
                                         const { shipPart, ship } = getMyCellContent(x, y);
                                         const isHovered = isPhantomCell(x, y);
-                                        const isValid = isHovered ? checkPhantomValidity(x, y) : false;
+                                        const isValid = isHovered ? isPlacementValid : false;
 
                                         return <GridCell key={i} x={x} y={y} status={'empty'} shipPart={shipPart} onClick={() => handleCellClick(x, y)} onMouseEnter={() => setHoverPos({x, y})} onDrop={(e:any) => handleDrop(e, x, y)} onDragOver={(e:any) => {e.preventDefault(); setHoverPos({x, y})}} onDragStart={(e:any) => ship && handleDragStartBoard(e, ship)} onContextMenu={(e:any) => {e.preventDefault(); setOrientation(prev => prev === 'horizontal' ? 'vertical' : 'horizontal')}} isHovered={isHovered} hoverValid={isValid} />;
                                     })}
@@ -395,18 +409,20 @@ export default function BattleshipGame({
                             <div className="flex-1 w-full space-y-6">
                                 <div className="bg-white p-6 rounded-[32px] shadow-sm border border-[#E6E1DC]">
                                     <h3 className="text-xs font-black uppercase mb-6 text-[#8A9099] flex items-center gap-2 tracking-widest pl-2"><Map className="w-4 h-4 text-[#1A1F26]"/> {t.fleet}</h3>
-                                    <div className="space-y-3">
+                                    {/* FIX 3: MOBILE LAYOUT GRID (grid-cols-4 for mobile) */}
+                                    <div className="grid grid-cols-4 lg:grid-cols-1 gap-3">
                                         {FLEET_CONFIG.map(ship => {
                                             const placedCount = myShips.filter((s: Ship) => s.type === ship.type).length;
                                             const isFull = placedCount >= ship.count;
                                             const isSelected = selectedType === ship.type;
                                             return (
                                                 <div key={ship.type} draggable={!isFull} onDragStart={(e) => handleDragStartMenu(e, ship.type)} onClick={() => !isFull && setSelectedType(ship.type)} className={`w-full flex items-center justify-between p-3 rounded-2xl border-2 transition-all duration-200 cursor-pointer ${isFull ? 'bg-[#F8FAFC] border-transparent opacity-40 grayscale cursor-default' : ''} ${isSelected ? 'bg-[#1A1F26] text-white border-[#1A1F26] shadow-lg scale-[1.02]' : 'bg-white border-[#F5F5F0] hover:border-[#E6E1DC]'}`}>
-                                                    <div className="flex items-center gap-4"><div className="w-8 h-8 rounded-full bg-[#F5F5F0] flex items-center justify-center text-[10px] font-black text-[#8A9099]">{ship.size}x</div><span className="text-[10px] font-bold uppercase tracking-wider">{ship.type}</span></div><span className="text-xs font-black">{placedCount}/{ship.count}</span>
+                                                    <div className="flex items-center gap-4"><div className="w-8 h-8 rounded-full bg-[#F5F5F0] flex items-center justify-center text-[10px] font-black text-[#8A9099]">{ship.size}x</div><span className="hidden lg:inline text-[10px] font-bold uppercase tracking-wider">{ship.type}</span></div><span className="text-xs font-black">{placedCount}/{ship.count}</span>
                                                 </div>
                                             );
                                         })}
                                     </div>
+                                    <p className="text-[10px] text-center text-gray-400 mt-4 uppercase font-bold hidden lg:block">{t.instructions}</p>
                                 </div>
                                 <div className="flex gap-4">
                                     <button onClick={autoPlaceShips} className="flex-1 py-4 bg-white border-2 border-[#E6E1DC] text-[#1A1F26] rounded-2xl font-bold text-xs uppercase hover:bg-[#F8FAFC] flex items-center justify-center gap-2"><Shuffle className="w-4 h-4" /> {t.auto}</button>
