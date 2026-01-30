@@ -51,13 +51,9 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
       (payload) => {
           if (payload.new.game_state) {
             setGameState(prev => {
-                // ФИКС 1: В лобби всегда принимаем состояние, даже если версии совпадают или меньше.
-                // Это решает проблему, когда новый игрок заходит, но версия стейта не меняется.
                 if (payload.new.status === 'waiting') {
                     return payload.new.game_state;
                 }
-
-                // В игре защищаемся от старых пакетов (Race Conditions)
                 if (prev && (payload.new.game_state.version || 0) < (prev.version || 0)) return prev;
                 return payload.new.game_state;
             });
@@ -118,6 +114,74 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
     state.turnDeadline = Date.now() + (60 * 1000);
   };
 
+  // --- LOGIC: TIMEOUT / SKIP / KICK ---
+  const skipTurn = async () => {
+      const currentGs = stateRef.current.gameState;
+      const uid = stateRef.current.userId;
+      if (!currentGs) return;
+      const newState: GameState = JSON.parse(JSON.stringify(currentGs));
+
+      // 1. Если фаза выбора действия - просто пропускаем ход
+      if (newState.phase === 'choosing_action') {
+          addLog(newState, 'Система', 'Время вышло! Ход пропущен.');
+          nextTurn(newState);
+      }
+      // 2. Если фаза потери влияния - заставляем сбросить первую живую карту
+      else if (newState.phase === 'losing_influence') {
+          const victim = newState.players.find(p => p.id === newState.pendingPlayerId);
+          if (victim) {
+              const cardIdx = victim.cards.findIndex(c => !c.revealed);
+              if (cardIdx !== -1) {
+                  victim.cards[cardIdx].revealed = true;
+                  addLog(newState, 'Система', `Время вышло! ${victim.name} теряет карту.`);
+
+                  if (victim.cards.every(c => c.revealed)) {
+                      victim.isDead = true;
+                      addLog(newState, victim.name, 'Выбывает (AFK) ☠️');
+                  }
+              }
+          }
+          // После потери карты пробуем завершить действие/ход
+          nextTurn(newState);
+      }
+      // 3. Если обмен карт - просто отменяем обмен
+      else if (newState.phase === 'resolving_exchange') {
+          const player = newState.players.find(p => p.id === newState.pendingPlayerId);
+          if (player && newState.exchangeBuffer) {
+              // Возвращаем лишние карты в колоду
+              const drawn = newState.exchangeBuffer.slice(-2); // Предполагаем последние 2 были взяты
+              newState.deck.push(...drawn);
+              newState.exchangeBuffer = undefined;
+              addLog(newState, 'Система', 'Время вышло! Обмен отменен.');
+              nextTurn(newState);
+          }
+      }
+      // 4. Если фаза реакции (блок/челлендж) - считаем это за ПАС
+      else if (['waiting_for_challenges', 'waiting_for_blocks', 'waiting_for_block_challenges'].includes(newState.phase)) {
+          // Вызываем логику паса (автоматически)
+          // Если это блокировка (waiting_for_blocks), и время вышло -> действие проходит
+          if (newState.phase === 'waiting_for_blocks') {
+              applyActionEffect(newState);
+          }
+          // Если waiting_for_challenges, и время вышло -> переходим к блоку (для steal/assassin) или действию
+          else if (newState.phase === 'waiting_for_challenges') {
+              if (['steal', 'assassinate'].includes(newState.currentAction?.type || '')) {
+                  newState.phase = 'waiting_for_blocks';
+                  newState.turnDeadline = Date.now() + (30 * 1000);
+              } else {
+                  applyActionEffect(newState);
+              }
+          }
+          // Если waiting_for_block_challenges (кто-то заблокировал, остальные думают, верить ли) -> блок успешен
+          else if (newState.phase === 'waiting_for_block_challenges') {
+              addLog(newState, 'Система', 'Время вышло. Блок принят.');
+              nextTurn(newState);
+          }
+      }
+
+      await updateState(newState);
+  };
+
   // --- ACTIONS ---
   const performAction = async (actionType: string, targetId?: string) => {
     const currentGs = stateRef.current.gameState;
@@ -174,42 +238,28 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
   const pass = async () => {
     const currentGs = stateRef.current.gameState;
     if (!currentGs || !userId) return;
-
-    // ФИКС 2: Логика паса.
-    // Если игрок нажал "Пасс", мы не обязательно обновляем стейт в базе.
-    // Но если этот игрок - цель действия, то его пас означает "я пропускаю/соглашаюсь".
-
     const newState: GameState = JSON.parse(JSON.stringify(currentGs));
     if (!newState.currentAction) return;
 
     const isTarget = newState.currentAction.target === userId;
-    let shouldUpdate = false;
 
     if (isTarget) {
         if (newState.phase === 'waiting_for_challenges') {
-             // Цель не оспаривает -> ждем блока
              if (['steal', 'assassinate'].includes(newState.currentAction.type)) {
                  newState.phase = 'waiting_for_blocks';
-                 // addLog(newState, 'Система', 'Цель не оспаривает. Ждем блок.'); // Слишком много спама
-                 shouldUpdate = true;
+                 addLog(newState, 'Система', 'Цель не оспаривает роль. Ждем блок.');
              }
         } else if (newState.phase === 'waiting_for_blocks') {
-             // Цель не блокирует -> действие выполняется
              applyActionEffect(newState);
-             shouldUpdate = true;
         }
     }
 
-    // Если активный игрок не челенджит блок -> блок успешен
     if (newState.phase === 'waiting_for_block_challenges' && newState.currentAction.player === userId) {
         addLog(newState, 'Система', 'Блок принят. Действие отменено.');
         nextTurn(newState);
-        shouldUpdate = true;
     }
 
-    if (shouldUpdate) {
-        await updateState(newState);
-    }
+    await updateState(newState);
   };
 
   const challenge = async () => {
@@ -435,16 +485,6 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
     }
   };
 
-  const skipTurn = async () => {
-      const currentGs = stateRef.current.gameState;
-      if (!currentGs) return;
-      const newState: GameState = JSON.parse(JSON.stringify(currentGs));
-
-      addLog(newState, 'Система', 'Время вышло! Ход пропущен.');
-      nextTurn(newState);
-      await updateState(newState);
-  };
-
   const startGame = async () => {
     const currentGs = stateRef.current.gameState;
     if (!currentGs) return;
@@ -467,7 +507,7 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
 
   const leaveGame = async () => {
      const currentGs = stateRef.current.gameState;
-     if (!lobbyId || !userId || !currentGs) return;
+     if (!lobbyId || !user || !currentGs) return;
 
      const newState = JSON.parse(JSON.stringify(currentGs));
      const wasHost = newState.players.find((p: Player) => p.id === userId)?.isHost;

@@ -32,8 +32,7 @@ export default function CoupGame({
   const [selectedExchangeIndices, setSelectedExchangeIndices] = useState<number[]>([]);
   const [timeLeft, setTimeLeft] = useState(60);
 
-  // ФИКС 2: Используем локальное состояние, чтобы скрыть кнопки после нажатия,
-  // НО сбрасываем его при смене фазы или действия, чтобы кнопка снова появилась в нужный момент.
+  // Локальное состояние, чтобы скрыть кнопки после нажатия "Пас"
   const [hasPassedLocal, setHasPassedLocal] = useState(false);
 
   const players = gameState.players || [];
@@ -58,10 +57,11 @@ export default function CoupGame({
   const isReactionPhase = phase === 'waiting_for_challenges' || phase === 'waiting_for_blocks' || phase === 'waiting_for_block_challenges';
   const isBlocker = gameState.currentAction?.blockedBy === userId;
 
-  // Сброс локального состояния паса при изменении фазы или действия
+  // СБРОС СОСТОЯНИЯ ПАСА
+  // Сбрасываем, если изменилась фаза, действие, игрок, ИЛИ ХОД (turnIndex)
   useEffect(() => {
       setHasPassedLocal(false);
-  }, [gameState.phase, gameState.currentAction?.type, gameState.currentAction?.player]);
+  }, [gameState.phase, gameState.currentAction?.type, gameState.currentAction?.player, gameState.turnIndex]);
 
   useEffect(() => {
       if (gameState.status !== 'playing') return;
@@ -69,14 +69,24 @@ export default function CoupGame({
           if (gameState.turnDeadline) {
               const remaining = Math.max(0, Math.ceil((gameState.turnDeadline - Date.now()) / 1000));
               setTimeLeft(remaining);
+
+              // Авто-действие по таймеру
               if (remaining === 0 && skipTurn) {
-                  const myResponsibility = (phase === 'choosing_action' && isMyTurn) || (isLosing) || (isExchanging);
-                  if (myResponsibility) skipTurn();
+                  // Если это моя ответственность (мой ход, или я должен сбросить карту)
+                  if ((phase === 'choosing_action' && isMyTurn) || isLosing || isExchanging) {
+                      skipTurn();
+                  }
+                  // Если фаза реакции, и я еще не нажал пас - таймер сам вызовет pass() на сервере (через логику skipTurn в хуке)
+                  // Но мы можем форсировать это и с клиента для надежности
+                  else if (isReactionPhase && !hasPassedLocal && !isActor && !isBlocker) {
+                      // В реакциях "пропуск хода" = "пас"
+                      skipTurn();
+                  }
               }
           }
       }, 500);
       return () => clearInterval(interval);
-  }, [gameState.turnDeadline, gameState.status, phase, isMyTurn, isLosing, isExchanging, skipTurn]);
+  }, [gameState.turnDeadline, gameState.status, phase, isMyTurn, isLosing, isExchanging, skipTurn, isReactionPhase, hasPassedLocal, isActor, isBlocker]);
 
   // Логика кнопок
   const showChallengeBtn = !hasPassedLocal && isReactionPhase && !isActor && !isBlocker && (
@@ -89,6 +99,7 @@ export default function CoupGame({
       (isForeignAid || isActionWithBlockAndChallenge) &&
       (phase === 'waiting_for_challenges' || phase === 'waiting_for_blocks');
 
+  // Кнопка Пас доступна всем наблюдателям в фазе реакции, чтобы они могли сказать "я не возражаю"
   const showPassBtn = !hasPassedLocal && isReactionPhase && !isActor && !isBlocker;
 
   const handleAction = (action: string) => {
@@ -114,8 +125,8 @@ export default function CoupGame({
   };
 
   const handlePass = () => {
-      setHasPassedLocal(true); // Мгновенно скрываем кнопки
-      pass(); // Отправляем на сервер (если нужно)
+      setHasPassedLocal(true);
+      pass();
   };
 
   const shouldShowReactionPanel =
