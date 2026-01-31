@@ -6,11 +6,12 @@ import { supabase } from '@/lib/supabase';
 import {
   ArrowLeft, Users, Lock, Unlock,
   ScrollText, ArrowRight, Eye, EyeOff, Loader2, Type, UserPlus,
-  Bomb, Ship, ShieldAlert, Fingerprint, Skull
+  Bomb, Ship, ShieldAlert, Fingerprint, Skull, Flag
 } from 'lucide-react';
 // Types needed for initial state creation
 import { GameState as CoupState, Player as CoupPlayer } from '@/types/coup';
 import { BattleshipState, PlayerBoard as BattleshipPlayer } from '@/types/battleship';
+import { FlagerState } from '@/types/flager'; // Import new type
 
 type Lang = 'ru' | 'en';
 
@@ -21,7 +22,7 @@ type Game = {
   minPlayers: number;
   maxPlayers: number;
   icon: React.ReactNode;
-  disabled?: boolean; // Flag to block games in development
+  disabled?: boolean;
 };
 
 // Configuration including blocked games
@@ -47,9 +48,21 @@ const GAMES: Game[] = [
     minPlayers: 2,
     maxPlayers: 2,
     icon: <Ship className="w-8 h-8" />,
+  },
+  // --- NEW GAME: FLAGER ---
+  {
+    id: 'flager',
+    name: 'Flager',
+    desc: {
+      ru: 'Угадай флаг страны. Соревнуйся на скорость.',
+      en: 'Guess the flag. Compete for speed.'
+    },
+    minPlayers: 1,
+    maxPlayers: 4,
+    icon: <Flag className="w-8 h-8" />,
     disabled: false,
   },
-  // --- BLOCKED GAMES (Coming Soon) ---
+  // --- BLOCKED GAMES ---
   {
     id: 'mafia',
     name: 'Mafia',
@@ -126,6 +139,7 @@ export default function CreatePage() {
 
   const [lobbyName, setLobbyName] = useState('');
   const [maxPlayers, setMaxPlayers] = useState(6);
+  const [rounds, setRounds] = useState(5); // New setting for Flager
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUser(data.user));
@@ -153,6 +167,7 @@ export default function CreatePage() {
       private: 'Приватная комната',
       password: 'Пароль',
       players: 'Игроков',
+      rounds: 'Раундов',
       comingSoon: 'Скоро',
       error: 'Ошибка: ',
       lobbyName: 'Название',
@@ -168,6 +183,7 @@ export default function CreatePage() {
       private: 'Private Room',
       password: 'Password',
       players: 'Players',
+      rounds: 'Rounds',
       comingSoon: 'Coming Soon',
       error: 'Error: ',
       lobbyName: 'Room Name',
@@ -213,11 +229,10 @@ export default function CreatePage() {
             currentAction: null,
             lastActionTime: Date.now(),
             version: 1,
-            // Timer is undefined during setup
             turnDeadline: undefined,
             gameType: 'coup',
             settings: { maxPlayers: maxPlayers },
-            passedPlayers: [] // Initialize passedPlayers
+            passedPlayers: []
           };
           initialState = coupState;
 
@@ -247,14 +262,41 @@ export default function CreatePage() {
               turnDeadline: undefined
           };
           initialState = battleshipState;
+      } else if (selectedGame.id === 'flager') {
+          // FLAGER INIT
+          const initialHost = {
+              id: user.id,
+              name: userName,
+              avatarUrl: userAvatar,
+              isHost: true,
+              score: 0,
+              guesses: [],
+              hasFinishedRound: false,
+              roundScore: 0
+          };
+
+          const flagerState: FlagerState = {
+              players: [initialHost],
+              status: 'waiting',
+              targetChain: [],
+              currentRoundIndex: 0,
+              lastActionTime: Date.now(),
+              version: 1,
+              gameType: 'flager',
+              settings: {
+                  maxPlayers: maxPlayers,
+                  totalRounds: rounds // from state
+              }
+          };
+          initialState = flagerState;
       }
 
-      // Explicitly construct the game state to ensure it matches the JSONB expectations
       const finalGameState = {
           ...initialState,
           gameType: selectedGame.id,
           settings: {
-              maxPlayers: maxPlayers
+              maxPlayers: maxPlayers,
+              totalRounds: rounds
           }
       };
 
@@ -296,7 +338,6 @@ export default function CreatePage() {
              <div className={`p-4 rounded-2xl ${game.disabled ? 'bg-gray-100' : 'bg-[#F5F5F0] group-hover:bg-[#9e1316]/5 transition-colors'}`}>
                {game.icon}
              </div>
-             {/* BLOCKED BADGE */}
              {game.disabled && <span className="text-[10px] font-bold uppercase bg-gray-100 px-2 py-1 rounded text-gray-400 border border-gray-200">{t.comingSoon}</span>}
           </div>
           <h3 className="text-2xl font-black text-[#1A1F26] mb-2">{game.name}</h3>
@@ -332,6 +373,7 @@ export default function CreatePage() {
                />
           </div>
 
+          {/* Player Count Slider */}
           {selectedGame && selectedGame.minPlayers !== selectedGame.maxPlayers && (
             <div className="space-y-3">
                <div className="flex justify-between items-center">
@@ -352,6 +394,29 @@ export default function CreatePage() {
                    <span>{selectedGame?.maxPlayers}</span>
                </div>
             </div>
+          )}
+
+          {/* FLAGER SPECIFIC: ROUNDS */}
+          {selectedGame?.id === 'flager' && (
+              <div className="space-y-3 animate-in fade-in">
+                <div className="flex justify-between items-center">
+                     <label className="text-[10px] font-bold text-[#8A9099] uppercase tracking-wider ml-1 flex items-center gap-1"><Flag className="w-3 h-3"/> {t.rounds}</label>
+                     <span className="text-sm font-black text-[#1A1F26] bg-[#F5F5F0] px-3 py-1 rounded-lg">{rounds}</span>
+                </div>
+                <input
+                    type="range"
+                    min="1"
+                    max="10"
+                    step={1}
+                    value={rounds}
+                    onChange={e => setRounds(Number(e.target.value))}
+                    className="w-full h-2 bg-[#F5F5F0] rounded-full appearance-none cursor-pointer accent-[#9e1316]"
+                />
+                <div className="flex justify-between text-[10px] font-bold text-[#8A9099] px-1">
+                    <span>1</span>
+                    <span>10</span>
+                </div>
+             </div>
           )}
 
           <div className="h-px bg-[#F5F5F0] w-full my-2" />

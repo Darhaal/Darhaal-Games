@@ -1,8 +1,7 @@
-// components/UniversalLobby.tsx
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { LogOut, Crown, Copy, Check, Users, ScrollText, Ship, Bomb, Fingerprint, ShieldAlert, Skull, UserPlus, UserMinus, User, Play } from 'lucide-react';
+import { LogOut, Crown, Copy, Check, Users, ScrollText, Ship, Bomb, Fingerprint, ShieldAlert, Skull, UserPlus, UserMinus, User, Play, Flag } from 'lucide-react';
 
 export interface LobbyPlayer {
   id: string;
@@ -28,6 +27,7 @@ interface UniversalLobbyProps {
 const GAME_ICONS: Record<string, any> = {
   coup: ScrollText,
   battleship: Ship,
+  flager: Flag,
   mafia: Users,
   minesweeper: Bomb,
   bunker: ShieldAlert,
