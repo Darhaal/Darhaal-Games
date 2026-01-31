@@ -3,8 +3,6 @@ import { supabase } from '@/lib/supabase';
 import { FlagerState, FlagerPlayerState } from '@/types/flager';
 import { COUNTRY_CODES } from '@/data/flager/countries';
 
-const MAX_GUESSES = 6;
-
 const generateFlags = (count: number): string[] => {
   const shuffled = [...COUNTRY_CODES].sort(() => 0.5 - Math.random());
   return shuffled.slice(0, count);
@@ -115,6 +113,7 @@ export function useFlagerGame(lobbyId: string | null, userId: string | undefined
       status: 'playing',
       targetChain: flags,
       currentRoundIndex: 0,
+      roundStartTime: Date.now(),
       version: 1,
       players: currentGs.players.map(p => ({
           ...p,
@@ -147,16 +146,23 @@ export function useFlagerGame(lobbyId: string | null, userId: string | undefined
     const attemptsUsed = pState.guesses.length;
 
     if (isCorrect) {
-        const pointsMap = [10, 8, 6, 4, 2, 1];
-        const points = pointsMap[attemptsUsed - 1] || 1;
+        // SCORING:
+        // Base: 1000
+        // Penalty per guess: -50
+        // Penalty per second: -5
+        const timeTaken = (Date.now() - (currentGs.roundStartTime || Date.now())) / 1000;
+        const baseScore = 1000;
+        const guessPenalty = (attemptsUsed - 1) * 50;
+        const timePenalty = Math.floor(timeTaken * 5);
+
+        const points = Math.max(10, baseScore - guessPenalty - timePenalty);
+
         pState.score += points;
         pState.roundScore = points;
         pState.hasFinishedRound = true;
-    } else if (attemptsUsed >= MAX_GUESSES) {
-        pState.hasFinishedRound = true;
-        pState.roundScore = 0;
     }
 
+    // Check if ALL players finished
     const allFinished = newState.players.every(p => p.hasFinishedRound);
 
     if (allFinished) {
@@ -165,6 +171,7 @@ export function useFlagerGame(lobbyId: string | null, userId: string | undefined
         } else {
             // Next round
             newState.currentRoundIndex++;
+            newState.roundStartTime = Date.now(); // Reset timer for next round
             newState.players.forEach(p => {
                 p.guesses = [];
                 p.hasFinishedRound = false;
@@ -198,6 +205,7 @@ export function useFlagerGame(lobbyId: string | null, userId: string | undefined
                 newState.status = 'finished';
              } else {
                 newState.currentRoundIndex++;
+                newState.roundStartTime = Date.now();
                 newState.players.forEach((p: FlagerPlayerState) => {
                     p.guesses = [];
                     p.hasFinishedRound = false;

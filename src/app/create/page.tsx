@@ -280,6 +280,7 @@ export default function CreatePage() {
               status: 'waiting',
               targetChain: [],
               currentRoundIndex: 0,
+              roundStartTime: Date.now(),
               lastActionTime: Date.now(),
               version: 1,
               gameType: 'flager',

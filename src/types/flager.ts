@@ -15,8 +15,11 @@ export interface FlagerState {
   players: FlagerPlayerState[];
   status: FlagerStatus;
 
-  targetChain: string[]; // List of country codes (e.g. ['US', 'RU', 'JP'])
+  targetChain: string[];
   currentRoundIndex: number;
+
+  // Время начала раунда для подсчета очков (1000 - время)
+  roundStartTime: number;
 
   lastActionTime: number;
   version: number;

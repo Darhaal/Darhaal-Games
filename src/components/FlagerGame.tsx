@@ -1,11 +1,9 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
-import { LogOut, Check, X, Flag, Trophy, Search } from 'lucide-react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { LogOut, Check, X, Flag, Trophy, Search, HelpCircle, Loader2 } from 'lucide-react';
 import { FlagerState } from '@/types/flager';
 import { COUNTRIES, COUNTRY_CODES } from '@/data/flager/countries';
-
-const MAX_GUESSES = 6;
 
 interface FlagerGameProps {
   gameState: FlagerState;
@@ -14,11 +12,130 @@ interface FlagerGameProps {
   leaveGame: () => void;
 }
 
+// ----------------------------------------------------------------------
+// MAGIC REVEAL CANVAS COMPONENT
+// ----------------------------------------------------------------------
+// 1. Renders the TARGET flag.
+// 2. Renders a black mask over it.
+// 3. Renders GUESS flags invisibly.
+// 4. Compares pixels: if GUESS pixel matches TARGET pixel (tolerance), mask becomes transparent.
+// ----------------------------------------------------------------------
+const FlagRevealCanvas = ({ targetCode, guesses }: { targetCode: string, guesses: string[] }) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Use a fixed size for pixel manipulation to keep it fast
+  const WIDTH = 320;
+  const HEIGHT = 213; // Approx 3:2
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return;
+
+    // Load Target
+    const targetImg = new Image();
+    targetImg.crossOrigin = "Anonymous";
+    targetImg.src = `https://flagcdn.com/w320/${targetCode.toLowerCase()}.png`;
+
+    targetImg.onload = () => {
+        setIsLoading(false);
+        // Start with black mask
+        ctx.fillStyle = '#1A1F26';
+        ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+        if (guesses.length === 0) return;
+
+        // Create buffers
+        const targetCanvas = document.createElement('canvas');
+        targetCanvas.width = WIDTH;
+        targetCanvas.height = HEIGHT;
+        const targetCtx = targetCanvas.getContext('2d', { willReadFrequently: true });
+        if(!targetCtx) return;
+
+        targetCtx.drawImage(targetImg, 0, 0, WIDTH, HEIGHT);
+        const targetData = targetCtx.getImageData(0, 0, WIDTH, HEIGHT);
+
+        const mask = new Uint8Array(WIDTH * HEIGHT).fill(0); // 0 = hidden, 1 = reveal
+
+        // Load and process all guesses
+        let processedCount = 0;
+
+        guesses.forEach(guessCode => {
+            const guessImg = new Image();
+            guessImg.crossOrigin = "Anonymous";
+            guessImg.src = `https://flagcdn.com/w320/${guessCode.toLowerCase()}.png`;
+
+            guessImg.onload = () => {
+                const guessCanvas = document.createElement('canvas');
+                guessCanvas.width = WIDTH;
+                guessCanvas.height = HEIGHT;
+                const guessCtx = guessCanvas.getContext('2d', { willReadFrequently: true });
+                if(!guessCtx) return;
+
+                guessCtx.drawImage(guessImg, 0, 0, WIDTH, HEIGHT);
+                const guessData = guessCtx.getImageData(0, 0, WIDTH, HEIGHT);
+
+                // Pixel Match Logic
+                for (let i = 0; i < targetData.data.length; i += 4) {
+                    const idx = i / 4;
+                    if (mask[idx] === 1) continue; // Already revealed
+
+                    // Simple RGB euclidean distance or absolute diff
+                    const rDist = Math.abs(targetData.data[i] - guessData.data[i]);
+                    const gDist = Math.abs(targetData.data[i+1] - guessData.data[i+1]);
+                    const bDist = Math.abs(targetData.data[i+2] - guessData.data[i+2]);
+
+                    // Tolerance is key.
+                    // 30 is strict enough to distinguish similar reds, but loose enough for compression artifacts.
+                    if (rDist < 40 && gDist < 40 && bDist < 40) {
+                        mask[idx] = 1;
+                    }
+                }
+
+                processedCount++;
+                if (processedCount === guesses.length) {
+                    // Final Draw
+                    const finalImageData = ctx.createImageData(WIDTH, HEIGHT);
+                    for (let i = 0; i < mask.length; i++) {
+                        const ptr = i * 4;
+                        if (mask[i] === 1) {
+                            // Show Target
+                            finalImageData.data[ptr] = targetData.data[ptr];
+                            finalImageData.data[ptr+1] = targetData.data[ptr+1];
+                            finalImageData.data[ptr+2] = targetData.data[ptr+2];
+                            finalImageData.data[ptr+3] = 255;
+                        } else {
+                            // Show Mask (Dark Grey)
+                            finalImageData.data[ptr] = 30;
+                            finalImageData.data[ptr+1] = 30;
+                            finalImageData.data[ptr+2] = 35;
+                            finalImageData.data[ptr+3] = 255;
+                        }
+                    }
+                    ctx.putImageData(finalImageData, 0, 0);
+                }
+            };
+        });
+    };
+
+  }, [targetCode, guesses]);
+
+  return (
+    <div className="relative w-full h-[250px] bg-gray-100 rounded-lg overflow-hidden shadow-md flex items-center justify-center">
+       {isLoading && <Loader2 className="w-8 h-8 text-gray-400 animate-spin absolute" />}
+       <canvas ref={canvasRef} width={320} height={213} className="w-full h-full object-contain z-10" />
+       <div className="absolute top-2 right-2 bg-black/50 text-white text-[10px] px-2 py-0.5 rounded backdrop-blur-sm z-20 pointer-events-none">
+          Pixel Match
+       </div>
+    </div>
+  );
+};
+
 export default function FlagerGame({ gameState, userId, makeGuess, leaveGame }: FlagerGameProps) {
   const [input, setInput] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
-
-  // Определяем язык (пока хардкод, но можно брать из localStorage)
   const lang: 'ru' | 'en' = 'ru';
 
   const me = gameState.players.find(p => p.id === userId);
@@ -42,12 +159,16 @@ export default function FlagerGame({ gameState, userId, makeGuess, leaveGame }: 
   const GuessRow = ({ code, target }: { code: string, target: string }) => {
       const isCorrect = code === target;
       const name = COUNTRIES[code]?.name[lang] || code;
+      const continent = COUNTRIES[code]?.continent;
 
       return (
           <div className={`flex items-center justify-between p-3 rounded-xl border mb-2 animate-in slide-in-from-bottom-2 ${isCorrect ? 'bg-emerald-100 border-emerald-200 text-emerald-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
               <div className="flex items-center gap-3">
                   <img src={`https://flagcdn.com/w40/${code.toLowerCase()}.png`} alt={code} className="w-8 h-6 object-cover rounded shadow-sm border border-black/10" />
-                  <span className="font-bold text-sm">{name}</span>
+                  <div className="flex flex-col">
+                      <span className="font-bold text-sm">{name}</span>
+                      {!isCorrect && <span className="text-[10px] opacity-70">{continent}</span>}
+                  </div>
               </div>
               {isCorrect ? <Check className="w-5 h-5" /> : <X className="w-5 h-5" />}
           </div>
@@ -83,6 +204,9 @@ export default function FlagerGame({ gameState, userId, makeGuess, leaveGame }: 
       );
   }
 
+  const isRoundDone = me?.hasFinishedRound;
+  const isCorrect = isRoundDone && me.guesses[me.guesses.length-1] === currentFlag;
+
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-[#1A1F26] flex flex-col font-sans overflow-hidden relative">
        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-50 mix-blend-overlay pointer-events-none" />
@@ -98,27 +222,27 @@ export default function FlagerGame({ gameState, userId, makeGuess, leaveGame }: 
 
        <main className="flex-1 w-full max-w-4xl mx-auto p-4 grid grid-cols-1 md:grid-cols-2 gap-8 z-10">
           <div className="flex flex-col gap-6">
-              <div className="bg-white p-4 rounded-[32px] border border-[#E6E1DC] shadow-lg flex items-center justify-center min-h-[250px] relative overflow-hidden">
-                   {currentFlag ? (
-                       <img
-                         src={`https://flagcdn.com/w640/${currentFlag.toLowerCase()}.png`}
-                         alt="Guess the flag"
-                         className="w-full h-auto max-h-[300px] object-contain shadow-md rounded-lg"
-                       />
-                   ) : (
-                       <div className="text-gray-300 font-bold">Loading...</div>
-                   )}
 
-                   {me?.hasFinishedRound && (
-                       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex flex-col items-center justify-center text-white animate-in fade-in">
-                           <div className="text-4xl font-black mb-2">{currentFlag === me.guesses[me.guesses.length-1] ? 'ВЕРНО!' : 'РАУНД ЗАВЕРШЕН'}</div>
-                           <div className="text-lg font-bold opacity-80">{COUNTRIES[currentFlag]?.name[lang]}</div>
-                           <div className="mt-4 text-xs font-bold uppercase tracking-widest bg-white/20 px-4 py-1 rounded-full">Ожидание других...</div>
-                       </div>
-                   )}
-              </div>
+              {/* CANVAS FLAG REVEAL */}
+              {currentFlag && !isRoundDone ? (
+                   <FlagRevealCanvas targetCode={currentFlag} guesses={me?.guesses || []} />
+              ) : (
+                  <div className="bg-white p-4 rounded-[32px] border border-[#E6E1DC] shadow-lg flex items-center justify-center min-h-[250px]">
+                      {currentFlag && <img src={`https://flagcdn.com/w640/${currentFlag.toLowerCase()}.png`} className="w-full h-auto max-h-[300px] object-contain shadow-md rounded-lg" />}
+                  </div>
+              )}
 
-              {!me?.hasFinishedRound && (
+              {isRoundDone && (
+                  <div className={`border p-4 rounded-xl text-center ${isCorrect ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
+                      <div className={`font-bold text-sm mb-1 ${isCorrect ? 'text-emerald-800' : 'text-red-800'}`}>
+                          {isCorrect ? 'Правильно!' : 'Вы сдались'}
+                      </div>
+                      <div className="text-lg font-black text-[#1A1F26] mb-2">{COUNTRIES[currentFlag]?.name[lang]}</div>
+                      <div className="text-xs text-gray-500 uppercase tracking-wide font-bold">Ожидание других игроков...</div>
+                  </div>
+              )}
+
+              {!isRoundDone && (
                   <div className="relative">
                       <div className="relative">
                         <input
@@ -154,14 +278,11 @@ export default function FlagerGame({ gameState, userId, makeGuess, leaveGame }: 
 
           <div className="flex flex-col gap-6">
               <div className="bg-white p-6 rounded-[32px] border border-[#E6E1DC] shadow-sm flex-1">
-                  <h3 className="text-xs font-black text-[#8A9099] uppercase tracking-widest mb-4">Ваши попытки ({me?.guesses.length}/{MAX_GUESSES})</h3>
-                  <div className="space-y-2">
-                      {me?.guesses.map((code, i) => (
+                  <h3 className="text-xs font-black text-[#8A9099] uppercase tracking-widest mb-4">Ваши попытки ({me?.guesses.length})</h3>
+                  <div className="space-y-2 max-h-[300px] overflow-y-auto custom-scrollbar">
+                      {me?.guesses.slice().reverse().map((code, i) => (
                           <GuessRow key={i} code={code} target={currentFlag} />
                       ))}
-                      {me?.guesses.length === 0 && (
-                          <div className="text-center text-gray-300 text-sm font-bold py-10">Пока нет попыток</div>
-                      )}
                   </div>
               </div>
 
