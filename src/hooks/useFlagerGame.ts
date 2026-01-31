@@ -161,6 +161,7 @@ export function useFlagerGame(lobbyId: string | null, userId: string | undefined
         pState.roundScore = points;
         pState.hasFinishedRound = true;
     }
+    // No limit on guesses
 
     // Check if ALL players finished
     const allFinished = newState.players.every(p => p.hasFinishedRound);

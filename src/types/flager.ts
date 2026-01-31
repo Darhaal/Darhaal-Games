@@ -6,8 +6,8 @@ export interface FlagerPlayerState {
   avatarUrl: string;
   isHost: boolean;
   score: number;
-  guesses: string[]; // Codes of countries guessed in current round
-  hasFinishedRound: boolean;
+  guesses: string[]; // Codes of countries guessed
+  hasFinishedRound: boolean; // True если угадал
   roundScore: number;
 }
 

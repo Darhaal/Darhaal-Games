@@ -88,7 +88,7 @@ const FlagRevealCanvas = ({ targetCode, guesses }: { targetCode: string, guesses
                     const bDist = Math.abs(targetData.data[i+2] - guessData.data[i+2]);
 
                     // Tolerance is key.
-                    // 30 is strict enough to distinguish similar reds, but loose enough for compression artifacts.
+                    // 40 is strict enough to distinguish similar reds, but loose enough for compression artifacts.
                     if (rDist < 40 && gDist < 40 && bDist < 40) {
                         mask[idx] = 1;
                     }
@@ -205,7 +205,6 @@ export default function FlagerGame({ gameState, userId, makeGuess, leaveGame }: 
   }
 
   const isRoundDone = me?.hasFinishedRound;
-  const isCorrect = isRoundDone && me.guesses[me.guesses.length-1] === currentFlag;
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-[#1A1F26] flex flex-col font-sans overflow-hidden relative">
@@ -233,9 +232,9 @@ export default function FlagerGame({ gameState, userId, makeGuess, leaveGame }: 
               )}
 
               {isRoundDone && (
-                  <div className={`border p-4 rounded-xl text-center ${isCorrect ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
-                      <div className={`font-bold text-sm mb-1 ${isCorrect ? 'text-emerald-800' : 'text-red-800'}`}>
-                          {isCorrect ? 'Правильно!' : 'Вы сдались'}
+                  <div className={`border p-4 rounded-xl text-center bg-emerald-50 border-emerald-200`}>
+                      <div className={`font-bold text-sm mb-1 text-emerald-800`}>
+                          Правильно!
                       </div>
                       <div className="text-lg font-black text-[#1A1F26] mb-2">{COUNTRIES[currentFlag]?.name[lang]}</div>
                       <div className="text-xs text-gray-500 uppercase tracking-wide font-bold">Ожидание других игроков...</div>
