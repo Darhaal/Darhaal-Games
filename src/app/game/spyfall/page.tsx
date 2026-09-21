@@ -8,6 +8,7 @@ import { defaultAvatar } from '@/constants/app';
 import { Loader2 } from 'lucide-react';
 import UniversalLobby, { LobbyPlayer } from '@/components/UniversalLobby';
 import { useSpyfallGame } from '@/hooks/useSpyfallGame';
+import { useRematchRedirect } from '@/hooks/useRematchRedirect';
 import SpyfallGame from '@/components/SpyfallGame';
 import GameNotJoined from '@/components/GameNotJoined';
 import { requireGame, roomCapacity } from '@/games/registry';
@@ -72,6 +73,9 @@ function SpyfallContent() {
     startNomination, vote, resolveVoteTimeout
   } = useSpyfallGame(lobbyId, userId);
 
+  // An old link to this room follows "play again" into its successor.
+  useRematchRedirect('spyfall', gameState, userId);
+
   useEffect(() => {
       if (userId && gameState && gameState.status === 'waiting'
           && !gameState.players.find(p => p.id === userId)
@@ -133,6 +137,7 @@ function SpyfallContent() {
 
       return (
         <UniversalLobby
+          lobbyId={lobbyId}
           roomCode={roomMeta?.code || ''}
           roomName={roomMeta?.name || 'Spyfall'}
           gameType="spyfall"

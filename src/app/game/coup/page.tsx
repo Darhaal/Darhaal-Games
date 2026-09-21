@@ -7,6 +7,7 @@ import { useLang } from '@/hooks/useLang';
 import { defaultAvatar } from '@/constants/app';
 import { Loader2 } from 'lucide-react';
 import { useCoupGame } from '@/hooks/useCoupGame';
+import { useRematchRedirect } from '@/hooks/useRematchRedirect';
 import UniversalLobby, { LobbyPlayer } from '@/components/UniversalLobby';
 import CoupGame from '@/components/CoupGame';
 import GameNotJoined from '@/components/GameNotJoined';
@@ -46,6 +47,9 @@ function CoupContent() {
     gameState, roomMeta, loading, lobbyDeleted, initGame, performAction, startGame, leaveGame,
     pass, challenge, block, resolveLoss, resolveExchange, skipTurn
   } = useCoupGame(lobbyId, userId);
+
+  // An old link to this room follows "play again" into its successor.
+  useRematchRedirect('coup', gameState, userId);
 
   useEffect(() => {
     const checkUser = async () => {
@@ -127,6 +131,7 @@ function CoupContent() {
 
       return (
         <UniversalLobby
+          lobbyId={lobbyId}
           roomCode={roomMeta?.code || ''}
           roomName={roomMeta?.name || 'Coup'}
           gameType="coup"

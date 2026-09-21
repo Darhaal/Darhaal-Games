@@ -71,6 +71,16 @@ export interface SpyfallState {
     maxPlayers: number;
   };
 
+  /**
+   * Scores from the room this one replaced, keyed by player id.
+   *
+   * `score` is documented as running "across a series of games", and inside a
+   * room it does — but "play again" opens a *new* room with an empty roster,
+   * so the series used to reset every time the table wanted another game.
+   * Whoever comes back gets their score back; anyone new starts at zero.
+   */
+  carriedScores?: Record<string, number>;
+
   // Round
   currentLocationId: string | null;
   locationList: string[]; // Location ids of the current round

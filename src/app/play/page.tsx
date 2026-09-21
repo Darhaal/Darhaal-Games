@@ -12,7 +12,7 @@ import {
   ArrowLeft, Search, Users, Lock, Play, X, Loader2,
   Crown, Filter, KeyRound, SortAsc, SortDesc, LayoutGrid
 } from 'lucide-react';
-import { GAMES, getGame } from '@/games/registry';
+import { GAMES, getGame, roomCapacity } from '@/games/registry';
 import { GAME_ICONS } from '@/games/icons';
 
 // Minimal player info inside game_state (shape differs per game)
@@ -151,6 +151,18 @@ function PlayContent() {
       return [];
   };
 
+  /**
+   * Seats in a room, through the shared helper rather than by hand.
+   *
+   * The list used to read `settings.maxPlayers` raw, so a row carrying a
+   * value outside the game's own range displayed it as written — "2/99" for a
+   * two-player game, and a room that could never read as full.
+   */
+  const capacityOf = (lobby: LobbyRow): number => {
+      const game = getGame(lobby.game_state.gameType);
+      return game ? roomCapacity(game, lobby.game_state.settings?.maxPlayers) : 6;
+  };
+
   const getPlayerCount = (lobby: LobbyRow) => {
       const p = lobby.game_state.players;
       if (Array.isArray(p)) return p.length;
@@ -268,6 +280,11 @@ function PlayContent() {
         const isAlreadyIn = players.some((p) => p.id === currentUserId || p.userId === currentUserId);
 
         if ((l.status === 'playing' || l.status === 'finished') && !isAlreadyIn) return false;
+
+        // A room with no seat left is not an offer. It used to sit in the list
+        // wearing a disabled "Full" button, which reads as something you might
+        // be able to do. Rooms you are already in stay, full or not.
+        if (!isAlreadyIn && players.length >= capacityOf(l)) return false;
 
         return matchesSearch && matchesMode;
     })
@@ -403,7 +420,7 @@ function PlayContent() {
                             const players = getPlayers(lobby);
                             const hostPlayer = players.find((p) => p.isHost) || players[0];
                             const game = getGame(lobby.game_state.gameType);
-                            const maxPlayers = lobby.game_state.settings?.maxPlayers ?? game?.players.max ?? 6;
+                            const maxPlayers = capacityOf(lobby);
                             const isFull = players.length >= maxPlayers;
                             const isPlaying = lobby.status === 'playing';
                             const GameIcon = game ? GAME_ICONS[game.id] : Users;

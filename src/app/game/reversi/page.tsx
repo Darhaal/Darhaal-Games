@@ -8,6 +8,7 @@ import { defaultAvatar } from '@/constants/app';
 import { Loader2 } from 'lucide-react';
 import UniversalLobby, { LobbyPlayer } from '@/components/UniversalLobby';
 import { useReversiGame } from '@/hooks/useReversiGame';
+import { useRematchRedirect } from '@/hooks/useRematchRedirect';
 import ReversiGame from '@/components/ReversiGame';
 import GameNotJoined from '@/components/GameNotJoined';
 import { requireGame, roomCapacity } from '@/games/registry';
@@ -61,6 +62,9 @@ function ReversiContent() {
     gameState, roomMeta, loading, lobbyDeleted,
     initGame, startGame, placeDisc, handleTimeout, leaveGame
   } = useReversiGame(lobbyId, userId);
+
+  // An old link to this room follows "play again" into its successor.
+  useRematchRedirect('reversi', gameState, userId);
 
   useEffect(() => {
     if (userId && gameState && gameState.status === 'waiting'
@@ -127,6 +131,7 @@ function ReversiContent() {
 
     return (
       <UniversalLobby
+        lobbyId={lobbyId}
         roomCode={roomMeta?.code || ''}
         roomName={roomMeta?.name || 'Reversi'}
         gameType="reversi"

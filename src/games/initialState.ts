@@ -287,6 +287,8 @@ const REMATCH: { [K in GameId]: (parent: GameStateByType[K]) => GameStateByType[
   spyfall: (p) => ({
     ...p,
     players: [],
+    // The roster empties, so the running score has to travel separately.
+    carriedScores: Object.fromEntries(p.players.map((pl) => [pl.id, pl.score || 0])),
     status: 'waiting',
     currentLocationId: null,
     locationList: [],

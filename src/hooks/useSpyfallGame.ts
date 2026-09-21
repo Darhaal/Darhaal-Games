@@ -338,7 +338,7 @@ export function useSpyfallGame(lobbyId: string | null, userId: string | undefine
         role: null,
         isReady: true,
         hasNominated: false,
-        score: 0
+        score: current.carriedScores?.[userId] || 0
       });
 
       return next;

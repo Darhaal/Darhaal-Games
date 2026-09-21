@@ -3,7 +3,8 @@
 import React, { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Loader2, RotateCcw } from 'lucide-react';
-import { startRematch, rematchIdOf } from '@/lib/rematch';
+import { startRematch } from '@/lib/rematch';
+import { rematchIdOf } from '@/lib/rematchId';
 import type { GameStateByType } from '@/games/initialState';
 import type { GameId } from '@/games/registry';
 

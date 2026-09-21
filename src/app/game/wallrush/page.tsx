@@ -8,6 +8,7 @@ import { defaultAvatar } from '@/constants/app';
 import { Loader2 } from 'lucide-react';
 import UniversalLobby, { LobbyPlayer } from '@/components/UniversalLobby';
 import { useWallRushGame } from '@/hooks/useWallRushGame';
+import { useRematchRedirect } from '@/hooks/useRematchRedirect';
 import WallRushGame from '@/components/WallRushGame';
 import GameNotJoined from '@/components/GameNotJoined';
 import { requireGame, roomCapacity } from '@/games/registry';
@@ -61,6 +62,9 @@ function WallRushContent() {
     gameState, roomMeta, loading, lobbyDeleted,
     initGame, startGame, movePawn, placeWall, handleTimeout, leaveGame
   } = useWallRushGame(lobbyId, userId);
+
+  // An old link to this room follows "play again" into its successor.
+  useRematchRedirect('wallrush', gameState, userId);
 
   useEffect(() => {
     if (userId && gameState && gameState.status === 'waiting'
@@ -131,6 +135,7 @@ function WallRushContent() {
 
     return (
       <UniversalLobby
+        lobbyId={lobbyId}
         roomCode={roomMeta?.code || ''}
         roomName={roomMeta?.name || 'Wall Rush'}
         gameType="wallrush"

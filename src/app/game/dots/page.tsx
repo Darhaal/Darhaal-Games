@@ -8,6 +8,7 @@ import { defaultAvatar } from '@/constants/app';
 import { Loader2 } from 'lucide-react';
 import UniversalLobby, { LobbyPlayer } from '@/components/UniversalLobby';
 import { useDotsGame } from '@/hooks/useDotsGame';
+import { useRematchRedirect } from '@/hooks/useRematchRedirect';
 import DotsGame from '@/components/DotsGame';
 import GameNotJoined from '@/components/GameNotJoined';
 import { requireGame, roomCapacity } from '@/games/registry';
@@ -61,6 +62,9 @@ function DotsContent() {
     gameState, roomMeta, loading, lobbyDeleted,
     initGame, startGame, drawLine, handleTimeout, leaveGame
   } = useDotsGame(lobbyId, userId);
+
+  // An old link to this room follows "play again" into its successor.
+  useRematchRedirect('dots', gameState, userId);
 
   useEffect(() => {
     if (userId && gameState && gameState.status === 'waiting'
@@ -127,6 +131,7 @@ function DotsContent() {
 
     return (
       <UniversalLobby
+        lobbyId={lobbyId}
         roomCode={roomMeta?.code || ''}
         roomName={roomMeta?.name || 'Dots & Boxes'}
         gameType="dots"

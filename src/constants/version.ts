@@ -1,4 +1,4 @@
-export const APP_VERSION = '2.3.0';
+export const APP_VERSION = '2.3.1';
 
 export type VersionType = 'major' | 'minor' | 'patch' | 'init';
 
@@ -12,6 +12,16 @@ export interface VersionLog {
 
 export const VERSION_HISTORY: VersionLog[] = [
   /* ===================== 2.3.x ===================== */
+
+  {
+    ver: '2.3.1',
+    date: '21 SEP 2026',
+    type: 'patch',
+    desc: {
+      ru: 'Комната, в которой никого не осталось, больше не висит в списке: если хост ушёл, комнату принимает кто-то из оставшихся, а пустое лобби закрывается само. Полные комнаты не показываются в списке — зайти в них всё равно нельзя. Ссылка на завершённую комнату ведёт в новую, если там нажали «Ещё раз», и счёт «Шпиона» больше не обнуляется между партиями.',
+      en: 'A room with nobody left in it no longer sits in the list: if the host goes, one of the remaining players takes it over, and an empty lobby closes itself. Full rooms are hidden — there is no way into them anyway. A link to a finished room now follows "play again" into its successor, and the Spyfall score survives between games.'
+    }
+  },
 
   {
     ver: '2.3.0',

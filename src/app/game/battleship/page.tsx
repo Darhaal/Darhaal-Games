@@ -7,6 +7,7 @@ import { useLang } from '@/hooks/useLang';
 import { defaultAvatar } from '@/constants/app';
 import { Loader2 } from 'lucide-react';
 import { useBattleshipGame } from '@/hooks/useBattleshipGame';
+import { useRematchRedirect } from '@/hooks/useRematchRedirect';
 import UniversalLobby, { LobbyPlayer } from '@/components/UniversalLobby';
 import BattleshipGame from '@/components/BattleshipGame';
 import GameNotJoined from '@/components/GameNotJoined';
@@ -68,6 +69,9 @@ function BattleshipContent() {
       gameState, roomMeta, loading, lobbyDeleted, initGame, startGame, leaveGame,
       autoPlaceShips, clearShips, submitShips, fireShot, myShips, placeShipManual, removeShip, handleTimeout
   } = useBattleshipGame(lobbyId, user);
+
+  // An old link to this room follows "play again" into its successor.
+  useRematchRedirect('battleship', gameState, user?.id);
 
   useEffect(() => {
     if (user && gameState && gameState.status === 'waiting'
@@ -144,6 +148,7 @@ function BattleshipContent() {
 
       return (
         <UniversalLobby
+          lobbyId={lobbyId}
           roomCode={roomMeta?.code || ''}
           roomName={roomMeta?.name || 'Battleship'}
           gameType="battleship"

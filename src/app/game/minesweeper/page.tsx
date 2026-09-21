@@ -7,6 +7,7 @@ import { useLang } from '@/hooks/useLang';
 import { Loader2 } from 'lucide-react';
 import UniversalLobby, { LobbyPlayer } from '@/components/UniversalLobby';
 import { useMinesweeperGame } from '@/hooks/useMinesweeperGame';
+import { useRematchRedirect } from '@/hooks/useRematchRedirect';
 import MinesweeperGame from '@/components/MinesweeperGame';
 import GameNotJoined from '@/components/GameNotJoined';
 import { requireGame, roomCapacity } from '@/games/registry';
@@ -67,6 +68,9 @@ function MinesweeperContent() {
     forceTimeUp
   } = useMinesweeperGame(lobbyId, userId);
 
+  // An old link to this room follows "play again" into its successor.
+  useRematchRedirect('minesweeper', gameState, userId);
+
   // Register the player on entry (only while the lobby is waiting)
   useEffect(() => {
       if (userId && gameState && gameState.status === 'waiting'
@@ -125,6 +129,7 @@ function MinesweeperContent() {
 
       return (
         <UniversalLobby
+          lobbyId={lobbyId}
           roomCode={roomMeta?.code || ''}
           roomName={roomMeta?.name || 'Minesweeper'}
           gameType="minesweeper"

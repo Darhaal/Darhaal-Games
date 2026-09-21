@@ -47,14 +47,3 @@ export async function startRematch<T extends GameId>(
 
   return null;
 }
-
-/**
- * The successor a finished room already has, if anyone has pressed first.
- *
- * `create_rematch_lobby` writes this into `game_state` for every game, but
- * only Wall Rush's state type declares it — reading it loosely here beats
- * adding the same optional field to six interfaces that never use it
- * themselves.
- */
-export const rematchIdOf = (state: unknown): string | undefined =>
-  (state as { rematchLobbyId?: string } | null | undefined)?.rematchLobbyId;

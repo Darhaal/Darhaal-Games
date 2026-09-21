@@ -7,6 +7,7 @@ import { useLang } from '@/hooks/useLang';
 import { Loader2 } from 'lucide-react';
 import UniversalLobby, { LobbyPlayer } from '@/components/UniversalLobby';
 import { useFlagerGame } from '@/hooks/useFlagerGame';
+import { useRematchRedirect } from '@/hooks/useRematchRedirect';
 import FlagerGame from '@/components/FlagerGame';
 import GameNotJoined from '@/components/GameNotJoined';
 import { requireGame, roomCapacity } from '@/games/registry';
@@ -65,6 +66,9 @@ function FlagerContent() {
     forceRoundEnd
   } = useFlagerGame(lobbyId, userId);
 
+  // An old link to this room follows "play again" into its successor.
+  useRematchRedirect('flager', gameState, userId);
+
   useEffect(() => {
       if (userId && gameState && gameState.status === 'waiting'
           && !gameState.players.find(p => p.id === userId)
@@ -122,6 +126,7 @@ function FlagerContent() {
 
       return (
         <UniversalLobby
+          lobbyId={lobbyId}
           roomCode={roomMeta?.code || ''}
           roomName={roomMeta?.name || 'Flager'}
           gameType="flager"

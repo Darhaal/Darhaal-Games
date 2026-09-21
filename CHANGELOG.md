@@ -7,6 +7,48 @@ releasing.
 Format: [Semantic Versioning](https://semver.org/). Types: **major** = platform
 milestone, **minor** = new game mode / feature, **patch** = fixes & improvements.
 
+## [2.3.1] — 2026-09-21 (patch)
+
+> Rooms that nobody is in stop pretending otherwise.
+
+### Added
+- **A lobby nobody has open times out.** The auto-kick is run by the host and
+  never kicks itself, so a host who closed their tab left the room frozen —
+  no one to clear the ghosts, and no start button for anyone. The host role is
+  now handed to the first player still present, and a lobby nobody has had
+  open for ten minutes is collected instead of sitting in the list for a week.
+  Presence lives in the Realtime service and the cleanup job runs in SQL, so
+  the lobby screen writes the fact down through `touch_lobby`.
+- The Spyfall score **survives a rematch**. It is documented as running across
+  a series of games, and inside a room it did, but "play again" opens a new
+  room with an empty roster, so the series reset whenever the table wanted
+  another game.
+
+### Changed
+- **An old room link follows "play again".** The successor keeps the finished
+  room's results readable, but the link already shared for it pointed at a room
+  nobody would play in again — and a private room shares exactly one link.
+  A visitor who is not seated is now forwarded; a player still reading the
+  scoreboard is left where they are.
+- **Full rooms are no longer listed.** One sat in the list wearing a disabled
+  "Full" button, which reads as something you might be able to do. Rooms you
+  are in still appear, full or not.
+
+### Fixed
+- **The signup trigger was still calling a third party.** It wrote an
+  `api.dicebear.com` URL with the Supabase user id inside it into
+  `profiles.avatar_url` long after the app moved to rendering the same artwork
+  locally — the two had drifted despite a comment asking they be kept in sync.
+  7 of 31 profiles carried one; the trigger and the existing rows now use
+  `/avatar/<id>`.
+- The lobby list read `settings.maxPlayers` raw while every game screen goes
+  through `roomCapacity()`, so a row outside the game's range displayed as
+  written — "2/99" for a two-player game, and a room that could never read as
+  full.
+- **Guest accounts are collected.** Guest sign-in creates a real `auth.users`
+  row and nothing removed it; 20 of 31 accounts were guests. Anonymous accounts
+  idle for 30 days are swept daily. Registered accounts are never touched.
+
 ## [2.3.0] — 2026-09-21 (minor) — **Three New Games**
 
 > The line-up grows from five games to eight, and adding the ninth is now a

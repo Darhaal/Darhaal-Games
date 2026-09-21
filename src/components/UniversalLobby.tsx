@@ -9,6 +9,7 @@ import {
 import { getGame } from '@/games/registry';
 import { GAME_ICONS } from '@/games/icons';
 import { usePresenceHeartbeat } from '@/hooks/usePresenceHeartbeat';
+import { useLobbyTouch } from '@/hooks/useLobbyTouch';
 import { supabase } from '@/lib/supabase';
 import { writeGameState } from '@/lib/gameStateSync';
 import { playSfx } from '@/lib/sound';
@@ -22,6 +23,8 @@ export interface LobbyPlayer {
 }
 
 interface UniversalLobbyProps {
+  /** Needed for the keep-alive ping; the room is addressed by id, not code. */
+  lobbyId: string | null;
   roomCode: string;
   roomName: string;
   gameType: string;
@@ -41,6 +44,7 @@ const Toast = ({ msg, type }: { msg: string, type: 'join' | 'leave' | 'info' }) 
 );
 
 export default function UniversalLobby({
+  lobbyId,
   roomCode,
   roomName,
   gameType,
@@ -64,6 +68,10 @@ export default function UniversalLobby({
 
   // Presence connection
   const { onlineUserIds, isSynced } = usePresenceHeartbeat(roomCode, currentUserId);
+
+  // Tells the database somebody is still here. Presence alone is invisible to
+  // the cleanup job, so a room whose last tab closed used to linger for days.
+  useLobbyTouch(lobbyId, !!currentUserId);
 
   const isHost = players.find(p => p.id === currentUserId)?.isHost;
   const game = getGame(gameType);
@@ -245,6 +253,94 @@ export default function UniversalLobby({
       console.error("Kick failed", e);
     }
   };
+
+  /**
+   * Takes the room over when the host has gone.
+   *
+   * The auto-kick below is run by the host and never kicks itself, so an
+   * absent host left the room frozen: nobody to remove the ghosts, and no
+   * "start" button for anyone. The remaining players now promote one of
+   * their own.
+   *
+   * `handleKickPlayer` deliberately does not promote anyone — it was written
+   * for a host removing someone else, where the host stays. Promoting has to
+   * happen in the same write as the removal, or the room spends a moment with
+   * no host at all and every client tries to fix it at once.
+   */
+  const handleHostGone = async (absentHostId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('lobbies')
+        .select('id, game_state')
+        .eq('code', roomCode)
+        .single();
+
+      if (error || !data) return;
+
+      const state = data.game_state as {
+        players: LobbyPlayer[] | Record<string, LobbyPlayer>;
+        version?: number;
+      } & Record<string, unknown>;
+
+      // Someone else got there first, or the host came back.
+      const stillHost = Array.isArray(state.players)
+        ? state.players.some((p) => p.id === absentHostId && p.isHost)
+        : state.players?.[absentHostId]?.isHost;
+      if (!stillHost) return;
+
+      let players: LobbyPlayer[] | Record<string, LobbyPlayer>;
+      let remaining: LobbyPlayer[];
+
+      if (Array.isArray(state.players)) {
+        remaining = state.players.filter((p) => p.id !== absentHostId);
+        players = remaining;
+      } else {
+        const rest = { ...state.players };
+        delete rest[absentHostId];
+        remaining = Object.values(rest);
+        players = rest;
+      }
+
+      if (remaining.length === 0) {
+        await supabase.rpc('leave_lobby', { p_lobby_id: data.id });
+        onLeave();
+        return;
+      }
+
+      // Prefer somebody who is actually here; fall back to roster order so
+      // two clients deciding at once still pick the same person.
+      const heir = remaining.find((p) => onlineUserIds.includes(p.id)) || remaining[0];
+      heir.isHost = true;
+
+      await writeGameState(data.id as string, {
+        ...state,
+        players,
+        version: (state.version || 0) + 1
+      });
+    } catch (e) {
+      console.error('Host handover failed', e);
+    }
+  };
+
+  // --- HOST HANDOVER: the room outlives whoever opened it ---
+  useEffect(() => {
+    if (!isSynced || !currentUserId) return;
+
+    const host = players.find((p) => p.isHost);
+    if (!host || host.id === currentUserId) return;          // we are fine, or we are it
+    if (onlineUserIds.includes(host.id)) return;             // host is here
+
+    // One client acts. The first player present, in roster order, excluding
+    // the host we are about to remove — everyone computes the same answer.
+    const actor = players.find((p) => p.id !== host.id && onlineUserIds.includes(p.id));
+    if (actor?.id !== currentUserId) return;
+
+    // Longer than the ten seconds a player gets: losing the host reassigns
+    // control of the room, so a reload should not be enough to trigger it.
+    const timer = setTimeout(() => handleHostGone(host.id), 15000);
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- handleHostGone reads fresh state itself; listing it would restart the timer every render
+  }, [isSynced, currentUserId, players, onlineUserIds]);
 
   // --- AUTO-KICK SYSTEM (runs on the host only) ---
   useEffect(() => {
