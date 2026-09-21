@@ -1,7 +1,15 @@
 import { Target, Zap, Shield, Trophy, MousePointer2, Eye, Flag, Ship, RefreshCw, Crosshair, AlertTriangle, Search, Clock, Map as MapIcon } from 'lucide-react';
 import { GameRulesData } from '@/components/GameRulesModal';
+import type { GameId, Locale } from '@/games/registry';
 
-export const GAME_RULES: Record<'ru' | 'en', Record<string, GameRulesData>> = {
+/**
+ * In-game rulebooks, one per game per language.
+ *
+ * Keyed by `GameId` rather than `string` on purpose: a new game now fails the
+ * type check here until both languages are written, instead of shipping with a
+ * rules button that opens an empty dialog.
+ */
+export const GAME_RULES: Record<Locale, Record<GameId, GameRulesData>> = {
   ru: {
     battleship: {
       title: 'Морской Бой',
@@ -195,6 +203,151 @@ export const GAME_RULES: Record<'ru' | 'en', Record<string, GameRulesData>> = {
           icon: AlertTriangle,
           content: 'Любой игрок 1 раз за раунд может нажать кнопку "Обвинить". Начинается голосование. Если ВСЕ (кроме обвиняемого) голосуют ЗА — игра заканчивается вердиктом. Если хоть один голосует ПРОТИВ — игра продолжается.',
           type: 'text'
+        }
+      ]
+    },
+    wallrush: {
+      title: 'Стены',
+      description: 'Абстрактная стратегия: гонка и перекрытие путей',
+      sections: [
+        {
+          title: 'Цель',
+          icon: Flag,
+          content: 'В дуэли и в паре доска 9×9: пешка стоит посередине одного края, дойти нужно до любой клетки противоположного. Вчетвером всё иначе — доска 11×11, и все четверо бегут в одну золотую клетку в самом центре. Кто дошёл первым, тот и выиграл; в режиме 2 на 2 достаточно, чтобы дошёл любой из пары.',
+          type: 'text'
+        },
+        {
+          title: 'Ход',
+          icon: MousePointer2,
+          content: 'За ход вы делаете ровно одно из двух: либо двигаете пешку на соседнюю клетку по вертикали или горизонтали, либо ставите стену. Пропустить ход нельзя, и делать оба действия сразу тоже нельзя — в этом выборе вся игра.',
+          type: 'text'
+        },
+        {
+          title: 'Стены',
+          icon: Shield,
+          content: [
+            'Стена длиной в две клетки ставится в промежуток между рядами или столбцами.',
+            'Стены нельзя класть поверх друг друга, пересекать их или накладывать внахлёст.',
+            'Поставленную стену уже не убрать и не сдвинуть.',
+            'Вдвоём у каждого по 10 стен, в паре по 5, вчетвером по 7. Кончились — остаётся только идти.'
+          ],
+          type: 'list'
+        },
+        {
+          title: 'Главное ограничение',
+          icon: AlertTriangle,
+          content: 'Стену нельзя поставить так, чтобы у кого-то не осталось ни одного пути до своего края. Запереть соперника наглухо невозможно — стены только удлиняют дорогу. Интерфейс сам не даст вам поставить такую стену.',
+          type: 'text'
+        },
+        {
+          title: 'Прыжок',
+          icon: Zap,
+          content: 'Если вы стоите вплотную к чужой пешке, вы перепрыгиваете через неё и встаёте сразу за ней. Если прямо за ней стена или край доски — вместо прыжка вы обходите её сбоку, вставая слева или справа. Это единственный способ сходить по диагонали. Вчетвером, когда перед вами выстроились сразу две фишки, прыжок перемахивает через обе.',
+          type: 'text'
+        },
+        {
+          title: 'Режимы',
+          icon: Target,
+          content: [
+            '1 на 1 — доска 9×9, двое друг напротив друга, по 10 стен.',
+            '2 на 2 — доска 9×9, четверо, партнёры напротив друг друга, ходы идут по кругу и потому чередуются между парами. По 5 стен.',
+            'Вчетвером — доска 11×11, по одному с каждой стороны, по 7 стен, и цель у всех общая: золотая клетка в центре. Побеждает один, трое проигрывают.'
+          ],
+          type: 'list'
+        },
+        {
+          title: 'Тактика',
+          icon: Search,
+          content: [
+            'Стена, которая удлиняет чужой путь на два шага, стоит меньше, чем ваш собственный шаг вперёд. Считайте разницу, а не ущерб.',
+            'Берегите стены на конец: в эндшпиле один удачный барьер решает партию, а в начале он почти ничего не стоит.',
+            'Вчетвером стены дороже вдвое: их вдвое меньше, а соперников вдвое больше. Не тратьте их на того, кто и так отстаёт.',
+            'В паре не стройте против одного и того же — разводите цели, иначе вы просто дублируете работу.'
+          ],
+          type: 'list'
+        }
+      ]
+    },
+    dots: {
+      title: 'Точки и квадраты',
+      description: 'Абстрактная стратегия: цепочки и размены',
+      sections: [
+        {
+          title: 'Ход',
+          icon: MousePointer2,
+          content: 'Поле — сетка точек. За ход вы проводите одну линию между двумя соседними точками: по горизонтали или по вертикали. Наискосок нельзя, через уже проведённую линию — тоже.',
+          type: 'text'
+        },
+        {
+          title: 'Квадраты',
+          icon: Trophy,
+          content: 'Если ваша линия замкнула квадрат, он становится вашим — и вы ходите ещё раз. Одна линия может закрыть сразу два квадрата, и оба достанутся вам. Ходите, пока закрываете.',
+          type: 'text'
+        },
+        {
+          title: 'Конец',
+          icon: Flag,
+          content: 'Партия заканчивается, когда проведены все линии. Побеждает тот, у кого больше квадратов. При равенстве — ничья на двоих или на всех, кто набрал поровну.',
+          type: 'text'
+        },
+        {
+          title: 'Главное правило игры',
+          icon: AlertTriangle,
+          content: 'Третья линия у квадрата — подарок сопернику: он закроет его и походит снова. Поэтому большую часть партии обе стороны стараются ходить туда, где до квадрата ещё далеко. Рано или поздно безопасные линии кончаются, и кому-то приходится открыть первую цепочку.',
+          type: 'text'
+        },
+        {
+          title: 'Тактика',
+          icon: Search,
+          content: [
+            'Считайте безопасные ходы. Побеждает не тот, кто раньше захватит квадрат, а тот, у кого останется ход, когда у соперника их не будет.',
+            'Отдавая цепочку, отдавайте короткую. Длинные приберегите к концу — там они решают.',
+            'Двойной крест: закрыв длинную цепочку не до конца, а оставив два последних квадрата, вы заставляете соперника открыть следующую. Это главный приём игры.',
+            'Вчетвером цепочки достаются тому, кто оказался у них в свой ход, — считайте не только свои линии, но и чью очередь вы подводите.'
+          ],
+          type: 'list'
+        }
+      ]
+    }
+,
+    reversi: {
+      title: 'Реверси',
+      description: 'Абстрактная стратегия: линии, которые переворачиваются',
+      sections: [
+        {
+          title: 'Ход',
+          icon: MousePointer2,
+          content: 'Вы ставите фишку своего цвета так, чтобы между ней и одной из ваших уже стоящих фишек оказалась сплошная линия чужих. Все зажатые фишки переворачиваются и становятся вашими. Линии считаются по горизонтали, вертикали и диагонали, и один ход может перевернуть сразу несколько.',
+          type: 'text'
+        },
+        {
+          title: 'Что считается ходом',
+          icon: Target,
+          content: 'Ход разрешён, только если он переворачивает хотя бы одну фишку. Линия, упирающаяся в край доски или разорванная пустой клеткой, не зажимает ничего — поэтому не всякая свободная клетка доступна для хода.',
+          type: 'text'
+        },
+        {
+          title: 'Пропуск',
+          icon: RefreshCw,
+          content: 'Если у вас нет ни одного допустимого хода, ход переходит автоматически. Партия заканчивается, когда ходов нет ни у кого — обычно при полной доске, но иногда и со свободными клетками.',
+          type: 'text'
+        },
+        {
+          title: 'Конец',
+          icon: Flag,
+          content: 'Побеждает тот, у кого больше фишек. Поровну — ничья.',
+          type: 'text'
+        },
+        {
+          title: 'Тактика',
+          icon: Search,
+          content: [
+            'Углы перевернуть невозможно. Всё остальное — можно, поэтому угол дороже любого количества фишек в центре.',
+            'Не занимайте клетки рядом с углом раньше времени — именно они открывают сопернику дорогу в сам угол.',
+            'В середине партии выгодно иметь меньше фишек: меньше фишек — меньше того, что можно зажать, и больше мест, куда вы ещё можете пойти.',
+            'Считайте ходы, а не фишки. Партия выигрывается тем, что сопернику становится некуда ставить.'
+          ],
+          type: 'list'
         }
       ]
     }
@@ -391,6 +544,150 @@ export const GAME_RULES: Record<'ru' | 'en', Record<string, GameRulesData>> = {
           icon: AlertTriangle,
           content: 'Any player can "Accuse" once per round. A vote starts. Unanimous "Guilty" verdict ends the game. Any "Innocent" vote continues the game.',
           type: 'text'
+        }
+      ]
+    },
+    wallrush: {
+      title: 'Wall Rush',
+      description: 'Abstract strategy: a race and a blockade',
+      sections: [
+        {
+          title: 'Goal',
+          icon: Flag,
+          content: 'In the duel and the team game the board is 9x9: your pawn starts mid-edge and has to reach any square on the opposite edge. Four at a table is different — an 11x11 board, and all four race for a single golden square in the very centre. First one home wins; in 2v2 either partner getting there is enough.',
+          type: 'text'
+        },
+        {
+          title: 'Your turn',
+          icon: MousePointer2,
+          content: 'Each turn you do exactly one of two things: move your pawn one square up, down, left or right, or place a wall. You cannot pass, and you cannot do both. That choice is the whole game.',
+          type: 'text'
+        },
+        {
+          title: 'Walls',
+          icon: Shield,
+          content: [
+            'A wall is two squares long and sits in the gap between rows or columns.',
+            'Walls may not cross, overlap or share a slot with another wall.',
+            'Once placed, a wall never moves and never comes back.',
+            'Two players get 10 walls each, a team game 5 each, four at a table 7 each. Once they are gone, all you can do is run.'
+          ],
+          type: 'list'
+        },
+        {
+          title: 'The one hard limit',
+          icon: AlertTriangle,
+          content: 'A wall may never leave anyone without a route to their edge. Sealing a rival in is impossible — walls only lengthen the journey. The board will not let you place a wall that breaks this.',
+          type: 'text'
+        },
+        {
+          title: 'Jumping',
+          icon: Zap,
+          content: 'Standing face to face with another pawn, you hop straight over it and land behind. If a wall or the board edge is directly behind it, you step around it instead, landing to its left or right. That side-step is the only way a pawn ever moves diagonally. Four at a table, two pawns queued in front of you are cleared by a single hop over both.',
+          type: 'text'
+        },
+        {
+          title: 'Modes',
+          icon: Target,
+          content: [
+            '1v1 — a 9x9 board, two players facing each other, 10 walls each.',
+            '2v2 — a 9x9 board, four players with partners opposite, so turns run clockwise and alternate between the teams. 5 walls each.',
+            'Four at a table — an 11x11 board, one player per side, 7 walls each, and a single shared target: the golden centre square. One winner, three losers.'
+          ],
+          type: 'list'
+        },
+        {
+          title: 'Tactics',
+          icon: Search,
+          content: [
+            'A wall that adds two steps to a rival costs you one step of your own. Count the difference, not the damage.',
+            'Save walls for the end. One barrier in the endgame decides a match; the same wall on turn two barely matters.',
+            'With four players walls are twice as precious: half the allowance, twice the rivals. Do not spend them on whoever is already behind.',
+            'Partnered up, do not both wall the same rival — split your targets or you are duplicating each other.'
+          ],
+          type: 'list'
+        }
+      ]
+    },
+    dots: {
+      title: 'Dots & Boxes',
+      description: 'Abstract strategy: chains and sacrifices',
+      sections: [
+        {
+          title: 'Your turn',
+          icon: MousePointer2,
+          content: 'The board is a grid of dots. On your turn you draw one line between two neighbouring dots, across or down. Never diagonally, and never over a line already drawn.',
+          type: 'text'
+        },
+        {
+          title: 'Boxes',
+          icon: Trophy,
+          content: 'If your line closes a box, the box is yours and you go again. One line can close two boxes at once, and both are yours. You keep going as long as you keep closing.',
+          type: 'text'
+        },
+        {
+          title: 'The end',
+          icon: Flag,
+          content: 'The match ends when every line has been drawn. Whoever holds the most boxes wins; level scores share it.',
+          type: 'text'
+        },
+        {
+          title: 'The rule the game turns on',
+          icon: AlertTriangle,
+          content: 'Drawing a third side of a box hands it to your rival: they close it and go again. So for most of the match both sides play where no box is nearly finished. Sooner or later the safe lines run out and somebody has to open the first chain.',
+          type: 'text'
+        },
+        {
+          title: 'Tactics',
+          icon: Search,
+          content: [
+            'Count the safe moves. The winner is not whoever takes a box first — it is whoever still has a move when the other has none.',
+            'When you must give a chain away, give away a short one. Save the long chains for the end, where they decide the match.',
+            'The double cross: close a long chain but leave its last two boxes, and your rival has to open the next one. This is the central trick of the game.',
+            'With four players a chain falls to whoever reaches it on their turn — so watch whose turn you are setting up, not only your own line.'
+          ],
+          type: 'list'
+        }
+      ]
+    },
+    reversi: {
+      title: 'Reversi',
+      description: 'Abstract strategy: lines that turn over',
+      sections: [
+        {
+          title: 'Your turn',
+          icon: MousePointer2,
+          content: 'Place one disc of your colour so that a straight line of your rival\'s discs sits between the new disc and one of yours already on the board. Every disc in that line turns over and becomes yours. Lines run across, down and diagonally, and one move can turn over several at once.',
+          type: 'text'
+        },
+        {
+          title: 'What counts as a move',
+          icon: Target,
+          content: 'A move is legal only if it turns at least one disc over. A run that reaches the edge of the board, or that has a gap in it, traps nothing — so an empty square is not always a place you may play.',
+          type: 'text'
+        },
+        {
+          title: 'Passing',
+          icon: RefreshCw,
+          content: 'If you have no legal move, your turn passes automatically. The match ends when neither colour can play — usually with a full board, but sometimes with squares to spare.',
+          type: 'text'
+        },
+        {
+          title: 'The end',
+          icon: Flag,
+          content: 'Whoever holds more discs wins. A level count is a draw.',
+          type: 'text'
+        },
+        {
+          title: 'Tactics',
+          icon: Search,
+          content: [
+            'Corners cannot be turned over. Everything else can, so a corner is worth more than any number of discs in the middle.',
+            'Do not take the squares beside a corner early — they are what lets your rival reach the corner itself.',
+            'Holding fewer discs in the middlegame is usually good: fewer discs means fewer of them can be trapped, and more places you can still play.',
+            'Count moves, not discs. Leaving your rival with almost nothing to play is how the endgame is won.'
+          ],
+          type: 'list'
         }
       ]
     }

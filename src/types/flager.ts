@@ -7,14 +7,10 @@ export interface RoundResult {
   points: number;
 }
 
-export interface FlagerNotification {
-  id: number;
-  message: {
-    ru: string;
-    en: string;
-  };
-  type: 'info' | 'leave' | 'join';
-}
+import type { GameNotification } from './notification';
+
+/** Kept as an alias so existing imports keep working. */
+export type FlagerNotification = GameNotification;
 
 export interface FlagerPlayerState {
   id: string;

@@ -26,12 +26,47 @@ Key elements, identical in all five game hooks:
 | `stateRef` (React ref) | Every hook mirrors its state into a ref so async callbacks always read the freshest state. |
 | Latency hiding | Flager and Minesweeper merge the local player's own sub-state over incoming server state when the local copy is "ahead" (more guesses / more opened cells). |
 
-**Write path (v2.0):** all state writes go through
+**Write path.** All state writes go through
 [`src/lib/gameStateSync.ts`](../src/lib/gameStateSync.ts) → the `update_game_state`
-RPC, which performs a **compare-and-swap** (`WHERE version = expected`). On a
-version conflict the losing client re-fetches and re-syncs instead of silently
-overwriting the other write. If the SQL migration hasn't been applied yet, the
-helper transparently falls back to the legacy last-write-wins `UPDATE`.
+RPC, which performs a **compare-and-swap**: the update only lands where the
+stored version equals `newState.version - 1` *and* is strictly lower than it.
+There is **no fallback** to a plain `UPDATE` — clients hold no write privilege on
+`game_state` after the v2.1 hardening, and the old fallback reported success
+while failing, which silently ate players' moves.
+
+### Two rules this makes load-bearing
+
+**1. Game code never assigns `version`.** Only `useLobbySync` increments it.
+Coup's `startGame` once rebuilt its state with `version: 1` after spreading the
+current state, which reset the counter: the CAS then asked the database for
+version 1, true only in a room nobody had joined. From the moment a second
+player arrived the row sat at version 2 and **every attempt to start the match
+was refused** — the mode was unplayable, and stranded rooms accumulated in the
+lobby list.
+
+**2. Writes use the retryable form of `updateState`.** It accepts either a
+finished state or a function of the current state:
+
+```ts
+// One attempt. Outraced -> the move is lost and the player is told.
+await updateState(newState);
+
+// Re-run against freshly fetched state on a conflict, up to 3 times.
+await updateState((current) => {
+  if (!stillLegal(current)) return null;   // abort quietly
+  return next(current);
+});
+```
+
+Simultaneous actions are the norm here, not an edge case: everyone votes at once
+in Spyfall, everyone passes at once in Coup, everyone taps "ready" at once in
+Flager, and everyone opens the invite link at once when it is posted in a group
+chat. All write paths in all five hooks now take the functional form, and the
+updater re-checks legality against the fresh state so a retry cannot apply an
+action twice.
+
+Both rules are enforced by [`tests/sync-invariants.test.ts`](../tests/sync-invariants.test.ts),
+which scans the hook sources.
 
 ## Lobby lifecycle
 
@@ -120,8 +155,8 @@ resolving_exchange ─(cards picked)─► nextTurn
   or personal timeout), results are appended to `history`, status → `round_end`;
   next round starts when **all** players press "Next".
 - **Finish**: after the last round; the podium ranks by total score.
-- **Stats**: recorded flat (no single/multi mode split and no `extraCount` in this
-  version — see TODO).
+- **Stats**: split into solo/multiplayer, with flags guessed as the extra
+  counter.
 
 ### 💣 Minesweeper (`useMinesweeperGame`)
 `players` is a **Record<userId, MinesweeperPlayer>`; each player has their **own
@@ -159,7 +194,7 @@ board** with the same settings (versus race). Statuses: `waiting → playing →
   players → technical spy win.
 - **Scoring across rounds** (persists via "New Round"): spy win +5 to spy;
   locals win +1 to each civilian, +1 bonus to a successful nomination author.
-- **Stats**: ⚠️ not recorded at all in this version (see TODO).
+- **Stats**: recorded on every finished round (win for the side you were on).
 
 ## Statistics (`lib/playerStats.ts`)
 

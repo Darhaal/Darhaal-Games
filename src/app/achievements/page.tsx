@@ -10,9 +10,10 @@ import SettingsButton from '@/components/SettingsButton';
 import type { User as AuthUser } from '@supabase/supabase-js';
 import {
   ArrowLeft, Calendar, Trophy, Skull,
-  Gamepad2, Medal, Clock, TrendingUp, Loader2, User, Star,
-  Flag, Bomb, Zap, Fingerprint
+  Gamepad2, Medal, Clock, TrendingUp, Loader2, User, Star, Zap
 } from 'lucide-react';
+import { GAMES, type GameId, type Locale } from '@/games/registry';
+import { GAME_ICONS } from '@/games/icons';
 
 // Base stats of a single category
 type BaseStats = {
@@ -36,13 +37,11 @@ type GameStatsData = BaseStats | {
 // Full structure as stored in the DB
 type UserStats = {
     total_games: number;
-    details: {
-        minesweeper?: GameStatsData;
-        flager?: GameStatsData;
-        battleship?: BaseStats; // Always flat
-        coup?: BaseStats;       // Always flat
-        spyfall?: BaseStats;    // Always flat
-    }
+    /**
+     * One entry per game. Games with a solo mode store `{ single, multi }`,
+     * the rest store a flat BaseStats — see `src/lib/playerStats.ts`.
+     */
+    details: Partial<Record<GameId, GameStatsData>>;
 };
 
 
@@ -51,7 +50,7 @@ type UserStats = {
 interface TDict {
     wins: string; losses: string; playTime: string; noStats: string;
     modes: { single: string; multi: string };
-    extra: { minesweeper: string; flager: string };
+    locale: Locale;
 }
 
 const StatCard = ({ label, value, icon: Icon, color }: {
@@ -68,14 +67,18 @@ const StatCard = ({ label, value, icon: Icon, color }: {
     </div>
 );
 
-const GameStatCard = ({ title, data, modeLabel, gameKey, t }: {
-    title: string; data: BaseStats; modeLabel?: string; gameKey: string; t: TDict;
+const GameStatCard = ({ data, modeLabel, gameId, t }: {
+    data: BaseStats; modeLabel?: string; gameId: GameId; t: TDict;
 }) => {
     const total = data.wins + data.lost;
     const wr = total > 0 ? Math.round((data.wins / total) * 100) : 0;
 
-    const extraLabel = t.extra[gameKey as keyof typeof t.extra];
-    const ExtraIcon = gameKey === 'minesweeper' ? Bomb : (gameKey === 'flager' ? Flag : null);
+    // Name, extra-counter label and icon all come from the registry, so a new
+    // game shows up here complete instead of unlabelled.
+    const game = GAMES.find((g) => g.id === gameId)!;
+    const title = game.name[t.locale];
+    const extraLabel = game.extraStat?.[t.locale];
+    const GameIcon = GAME_ICONS[gameId];
 
     return (
       <div className="bg-white rounded-[32px] p-6 border border-[#E6E1DC] shadow-lg hover:shadow-xl transition-all group relative overflow-hidden flex flex-col justify-between">
@@ -84,7 +87,7 @@ const GameStatCard = ({ title, data, modeLabel, gameKey, t }: {
           <div className="flex justify-between items-start mb-6 relative z-10">
               <div>
                   <h3 className="text-xl font-black text-[#1A1F26] flex items-center gap-2">
-                      {gameKey === 'spyfall' && <Fingerprint className="w-5 h-5 text-[#9e1316]"/>}
+                      <GameIcon className="w-5 h-5 text-[#9e1316]"/>
                       {title}
                   </h3>
                   {modeLabel && (
@@ -116,12 +119,12 @@ const GameStatCard = ({ title, data, modeLabel, gameKey, t }: {
                   </div>
               </div>
 
-              {extraLabel && ExtraIcon && (
+              {extraLabel && (
                   <div>
                       <div className="text-[10px] font-bold text-[#8A9099] mb-1 uppercase tracking-wider">{extraLabel}</div>
                       <div className="text-xl font-black text-[#1A1F26] flex items-center gap-1">
                           {data.extra || 0}
-                          <ExtraIcon className="w-3 h-3 text-[#9e1316]" />
+                          <GameIcon className="w-3 h-3 text-[#9e1316]" />
                       </div>
                   </div>
               )}
@@ -176,13 +179,9 @@ function AchievementsContent() {
           // Initialize with zeros when no record exists
           setStats({
               total_games: 0,
-              details: {
-                  minesweeper: { wins: 0, lost: 0, time: 0 },
-                  flager: { wins: 0, lost: 0, time: 0 },
-                  battleship: { wins: 0, lost: 0, time: 0 },
-                  coup: { wins: 0, lost: 0, time: 0 },
-                  spyfall: { wins: 0, lost: 0, time: 0 }
-              }
+              details: Object.fromEntries(
+                  GAMES.map((g) => [g.id, { wins: 0, lost: 0, time: 0 }])
+              )
           });
       }
       setLoading(false);
@@ -211,17 +210,7 @@ function AchievementsContent() {
           single: 'Одиночный',
           multi: 'Мультиплеер'
       },
-      gamesNames: {
-          minesweeper: 'Сапер',
-          flager: 'Флагер',
-          battleship: 'Морской Бой',
-          coup: 'Переворот',
-          spyfall: 'Шпион'
-      },
-      extra: {
-          minesweeper: 'Мин найдено',
-          flager: 'Флагов угадано'
-      }
+      locale: 'ru' as const
     },
     en: {
       headerTitle: 'Progress',
@@ -243,17 +232,7 @@ function AchievementsContent() {
           single: 'Solo',
           multi: 'Multiplayer'
       },
-      gamesNames: {
-          minesweeper: 'Minesweeper',
-          flager: 'Flager',
-          battleship: 'Battleship',
-          coup: 'Coup',
-          spyfall: 'Spyfall'
-      },
-      extra: {
-          minesweeper: 'Mines found',
-          flager: 'Flags guessed'
-      }
+      locale: 'en' as const
     }
   }[lang];
 
@@ -373,36 +352,26 @@ function AchievementsContent() {
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in slide-in-from-bottom-12 duration-700 delay-200">
-              {['minesweeper', 'flager', 'battleship', 'coup', 'spyfall'].map((gameKey) => {
-                  const data = stats?.details?.[gameKey as keyof typeof stats.details] as (BaseStats & { single?: BaseStats; multi?: BaseStats }) | undefined;
-                  const gameName = t.gamesNames[gameKey as keyof typeof t.gamesNames];
+              {GAMES.map((game) => {
+                  const empty: BaseStats = { wins: 0, lost: 0, time: 0 };
+                  const data = stats?.details?.[game.id] as (BaseStats & { single?: BaseStats; multi?: BaseStats }) | undefined;
 
-                  if (!data) return <GameStatCard key={gameKey} title={gameName} data={{ wins: 0, lost: 0, time: 0 }} gameKey={gameKey} t={t} />;
+                  if (!data) return <GameStatCard key={game.id} data={empty} gameId={game.id} t={t} />;
 
-                  // Data split into single/multi (Minesweeper, Flager)
+                  // Solo-capable games keep two records; the rest keep one.
+                  // Checked against the stored shape rather than the registry
+                  // alone, so a game that changes its mind still renders the
+                  // rows a player already has.
                   if (data.single || data.multi) {
                       return (
-                          <React.Fragment key={gameKey}>
-                              <GameStatCard
-                                  title={gameName}
-                                  modeLabel={t.modes.single}
-                                  data={data.single || { wins: 0, lost: 0, time: 0 }}
-                                  gameKey={gameKey}
-                                  t={t}
-                              />
-                              <GameStatCard
-                                  title={gameName}
-                                  modeLabel={t.modes.multi}
-                                  data={data.multi || { wins: 0, lost: 0, time: 0 }}
-                                  gameKey={gameKey}
-                                  t={t}
-                              />
+                          <React.Fragment key={game.id}>
+                              <GameStatCard modeLabel={t.modes.single} data={data.single || empty} gameId={game.id} t={t} />
+                              <GameStatCard modeLabel={t.modes.multi} data={data.multi || empty} gameId={game.id} t={t} />
                           </React.Fragment>
                       );
                   }
 
-                  // Standard (flat) view for Coup/Battleship/Spyfall
-                  return <GameStatCard key={gameKey} title={gameName} data={data} gameKey={gameKey} t={t} />;
+                  return <GameStatCard key={game.id} data={data} gameId={game.id} t={t} />;
               })}
           </div>
       </main>

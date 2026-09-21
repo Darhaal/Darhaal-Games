@@ -10,6 +10,10 @@ import { useCoupGame } from '@/hooks/useCoupGame';
 import UniversalLobby, { LobbyPlayer } from '@/components/UniversalLobby';
 import CoupGame from '@/components/CoupGame';
 import GameNotJoined from '@/components/GameNotJoined';
+import { requireGame, roomCapacity } from '@/games/registry';
+
+/** Player limits come from the registry; the room's own cap still wins. */
+const GAME = requireGame('coup');
 
 const UI_TEXT = {
   ru: {
@@ -61,7 +65,9 @@ function CoupContent() {
 
   // Self-join when opened via a direct link (only while the lobby is waiting)
   useEffect(() => {
-      if (userId && gameState && gameState.status === 'waiting' && !gameState.players?.find(p => p.id === userId)) {
+      if (userId && gameState && gameState.status === 'waiting'
+          && !gameState.players?.find(p => p.id === userId)
+          && (gameState.players?.length ?? 0) < roomCapacity(GAME, gameState.settings?.maxPlayers)) {
           initGame({ name: userName, avatarUrl: userAvatar });
       }
   }, [userId, gameState, initGame, userName, userAvatar]);
@@ -103,6 +109,13 @@ function CoupContent() {
       return <GameNotJoined lang={lang} />;
   }
 
+  // The invite link bypasses the lobby list, so the room's own cap has to
+  // be enforced here too — otherwise a shared link seated any number of
+  // players in a room the host had limited.
+  if (!gameState.players?.find(p => p.id === userId) && (gameState.players?.length ?? 0) >= roomCapacity(GAME, gameState.settings?.maxPlayers)) {
+      return <GameNotJoined lang={lang} reason="full" />;
+  }
+
   if (gameState.status === 'waiting') {
       const playersList: LobbyPlayer[] = (gameState.players || []).map(p => ({
           id: p.id,
@@ -119,8 +132,8 @@ function CoupContent() {
           gameType="coup"
           players={playersList}
           currentUserId={userId}
-          minPlayers={2}
-          maxPlayers={6}
+          minPlayers={GAME.players.min}
+          maxPlayers={roomCapacity(GAME, gameState.settings?.maxPlayers)}
           onStart={startGame}
           onLeave={handleLeave}
           lang={lang}

@@ -10,6 +10,10 @@ import UniversalLobby, { LobbyPlayer } from '@/components/UniversalLobby';
 import { useSpyfallGame } from '@/hooks/useSpyfallGame';
 import SpyfallGame from '@/components/SpyfallGame';
 import GameNotJoined from '@/components/GameNotJoined';
+import { requireGame, roomCapacity } from '@/games/registry';
+
+/** Player limits come from the registry; the room's own cap still wins. */
+const GAME = requireGame('spyfall');
 
 const UI_TEXT = {
   ru: {
@@ -64,12 +68,14 @@ function SpyfallContent() {
 
   const {
     gameState, roomMeta, loading, lobbyDeleted,
-    initGame, startGame, endGame, restartGame, leaveGame,
-    startNomination, vote
+    initGame, startGame, endGame, leaveGame,
+    startNomination, vote, resolveVoteTimeout
   } = useSpyfallGame(lobbyId, userId);
 
   useEffect(() => {
-      if (userId && gameState && gameState.status === 'waiting' && !gameState.players.find(p => p.id === userId)) {
+      if (userId && gameState && gameState.status === 'waiting'
+          && !gameState.players.find(p => p.id === userId)
+          && gameState.players.length < roomCapacity(GAME, gameState.settings?.maxPlayers)) {
           initGame({ name: userName, avatarUrl: userAvatar });
       }
   }, [userId, gameState, initGame, userName, userAvatar]);
@@ -109,6 +115,13 @@ function SpyfallContent() {
       return <GameNotJoined lang={lang} />;
   }
 
+  // The invite link bypasses the lobby list, so the room's own cap has to
+  // be enforced here too — otherwise a shared link seated any number of
+  // players in a room the host had limited.
+  if (!gameState.players.find(p => p.id === userId) && gameState.players.length >= roomCapacity(GAME, gameState.settings?.maxPlayers)) {
+      return <GameNotJoined lang={lang} reason="full" />;
+  }
+
   if (gameState.status === 'waiting') {
       const playersList: LobbyPlayer[] = gameState.players.map(p => ({
           id: p.id,
@@ -125,8 +138,8 @@ function SpyfallContent() {
           gameType="spyfall"
           players={playersList}
           currentUserId={userId}
-          minPlayers={3}
-          maxPlayers={12}
+          minPlayers={GAME.players.min}
+          maxPlayers={roomCapacity(GAME, gameState.settings?.maxPlayers)}
           onStart={startGame}
           onLeave={handleLeave}
           lang={lang}
@@ -140,10 +153,10 @@ function SpyfallContent() {
       userId={userId}
       startGame={startGame}
       endGame={endGame}
-      restartGame={restartGame}
       leaveGame={handleLeave}
       startNomination={startNomination}
       vote={vote}
+      resolveVoteTimeout={resolveVoteTimeout}
       lang={lang}
     />
   );

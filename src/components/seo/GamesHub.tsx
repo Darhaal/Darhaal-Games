@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { GAMES_CONTENT, HUB_CONTENT, type Locale } from '@/content/games';
+import { GAME_COUNT_COPY } from '@/content/gameCount';
 import { breadcrumbJsonLd, faqPageJsonLd, gameListJsonLd, localizedPath } from '@/lib/seo';
 import JsonLd from './JsonLd';
 import PublicShell from './PublicShell';
@@ -13,7 +14,7 @@ import PublicShell from './PublicShell';
 const T = {
   ru: {
     h1: 'Игры онлайн с друзьями',
-    lead: 'Пять игр, в которые можно играть прямо в браузере — вдвоём или большой компанией. Создайте комнату, отправьте друзьям ссылку и начинайте: ничего устанавливать не нужно, регистрация не обязательна.',
+    lead: GAME_COUNT_COPY.ru.hubLead,
     players: 'игроков',
     player: 'игрока',
     minutes: 'мин',
@@ -26,7 +27,7 @@ const T = {
   },
   en: {
     h1: 'Online games to play with friends',
-    lead: 'Five games you can play straight in the browser — one on one or with a full group. Create a room, send your friends the link and start: nothing to install, no account required.',
+    lead: GAME_COUNT_COPY.en.hubLead,
     players: 'players',
     player: 'players',
     minutes: 'min',

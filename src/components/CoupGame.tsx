@@ -10,6 +10,7 @@ import { DICTIONARY } from '@/constants/coup';
 import { Lang, GameState } from '@/types/coup';
 import { GameCard, ActionBtn, GuideModal, LogPanel } from './CoupComponents';
 import GameHeader from './GameHeader';
+import RematchButton from './RematchButton';
 import GameRulesModal from './GameRulesModal';
 import { GAME_RULES } from '@/constants/rules';
 import { useEscape } from '@/hooks/useEscape';
@@ -82,8 +83,14 @@ export default function CoupGame({
               setTimeLeft(remaining);
 
               if (remaining === 0 && skipTurn && !timeoutFiredRef.current) {
-                  // Phases with a single responsible player — that player resolves the timeout
-                  if ((phase === 'choosing_action' && isMyTurn) || isLosing || isExchanging) {
+                  const overdue = Date.now() - gameState.turnDeadline;
+
+                  // Phases with a single responsible player — that player
+                  // resolves the timeout, and everyone else backs them up five
+                  // seconds later. Without the backup the AFK kick could only
+                  // be fired by the player who had gone AFK, so the table sat
+                  // there until someone left.
+                  if ((phase === 'choosing_action' && isMyTurn) || isLosing || isExchanging || overdue > 5000) {
                       timeoutFiredRef.current = true;
                       skipTurn();
                   }
@@ -315,12 +322,20 @@ export default function CoupGame({
                 <Crown className="w-24 h-24 text-yellow-500 mx-auto mb-6 animate-bounce drop-shadow-md" />
                 <h2 className="text-xs font-black uppercase tracking-[0.2em] text-gray-400 mb-2">{t.winner}</h2>
                 <p className="text-3xl font-black text-[#1A1F26] mb-8">{gameState.winner}</p>
-                <button
-                    onClick={leaveGame}
-                    className="w-full py-4 bg-[#1A1F26] text-white rounded-xl font-black uppercase tracking-widest hover:bg-[#9e1316] transition-colors shadow-lg"
-                >
-                    {t.leave}
-                </button>
+                <div className="flex flex-col gap-3">
+                  <RematchButton
+                    gameId="coup"
+                    parentState={gameState}
+                    lang={lang}
+                    className="w-full py-4 border border-[#E6E1DC] text-[#1A1F26] rounded-xl font-black uppercase tracking-widest text-xs hover:bg-[#F8FAFC] transition-colors"
+                  />
+                  <button
+                      onClick={leaveGame}
+                      className="w-full py-4 bg-[#1A1F26] text-white rounded-xl font-black uppercase tracking-widest hover:bg-[#9e1316] transition-colors shadow-lg"
+                  >
+                      {t.leave}
+                  </button>
+                </div>
             </div>
           </div>
         </div>

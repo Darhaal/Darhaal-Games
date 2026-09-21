@@ -9,6 +9,10 @@ import UniversalLobby, { LobbyPlayer } from '@/components/UniversalLobby';
 import { useMinesweeperGame } from '@/hooks/useMinesweeperGame';
 import MinesweeperGame from '@/components/MinesweeperGame';
 import GameNotJoined from '@/components/GameNotJoined';
+import { requireGame, roomCapacity } from '@/games/registry';
+
+/** Player limits come from the registry; the room's own cap still wins. */
+const GAME = requireGame('minesweeper');
 
 const UI_TEXT = {
   ru: {
@@ -59,12 +63,15 @@ function MinesweeperContent() {
 
   const {
     gameState, roomMeta, loading, lobbyDeleted,
-    initGame, startGame, revealCell, toggleFlag, chordCell, leaveGame, handleTimeout
+    initGame, startGame, revealCell, toggleFlag, chordCell, leaveGame, handleTimeout,
+    forceTimeUp
   } = useMinesweeperGame(lobbyId, userId);
 
   // Register the player on entry (only while the lobby is waiting)
   useEffect(() => {
-      if (userId && gameState && gameState.status === 'waiting' && !gameState.players[userId]) {
+      if (userId && gameState && gameState.status === 'waiting'
+          && !gameState.players[userId]
+          && Object.keys(gameState.players).length < roomCapacity(GAME, gameState.settings?.maxPlayers)) {
           initGame({ name: userName, avatarUrl: userAvatar });
       }
   }, [userId, gameState, userName, userAvatar, initGame]);
@@ -100,6 +107,13 @@ function MinesweeperContent() {
       return <GameNotJoined lang={lang} />;
   }
 
+  // The invite link bypasses the lobby list, so the room's own cap has to
+  // be enforced here too — otherwise a shared link seated any number of
+  // players in a room the host had limited.
+  if (!gameState.players[userId] && Object.keys(gameState.players).length >= roomCapacity(GAME, gameState.settings?.maxPlayers)) {
+      return <GameNotJoined lang={lang} reason="full" />;
+  }
+
   if (gameState.status === 'waiting') {
       const playersList: LobbyPlayer[] = Object.values(gameState.players).map(p => ({
           id: p.id,
@@ -116,8 +130,8 @@ function MinesweeperContent() {
           gameType="minesweeper"
           players={playersList}
           currentUserId={userId}
-          minPlayers={1}
-          maxPlayers={gameState.settings.maxPlayers}
+          minPlayers={GAME.players.min}
+          maxPlayers={roomCapacity(GAME, gameState.settings?.maxPlayers)}
           onStart={startGame}
           onLeave={handleLeave}
           lang={lang}
@@ -135,6 +149,7 @@ function MinesweeperContent() {
       startGame={startGame}
       leaveGame={handleLeave}
       handleTimeout={handleTimeout}
+      forceTimeUp={forceTimeUp}
       lang={lang}
     />
   );

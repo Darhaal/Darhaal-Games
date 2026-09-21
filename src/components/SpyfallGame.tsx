@@ -3,14 +3,17 @@
 import Image from 'next/image';
 import React, { useState, useEffect } from 'react';
 import { SpyfallState } from '@/types/spyfall';
+import { VOTE_DURATION_SECONDS } from '@/hooks/useSpyfallGame';
 import { SPYFALL_PACKS, getAllLocations } from '@/data/spyfall/locations';
 import LocationArt from '@/components/spyfall/LocationArt';
 import {
   Clock, Eye, EyeOff, User, Map,
-  Play, RotateCcw, Crown, Target, Fingerprint,
+  Play, Crown, Target, Fingerprint,
   CheckCircle2, XCircle, Siren, ThumbsUp, ThumbsDown, Shield, Star
 } from 'lucide-react';
 import GameHeader from './GameHeader';
+import RematchButton from './RematchButton';
+import GameNotificationToast from './GameNotificationToast';
 import GameRulesModal from './GameRulesModal';
 import { GAME_RULES } from '@/constants/rules';
 import { playSfx } from '@/lib/sound';
@@ -21,9 +24,9 @@ interface SpyfallGameProps {
   userId: string;
   startGame: () => void;
   endGame: (winner: 'spy' | 'locals', reason: string) => void;
-  restartGame: () => void;
   leaveGame: () => void;
   startNomination: (targetId: string) => void;
+  resolveVoteTimeout: () => void;
   vote: (agree: boolean) => void;
   lang: 'ru' | 'en';
 }
@@ -123,7 +126,7 @@ const UI_TEXT = {
   }
 };
 
-export default function SpyfallGame({ gameState, userId, startGame, endGame, restartGame, leaveGame, startNomination, vote, lang }: SpyfallGameProps) {
+export default function SpyfallGame({ gameState, userId, startGame, endGame, leaveGame, startNomination, vote, resolveVoteTimeout, lang }: SpyfallGameProps) {
   const t = UI_TEXT[lang];
   const me = gameState.players.find(p => p.id === userId);
   const isHost = me?.isHost;
@@ -131,6 +134,7 @@ export default function SpyfallGame({ gameState, userId, startGame, endGame, res
   const [showRole, setShowRole] = useState(true);
   const [timeLeft, setTimeLeft] = useState(gameState.settings.roundDuration);
   const [crossedOut, setCrossedOut] = useState<string[]>([]);
+  const [voteTimeLeft, setVoteTimeLeft] = useState(VOTE_DURATION_SECONDS);
   const [showRules, setShowRules] = useState(false);
 
   const [showGuessModal, setShowGuessModal] = useState(false);
@@ -174,6 +178,26 @@ export default function SpyfallGame({ gameState, userId, startGame, endGame, res
     }, 1000);
     return () => clearInterval(interval);
   }, [gameState.status, gameState.startTime, gameState.settings.roundDuration, endGame, isHost]);
+
+  // A vote that nobody finishes used to freeze the room: the round clock is
+  // stopped while voting, the in-game screen has no auto-kick, and conviction
+  // needs a ballot from every other player. The host drives this, with everyone
+  // else backing up five seconds later in case the host is the one who left.
+  useEffect(() => {
+    if (gameState.status !== 'voting' || !gameState.nomination) return;
+    const deadline = gameState.nomination.startTime + VOTE_DURATION_SECONDS * 1000;
+
+    const interval = setInterval(() => {
+      const remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+      setVoteTimeLeft(remaining);
+      if (remaining === 0 && (isHost || Date.now() - deadline > 5000)) {
+        resolveVoteTimeout();
+        clearInterval(interval);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [gameState.status, gameState.nomination, isHost, resolveVoteTimeout]);
 
   // Round outcome sound: my side won or lost
   useEffect(() => {
@@ -262,11 +286,14 @@ export default function SpyfallGame({ gameState, userId, startGame, endGame, res
                       <button onClick={leaveGame} className="flex-1 py-4 bg-white border border-[#E6E1DC] rounded-2xl font-bold uppercase text-xs hover:bg-[#F8FAFC] hover:border-gray-300 transition-all text-[#8A9099] hover:text-[#1A1F26]">
                           {t.leave}
                       </button>
-                      {isHost && (
-                          <button onClick={restartGame} className="flex-[2] py-4 bg-[#1A1F26] text-white rounded-2xl font-black uppercase text-xs hover:bg-[#9e1316] transition-all shadow-xl hover:shadow-[#9e1316]/20 flex items-center justify-center gap-2">
-                              <RotateCcw className="w-4 h-4" /> {t.playAgain}
-                          </button>
-                      )}
+                      {/* Anyone may start it, not just the host — the host is
+                          often the first to walk away from a finished round. */}
+                      <RematchButton
+                        gameId="spyfall"
+                        parentState={gameState}
+                        lang={lang}
+                        className="flex-[2] py-4 bg-[#1A1F26] text-white rounded-2xl font-black uppercase text-xs hover:bg-[#9e1316] transition-all shadow-xl hover:shadow-[#9e1316]/20"
+                      />
                   </div>
               </div>
           </div>
@@ -337,6 +364,10 @@ export default function SpyfallGame({ gameState, userId, startGame, endGame, res
   return (
     <div className="min-h-screen bg-[#F8FAFC] font-sans text-[#1A1F26] relative overflow-hidden flex flex-col">
         <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-40 mix-blend-overlay pointer-events-none fixed" />
+
+        {/* These were written into game_state and never rendered — a player
+            leaving mid-round happened silently. */}
+        <GameNotificationToast notifications={gameState.notifications || []} lang={lang} />
 
         <GameRulesModal
           isOpen={showRules}
@@ -551,6 +582,7 @@ export default function SpyfallGame({ gameState, userId, startGame, endGame, res
                         <Siren className="w-7 h-7 animate-pulse" />
                     </div>
                     <h3 className="text-xl font-black text-[#1A1F26] uppercase mb-1">{t.voteTitle}</h3>
+                    <div className="text-xs font-black tabular-nums text-[#9e1316] mb-3">{voteTimeLeft}s</div>
                     <p className="text-sm font-medium text-[#8A9099] mb-6 leading-relaxed">
                         <span className="text-[#1A1F26] font-bold">{gameState.players.find(p => p.id === gameState.nomination?.authorId)?.name}</span> {t.accuse.toLowerCase()}<br/>
                         <span className="text-[#9e1316] font-black text-lg block my-1">{gameState.players.find(p => p.id === gameState.nomination?.targetId)?.name}</span>

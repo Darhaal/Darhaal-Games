@@ -40,6 +40,11 @@ src/
 ├── lib/                  # supabase.ts, gameStateSync.ts (CAS writes), playerStats.ts,
 │   │                     #   toast.ts, sound.ts, errors.ts
 │   └── gameLogic/        # Pure game logic (covered by unit tests)
+├── games/                # The game registry — see docs/adding-a-game.md
+│                         #   registry.ts (server-safe facts), icons.ts,
+│                         #   options.ts (create-screen controls as data),
+│                         #   initialState.ts (starting game_state per game)
+├── content/              # games.ts — public SEO copy, built on the registry
 ├── constants/            # coup.ts, rules.ts, version.ts
 ├── data/                 # Static game data (flags, spyfall locations & packs)
 └── types/                # TypeScript types per game
@@ -53,11 +58,23 @@ environment variables. Every feature imports it — there is no second instance.
 
 ### Shared sync core (v2.0)
 [`src/hooks/core/useLobbySync.ts`](../src/hooks/core/useLobbySync.ts) implements
-the common lobby lifecycle for all five games: initial fetch, realtime
+the common lobby lifecycle for every game: initial fetch, realtime
 subscription (UPDATE/DELETE), version-guarded merging (with per-game custom merge
 callbacks), and optimistic CAS writes with automatic re-sync on conflict. Game
 hooks contain only game logic on top. Pure, testable game rules live in
 [`src/lib/gameLogic/`](../src/lib/gameLogic/) (see `tests/`).
+
+### Game registry
+[`src/games/registry.ts`](../src/games/registry.ts) is the single source of truth
+for which games exist and what they are like — ids, names, player counts, genre,
+accent, solo-mode flag. The create screen, the lobby list, the achievements grid,
+the lobby header, the statistics writer and the public SEO pages all read it, so
+adding a game is one entry plus the game itself rather than an edit to ten
+screens. The per-game records around it (`GAME_ICONS`, `GAME_OPTIONS`,
+`FACTORIES`, `GAME_RULES`) are keyed by `GameId`, so a half-registered game is a
+type error rather than a blank card at runtime. It is deliberately free of React
+and lucide imports: `src/content/games.ts` builds on it and feeds statically
+rendered pages. Full checklist in [adding-a-game.md](adding-a-game.md).
 
 ### Universal Lobby
 `UniversalLobby` provides one lobby architecture reused across all game modes:

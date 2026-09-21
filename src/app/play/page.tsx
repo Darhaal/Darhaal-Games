@@ -10,9 +10,10 @@ import SettingsButton from '@/components/SettingsButton';
 import { useEscape } from '@/hooks/useEscape';
 import {
   ArrowLeft, Search, Users, Lock, Play, X, Loader2,
-  Crown, Filter, KeyRound, SortAsc, SortDesc,
-  Ship, Bomb, Fingerprint, ScrollText, LayoutGrid, Flag
+  Crown, Filter, KeyRound, SortAsc, SortDesc, LayoutGrid
 } from 'lucide-react';
+import { GAMES, getGame } from '@/games/registry';
+import { GAME_ICONS } from '@/games/icons';
 
 // Minimal player info inside game_state (shape differs per game)
 interface LobbyPlayerInfo {
@@ -53,11 +54,6 @@ const TRANSLATIONS = {
     sortOld: 'Старые',
     sortPlayers: 'Люди',
     modes: 'Категории',
-    coup: 'Coup',
-    battleship: 'Морской Бой',
-    minesweeper: 'Сапер',
-    flager: 'Флагер',
-    spyfall: 'Шпион',
     all: 'Все игры',
     loading: 'Загрузка списка...',
     empty: 'Список пуст',
@@ -86,11 +82,6 @@ const TRANSLATIONS = {
     sortOld: 'Oldest',
     sortPlayers: 'Players',
     modes: 'Categories',
-    coup: 'Coup',
-    battleship: 'Battleship',
-    minesweeper: 'Minesweeper',
-    flager: 'Flager',
-    spyfall: 'Spyfall',
     all: 'All Games',
     loading: 'Loading list...',
     empty: 'List is empty',
@@ -188,7 +179,17 @@ function PlayContent() {
     }
 
     const { data: { user } } = await supabase.auth.getUser();
-    const gameType = lobby.game_state.gameType || 'coup';
+    const gameType = lobby.game_state.gameType;
+
+    // A row whose gameType we do not recognise has no route to send anyone to.
+    // Saying so beats navigating to /game/undefined, and beats the old
+    // behaviour of defaulting to Coup and loading a Coup screen over a state
+    // of some other shape.
+    if (!getGame(gameType)) {
+        showToast(t.errorNotFound, 'error');
+        fetchLobbies();
+        return;
+    }
 
     // --- AUTH CHECK WITH REDIRECT TO GAME ---
     if (!user) {
@@ -223,7 +224,11 @@ function PlayContent() {
       return;
     }
 
-    const maxPlayers = freshLobby.game_state.settings?.maxPlayers || (gameType === 'battleship' ? 2 : 6);
+    // The room's own cap when it stored one, otherwise the game's declared
+    // maximum. The old fallback hardcoded "2 for Battleship, 6 for anything
+    // else", which quietly capped a 12-player Spyfall room at six.
+    const maxPlayers =
+      freshLobby.game_state.settings?.maxPlayers ?? getGame(gameType)?.players.max ?? 6;
     if (players.length >= maxPlayers) {
       showToast(t.errorFull, 'error');
       fetchLobbies();
@@ -235,7 +240,7 @@ function PlayContent() {
         return;
     }
 
-    // Joining happens on the game page (initGame in all five games)
+    // Joining happens on the game page (initGame in every game)
     router.push(`/game/${gameType}?id=${lobby.id}`);
   };
 
@@ -249,16 +254,6 @@ function PlayContent() {
       }
   };
 
-  const getGameIcon = (type: string) => {
-      switch(type) {
-          case 'battleship': return <Ship className="w-5 h-5" />;
-          case 'minesweeper': return <Bomb className="w-5 h-5" />;
-          case 'flager': return <Flag className="w-5 h-5" />;
-          case 'spyfall': return <Fingerprint className="w-5 h-5" />;
-          default: return <ScrollText className="w-5 h-5" />;
-      }
-  };
-
   const processedLobbies = lobbies
     .filter(l => {
         const term = search.toLowerCase();
@@ -267,7 +262,7 @@ function PlayContent() {
         const matchesPlayerName = players.some((p) => (p.name || '').toLowerCase().includes(term));
         const matchesSearch = matchesRoomName || matchesPlayerName;
 
-        const gameType = l.game_state.gameType || 'coup';
+        const gameType = l.game_state.gameType;
         const matchesMode = filterMode === 'all' || gameType === filterMode;
 
         const isAlreadyIn = players.some((p) => p.id === currentUserId || p.userId === currentUserId);
@@ -286,11 +281,7 @@ function PlayContent() {
 
   const MODES_LIST = [
       { id: 'all', label: t.all },
-      { id: 'coup', label: t.coup },
-      { id: 'battleship', label: t.battleship },
-      { id: 'flager', label: t.flager },
-      { id: 'minesweeper', label: t.minesweeper },
-      { id: 'spyfall', label: t.spyfall },
+      ...GAMES.map(g => ({ id: g.id, label: g.name[lang] })),
   ];
 
   return (
@@ -411,18 +402,22 @@ function PlayContent() {
                         {processedLobbies.map(lobby => {
                             const players = getPlayers(lobby);
                             const hostPlayer = players.find((p) => p.isHost) || players[0];
-                            const maxPlayers = lobby.game_state.settings?.maxPlayers || 6;
+                            const game = getGame(lobby.game_state.gameType);
+                            const maxPlayers = lobby.game_state.settings?.maxPlayers ?? game?.players.max ?? 6;
                             const isFull = players.length >= maxPlayers;
                             const isPlaying = lobby.status === 'playing';
-                            const gameType = lobby.game_state.gameType || 'coup';
+                            const GameIcon = game ? GAME_ICONS[game.id] : Users;
                             const isAlreadyIn = players.some((p) => p.id === currentUserId || p.userId === currentUserId);
 
                             return (
                                 <div key={lobby.id} className={`group bg-white border border-[#E6E1DC] p-4 rounded-2xl flex flex-col sm:flex-row items-center gap-4 hover:shadow-lg hover:border-[#9e1316]/20 transition-all duration-300 relative overflow-hidden ${isAlreadyIn ? 'ring-1 ring-emerald-500/50 border-emerald-500/20' : ''}`}>
                                     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-[#F5F5F0] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
 
-                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${gameType === 'coup' ? 'bg-orange-50 text-orange-600' : gameType === 'flager' ? 'bg-blue-50 text-blue-600' : gameType === 'spyfall' ? 'bg-purple-50 text-purple-600' : gameType === 'minesweeper' ? 'bg-red-50 text-red-600' : 'bg-gray-50 text-gray-600'}`}>
-                                        {getGameIcon(gameType)}
+                                    {/* Unknown game type keeps the neutral chip rather than
+                                        borrowing another game's colours — a row written by a
+                                        newer deploy used to show up wearing Coup's icon. */}
+                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${game?.tint ?? 'bg-gray-50 text-gray-600'}`}>
+                                        <GameIcon className="w-5 h-5" />
                                     </div>
 
                                     <div className="flex-1 text-center sm:text-left z-10 min-w-0 w-full">

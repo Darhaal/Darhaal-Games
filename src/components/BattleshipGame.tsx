@@ -9,6 +9,7 @@ import {
 import { Ship, ShipType, FLEET_CONFIG, Orientation, Coordinate, CellStatus, BattleshipState } from '@/types/battleship';
 import { checkPlacement } from '@/lib/gameLogic/battleship';
 import GameHeader from './GameHeader';
+import RematchButton from './RematchButton';
 import GameRulesModal from './GameRulesModal';
 import { GAME_RULES } from '@/constants/rules';
 import { playSfx } from '@/lib/sound';
@@ -252,7 +253,10 @@ export default function BattleshipGame({
             const deadline = gameState.turnDeadline || ((gameState.lastActionTime || Date.now()) + 60000);
             const remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
             setTimeLeft(remaining);
-            if (remaining === 0 && isMyTurn) handleTimeout();
+            // The player on turn is the primary writer; the opponent backs up
+            // five seconds later, which is what rescues the match when the
+            // player on turn has disconnected rather than merely stalled.
+            if (remaining === 0 && (isMyTurn || Date.now() - deadline > 5000)) handleTimeout();
         }, 1000);
         return () => clearInterval(interval);
     }, [gameState.turnDeadline, gameState.lastActionTime, phase, isMyTurn, handleTimeout]);
@@ -389,8 +393,16 @@ export default function BattleshipGame({
                         <p className="text-2xl font-black text-[#1A1F26] mb-8 leading-tight">
                             {isSurrender ? t.surrenderMsg : (isWinner ? t.winMsg : t.loseMsg)}
                         </p>
-                        {/* leaveGame (handleLeave) awaits the DB write and navigates by itself */}
-                        <button onClick={leaveGame} className="w-full py-4 bg-[#1A1F26] text-white rounded-xl font-black uppercase tracking-widest hover:bg-[#9e1316] transition-colors">{t.menu}</button>
+                        <div className="flex flex-col gap-3">
+                          <RematchButton
+                            gameId="battleship"
+                            parentState={gameState}
+                            lang={lang}
+                            className="w-full py-4 border border-[#E6E1DC] text-[#1A1F26] rounded-xl font-black uppercase tracking-widest text-xs hover:bg-[#F8FAFC] transition-colors"
+                          />
+                          {/* leaveGame (handleLeave) awaits the DB write and navigates by itself */}
+                          <button onClick={leaveGame} className="w-full py-4 bg-[#1A1F26] text-white rounded-xl font-black uppercase tracking-widest hover:bg-[#9e1316] transition-colors">{t.menu}</button>
+                        </div>
                     </div>
                 </div>
             </div>

@@ -4,12 +4,13 @@ import Image from 'next/image';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   Check, X, Flag, Trophy, Search, Loader2,
-  ArrowRight, Clock, Target, Zap, Crown, Home,
-  UserMinus
+  ArrowRight, Clock, Target, Zap, Crown, Home
 } from 'lucide-react';
-import { FlagerState, FlagerNotification, FlagerPlayerState } from '@/types/flager';
+import { FlagerState, FlagerPlayerState } from '@/types/flager';
 import { COUNTRIES, COUNTRY_CODES } from '@/data/flager/countries';
 import GameHeader from './GameHeader';
+import RematchButton from './RematchButton';
+import GameNotificationToast from './GameNotificationToast';
 import GameRulesModal from './GameRulesModal';
 import { GAME_RULES } from '@/constants/rules';
 import { defaultAvatar } from '@/constants/app';
@@ -97,38 +98,12 @@ interface FlagerGameProps {
   userId: string;
   makeGuess: (code: string) => void;
   handleTimeout: () => void;
+  forceRoundEnd?: () => void;
   readyNextRound: () => void;
   leaveGame: () => void;
   lang: 'ru' | 'en';
 }
 
-const NotificationToast = ({ notifications, lang }: { notifications: FlagerNotification[], lang: 'ru' | 'en' }) => {
-    // The visible note is derived: the latest one that is not dismissed yet
-    const [hiddenUpToId, setHiddenUpToId] = useState(0);
-    const latest = notifications && notifications.length > 0 ? notifications[notifications.length - 1] : null;
-    const visibleNote = latest && latest.id > hiddenUpToId ? latest : null;
-
-    useEffect(() => {
-        if (!visibleNote) return;
-        const timer = setTimeout(() => setHiddenUpToId(visibleNote.id), 4000);
-        return () => clearTimeout(timer);
-    }, [visibleNote]);
-
-    if (!visibleNote) return null;
-
-    return (
-        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[150] animate-in slide-in-from-top-5 fade-in duration-300">
-            <div className="bg-white/90 backdrop-blur-md border border-[#E6E1DC] shadow-xl rounded-full px-6 py-3 flex items-center gap-3">
-                <div className="bg-red-100 text-red-600 p-1.5 rounded-full">
-                    <UserMinus className="w-4 h-4" />
-                </div>
-                <span className="text-xs font-bold uppercase tracking-wider text-[#1A1F26]">
-                    {visibleNote.message[lang]}
-                </span>
-            </div>
-        </div>
-    );
-};
 
 const FlagRevealCanvas = ({ targetCode, guesses, isRoundDone, t }: { targetCode: string, guesses: string[], isRoundDone: boolean, t: { noData: string; pixelMatch: string } }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -298,7 +273,7 @@ const Podium = ({ players, currentUserId }: { players: FlagerPlayerState[], curr
     );
 };
 
-export default function FlagerGame({ gameState, userId, makeGuess, handleTimeout, readyNextRound, leaveGame, lang = 'ru' }: FlagerGameProps) {
+export default function FlagerGame({ gameState, userId, makeGuess, handleTimeout, forceRoundEnd, readyNextRound, leaveGame, lang = 'ru' }: FlagerGameProps) {
   const [input, setInput] = useState('');
   const [shake, setShake] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -338,13 +313,19 @@ export default function FlagerGame({ gameState, userId, makeGuess, handleTimeout
           if (secondsPassed >= roundDuration) {
               if (!isRoundDone) {
                  handleTimeout();
+                 clearInterval(timer);
+              } else if (secondsPassed >= roundDuration + 10 && forceRoundEnd) {
+                 // Everyone times out their own round, so a player who closed
+                 // their tab never finishes theirs and the round waits on them
+                 // for good. Whoever is still here closes it out.
+                 forceRoundEnd();
+                 clearInterval(timer);
               }
-              clearInterval(timer);
           }
       }, 200);
 
       return () => clearInterval(timer);
-  }, [isPlaying, isRoundEnd, isFinished, isRoundDone, gameState.roundStartTime, handleTimeout, roundDuration]);
+  }, [isPlaying, isRoundEnd, isFinished, isRoundDone, gameState.roundStartTime, handleTimeout, forceRoundEnd, roundDuration]);
 
   const timeLeft = Math.max(0, roundDuration - Math.max(0, elapsed));
   const isCountingDown = elapsed < 0;
@@ -473,7 +454,13 @@ export default function FlagerGame({ gameState, userId, makeGuess, handleTimeout
                 </div>
             </div>
 
-            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur-md border-t border-[#E6E1DC] z-[210] flex justify-center">
+            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur-md border-t border-[#E6E1DC] z-[210] flex flex-col items-center gap-3">
+                 <RematchButton
+                   gameId="flager"
+                   parentState={gameState}
+                   lang={lang}
+                   className="w-full max-w-md py-4 border border-[#E6E1DC] text-[#1A1F26] rounded-xl font-black uppercase tracking-widest text-xs hover:bg-[#F8FAFC] transition-colors"
+                 />
                  <button onClick={handleEmergencyExit} className="w-full max-w-md py-4 bg-[#1A1F26] text-white rounded-xl font-black uppercase tracking-widest hover:bg-[#9e1316] transition-all shadow-lg active:scale-[0.99] flex items-center justify-center gap-2">
                     <Home className="w-4 h-4" /> {t.returnMenu}
                 </button>
@@ -492,7 +479,7 @@ export default function FlagerGame({ gameState, userId, makeGuess, handleTimeout
           rules={GAME_RULES[lang as 'ru' | 'en'].flager}
           themeColor="text-[#9e1316]"
        />
-       <NotificationToast notifications={gameState.notifications || []} lang={lang} />
+       <GameNotificationToast notifications={gameState.notifications || []} lang={lang} />
 
        {/* COUNTDOWN OVERLAY */}
        {isCountingDown && (

@@ -1,3 +1,5 @@
+import type { GameNotification } from './notification';
+
 export type SpyfallStatus = 'waiting' | 'playing' | 'voting' | 'finished';
 
 export interface SpyfallRole {
@@ -41,7 +43,12 @@ export interface Nomination {
   authorId: string; // Who started the vote
   targetId: string; // Who is accused
   votes: Record<string, boolean>; // player id -> yes/no
-  startTime: number; // For the voting timer
+  /**
+   * When the vote opened. The round clock is frozen during a vote, so without
+   * this deadline a single player closing their tab left the room stuck in
+   * `voting` with nothing able to move it on.
+   */
+  startTime: number;
 }
 
 export interface SpyfallState {
@@ -55,6 +62,13 @@ export interface SpyfallState {
     useCustomLocations: boolean;
     customLocations: string[];
     packId: string; // Selected pack id (exactly one)
+    /**
+     * Player cap. Every other game declared this and Spyfall did not, even
+     * though the create screen wrote it in anyway and the lobby list reads it
+     * to decide whether a room is full — so the field existed in the database
+     * while the type denied it.
+     */
+    maxPlayers: number;
   };
 
   // Round
@@ -67,8 +81,9 @@ export interface SpyfallState {
   // Voting
   nomination: Nomination | null;
 
-  // Notifications
-  notifications: Array<{ id: number; msg: string; type: 'info' | 'alert' | 'success' }>;
+  // Notifications. Localized like every other game's: these used to be bare
+  // Russian strings, which was invisible only because nothing rendered them.
+  notifications: GameNotification[];
 
   version: number;
   gameType: 'spyfall';

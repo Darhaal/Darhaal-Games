@@ -4,6 +4,9 @@ import { updatePlayerStats } from '@/lib/playerStats';
 import { useLobbySync } from '@/hooks/core/useLobbySync';
 import { getKey, isValidCoord, getShipCoords, checkPlacement, shuffleFleet } from '@/lib/gameLogic/battleship';
 
+/** A turn runs for a minute before it is passed on. */
+const TURN_MS = 60 * 1000;
+
 // Re-export for import backward compatibility
 export { checkPlacement };
 
@@ -43,45 +46,46 @@ export function useBattleshipGame(
 
   // --- ACTIONS ---
 
+  /**
+   * Seat the player. Retryable on purpose: both sides open the invite link at
+   * once often enough, and the old read-then-write form meant whoever lost
+   * that race never appeared in the room.
+   */
   const initGame = async () => {
-    if (!user || !gameStateRef.current) return;
-    const currentState = gameStateRef.current;
+    if (!user) return;
 
-    let playersObj = currentState.players;
-    if (Array.isArray(playersObj)) playersObj = {};
+    await updateState((current) => {
+      const players = Array.isArray(current.players) ? {} : current.players;
+      const existing = players[user.id];
 
-    const existing = playersObj[user.id];
-    if (!existing || !existing.name) {
-      if (currentState.status === 'playing') {
-          return;
-      }
+      // A record without a name is a half-written seat, so it is re-taken.
+      if (existing && existing.name) return null;
+      if (current.status === 'playing') return null;
+      if (!existing && Object.keys(players).length >= 2) return null;
 
-      const newState = JSON.parse(JSON.stringify(currentState)) as BattleshipState;
-      if (Array.isArray(newState.players)) newState.players = {};
+      const next: BattleshipState = JSON.parse(JSON.stringify({ ...current, players }));
 
-      const isFirst = Object.keys(newState.players).length === 0;
-
-      newState.players[user.id] = {
+      next.players[user.id] = {
         id: user.id,
         name: user.name,
         avatarUrl: user.avatarUrl,
         ships: existing?.ships || [],
         shots: existing?.shots || {},
         isReady: existing?.isReady || false,
-        isHost: isFirst || existing?.isHost,
+        isHost: Object.keys(next.players).length === 0 || !!existing?.isHost,
         aliveShipsCount: existing?.aliveShipsCount || 0
       };
-      await updateState(newState);
-    }
+
+      return next;
+    });
   };
 
   const startGame = async () => {
-    if (!gameState || !user?.id) return;
-    const newState = JSON.parse(JSON.stringify(gameState)) as BattleshipState;
-    newState.status = 'playing';
-    newState.phase = 'setup';
-    newState.logs = [];
-    await updateState(newState);
+    if (!user?.id) return;
+    await updateState((current) => {
+      if (current.status !== 'waiting') return null;
+      return { ...current, status: 'playing', phase: 'setup', logs: [] };
+    });
   };
 
   const autoPlaceShips = () => setMyShips(shuffleFleet());
@@ -98,39 +102,57 @@ export function useBattleshipGame(
 
   const removeShip = (id: string) => setMyShips(myShips.filter(s => s.id !== id));
 
+  /**
+   * Retryable: both players finish placing independently and confirm whenever
+   * they are done, so the two writes land together often. Losing one left a
+   * player looking at a "waiting for opponent" screen that never moved, with
+   * their fleet unsaved.
+   */
   const submitShips = async () => {
-    if (!user?.id || !gameState) return;
+    if (!user?.id) return;
+    const ships = myShipsRef.current;
 
-    const currentGs = gameStateRef.current || gameState;
-    const newState = JSON.parse(JSON.stringify(currentGs)) as BattleshipState;
+    await updateState((current) => {
+      if (current.phase !== 'setup') return null;
+      if (!current.players[user.id]) return null;
+      if (current.players[user.id].isReady) return null; // already confirmed
 
-    newState.players[user.id].ships = myShips;
-    newState.players[user.id].isReady = true;
-    newState.players[user.id].aliveShipsCount = myShips.length;
+      const newState: BattleshipState = JSON.parse(JSON.stringify(current));
 
-    const playersArr = Object.values(newState.players);
-    if (playersArr.length === 2 && playersArr.every(p => p.isReady)) {
-      newState.phase = 'playing';
-      newState.status = 'playing';
-      newState.turn = playersArr[0].id;
-      newState.turnDeadline = Date.now() + (60 * 1000);
-      newState.startTime = Date.now();
-    }
+      newState.players[user.id].ships = ships;
+      newState.players[user.id].isReady = true;
+      newState.players[user.id].aliveShipsCount = ships.length;
 
-    await updateState(newState);
+      const playersArr = Object.values(newState.players);
+      if (playersArr.length === 2 && playersArr.every(p => p.isReady)) {
+        newState.phase = 'playing';
+        newState.status = 'playing';
+        newState.turn = playersArr[0].id;
+        newState.turnDeadline = Date.now() + TURN_MS;
+        newState.startTime = Date.now();
+      }
+
+      return newState;
+    });
   };
 
   const fireShot = async (x: number, y: number) => {
-    if (!user?.id || !gameState || gameState.turn !== user.id || gameState.phase !== 'playing') return;
-    const opponentId = Object.keys(gameState.players).find(id => id !== user.id);
-    if (!opponentId) return;
+    if (!user?.id) return;
 
-    const newState = JSON.parse(JSON.stringify(gameState)) as BattleshipState;
+    // Re-checked inside the updater rather than against `gameState`: that is
+    // React state, which can lag a turn behind the realtime update already
+    // held in the sync ref.
+    await updateState((current) => {
+    if (current.turn !== user.id || current.phase !== 'playing') return null;
+    const opponentId = Object.keys(current.players).find(id => id !== user.id);
+    if (!opponentId) return null;
+
+    const newState: BattleshipState = JSON.parse(JSON.stringify(current));
     const opponentBoard = newState.players[opponentId];
     const myBoard = newState.players[user.id];
     const key = getKey(x, y);
 
-    if (myBoard.shots[key]) return;
+    if (myBoard.shots[key]) return null;
 
     let hit = false, killed = false, hitShipIdx = -1;
     for (let i = 0; i < opponentBoard.ships.length; i++) {
@@ -157,9 +179,9 @@ export function useBattleshipGame(
       });
     } else if (!hit) {
       newState.turn = opponentId;
-      newState.turnDeadline = Date.now() + (60 * 1000);
+      newState.turnDeadline = Date.now() + TURN_MS;
     } else {
-        newState.turnDeadline = Date.now() + (60 * 1000);
+        newState.turnDeadline = Date.now() + TURN_MS;
     }
 
     if (opponentBoard.aliveShipsCount === 0) {
@@ -167,55 +189,74 @@ export function useBattleshipGame(
       newState.status = 'finished';
       newState.winner = user.id;
     }
-    await updateState(newState);
+
+    return newState;
+    });
   };
 
+  /**
+   * Passes the turn on when the clock runs out.
+   *
+   * Callable by either player, not just the one on turn: it used to be guarded
+   * on `current.turn === user.id`, so when that player closed their tab nobody
+   * was left who could move the turn and the match sat there for good. The
+   * deadline is the authority instead — a caller whose clock is early writes
+   * nothing, and once the turn has moved the new deadline makes a second call
+   * a no-op.
+   */
   const handleTimeout = async () => {
-    const currentGs = gameStateRef.current;
-    const currentUser = user;
-    if (!currentGs || !currentUser || currentGs.phase !== 'playing' || currentGs.turn !== currentUser.id) return;
+    if (!user) return;
 
-    const opponentId = Object.keys(currentGs.players).find(id => id !== currentUser.id);
-    const newState = JSON.parse(JSON.stringify(currentGs)) as BattleshipState;
+    await updateState((current) => {
+      if (current.phase !== 'playing') return null;
+      if (!current.turnDeadline || Date.now() < current.turnDeadline) return null;
 
-    if (opponentId) {
-        newState.turn = opponentId;
-        newState.turnDeadline = Date.now() + (60 * 1000);
-        await updateState(newState);
-    }
+      const opponentId = Object.keys(current.players).find(id => id !== current.turn);
+      if (!opponentId) return null;
+
+      return { ...current, turn: opponentId, turnDeadline: Date.now() + TURN_MS };
+    });
   };
 
   const leaveGame = async () => {
-     const currentGs = gameStateRef.current;
-     if (!lobbyId || !user || !currentGs) return;
+     if (!lobbyId || !user) return;
 
      // A finished match is a record, not live state: leaving must not rewrite
      // the results the other players are still looking at. Just walk away —
      // the page navigates us out.
-     if (currentGs.status === 'finished') return;
+     const snapshot = gameStateRef.current;
+     if (!snapshot || snapshot.status === 'finished') return;
 
-     const newState = JSON.parse(JSON.stringify(currentGs));
-     const wasHost = newState.players[user.id]?.isHost;
-
-     delete newState.players[user.id];
-
-     if (Object.keys(newState.players).length === 0) {
+     const others = Object.keys(snapshot.players || {}).filter((id) => id !== user.id);
+     if (others.length === 0) {
          await deleteLobby();
-     } else {
-         if (wasHost) {
-             const nextHostId = Object.keys(newState.players)[0];
-             if (nextHostId) newState.players[nextHostId].isHost = true;
-         }
+         return;
+     }
+
+     await updateState((current) => {
+         if (current.status === 'finished') return null;
+         if (!current.players?.[user.id]) return null;
+
+         const newState: BattleshipState = JSON.parse(JSON.stringify(current));
+         const wasHost = newState.players[user.id]?.isHost;
+
+         delete newState.players[user.id];
+
+         const remaining = Object.keys(newState.players);
+         if (remaining.length === 0) return null;
+
+         if (wasHost) newState.players[remaining[0]].isHost = true;
 
          // Technical win for the remaining player only if the match already started
          // (phase === 'setup' is set before the start in the waiting lobby — leaving must not end the game)
          if (newState.status === 'playing') {
              newState.phase = 'finished';
              newState.status = 'finished';
-             newState.winner = Object.keys(newState.players)[0];
+             newState.winner = remaining[0];
          }
-         await updateState(newState);
-     }
+
+         return newState;
+     });
   };
 
   // TRACK GAME END TO RECORD STATISTICS

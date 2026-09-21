@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { MinesweeperState, MinesweeperPlayer, Cell } from '@/types/minesweeper';
 import GameHeader from './GameHeader';
+import RematchButton from './RematchButton';
 import GameRulesModal from './GameRulesModal';
 import { GAME_RULES } from '@/constants/rules';
 import { playSfx } from '@/lib/sound';
@@ -89,6 +90,7 @@ interface MinesweeperGameProps {
   startGame: () => void;
   leaveGame: () => void;
   handleTimeout?: () => void;
+  forceTimeUp?: () => void;
   lang: 'ru' | 'en';
 }
 
@@ -386,7 +388,7 @@ const BoardView = ({ player, isMe, onReveal, onFlag, onChord, scale = 1, isTouch
   );
 };
 
-export default function MinesweeperGame({ gameState, userId, revealCell, toggleFlag, chordCell, startGame, leaveGame, handleTimeout, lang }: MinesweeperGameProps) {
+export default function MinesweeperGame({ gameState, userId, revealCell, toggleFlag, chordCell, startGame, leaveGame, handleTimeout, forceTimeUp, lang }: MinesweeperGameProps) {
   const [showRules, setShowRules] = useState(false);
   // Results manually dismissed for a specific match (keyed by the match startTime)
   const [resultsDismissedFor, setResultsDismissedFor] = useState<number | null>(null);
@@ -416,10 +418,15 @@ export default function MinesweeperGame({ gameState, userId, revealCell, toggleF
           const elapsed = Math.floor((Date.now() - gameState.startTime) / 1000);
           const remaining = Math.max(0, (gameState.settings.timeLimit || 600) - elapsed);
           setTimeLeft(remaining);
-          if (remaining === 0 && me?.status === 'playing' && handleTimeout) handleTimeout();
+          if (remaining === 0) {
+              if (me?.status === 'playing' && handleTimeout) handleTimeout();
+              // Someone who closed their tab never times themselves out, and
+              // the match only ends once nobody is still playing.
+              else if (elapsed > (gameState.settings.timeLimit || 600) + 10 && forceTimeUp) forceTimeUp();
+          }
       }, 1000);
       return () => clearInterval(interval);
-  }, [gameState.status, gameState.startTime, gameState.settings.timeLimit, me?.status, handleTimeout]);
+  }, [gameState.status, gameState.startTime, gameState.settings.timeLimit, me?.status, handleTimeout, forceTimeUp]);
 
   const getSortedPlayers = () => {
       return [...players].sort((a, b) => {
@@ -564,7 +571,13 @@ export default function MinesweeperGame({ gameState, userId, revealCell, toggleF
                         </table>
                     </div>
 
-                    <div className="p-6 bg-white border-t border-[#E6E1DC] flex justify-center shrink-0">
+                    <div className="p-6 bg-white border-t border-[#E6E1DC] flex flex-col items-center gap-3 shrink-0">
+                        <RematchButton
+                          gameId="minesweeper"
+                          parentState={gameState}
+                          lang={lang}
+                          className="w-full max-w-sm py-4 border border-[#E6E1DC] text-[#1A1F26] rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-[#F8FAFC] transition-colors"
+                        />
                         {/* leaveGame (handleLeave) awaits the DB write and navigates by itself */}
                         <button onClick={leaveGame} className="w-full max-w-sm py-4 bg-[#1A1F26] text-white rounded-2xl font-black uppercase tracking-widest hover:bg-[#9e1316] transition-colors shadow-xl shadow-[#1A1F26]/10">
                             {t.leave}

@@ -6,26 +6,46 @@ import { DoorClosed } from 'lucide-react';
 
 const TEXT = {
   ru: {
-    title: 'Игра уже началась',
-    desc: 'Присоединиться к идущему матчу нельзя. Дождитесь следующей игры или создайте свою.',
+    started: {
+      title: 'Игра уже началась',
+      desc: 'Присоединиться к идущему матчу нельзя. Дождитесь следующей игры или создайте свою.'
+    },
+    full: {
+      title: 'В комнате нет мест',
+      desc: 'Все места уже заняты. Попросите хозяина комнаты открыть новую или создайте свою.'
+    },
     toList: 'К списку игр',
     create: 'Создать игру'
   },
   en: {
-    title: 'Game already in progress',
-    desc: 'You cannot join a match that has already started. Wait for the next game or create your own.',
+    started: {
+      title: 'Game already in progress',
+      desc: 'You cannot join a match that has already started. Wait for the next game or create your own.'
+    },
+    full: {
+      title: 'Room is full',
+      desc: 'Every seat is taken. Ask the host to open another room, or create your own.'
+    },
     toList: 'Browse games',
     create: 'Create game'
   }
 };
 
 /**
- * Screen for late visitors: the user opened a link to a game
- * that is already in progress and is not a participant.
+ * Screen for a visitor who cannot take a seat: the match is already running,
+ * or the room is at capacity. The invite link does not check either, so both
+ * end up here.
  */
-export default function GameNotJoined({ lang }: { lang: 'ru' | 'en' }) {
+export default function GameNotJoined({
+  lang,
+  reason = 'started'
+}: {
+  lang: 'ru' | 'en';
+  reason?: 'started' | 'full';
+}) {
   const router = useRouter();
   const t = TEXT[lang];
+  const headline = t[reason];
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-[#F8FAFC] font-sans p-4">
@@ -33,8 +53,8 @@ export default function GameNotJoined({ lang }: { lang: 'ru' | 'en' }) {
         <div className="w-16 h-16 bg-[#F5F5F0] rounded-2xl flex items-center justify-center mx-auto mb-6 border border-[#E6E1DC]">
           <DoorClosed className="w-8 h-8 text-[#9e1316]" />
         </div>
-        <h2 className="text-xl font-black uppercase text-[#1A1F26] mb-2">{t.title}</h2>
-        <p className="text-xs font-medium text-[#8A9099] leading-relaxed mb-8">{t.desc}</p>
+        <h2 className="text-xl font-black uppercase text-[#1A1F26] mb-2">{headline.title}</h2>
+        <p className="text-xs font-medium text-[#8A9099] leading-relaxed mb-8">{headline.desc}</p>
         <div className="flex flex-col gap-3">
           <button
             onClick={() => router.push('/play')}

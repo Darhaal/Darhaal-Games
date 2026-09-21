@@ -9,6 +9,10 @@ import UniversalLobby, { LobbyPlayer } from '@/components/UniversalLobby';
 import { useFlagerGame } from '@/hooks/useFlagerGame';
 import FlagerGame from '@/components/FlagerGame';
 import GameNotJoined from '@/components/GameNotJoined';
+import { requireGame, roomCapacity } from '@/games/registry';
+
+/** Player limits come from the registry; the room's own cap still wins. */
+const GAME = requireGame('flager');
 
 const UI_TEXT = {
   ru: {
@@ -57,11 +61,14 @@ function FlagerContent() {
 
   const {
     gameState, roomMeta, loading, lobbyDeleted,
-    initGame, startGame, makeGuess, leaveGame, readyNextRound, handleTimeout
+    initGame, startGame, makeGuess, leaveGame, readyNextRound, handleTimeout,
+    forceRoundEnd
   } = useFlagerGame(lobbyId, userId);
 
   useEffect(() => {
-      if (userId && gameState && gameState.status === 'waiting' && !gameState.players.find(p => p.id === userId)) {
+      if (userId && gameState && gameState.status === 'waiting'
+          && !gameState.players.find(p => p.id === userId)
+          && gameState.players.length < roomCapacity(GAME, gameState.settings?.maxPlayers)) {
           initGame({ name: userName, avatarUrl: userAvatar });
       }
   }, [userId, gameState, initGame, userName, userAvatar]);
@@ -97,6 +104,13 @@ function FlagerContent() {
       return <GameNotJoined lang={lang} />;
   }
 
+  // The invite link bypasses the lobby list, so the room's own cap has to
+  // be enforced here too — otherwise a shared link seated any number of
+  // players in a room the host had limited.
+  if (!gameState.players.find(p => p.id === userId) && gameState.players.length >= roomCapacity(GAME, gameState.settings?.maxPlayers)) {
+      return <GameNotJoined lang={lang} reason="full" />;
+  }
+
   if (gameState.status === 'waiting') {
       const playersList: LobbyPlayer[] = gameState.players.map(p => ({
           id: p.id,
@@ -113,8 +127,8 @@ function FlagerContent() {
           gameType="flager"
           players={playersList}
           currentUserId={userId}
-          minPlayers={1}
-          maxPlayers={4}
+          minPlayers={GAME.players.min}
+          maxPlayers={roomCapacity(GAME, gameState.settings?.maxPlayers)}
           onStart={startGame}
           onLeave={handleLeave}
           lang={lang}
@@ -128,6 +142,7 @@ function FlagerContent() {
       userId={userId}
       makeGuess={makeGuess}
       handleTimeout={handleTimeout}
+      forceRoundEnd={forceRoundEnd}
       readyNextRound={readyNextRound}
       leaveGame={handleLeave}
       lang={lang}

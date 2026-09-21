@@ -1,6 +1,6 @@
 # Darhaal Games
 
-![Version](https://img.shields.io/badge/version-2.2.0-blue.svg) ![License](https://img.shields.io/badge/license-View%20%26%20Study%20Only-red.svg) ![Tests](https://img.shields.io/badge/tests-176-brightgreen.svg)
+![Version](https://img.shields.io/badge/version-2.3.0-blue.svg) ![License](https://img.shields.io/badge/license-View%20%26%20Study%20Only-red.svg) ![Tests](https://img.shields.io/badge/tests-399-brightgreen.svg)
 
 Five board and logic games you can play with friends in a browser. One person
 creates a room, shares the link, everyone else joins — no install, no account
@@ -18,12 +18,12 @@ actually is.
 
 A few parts are worth reading if you are looking at this as engineering work.
 
-**One sync core for five games.** Every game does the same four things: fetch
+**One sync core for every game.** Every game does the same four things: fetch
 state, subscribe to changes, guard against stale updates, write back. That lives
 once in [`hooks/core/useLobbySync.ts`](src/hooks/core/useLobbySync.ts); the game
 hooks contain only game logic. Extracting it removed about 350 duplicated lines.
 
-**Writes that survive two people acting at once.** All five games share a single
+**Writes that survive two people acting at once.** Every game shares a single
 `game_state` row behind one version counter, so simultaneous actions collide —
 constantly in Minesweeper, where every player has their own board and clicks are
 independent. Writes go through a compare-and-swap RPC; on a conflict the update
@@ -36,6 +36,14 @@ client component behind a login screen, so search engines saw nothing. The fix
 was a separate server-rendered tree (`/games`, `/en/games`) plus a landing on the
 root, with hreflang pairs, per-page Open Graph cards and structured data — all
 generated from one content module. See [`docs/seo.md`](docs/seo.md).
+
+**One registry instead of six copies of each game.** Every game used to be
+described separately in the create screen, the lobby list, the achievements
+grid, the lobby header, each game route and the SEO content — and they had
+drifted, down to two spellings of the same game's name and four screens that
+ignored the player cap the host had chosen. [`src/games/`](src/games/) holds it
+once; the per-game records are keyed so a half-registered game is a type error,
+not a blank card.
 
 **Authorization that is actually tested.** [`scripts/authz-test.mjs`](scripts/authz-test.mjs)
 signs in two throwaway guests and has one attempt six attacks on the other's
@@ -106,7 +114,7 @@ not forgotten.
 | Hosting | Vercel |
 
 No state-management library: the shared sync hook and React state cover it.
-Zero `any`, zero `@ts-ignore`, zero dependency vulnerabilities, 176 tests.
+Zero `any`, zero `@ts-ignore`, zero dependency vulnerabilities, 239 tests.
 
 ---
 
@@ -140,6 +148,7 @@ walks through it.
 | [Business Logic](docs/business-logic.md) | Sync model, lobby lifecycle, per-game state machines |
 | [Data Model](docs/data-model.md) | Tables, `game_state` shapes, lobby lifecycle and cleanup |
 | [Games](docs/games.md) | Each mode and where its code lives |
+| [Adding a Game](docs/adding-a-game.md) | The registry, and the checklist for a new mode |
 | [SEO](docs/seo.md) | The public crawlable layer |
 | [Security](docs/security.md) | Audit, fixes, and the accepted risks |
 | [Deployment](docs/deployment.md) | Vercel and Supabase setup |

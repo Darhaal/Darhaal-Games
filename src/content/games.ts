@@ -10,7 +10,33 @@
  * the JSON-LD builders in src/lib/seo.ts.
  */
 
-export type Locale = 'ru' | 'en';
+import { requireGame, type GameId } from '@/games/registry';
+
+export type { Locale } from '@/games/registry';
+import type { Locale } from '@/games/registry';
+import { GAME_COUNT_COPY } from './gameCount';
+
+/**
+ * Facts the app and the public pages must agree on — player counts, accent,
+ * genre, playtime — read from the registry instead of restated here. They had
+ * already drifted: this file said "Сапёр" while the lobby list said "Сапер".
+ */
+const gameFacts = (id: GameId) => {
+  const g = requireGame(id);
+  return {
+    slug: g.id,
+    players: g.players,
+    playtimeMinutes: g.playtimeMinutes,
+    genre: g.genre,
+    accent: g.accent
+  };
+};
+
+/** The display name and one-liner, likewise owned by the registry. */
+const localeFacts = (id: GameId, locale: Locale) => {
+  const g = requireGame(id);
+  return { name: g.name[locale], tagline: g.tagline[locale] };
+};
 
 export interface GameFaq {
   q: string;
@@ -53,15 +79,10 @@ export interface GameContent {
 
 export const GAMES_CONTENT: GameContent[] = [
   {
-    slug: 'spyfall',
-    players: { min: 3, max: 12 },
-    playtimeMinutes: 10,
-    genre: { ru: 'Социальная дедукция', en: 'Social deduction' },
-    accent: '#7c3aed',
+    ...gameFacts('spyfall'),
     locales: {
       ru: {
-        name: 'Шпион',
-        tagline: 'Вычислите шпиона в своих рядах или не выдайте себя.',
+        ...localeFacts('spyfall', 'ru'),
         metaTitle: 'Шпион — играть онлайн с друзьями бесплатно',
         metaDescription:
           'Онлайн-игра «Шпион» на 3–12 игроков: все знают локацию, кроме одного. Задавайте вопросы, ищите чужака и голосуйте. Бесплатно, без установки.',
@@ -117,8 +138,7 @@ export const GAMES_CONTENT: GameContent[] = [
         ]
       },
       en: {
-        name: 'Spyfall',
-        tagline: 'Find the spy among you or blend in without being caught.',
+        ...localeFacts('spyfall', 'en'),
         metaTitle: 'Spyfall — play online with friends for free',
         metaDescription:
           'Play Spyfall online with 3–12 players: everyone knows the location except one. Ask questions, expose the outsider, vote. Free, no download.',
@@ -176,15 +196,10 @@ export const GAMES_CONTENT: GameContent[] = [
     }
   },
   {
-    slug: 'minesweeper',
-    players: { min: 1, max: 4 },
-    playtimeMinutes: 10,
-    genre: { ru: 'Головоломка', en: 'Puzzle' },
-    accent: '#dc2626',
+    ...gameFacts('minesweeper'),
     locales: {
       ru: {
-        name: 'Сапёр',
-        tagline: 'Скоростное разминирование. Кто быстрее очистит поле?',
+        ...localeFacts('minesweeper', 'ru'),
         metaTitle: 'Сапёр онлайн — соло и на скорость',
         metaDescription:
           'Классический Сапёр в браузере: одиночная игра и гонка до четырёх игроков на одинаковых полях. Аккорд, флаги, зум, настраиваемая сложность.',
@@ -241,8 +256,7 @@ export const GAMES_CONTENT: GameContent[] = [
         ]
       },
       en: {
-        name: 'Minesweeper',
-        tagline: 'Speed defusal. Who clears the grid first?',
+        ...localeFacts('minesweeper', 'en'),
         metaTitle: 'Minesweeper online — solo or race',
         metaDescription:
           'Classic Minesweeper in your browser: solo play plus a race for up to four players on identical grids. Chord, flags, zoom and custom difficulty.',
@@ -301,15 +315,10 @@ export const GAMES_CONTENT: GameContent[] = [
     }
   },
   {
-    slug: 'flager',
-    players: { min: 1, max: 4 },
-    playtimeMinutes: 10,
-    genre: { ru: 'Викторина', en: 'Quiz' },
-    accent: '#0891b2',
+    ...gameFacts('flager'),
     locales: {
       ru: {
-        name: 'Флагер',
-        tagline: 'Географическая викторина. Угадай флаг по пикселям.',
+        ...localeFacts('flager', 'ru'),
         metaTitle: 'Флагер — викторина «угадай флаг»',
         metaDescription:
           'Географическая викторина на флаги с механикой Pixel Match: флаг проявляется постепенно, чем раньше ответишь — тем больше очков. Соло и до 4 игроков.',
@@ -366,8 +375,7 @@ export const GAMES_CONTENT: GameContent[] = [
         ]
       },
       en: {
-        name: 'Flager',
-        tagline: 'Geography quiz. Guess the flag pixel by pixel.',
+        ...localeFacts('flager', 'en'),
         metaTitle: 'Flager — guess the country flag quiz online',
         metaDescription:
           'A flag quiz with a Pixel Match twist: the flag resolves gradually and answering earlier scores higher. Play solo or with up to four players.',
@@ -426,15 +434,10 @@ export const GAMES_CONTENT: GameContent[] = [
     }
   },
   {
-    slug: 'battleship',
-    players: { min: 2, max: 2 },
-    playtimeMinutes: 15,
-    genre: { ru: 'Стратегия', en: 'Strategy' },
-    accent: '#1d4ed8',
+    ...gameFacts('battleship'),
     locales: {
       ru: {
-        name: 'Морской бой',
-        tagline: 'Классическая тактика. Потопи флот противника.',
+        ...localeFacts('battleship', 'ru'),
         metaTitle: 'Морской бой онлайн — игра на двоих',
         metaDescription:
           'Морской бой на двоих в браузере: расстановка флота перетаскиванием, автоматическая расстановка, дополнительный ход за попадание и таймер на выстрел.',
@@ -492,8 +495,7 @@ export const GAMES_CONTENT: GameContent[] = [
         ]
       },
       en: {
-        name: 'Battleship',
-        tagline: 'Classic tactics. Sink the enemy fleet.',
+        ...localeFacts('battleship', 'en'),
         metaTitle: 'Battleship online — two players',
         metaDescription:
           'Two-player Battleship in your browser: drag-and-drop fleet placement, auto-arrange, an extra turn for every hit, and a timer on each shot.',
@@ -553,15 +555,10 @@ export const GAMES_CONTENT: GameContent[] = [
     }
   },
   {
-    slug: 'coup',
-    players: { min: 2, max: 6 },
-    playtimeMinutes: 15,
-    genre: { ru: 'Карточная игра', en: 'Card game' },
-    accent: '#b45309',
+    ...gameFacts('coup'),
     locales: {
       ru: {
-        name: 'Переворот',
-        tagline: 'Блеф, интриги и влияние. Останься последним.',
+        ...localeFacts('coup', 'ru'),
         metaTitle: 'Переворот (Coup) — игра на блеф',
         metaDescription:
           'Карточная игра «Переворот» на 2–6 игроков: пять ролей, блеф, блокировки и разоблачения. Лишите соперников влияния и останьтесь последним.',
@@ -618,8 +615,7 @@ export const GAMES_CONTENT: GameContent[] = [
         ]
       },
       en: {
-        name: 'Coup',
-        tagline: 'Bluff, intrigue, influence. Be the last one standing.',
+        ...localeFacts('coup', 'en'),
         metaTitle: 'Coup — the bluffing card game online',
         metaDescription:
           'Play Coup online with 2–6 players: five roles, bluffing, blocks and challenges. Strip your rivals of influence and be the last one standing.',
@@ -676,7 +672,392 @@ export const GAMES_CONTENT: GameContent[] = [
         ]
       }
     }
-  }
+  },
+  {
+    ...gameFacts('wallrush'),
+    locales: {
+      ru: {
+        ...localeFacts('wallrush', 'ru'),
+        metaTitle: 'Стены (Wall Rush) — играть онлайн',
+        metaDescription:
+          'Wall Rush онлайн на 2–4 игроков: добегите пешкой до цели раньше соперника или стройте стены и отправляйте его в обход. Дуэль и пара на поле 9×9, вчетвером — 11×11 и гонка в центр.',
+        intro: [
+          'Wall Rush — абстрактная стратегия, в которой каждый ход требует выбора между двумя делами: шагнуть вперёд самому или помешать сопернику. В дуэли и в паре доска 9×9: пешка стоит посередине одного края, дойти нужно до противоположного.',
+          'Второе дело — стены. Стена длиной в две клетки встаёт в промежуток между рядами и заставляет соперника идти в обход. Стен конечное число, и каждая поставленная стена — это ход, который вы не потратили на собственное движение.',
+          'Вчетвером расклад другой: поле 11×11, по игроку с каждой стороны и одна общая цель — золотая клетка в самом центре. Побеждает тот, кто дошёл до неё первым, остальные трое проигрывают.',
+          'Запереть соперника наглухо нельзя ни в одном режиме: правила запрещают ставить стену, после которой у кого-то не останется ни одного пути к цели. Поэтому игра никогда не превращается в строительство тюрьмы — только в спор о том, чей маршрут длиннее.'
+        ],
+        howToPlay: [
+          'Создайте комнату, выберите режим и отправьте друзьям ссылку или шестизначный код.',
+          'Пешки встают посередине своих краёв. Вдвоём и в паре цель — любая клетка противоположного края; вчетвером — золотая клетка в центре поля.',
+          'За ход сделайте ровно одно: шагните на соседнюю клетку или поставьте стену.',
+          'Стоите вплотную к чужой пешке — перепрыгните её; если за ней стена или край, обойдите сбоку.',
+          'Следите за остатком стен: когда они кончатся, останется только бежать.',
+          'Первый, кто дошёл до цели, побеждает. В режиме 2 на 2 хватит, чтобы дошёл любой из пары.'
+        ],
+        features: [
+          'Три режима: 1 на 1, 2 на 2 и вчетвером каждый за себя',
+          'Поле 9×9 в дуэли и в паре, 11×11 вчетвером',
+          'По 10 стен в дуэли, по 5 в паре, по 7 вчетвером',
+          'Недопустимые стены подсвечиваются заранее — правило пути проверяется на каждый ход',
+          'Таймер хода, настраиваемый при создании комнаты',
+          'Счёт серии сохраняется между переигровками'
+        ],
+        strategy: [
+          'Считайте разницу, а не ущерб. Стена, удлиняющая чужой путь на два шага, стоит вам одного собственного хода — значит вы в плюсе лишь на один шаг.',
+          'Берегите стены на концовку. В эндшпиле один барьер решает партию, а тот же барьер на втором ходу почти ничего не меняет.',
+          'Не стройте против того, кто и так отстаёт. Стены — ресурс против лидера, а не способ добить последнего.',
+          'Вчетвером стена работает на всех сразу: удлинив путь одному, вы часто помогаете двум другим не меньше, чем себе. Стройте то, что удлиняет чужой маршрут в центр, не удлиняя ваш.',
+          'Играя в паре, разводите цели с партнёром. Две стены против одного и того же соперника часто дают эффект одной.'
+        ],
+        mistakes: [
+          'Тратят стены в первые же ходы, чтобы «обозначить намерения». К середине партии отвечать становится нечем.',
+          'Строят стену, которая удлиняет чужой путь на один шаг. Это ровно размен ход в ход — вы ничего не выиграли.',
+          'Забывают про прыжок и обходят чужую пешку по длинной дуге, теряя два-три хода на ровном месте.',
+          'Вчетвером воюют с ближайшим соседом, пока игрок напротив спокойно доходит до центра.'
+        ],
+        faq: [
+          {
+            q: 'Сколько человек нужно для игры?',
+            a: 'Двое или четверо. Режим 1 на 1 рассчитан ровно на двоих, а 2 на 2 и «каждый за себя» — ровно на четверых. Втроём партия не собирается.'
+          },
+          {
+            q: 'Можно ли полностью перекрыть сопернику дорогу?',
+            a: 'Нет. Правила запрещают ставить стену, после которой у кого-то не останется пути к своему краю, и игра сама не даст поставить такую стену. Стены только удлиняют маршрут.'
+          },
+          {
+            q: 'Чем 2 на 2 отличается от игры вчетвером каждый за себя?',
+            a: 'Целями и полем. В паре играют на 9×9, партнёры стоят напротив друг друга, каждый бежит к своему краю, и победа засчитывается паре, как только дошёл любой из двоих. Вчетвером поле 11×11 и цель у всех одна — центр, победитель только один.'
+          },
+          {
+            q: 'Сколько стен в каждом режиме?',
+            a: 'По 10 в дуэли, по 5 у каждого в паре и по 7 вчетвером. Сорок стен на одном поле превратили бы его в лабиринт, где движение почти останавливается, поэтому с ростом числа игроков запас на каждого урезают.'
+          },
+          {
+            q: 'Нужно ли что-то устанавливать?',
+            a: 'Нет. Игра работает прямо в браузере на компьютере и телефоне, регистрация не обязательна.'
+          }
+        ]
+      },
+      en: {
+        ...localeFacts('wallrush', 'en'),
+        metaTitle: 'Wall Rush — play online with friends, free',
+        metaDescription:
+          'Wall Rush online for 2–4 players: race your pawn home before your rival or drop walls to send them the long way around. A 9x9 duel and team game, or four at an 11x11 table racing for the centre.',
+        intro: [
+          'Wall Rush is an abstract strategy game where every turn forces a choice between two jobs: move yourself forward, or get in someone else\'s way. The board is 9x9, your pawn starts in the middle of one edge, and you have to reach the opposite one.',
+          'The second job is walls. A wall is two squares long, sits in the gap between rows, and sends a rival the long way around. You have a finite number of them, and every wall you place is a turn you did not spend moving.',
+          'Four at a table changes the shape of it: an 11x11 board, one player on each side, and a single shared target — the golden square in the very centre. First one there wins, and the other three lose.',
+          'Sealing someone in is not allowed: no wall may leave a player without a route to their edge. So the game never collapses into building a prison — only into an argument about whose journey is longer.'
+        ],
+        howToPlay: [
+          'Create a room, pick a mode, and send friends the link or the six-character code.',
+          'Pawns start in the middle of their own edges. In a duel or a team game the target is any square on the opposite edge; four at a table it is the golden centre square.',
+          'On your turn do exactly one thing: step to an adjacent square, or place a wall.',
+          'Face to face with another pawn, hop over it; if a wall or the edge is behind it, step around the side.',
+          'Watch your wall count — once they are gone, all you can do is run.',
+          'First pawn home wins. In 2v2 either partner getting there wins it for both.'
+        ],
+        features: [
+          'Three modes: 1v1, 2v2 and four at a table',
+          '9x9 board for the duel and the team game, 11x11 for a four',
+          '10 walls each in a duel, 5 each in a team game, 7 each in a four',
+          'Illegal walls are greyed out — the route rule is checked before you can place one',
+          'Turn timer, configurable when the room is created',
+          'Series score carried across rematches'
+        ],
+        strategy: [
+          'Count the difference, not the damage. A wall that adds two steps to a rival costs you one turn of your own, so you are only one step ahead.',
+          'Save walls for the endgame. One barrier late decides a match; the same barrier on turn two changes almost nothing.',
+          'Do not spend walls on whoever is already behind. Walls are a tool against the leader.',
+          'With four players a wall works on everybody at once: lengthening one rival\'s route often helps the other two as much as it helps you. Look for walls that lengthen their way to the centre without lengthening yours.',
+          'Partnered up, split your targets. Two walls aimed at the same rival often achieve what one would.'
+        ],
+        mistakes: [
+          'Spending walls in the opening to "make a statement", then having nothing left to answer with.',
+          'Placing a wall that adds a single step. That is an even trade, turn for turn, and gains nothing.',
+          'Forgetting the jump and walking the long way around a pawn, losing two or three turns for no reason.',
+          'In a four, fighting the nearest neighbour while the player opposite quietly walks into the centre.'
+        ],
+        faq: [
+          {
+            q: 'How many players do I need?',
+            a: 'Two or four. The 1v1 mode is for exactly two; 2v2 and free-for-all are for exactly four. There is no three-player table.'
+          },
+          {
+            q: 'Can I block a rival completely?',
+            a: 'No. No wall may leave anyone without a route to their edge, and the board will not let you place one that does. Walls only lengthen the journey.'
+          },
+          {
+            q: 'How is 2v2 different from four at a table?',
+            a: 'The goals and the board. A team game is 9x9 with partners opposite, each running for their own edge, and the pair wins the moment either of them gets home. Four at a table is 11x11 with one shared target in the centre, and exactly one winner.'
+          },
+          {
+            q: 'How many walls does each mode give?',
+            a: '10 in a duel, 5 each in a team game and 7 each at a four-player table. Forty walls on one board would turn it into a maze where movement nearly stops, so the allowance per player shrinks as the table grows.'
+          },
+          {
+            q: 'Do I need to install anything?',
+            a: 'No. It runs in the browser on desktop and mobile, and an account is optional.'
+          }
+        ]
+      }
+    }
+  },
+  {
+    ...gameFacts('dots'),
+    locales: {
+      ru: {
+        ...localeFacts('dots', 'ru'),
+        metaTitle: 'Точки и квадраты — играть онлайн',
+        metaDescription:
+          'Онлайн-игра «Точки и квадраты» на 2–4 игроков: проводите линии между точками, закрывайте квадраты и ходите снова. Бесплатно, без установки.',
+        intro: [
+          'Точки и квадраты — игра, которая выглядит как детская забава и оказывается расчётом. Поле — сетка точек. За ход проводится одна линия между двумя соседними точками, и всё; правил больше нет.',
+          'Замкнули квадрат — он ваш, и вы ходите ещё раз. Поэтому одна удачная линия может обернуться цепочкой из десятка квадратов подряд, а одна неосторожная — подарить такую же цепочку сопернику.',
+          'Из этого вырастает вся игра: большую часть партии обе стороны ходят там, где до квадрата далеко, и настоящая борьба идёт за то, у кого раньше кончатся безопасные ходы.'
+        ],
+        howToPlay: [
+          'Создайте комнату, выберите размер поля и отправьте друзьям ссылку или шестизначный код.',
+          'За ход проведите одну линию между двумя соседними точками — по горизонтали или по вертикали.',
+          'Замкнули квадрат — он окрашивается в ваш цвет, и вы ходите снова.',
+          'Одна линия может закрыть сразу два квадрата, и оба достанутся вам.',
+          'Не спешите ставить третью сторону квадрата: следующий ход соперника заберёт его.',
+          'Партия заканчивается, когда проведены все линии. Побеждает тот, у кого больше квадратов.'
+        ],
+        features: [
+          'От 2 до 4 игроков в одной комнате',
+          'Размер поля от 3×3 до 8×8 квадратов',
+          'Линии и квадраты окрашены в цвет того, кто их занял',
+          'Таймер хода, настраиваемый при создании комнаты',
+          'Полная информация: подсматривать нечего, всё на доске'
+        ],
+        strategy: [
+          'Считайте безопасные ходы, а не квадраты. Побеждает тот, у кого останется ход, когда у соперника их не будет.',
+          'Отдавать цепочку рано или поздно придётся — отдавайте короткую, длинные берегите к концу.',
+          'Двойной крест: закройте длинную цепочку не полностью, оставив два последних квадрата. Соперник вынужден будет открыть следующую.',
+          'Считайте чётность. В партии на нечётном поле безопасные ходы кончаются иначе, чем на чётном, и это решает, кто откроет первым.',
+          'Вчетвером цепочка достаётся тому, чья очередь до неё дошла: следите не только за своими линиями, но и за тем, кому вы подводите ход.'
+        ],
+        mistakes: [
+          'Хватают первый попавшийся квадрат, отдавая за него цепочку втрое длиннее.',
+          'Ставят третью сторону квадрата просто потому, что «надо куда-то сходить».',
+          'Забывают, что закрытый квадрат даёт ещё один ход, и считают партию по очереди ходов, а не по цепочкам.',
+          'Дожимают цепочку до последнего квадрата вместо того, чтобы оставить два и передать инициативу.'
+        ],
+        faq: [
+          {
+            q: 'Сколько человек нужно для игры?',
+            a: 'От двух до четырёх. Вдвоём игра более расчётливая, вчетвером — живее, потому что цепочки достаются тому, кто вовремя оказался у доски.'
+          },
+          {
+            q: 'Можно ли ходить по диагонали?',
+            a: 'Нет. Линия соединяет только две соседние точки по горизонтали или по вертикали.'
+          },
+          {
+            q: 'Что будет, если одна линия закроет два квадрата?',
+            a: 'Оба станут вашими, и вы всё равно ходите снова. Это самый выгодный ход в игре.'
+          },
+          {
+            q: 'Бывает ли ничья?',
+            a: 'Да, если квадратов поровну. На поле с нечётным числом квадратов ничья невозможна вдвоём.'
+          },
+          {
+            q: 'Нужно ли что-то устанавливать?',
+            a: 'Нет. Игра работает прямо в браузере на компьютере и телефоне, регистрация не обязательна.'
+          }
+        ]
+      },
+      en: {
+        ...localeFacts('dots', 'en'),
+        metaTitle: 'Dots & Boxes — play online free',
+        metaDescription:
+          'Dots & Boxes online for 2–4 players: draw lines between dots, close boxes and go again. Free, no download, no account needed.',
+        intro: [
+          'Dots & Boxes looks like something from the back of a school notebook and turns out to be arithmetic. The board is a grid of dots, and a turn is one line between two neighbours. That is the entire rulebook.',
+          'Close a box and it is yours — and you go again. So one good line can run into a chain of a dozen boxes, and one careless line hands the same chain to your rival.',
+          'Everything else grows from that. For most of the match both sides play where no box is nearly finished, and the real contest is over who runs out of safe moves first.'
+        ],
+        howToPlay: [
+          'Create a room, pick a board size, and send friends the link or the six-character code.',
+          'On your turn draw one line between two neighbouring dots, across or down.',
+          'Close a box and it takes your colour — and you go again.',
+          'One line can close two boxes at once, and both are yours.',
+          'Think before drawing a third side of a box: your rival takes it on their next turn.',
+          'The match ends when every line is drawn. Most boxes wins.'
+        ],
+        features: [
+          'Two to four players in one room',
+          'Board from 3x3 up to 8x8 boxes',
+          'Lines and boxes take the colour of whoever claimed them',
+          'Turn timer, configurable when the room is created',
+          'Perfect information: nothing to peek at, it is all on the board'
+        ],
+        strategy: [
+          'Count safe moves, not boxes. The winner is whoever still has a move when the other has none.',
+          'You will have to give a chain away eventually — give away a short one and save the long chains for the end.',
+          'The double cross: close a long chain but leave its last two boxes, and your rival must open the next one.',
+          'Watch the parity. Safe moves run out differently on an odd board than an even one, and that decides who opens first.',
+          'With four players a chain falls to whoever reaches it on their turn, so watch whose turn you are setting up.'
+        ],
+        mistakes: [
+          'Grabbing the first box on offer and paying for it with a chain three times longer.',
+          'Drawing a third side of a box simply because a move had to be made somewhere.',
+          'Forgetting that closing a box grants another turn, and counting the match in turns rather than chains.',
+          'Taking a chain down to its last box instead of leaving two and handing back the initiative.'
+        ],
+        faq: [
+          {
+            q: 'How many players do I need?',
+            a: 'Two to four. Two makes a calculating game; four is livelier, because a chain falls to whoever happens to reach it.'
+          },
+          {
+            q: 'Can I draw diagonally?',
+            a: 'No. A line joins two neighbouring dots across or down, never corner to corner.'
+          },
+          {
+            q: 'What if one line closes two boxes?',
+            a: 'Both are yours and you still go again. It is the best move in the game.'
+          },
+          {
+            q: 'Can a match be drawn?',
+            a: 'Yes, on level boxes. A board with an odd number of boxes cannot be drawn between two players.'
+          },
+          {
+            q: 'Do I need to install anything?',
+            a: 'No. It runs in the browser on desktop and mobile, and an account is optional.'
+          }
+        ]
+      }
+    }
+  },
+  {
+    ...gameFacts('reversi'),
+    locales: {
+      ru: {
+        ...localeFacts('reversi', 'ru'),
+        metaTitle: 'Реверси — играть онлайн с другом бесплатно',
+        metaDescription:
+          'Реверси онлайн на двоих: зажимайте чужие фишки между своими, переворачивайте их и берите углы. Правило одно, партия на четверть часа.',
+        intro: [
+          'Реверси — игра 1883 года с одним-единственным правилом: поставьте фишку так, чтобы линия чужих оказалась зажата между ней и одной из ваших, и вся эта линия перевернётся.',
+          'Линии считаются по горизонтали, вертикали и диагонали, и один ход может перевернуть сразу несколько. Поэтому доска меняется не по фишке за раз, а целыми полосами, и позиция в середине партии почти ничего не говорит о том, чем всё кончится.',
+          'Ход разрешён, только если он что-то переворачивает. Из этого следует неочевидное: иногда ходить просто некуда, и очередь переходит обратно.'
+        ],
+        howToPlay: [
+          'Создайте комнату и отправьте другу ссылку или шестизначный код.',
+          'В центре доски уже стоят четыре фишки — по две каждого цвета, наискосок.',
+          'Первым ходит тёмный. Доступные клетки подсвечены вашим цветом.',
+          'Поставьте фишку так, чтобы зажать линию чужих между ней и своей — линия перевернётся.',
+          'Если ходить некуда, очередь переходит автоматически.',
+          'Партия кончается, когда ходов нет ни у кого. Побеждает тот, у кого больше фишек.'
+        ],
+        features: [
+          'Классическая доска 8×8 и классическая расстановка',
+          'Доступные ходы подсвечиваются — правило видно, а не угадывается',
+          'Автоматический пропуск хода, когда ставить некуда',
+          'Таймер хода, настраиваемый при создании комнаты',
+          'Полная информация: подсматривать нечего, всё на доске'
+        ],
+        strategy: [
+          'Углы перевернуть невозможно ничем. Один угол стоит дороже десятка фишек в центре.',
+          'Не занимайте клетки рядом с углом раньше времени — именно они открывают сопернику дорогу в сам угол.',
+          'В середине партии выгодно иметь меньше фишек: меньше того, что можно зажать, и больше мест, куда вы ещё можете пойти.',
+          'Считайте не фишки, а ходы. Партия выигрывается тем, что сопернику становится некуда ставить.',
+          'Края доски надёжнее центра: фишку на краю можно перевернуть только вдоль этого края.'
+        ],
+        mistakes: [
+          'Радуются большому перевесу в середине партии — он переворачивается одним ходом в угол.',
+          'Жадно переворачивают как можно больше фишек каждым ходом, отдавая взамен свободу манёвра.',
+          'Занимают клетку по диагонали от угла и отдают угол следующим же ходом.',
+          'Считают, что доска обязана заполниться до конца: партия часто кончается раньше.'
+        ],
+        faq: [
+          {
+            q: 'Сколько человек нужно для игры?',
+            a: 'Двое: у каждого свой цвет. Вариантов на большее число игроков у этой игры нет.'
+          },
+          {
+            q: 'Почему не всякая свободная клетка доступна?',
+            a: 'Ход разрешён, только если он переворачивает хотя бы одну фишку. Линия, упирающаяся в край доски или разорванная пустой клеткой, не зажимает ничего.'
+          },
+          {
+            q: 'Что будет, если мне некуда ходить?',
+            a: 'Ход перейдёт автоматически. Если ходов нет ни у кого — партия закончена, даже если на доске остались пустые клетки.'
+          },
+          {
+            q: 'Чем Реверси отличается от игры с похожим названием?',
+            a: 'Это она и есть: механика придумана в 1883 году и свободна. Более известное название — зарегистрированная торговая марка, поэтому игра называется своим изначальным именем.'
+          },
+          {
+            q: 'Нужно ли что-то устанавливать?',
+            a: 'Нет. Игра работает прямо в браузере на компьютере и телефоне, регистрация не обязательна.'
+          }
+        ]
+      },
+      en: {
+        ...localeFacts('reversi', 'en'),
+        metaTitle: 'Reversi — play online with a friend, free',
+        metaDescription:
+          'Reversi online for two: trap your rival between two of your discs, turn the line over and take the corners. One rule, about fifteen minutes.',
+        intro: [
+          'Reversi dates from 1883 and has one rule: place a disc so that a line of your rival sits between it and one of yours, and that whole line turns over.',
+          'Lines run across, down and diagonally, and a single move can turn several at once. The board changes in stripes rather than one disc at a time, which is why a position in the middlegame says almost nothing about how it ends.',
+          'A move is legal only if it turns something over. That has a consequence people rarely expect: sometimes there is nowhere to play at all, and the turn simply goes back.'
+        ],
+        howToPlay: [
+          'Create a room and send a friend the link or the six-character code.',
+          'Four discs start in the middle, two of each colour, set on a diagonal.',
+          'Dark opens. The squares you may play are highlighted in your colour.',
+          'Place a disc so it traps a line of your rival between it and one of yours — the line turns over.',
+          'If you have nowhere to play, the turn passes automatically.',
+          'The match ends when neither colour can play. Most discs wins.'
+        ],
+        features: [
+          'The classic 8x8 board and the classic opening position',
+          'Legal moves are highlighted, so the rule is visible rather than guessed',
+          'Turns pass automatically when there is nowhere to play',
+          'Turn timer, configurable when the room is created',
+          'Perfect information: nothing to peek at, it is all on the board'
+        ],
+        strategy: [
+          'Corners can never be turned over. One corner is worth more than a dozen discs in the middle.',
+          'Do not take the squares beside a corner early — they are what lets your rival reach the corner itself.',
+          'Holding fewer discs in the middlegame is usually good: less to be trapped, and more places you can still play.',
+          'Count moves, not discs. The match is won by leaving your rival with nowhere to go.',
+          'Edges are safer than the middle: a disc on an edge can only be turned along that edge.'
+        ],
+        mistakes: [
+          'Celebrating a big lead in the middlegame, which one move into a corner can undo.',
+          'Turning over as many discs as possible every move, and paying for it in freedom to manoeuvre.',
+          'Taking the square diagonally beside a corner and handing over the corner next turn.',
+          'Assuming the board has to fill up. Matches often end with squares to spare.'
+        ],
+        faq: [
+          {
+            q: 'How many players do I need?',
+            a: 'Two, one colour each. The game has no variant for more.'
+          },
+          {
+            q: 'Why can I not play on every empty square?',
+            a: 'A move is legal only if it turns at least one disc over. A run that reaches the edge of the board, or that has a gap in it, traps nothing.'
+          },
+          {
+            q: 'What happens if I have nowhere to play?',
+            a: 'Your turn passes automatically. If neither colour can play, the match is over — even with empty squares left.'
+          },
+          {
+            q: 'How does this differ from the game with the similar name?',
+            a: 'It is the same game. The mechanic is from 1883 and free to use; the better-known title is a registered trademark, so this one goes by its original name.'
+          },
+          {
+            q: 'Do I need to install anything?',
+            a: 'No. It runs in the browser on desktop and mobile, and an account is optional.'
+          }
+        ]
+      }
+    }
+  },
 ];
 
 /**
@@ -734,15 +1115,14 @@ export interface HubCopy {
 export const HOME_CONTENT: Record<Locale, HomeCopy> = {
   ru: {
     heroTitle: 'Игры с друзьями прямо в браузере',
-    heroLead:
-      'Пять настольных и логических игр для компании. Создайте комнату, отправьте ссылку — и играйте. Ничего скачивать не нужно, регистрация не обязательна.',
+    heroLead: GAME_COUNT_COPY.ru.heroLead,
     about: [
       'Darhaal Games — платформа для тех вечеров, когда все в разных городах, а поиграть вместе хочется. Здесь нет лаунчеров, установки и обязательных аккаунтов: игра живёт по ссылке, которую можно просто кинуть в чат.',
       'Каждая комната — это отдельная партия со своими настройками. Хост выбирает игру, число игроков, длительность раунда и при желании ставит пароль. Остальные заходят по ссылке или по шестизначному коду.',
       'Партии рассчитаны на 10–15 минут: столько, чтобы успеть сыграть в перерыве или несколько раз подряд за вечер. Прогресс, статистика и достижения сохраняются, если войти в аккаунт, но попробовать можно и гостем.'
     ],
     gamesTitle: 'Во что можно сыграть',
-    gamesLead: 'Пять игр: от разговорной дедукции на всю компанию до дуэли на двоих и логики в одиночку.',
+    gamesLead: GAME_COUNT_COPY.ru.gamesLead,
     steps: [
       {
         title: 'Создайте комнату',
@@ -771,7 +1151,7 @@ export const HOME_CONTENT: Record<Locale, HomeCopy> = {
       },
       {
         q: 'Сколько человек можно позвать?',
-        a: 'Зависит от игры: Морской бой рассчитан на двоих, Сапёр и Флагер — до четырёх, Переворот — до шести, Шпион — до двенадцати.'
+        a: 'Зависит от игры: Морской бой и Реверси рассчитаны на двоих; Сапёр, Флагер, Стены и «Точки и квадраты» — до четырёх; Переворот — до шести; Шпион — до двенадцати.'
       },
       {
         q: 'Это бесплатно?',
@@ -785,15 +1165,14 @@ export const HOME_CONTENT: Record<Locale, HomeCopy> = {
   },
   en: {
     heroTitle: 'Play with friends right in the browser',
-    heroLead:
-      'Five board and logic games for a group. Create a room, share the link, play. Nothing to download, no account required.',
+    heroLead: GAME_COUNT_COPY.en.heroLead,
     about: [
       'Darhaal Games is for the evenings when everyone is in a different city and you still want to play together. No launchers, no installs, no mandatory accounts: a game lives behind a link you can paste into a chat.',
       'Each room is its own match with its own settings. The host picks the game, the player count, the round length, and optionally a password. Everyone else joins by link or by a six-character code.',
       'Matches run 10–15 minutes — long enough to fit into a break, short enough to play several in an evening. Stats and achievements are saved once you sign in, but you can try everything as a guest first.'
     ],
     gamesTitle: 'What you can play',
-    gamesLead: 'Five games, from group-wide conversational deduction to a two-player duel and solo logic.',
+    gamesLead: GAME_COUNT_COPY.en.gamesLead,
     steps: [
       {
         title: 'Create a room',
@@ -822,7 +1201,7 @@ export const HOME_CONTENT: Record<Locale, HomeCopy> = {
       },
       {
         q: 'How many people can join?',
-        a: 'It depends on the game: Battleship is for two, Minesweeper and Flager take up to four, Coup up to six, and Spyfall up to twelve.'
+        a: 'It depends on the game: Battleship and Reversi are for two; Minesweeper, Flager, Wall Rush and Dots & Boxes take up to four; Coup up to six; and Spyfall up to twelve.'
       },
       {
         q: 'Is it free?',
@@ -839,7 +1218,7 @@ export const HOME_CONTENT: Record<Locale, HomeCopy> = {
 export const HUB_CONTENT: Record<Locale, HubCopy> = {
   ru: {
     intro: [
-      'Все пять игр работают по одному принципу: хост создаёт комнату, остальные заходят по ссылке или коду. Различаются они тем, сколько нужно людей, сколько длится партия и что именно от вас требуется — внимательно слушать, быстро считать или блефовать с непроницаемым лицом.',
+      GAME_COUNT_COPY.ru.hubIntro,
       'Ниже — короткая подсказка, что выбрать под конкретную ситуацию, а на странице каждой игры есть подробные правила, тактика и разбор частых ошибок.'
     ],
     chooseTitle: 'Что выбрать',
@@ -886,7 +1265,7 @@ export const HUB_CONTENT: Record<Locale, HubCopy> = {
   },
   en: {
     intro: [
-      'All five games work the same way: the host creates a room, everyone else joins by link or code. What differs is how many people you need, how long a match runs, and what it asks of you — listening closely, counting quickly, or bluffing with a straight face.',
+      GAME_COUNT_COPY.en.hubIntro,
       'Below is a short guide to picking one for the situation you are actually in. Each game page then covers the full rules, tactics and the mistakes people usually make.'
     ],
     chooseTitle: 'Which one to pick',

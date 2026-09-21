@@ -12,6 +12,7 @@
 import type { Metadata } from 'next';
 import { APP_NAME, COMPANY_NAME, SITE_URL } from '@/constants/app';
 import type { GameContent, GameFaq, Locale } from '@/content/games';
+import { GAME_COUNT_COPY } from '@/content/gameCount';
 
 /** Absolute URL for a site-relative path (`/games` → `https://…/games`). */
 export const absoluteUrl = (path = '/'): string =>
@@ -176,13 +177,11 @@ export const breadcrumbJsonLd = (
 const HUB_COPY = {
   ru: {
     title: 'Игры онлайн с друзьями — бесплатно',
-    description:
-      'Пять игр для компании прямо в браузере: Шпион, Сапёр, Флагер, Морской бой и Переворот. Создайте комнату, отправьте ссылку и играйте бесплатно.'
+    description: GAME_COUNT_COPY.ru.hubDescription
   },
   en: {
     title: 'Online games with friends — free',
-    description:
-      'Five games for your group, right in the browser: Spyfall, Minesweeper, Flager, Battleship and Coup. Create a room, share the link, play free.'
+    description: GAME_COUNT_COPY.en.hubDescription
   }
 } as const;
 

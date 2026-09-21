@@ -1,8 +1,14 @@
 import { supabase } from '@/lib/supabase';
+import { GAMES, type GameId } from '@/games/registry';
 
-export type GameType = 'minesweeper' | 'flager' | 'battleship' | 'coup' | 'spyfall';
+/** Alias kept for readability at call sites; the registry owns the list. */
+export type GameType = GameId;
 export type GameResult = 'win' | 'loss';
 export type GameMode = 'single' | 'multi';
+
+/** A zeroed details block covering every game the platform ships. */
+const emptyDetails = () =>
+    Object.fromEntries(GAMES.map((g) => [g.id, { wins: 0, lost: 0, time: 0 }]));
 
 interface GameSessionStats {
     gameType: GameType;
@@ -28,18 +34,16 @@ export async function updatePlayerStats(userId: string, session: GameSessionStat
         }
 
         const stats = currentStats || {};
-        const details = stats.details || {
-            minesweeper: { wins: 0, lost: 0, time: 0 },
-            flager: { wins: 0, lost: 0, time: 0 },
-            battleship: { wins: 0, lost: 0, time: 0 },
-            coup: { wins: 0, lost: 0, time: 0 },
-            spyfall: { wins: 0, lost: 0, time: 0 }
-        };
+        const details = stats.details || emptyDetails();
 
         const { gameType, result, durationSeconds, mode, extraCount } = session;
         const minutesPlayed = Math.max(1, Math.round(durationSeconds / 60));
 
-        if (mode && (gameType === 'minesweeper' || gameType === 'flager')) {
+        // Split into solo/multiplayer only for games that can be played alone;
+        // the registry decides, so a new solo game does not need an edit here.
+        const splitsByMode = GAMES.find((g) => g.id === gameType)?.hasSoloMode ?? false;
+
+        if (mode && splitsByMode) {
             if (!details[gameType]) {
                 details[gameType] = {
                     single: { wins: 0, lost: 0, time: 0, extra: 0 },

@@ -66,8 +66,15 @@ export interface GameState {
   turnDeadline?: number;
   version: number;
 
-  gameType?: 'coup';
-  settings?: {
+  /*
+   * Both were optional because Coup shipped first, back when it was the only
+   * game and neither field existed. Every state written since has carried
+   * them, and rooms untouched for a week are collected by the daily cleanup
+   * job, so nothing that old survives — the optionality only hid the fact that
+   * the lobby screens read `settings.maxPlayers` to decide if a room is full.
+   */
+  gameType: 'coup';
+  settings: {
     maxPlayers: number;
   };
 }

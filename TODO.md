@@ -1,6 +1,6 @@
 # Backlog
 
-State after **v2.1.0**. This is the real list, including the things that are
+State after **v2.2.0**. This is the real list, including the things that are
 open on purpose — see [docs/security.md](docs/security.md) for the reasoning
 behind the accepted risks.
 
@@ -22,6 +22,9 @@ behind the accepted risks.
 - **The retry path has no unit test.** Conflict-and-retry was verified against
   the live database (twelve simultaneous writes, none lost) but not in CI —
   `useLobbySync` is a hook and needs a renderer or a mocked client.
+  [`tests/sync-invariants.test.ts`](tests/sync-invariants.test.ts) covers the
+  rules *around* it (no hook assigns `version`, every write is retryable) but
+  not the retry loop itself.
 
 ### Smaller
 
@@ -29,7 +32,8 @@ behind the accepted risks.
   loss leaves mid-resolution. Guards are in place; wants live verification with
   real players rather than reasoning.
 - **Spyfall custom locations.** The settings already exist in state; there is no
-  UI for them.
+  UI for them. The create screen's option schema has no free-text list control
+  yet, so this needs either that or a bespoke block.
 - **Profile enumeration.** `profiles` is readable by anyone, so usernames can be
   harvested. Needed by the sign-up "name taken" check; would require moving that
   check behind an RPC.
@@ -48,6 +52,28 @@ behind the accepted risks.
 ## Done
 
 Kept short — the [changelog](CHANGELOG.md) has the full history.
+
+**Coup was unplayable (2.2.x).** `startGame` reset `game_state.version` to 1,
+so the compare-and-swap asked the database for a version that only exists in a
+room nobody has joined. Any room with a second player refused to start, and no
+Coup match has ever been recorded in `player_stats`. Fixed, and both rules that
+make the write path work are now enforced by tests.
+
+**Simultaneous actions no longer cost a move (2.2.x).** All 37 write paths across
+the five games take the retryable form of `updateState`; previously only six
+did, so Spyfall votes, Coup passes and blocks, Flager "ready" taps and every
+join through an invite link could be silently dropped.
+
+**Game registry (2.2.x).** Each game was described separately in six places and
+they had drifted. [`src/games/`](src/games/) now owns ids, names, player counts,
+icons, create-screen options and starting states; the create screen, lobby list,
+achievements grid, lobby header, statistics writer and public pages all read it.
+Adding a game is one entry plus the game — see
+[docs/adding-a-game.md](docs/adding-a-game.md). Two bugs fell out of it: four of
+the five game screens showed the game's maximum rather than the cap the host
+chose (and the invite link enforced nothing at all), and the create screen was
+still sending Supabase user ids to api.dicebear.com months after the rest of the
+app stopped.
 
 **Security (2.1.0).** `TRUNCATE` revoked from client roles; room passwords and
 user emails hidden at column level; lobby writes narrowed to a compare-and-swap

@@ -10,6 +10,10 @@ import { useBattleshipGame } from '@/hooks/useBattleshipGame';
 import UniversalLobby, { LobbyPlayer } from '@/components/UniversalLobby';
 import BattleshipGame from '@/components/BattleshipGame';
 import GameNotJoined from '@/components/GameNotJoined';
+import { requireGame, roomCapacity } from '@/games/registry';
+
+/** Player limits come from the registry; the room's own cap still wins. */
+const GAME = requireGame('battleship');
 
 interface UserProfile {
     id: string;
@@ -66,7 +70,9 @@ function BattleshipContent() {
   } = useBattleshipGame(lobbyId, user);
 
   useEffect(() => {
-    if (user && gameState && gameState.status === 'waiting' && !gameState.players?.[user.id]) {
+    if (user && gameState && gameState.status === 'waiting'
+        && !gameState.players?.[user.id]
+        && Object.keys(gameState.players ?? {}).length < roomCapacity(GAME, gameState.settings?.maxPlayers)) {
         initGame();
     }
   }, [user, gameState, initGame]);
@@ -120,6 +126,13 @@ function BattleshipContent() {
       return <GameNotJoined lang={lang} />;
   }
 
+  // The invite link bypasses the lobby list, so the room's own cap has to
+  // be enforced here too — otherwise a shared link seated any number of
+  // players in a room the host had limited.
+  if (!gameState.players?.[user.id] && Object.keys(gameState.players ?? {}).length >= roomCapacity(GAME, gameState.settings?.maxPlayers)) {
+      return <GameNotJoined lang={lang} reason="full" />;
+  }
+
   if (gameState.status === 'waiting') {
       const playersList: LobbyPlayer[] = Object.values(gameState.players).map((p) => ({
           id: p.id,
@@ -136,8 +149,8 @@ function BattleshipContent() {
           gameType="battleship"
           players={playersList}
           currentUserId={user.id}
-          minPlayers={2}
-          maxPlayers={2}
+          minPlayers={GAME.players.min}
+          maxPlayers={roomCapacity(GAME, gameState.settings?.maxPlayers)}
           onStart={startGame}
           onLeave={handleLeave}
           lang={lang}

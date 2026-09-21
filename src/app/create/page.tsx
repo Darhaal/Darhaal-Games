@@ -7,88 +7,19 @@ import type { User } from '@supabase/supabase-js';
 import { useLang } from '@/hooks/useLang';
 import { errorMessage } from '@/lib/errors';
 import { showToast } from '@/lib/toast';
-import { COPYRIGHT, generateRoomCode } from '@/constants/app';
+import { COPYRIGHT, defaultAvatar, generateRoomCode } from '@/constants/app';
 import SettingsButton from '@/components/SettingsButton';
 import {
   ArrowLeft, Users, Lock, Unlock,
-  ScrollText, ArrowRight, Eye, EyeOff, Loader2, Type, UserPlus,
-  Bomb, Ship, Flag, Clock, Grid, Fingerprint, Layers, Map, Zap
+  ArrowRight, Eye, EyeOff, Loader2, Type, UserPlus, Zap
 } from 'lucide-react';
-import { GameState as CoupState, Player as CoupPlayer } from '@/types/coup';
-import { BattleshipState, PlayerBoard as BattleshipPlayer } from '@/types/battleship';
-import { FlagerState } from '@/types/flager';
-import { MinesweeperState, MinesweeperPlayer } from '@/types/minesweeper';
-import { SpyfallState } from '@/types/spyfall';
-import { SPYFALL_PACKS } from '@/data/spyfall/locations';
-
-type Lang = 'ru' | 'en';
-
-type Game = {
-  id: string;
-  title: Record<Lang, string>;
-  desc: Record<Lang, string>;
-  minPlayers: number;
-  maxPlayers: number;
-  icon: React.ReactNode;
-};
-
-const GAMES: Game[] = [
-  {
-    id: 'spyfall',
-    title: { ru: 'Шпион', en: 'Spyfall' },
-    desc: {
-      ru: 'Вычислите шпиона в своих рядах или не выдайте себя.',
-      en: 'Find the spy among you or blend in without being caught.'
-    },
-    minPlayers: 3,
-    maxPlayers: 12,
-    icon: <Fingerprint className="w-8 h-8 sm:w-10 sm:h-10" />,
-  },
-  {
-    id: 'minesweeper',
-    title: { ru: 'Сапер', en: 'Minesweeper' },
-    desc: {
-      ru: 'Скоростное разминирование. Кто быстрее очистит поле?',
-      en: 'Speed defusal. Who clears the grid first?'
-    },
-    minPlayers: 1,
-    maxPlayers: 4,
-    icon: <Bomb className="w-8 h-8 sm:w-10 sm:h-10" />,
-  },
-  {
-    id: 'flager',
-    title: { ru: 'Флагер', en: 'Flager' },
-    desc: {
-      ru: 'Географическая викторина. Угадай флаг по пикселям.',
-      en: 'Geography quiz. Guess the flag pixel by pixel.'
-    },
-    minPlayers: 1,
-    maxPlayers: 4,
-    icon: <Flag className="w-8 h-8 sm:w-10 sm:h-10" />,
-  },
-  {
-    id: 'battleship',
-    title: { ru: 'Морской Бой', en: 'Battleship' },
-    desc: {
-      ru: 'Классическая тактика. Потопи флот противника.',
-      en: 'Classic tactics. Sink the enemy fleet.'
-    },
-    minPlayers: 2,
-    maxPlayers: 2,
-    icon: <Ship className="w-8 h-8 sm:w-10 sm:h-10" />,
-  },
-  {
-    id: 'coup',
-    title: { ru: 'Переворот', en: 'Coup' },
-    desc: {
-      ru: 'Блеф, интриги и влияние. Останься последним.',
-      en: 'Bluff, intrigue, influence. Be the last one standing.'
-    },
-    minPlayers: 2,
-    maxPlayers: 6,
-    icon: <ScrollText className="w-8 h-8 sm:w-10 sm:h-10" />,
-  },
-];
+import { GAMES, playerRange, type GameDefinition } from '@/games/registry';
+import { GAME_ICONS } from '@/games/icons';
+import {
+  GAME_OPTIONS, defaultOptionValues, num, playersFromOptions,
+  type GameOption, type OptionValues
+} from '@/games/options';
+import { createInitialState } from '@/games/initialState';
 
 const TRANSLATIONS = {
   ru: {
@@ -97,27 +28,15 @@ const TRANSLATIONS = {
     settings: 'Настройки',
     settingsSub: 'Параметры лобби',
     create: 'Создать',
-    back: 'Назад',
     private: 'Закрытая игра',
     password: 'Пароль',
     players: 'Игроки',
-    rounds: 'Раунды',
-    duration: 'Время хода',
-    seconds: 'сек',
-    minutes: 'мин',
     error: 'Ошибка',
     lobbyName: 'Название',
     enterName: 'Имя комнаты...',
     enterPass: '••••••',
-    footer: COPYRIGHT,
-    msSize: 'Размер поля',
-    msMines: 'Плотность мин',
-    msTime: 'Лимит времени',
-    msTotalMines: 'Всего мин:',
-    msTotalCells: 'Клеток:',
-    packs: 'Набор локаций',
-    locationsPreview: 'Локации в наборе',
-    packSelected: 'выбран'
+    lobbySuffix: 'Лобби',
+    footer: COPYRIGHT
   },
   en: {
     select: 'Select Game',
@@ -125,29 +44,119 @@ const TRANSLATIONS = {
     settings: 'Settings',
     settingsSub: 'Lobby configuration',
     create: 'Create',
-    back: 'Back',
     private: 'Private Game',
     password: 'Password',
     players: 'Players',
-    rounds: 'Rounds',
-    duration: 'Turn Time',
-    seconds: 's',
-    minutes: 'm',
     error: 'Error',
     lobbyName: 'Name',
     enterName: 'Room name...',
     enterPass: '••••••',
-    footer: COPYRIGHT,
-    msSize: 'Grid Size',
-    msMines: 'Mine Density',
-    msTime: 'Time Limit',
-    msTotalMines: 'Total Mines:',
-    msTotalCells: 'Cells:',
-    packs: 'Location Pack',
-    locationsPreview: 'Locations in pack',
-    packSelected: 'selected'
+    lobbySuffix: 'Lobby',
+    footer: COPYRIGHT
   }
 };
+
+const LABEL_CLASS =
+  'text-[10px] font-black text-[#8A9099] uppercase tracking-widest ml-1 flex items-center gap-2';
+const BADGE_CLASS = 'text-xs font-bold text-white bg-[#1A1F26] px-2 py-0.5 rounded tabular-nums';
+const RANGE_CLASS =
+  'w-full h-1.5 bg-gray-100 rounded-full appearance-none cursor-pointer accent-[#1A1F26]';
+
+/**
+ * Renders one declared option from `src/games/options.ts`.
+ *
+ * Hoisted to module scope rather than nested in the page component: a
+ * component declared during render is a new type on every pass, so React would
+ * unmount and remount each control — which loses the drag on a slider.
+ */
+function OptionControl({
+  option, values, lang, onChange
+}: {
+  option: GameOption;
+  values: OptionValues;
+  lang: 'ru' | 'en';
+  onChange: (key: string, value: number | string) => void;
+}) {
+  if (option.kind === 'slider') {
+    const value = num(values, option.key, option.default);
+    const display = option.format
+      ? option.format(value, lang)
+      : `${value}${option.unit ? ' ' + option.unit[lang] : ''}`;
+    const note = option.note?.(values, lang);
+    const Icon = option.icon;
+
+    return (
+      <div className="space-y-3">
+        <div className="flex justify-between items-center">
+          <label className={LABEL_CLASS}>
+            <Icon className="w-3.5 h-3.5 text-gray-400" /> {option.label[lang]}
+          </label>
+          <span className={BADGE_CLASS}>{display}</span>
+        </div>
+        <input
+          type="range"
+          min={option.min}
+          max={option.max}
+          step={option.step}
+          value={value}
+          onChange={(e) => onChange(option.key, Number(e.target.value))}
+          className={RANGE_CLASS}
+        />
+        {note && (
+          <div className="text-[10px] font-bold text-gray-500 px-2 bg-[#F8FAFC] py-1.5 rounded text-center">
+            {note}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  const selected = option.choices.find((c) => c.value === values[option.key]);
+  const Icon = option.icon;
+
+  return (
+    <div className="space-y-3">
+      <label className={LABEL_CLASS}>
+        <Icon className="w-3.5 h-3.5 text-gray-400" /> {option.label[lang]}
+      </label>
+      <div className="grid grid-cols-2 gap-2">
+        {option.choices.map((choice) => (
+          <button
+            key={choice.value}
+            type="button"
+            onClick={() => onChange(option.key, choice.value)}
+            className={`p-3 rounded-xl border flex items-center gap-2 transition-all ${
+              values[option.key] === choice.value
+                ? 'bg-[#1A1F26] text-white border-[#1A1F26] shadow-md'
+                : 'bg-white text-[#1A1F26] border-[#E6E1DC] hover:border-[#1A1F26]'
+            }`}
+          >
+            {choice.emoji && <span className="text-lg">{choice.emoji}</span>}
+            <span className="text-xs font-bold">{choice.label[lang]}</span>
+          </button>
+        ))}
+      </div>
+
+      {selected?.preview && (
+        <div className="bg-[#F8FAFC] p-4 rounded-xl border border-[#E6E1DC]">
+          <div className="text-[10px] font-bold text-[#8A9099] uppercase tracking-widest mb-3">
+            {option.previewLabel[lang]}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {selected.preview[lang].map((item) => (
+              <span
+                key={item}
+                className="text-[10px] font-bold bg-white px-2 py-1 rounded-md border border-[#E6E1DC] text-[#1A1F26]"
+              >
+                {item}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function CreatePage() {
   const router = useRouter();
@@ -155,7 +164,7 @@ export default function CreatePage() {
   const [authLoading, setAuthLoading] = useState(true);
   const { lang } = useLang();
   const [step, setStep] = useState<'selection' | 'settings'>('selection');
-  const [selectedGame, setSelectedGame] = useState<Game | null>(null);
+  const [selectedGame, setSelectedGame] = useState<GameDefinition | null>(null);
 
   const [isPrivate, setIsPrivate] = useState(false);
   const [password, setPassword] = useState('');
@@ -170,19 +179,8 @@ export default function CreatePage() {
    */
   const autoNameRef = useRef('');
   const [maxPlayers, setMaxPlayers] = useState(6);
-
-  // Flager settings
-  const [rounds, setRounds] = useState(5);
-  const [roundDuration, setRoundDuration] = useState(60);
-
-  // Minesweeper Custom Settings
-  const [msSize, setMsSize] = useState(20);
-  const [msMineDensity, setMsMineDensity] = useState(15);
-  const [msTimeLimit, setMsTimeLimit] = useState(20);
-
-  // Spyfall Settings
-  const [spyTime, setSpyTime] = useState(8);
-  const [spyPack, setSpyPack] = useState<string>(SPYFALL_PACKS[0].id); // Single pack ID
+  /** Whatever the chosen game declares in GAME_OPTIONS, keyed by option key. */
+  const [optionValues, setOptionValues] = useState<OptionValues>({});
 
   useEffect(() => {
     const checkUser = async () => {
@@ -198,150 +196,69 @@ export default function CreatePage() {
     checkUser();
   }, [router]);
 
-  useEffect(() => {
-    if (selectedGame) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect -- seeds the editable player-count control from the chosen game; the user can then change it, so it cannot be derived during render
-        setMaxPlayers(selectedGame.maxPlayers);
-        // Reseed while the field still holds our own suggestion (or is empty):
-        // picking Spyfall, going back and picking Flager used to keep the
-        // Spyfall name, because the old guard only checked for emptiness.
-        if (user && (!lobbyName || lobbyName === autoNameRef.current)) {
-            const userName = user.user_metadata?.username || user.email?.split('@')[0] || 'Player';
-            const suffix = lang === 'ru' ? 'Лобби' : 'Lobby';
-            const generated = `${selectedGame.title[lang]} ${suffix} - ${userName}`;
-            autoNameRef.current = generated;
-            setLobbyName(generated);
-        }
+  const t = TRANSLATIONS[lang];
 
-        if (selectedGame.id === 'minesweeper') {
-            setMsSize(20);
-            setMsMineDensity(15);
-            setMsTimeLimit(20);
-        } else if (selectedGame.id === 'spyfall') {
-            setSpyTime(8);
-            setSpyPack(SPYFALL_PACKS[0].id);
-        }
+  useEffect(() => {
+    if (!selectedGame) return;
+
+    const defaults = defaultOptionValues(selectedGame.id);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- seeds the editable player-count control from the chosen game; the user can then change it, so it cannot be derived during render
+    setMaxPlayers(playersFromOptions(selectedGame.id, defaults) ?? selectedGame.players.max);
+    setOptionValues(defaults);
+
+    // Reseed while the field still holds our own suggestion (or is empty):
+    // picking Spyfall, going back and picking Flager used to keep the
+    // Spyfall name, because the old guard only checked for emptiness.
+    if (user && (!lobbyName || lobbyName === autoNameRef.current)) {
+        const userName = user.user_metadata?.username || user.email?.split('@')[0] || 'Player';
+        const generated = `${selectedGame.name[lang]} ${t.lobbySuffix} - ${userName}`;
+        autoNameRef.current = generated;
+        setLobbyName(generated);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- seed defaults only when the game/user changes, not on every lobbyName keystroke
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- seed defaults only when the game/user/language changes, not on every lobbyName keystroke
   }, [selectedGame, user, lang]);
 
-  const t = TRANSLATIONS[lang];
+  const setOption = (key: string, value: number | string) =>
+    setOptionValues((prev) => {
+      const next = { ...prev, [key]: value };
+      // A mode-driven game carries its headcount in the option itself.
+      if (selectedGame) {
+        const fixed = playersFromOptions(selectedGame.id, next);
+        if (fixed) setMaxPlayers(fixed);
+      }
+      return next;
+    });
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedGame) return;
+    if (!selectedGame || !user) return;
     setLoading(true);
 
-    if (!user) return;
-
     try {
-      const code = generateRoomCode();
-      let initialState: SpyfallState | MinesweeperState | CoupState | BattleshipState | FlagerState | undefined;
+      const userName =
+        user.user_metadata?.username ||
+        user.user_metadata?.full_name ||
+        user.email?.split('@')[0] ||
+        'Player';
+      // Our own /avatar route, never api.dicebear.com: the seed is the Supabase
+      // user id, and this screen was still handing those to a third party long
+      // after the rest of the app stopped.
+      const userAvatar = user.user_metadata?.avatar_url || defaultAvatar(user.id);
 
-      const userName = user.user_metadata?.username || user.user_metadata?.full_name || user.email?.split('@')[0] || 'Player';
-      const userAvatar = user.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`;
-
-      if (selectedGame.id === 'spyfall') {
-          const initialHost = {
-              id: user.id,
-              name: userName,
-              avatarUrl: userAvatar,
-              isHost: true,
-              isSpy: false,
-              role: null,
-              isReady: true,
-              hasNominated: false,
-              score: 0
-          };
-          const spyState: SpyfallState = {
-              players: [initialHost],
-              status: 'waiting',
-              settings: {
-                  roundDuration: spyTime * 60,
-                  spyCount: 1,
-                  useCustomLocations: false,
-                  customLocations: [],
-                  packId: spyPack
-              },
-              currentLocationId: null,
-              locationList: [],
-              startTime: 0,
-              winner: null,
-              nomination: null,
-              notifications: [],
-              version: 1,
-              gameType: 'spyfall'
-          };
-          initialState = spyState;
-
-      } else if (selectedGame.id === 'minesweeper') {
-          const totalCells = msSize * msSize;
-          const minesCount = Math.floor(totalCells * (msMineDensity / 100));
-          const safeMines = Math.max(1, Math.min(minesCount, totalCells - 9));
-
-          const initialHost: MinesweeperPlayer = {
-              id: user.id,
-              name: userName,
-              avatarUrl: userAvatar,
-              isHost: true,
-              board: [],
-              status: 'playing',
-              minesLeft: safeMines,
-              score: 0
-          };
-
-          const msState: MinesweeperState = {
-              players: { [user.id]: initialHost },
-              status: 'waiting',
-              startTime: 0,
-              lastActionTime: Date.now(),
-              version: 1,
-              winner: null,
-              gameType: 'minesweeper',
-              settings: {
-                  maxPlayers: maxPlayers,
-                  width: msSize,
-                  height: msSize,
-                  minesCount: safeMines,
-                  timeLimit: msTimeLimit * 60,
-                  difficulty: 'custom'
-              }
-          };
-          initialState = msState;
-
-      } else if (selectedGame.id === 'coup') {
-          const initialHost: CoupPlayer = {
-            id: user.id, name: userName, avatarUrl: userAvatar, coins: 2, cards: [], isDead: false, isHost: true, isReady: true
-          };
-          initialState = {
-            players: [initialHost], deck: [], turnIndex: 0, logs: [], status: 'waiting', phase: 'choosing_action', currentAction: null, lastActionTime: Date.now(), version: 1, turnDeadline: undefined, gameType: 'coup', settings: { maxPlayers }, passedPlayers: []
-          };
-
-      } else if (selectedGame.id === 'battleship') {
-          const initialHost: BattleshipPlayer = { id: user.id, name: userName, avatarUrl: userAvatar, isHost: true, isReady: false, ships: [], shots: {}, aliveShipsCount: 0 };
-          initialState = { players: { [user.id]: initialHost }, turn: null, phase: 'setup', status: 'waiting', winner: null, logs: [], lastActionTime: Date.now(), version: 1, gameType: 'battleship', settings: { maxPlayers: 2 }, turnDeadline: undefined };
-
-      } else if (selectedGame.id === 'flager') {
-          const initialHost = { id: user.id, name: userName, avatarUrl: userAvatar, isHost: true, score: 0, guesses: [], hasFinishedRound: false, roundScore: 0, history: [], isReadyForNextRound: false };
-          // IMPORTANT: FlagerState.players is an array (unlike the Battleship/Minesweeper record)
-          initialState = { players: [initialHost], status: 'waiting', targetChain: [], currentRoundIndex: 0, roundStartTime: Date.now(), lastActionTime: Date.now(), version: 1, gameType: 'flager', settings: { maxPlayers, totalRounds: rounds, roundDuration } };
-      }
-
-      if (!initialState) throw new Error('Unknown game type');
-
-      const finalGameState = {
-          ...initialState,
-          gameType: selectedGame.id,
-          settings: { ...initialState.settings, maxPlayers: maxPlayers }
-      };
+      const gameState = createInitialState(
+        selectedGame.id,
+        { id: user.id, name: userName, avatarUrl: userAvatar },
+        maxPlayers,
+        optionValues
+      );
 
       // Insert with retry in case of a room-code collision (unique index on code)
       let data = null;
       let error = null;
-      let insertCode = code;
+      let insertCode = generateRoomCode();
       for (let attempt = 0; attempt < 3; attempt++) {
         ({ data, error } = await supabase.from('lobbies').insert({
-          code: insertCode, name: lobbyName, host_id: user.id, is_private: isPrivate, password: isPrivate ? password : null, status: 'waiting', game_state: finalGameState,
+          code: insertCode, name: lobbyName, host_id: user.id, is_private: isPrivate, password: isPrivate ? password : null, status: 'waiting', game_state: gameState,
           // Select only `id` — a bare .select() means `*`, which needs SELECT on
           // every column including `password`, and clients no longer hold that.
         }).select('id').single());
@@ -362,37 +279,37 @@ export default function CreatePage() {
   if (authLoading) return <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]"><Loader2 className="animate-spin text-[#9e1316] w-8 h-8" /></div>;
   if (!user) return null;
 
-  const selectedPackData = SPYFALL_PACKS.find(p => p.id === spyPack);
+  const SelectedIcon = selectedGame ? GAME_ICONS[selectedGame.id] : null;
 
   const renderSelection = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 w-full max-w-4xl animate-in zoom-in-95 duration-500 pb-8">
-      {GAMES.map(game => (
-        <button
-          key={game.id}
-          onClick={() => { setSelectedGame(game); setStep('settings'); }}
-          className={`
-            group relative overflow-hidden rounded-[32px] p-1 text-left transition-all duration-300
-            hover:scale-[1.01] hover:shadow-xl hover:shadow-[#1A1F26]/5 border border-[#E6E1DC] bg-white hover:border-[#9e1316]/20
-          `}
-        >
-          <div className="relative z-20 p-5 sm:p-6 flex flex-col h-full">
-              <div className="flex justify-between items-start mb-4">
-                 <div className="w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-300 bg-[#F8FAFC] border border-[#E6E1DC] text-[#1A1F26] group-hover:bg-[#1A1F26] group-hover:text-white group-hover:border-[#1A1F26]">
-                   {game.icon}
-                 </div>
-              </div>
+      {GAMES.map(game => {
+        const Icon = GAME_ICONS[game.id];
+        return (
+          <button
+            key={game.id}
+            onClick={() => { setSelectedGame(game); setStep('settings'); }}
+            className="group relative overflow-hidden rounded-[32px] p-1 text-left transition-all duration-300 hover:scale-[1.01] hover:shadow-xl hover:shadow-[#1A1F26]/5 border border-[#E6E1DC] bg-white hover:border-[#9e1316]/20"
+          >
+            <div className="relative z-20 p-5 sm:p-6 flex flex-col h-full">
+                <div className="flex justify-between items-start mb-4">
+                   <div className="w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-300 bg-[#F8FAFC] border border-[#E6E1DC] text-[#1A1F26] group-hover:bg-[#1A1F26] group-hover:text-white group-hover:border-[#1A1F26]">
+                     <Icon className="w-8 h-8 sm:w-10 sm:h-10" />
+                   </div>
+                </div>
 
-              <div className="mt-auto">
-                  <h3 className="text-xl font-black text-[#1A1F26] mb-1 group-hover:text-[#9e1316] transition-colors">{game.title[lang]}</h3>
-                  <p className="text-xs font-medium text-gray-500 leading-relaxed min-h-[40px]">{game.desc[lang]}</p>
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-[#1A1F26] mt-4 pt-4 border-t border-[#F1F5F9]">
-                    <Users className="w-3.5 h-3.5 text-gray-400" />
-                    {game.minPlayers === game.maxPlayers ? game.minPlayers : `${game.minPlayers}-${game.maxPlayers}`}
-                  </div>
-              </div>
-          </div>
-        </button>
-      ))}
+                <div className="mt-auto">
+                    <h3 className="text-xl font-black text-[#1A1F26] mb-1 group-hover:text-[#9e1316] transition-colors">{game.name[lang]}</h3>
+                    <p className="text-xs font-medium text-gray-500 leading-relaxed min-h-[40px]">{game.tagline[lang]}</p>
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-[#1A1F26] mt-4 pt-4 border-t border-[#F1F5F9]">
+                      <Users className="w-3.5 h-3.5 text-gray-400" />
+                      {playerRange(game)}
+                    </div>
+                </div>
+            </div>
+          </button>
+        );
+      })}
     </div>
   );
 
@@ -400,17 +317,17 @@ export default function CreatePage() {
     <form onSubmit={handleCreate} className="w-full max-w-lg bg-white border border-[#E6E1DC] rounded-[40px] p-8 shadow-2xl shadow-[#1A1F26]/5 animate-in slide-in-from-right-8 duration-500 relative overflow-hidden mb-8">
        <div className="flex items-center gap-4 mb-8 relative z-10">
           <div className="w-16 h-16 bg-[#1A1F26] rounded-2xl flex items-center justify-center text-white shadow-lg shadow-[#1A1F26]/20">
-             {selectedGame?.icon}
+             {SelectedIcon && <SelectedIcon className="w-8 h-8" />}
           </div>
           <div>
-              <h2 className="text-2xl font-black text-[#1A1F26] leading-tight">{selectedGame?.title[lang]}</h2>
+              <h2 className="text-2xl font-black text-[#1A1F26] leading-tight">{selectedGame?.name[lang]}</h2>
               <p className="text-xs font-bold text-[#8A9099] uppercase tracking-wider">{t.settingsSub}</p>
           </div>
        </div>
 
        <div className="space-y-6 relative z-10">
           <div className="space-y-2">
-               <label className="text-[10px] font-black text-[#8A9099] uppercase tracking-widest ml-1 flex items-center gap-2"><Type className="w-3 h-3"/> {t.lobbyName}</label>
+               <label className={LABEL_CLASS}><Type className="w-3 h-3"/> {t.lobbyName}</label>
                <input
                    type="text"
                    value={lobbyName}
@@ -421,131 +338,44 @@ export default function CreatePage() {
                />
           </div>
 
-          {selectedGame && selectedGame.minPlayers !== selectedGame.maxPlayers && (
+          {/* Hidden for a game whose mode fixes the headcount — Wall Rush is a
+              duel or a four, never a three, so a slider would offer a table
+              that cannot be dealt. */}
+          {selectedGame && !selectedGame.playersFromOption
+            && selectedGame.players.min !== selectedGame.players.max && (
             <div className="space-y-3">
                <div className="flex justify-between items-center">
-                    <label className="text-[10px] font-black text-[#8A9099] uppercase tracking-widest ml-1 flex items-center gap-2"><UserPlus className="w-3.5 h-3.5 text-gray-400"/> {t.players}</label>
-                    <span className="text-xs font-bold text-white bg-[#1A1F26] px-2 py-0.5 rounded">{maxPlayers}</span>
+                    <label className={LABEL_CLASS}><UserPlus className="w-3.5 h-3.5 text-gray-400"/> {t.players}</label>
+                    <span className={BADGE_CLASS}>{maxPlayers}</span>
                </div>
                <input
                    type="range"
-                   min={selectedGame?.minPlayers}
-                   max={selectedGame?.maxPlayers}
+                   min={selectedGame.players.min}
+                   max={selectedGame.players.max}
                    step={1}
                    value={maxPlayers}
                    onChange={e => setMaxPlayers(Number(e.target.value))}
-                   className="w-full h-1.5 bg-gray-100 rounded-full appearance-none cursor-pointer accent-[#1A1F26]"
+                   className={RANGE_CLASS}
                />
                <div className="flex justify-between text-[10px] font-medium text-gray-400 px-1">
-                   <span>{selectedGame?.minPlayers}</span>
-                   <span>{selectedGame?.maxPlayers}</span>
+                   <span>{selectedGame.players.min}</span>
+                   <span>{selectedGame.players.max}</span>
                </div>
             </div>
           )}
 
-          {/* SPYFALL SETTINGS */}
-          {selectedGame?.id === 'spyfall' && (
-              <div className="space-y-6 pt-5 border-t border-[#F1F5F9] animate-in fade-in">
-                  <div className="space-y-3">
-                      <div className="flex justify-between items-center">
-                          <label className="text-[10px] font-black text-[#8A9099] uppercase tracking-widest ml-1 flex items-center gap-2"><Clock className="w-3.5 h-3.5 text-gray-400"/> {t.duration}</label>
-                          <span className="text-xs font-bold text-white bg-[#1A1F26] px-2 py-0.5 rounded tabular-nums">{spyTime} {t.minutes}</span>
-                      </div>
-                      <input type="range" min="3" max="15" step={1} value={spyTime} onChange={e => setSpyTime(Number(e.target.value))} className="w-full h-1.5 bg-gray-100 rounded-full appearance-none cursor-pointer accent-[#1A1F26]" />
-                  </div>
-
-                  <div className="space-y-3">
-                      <label className="text-xs font-bold text-[#1A1F26] ml-1 flex items-center gap-2"><Layers className="w-3.5 h-3.5 text-gray-400"/> {t.packs}</label>
-                      <div className="grid grid-cols-2 gap-2">
-                          {SPYFALL_PACKS.map(pack => (
-                              <button
-                                  key={pack.id}
-                                  type="button"
-                                  onClick={() => setSpyPack(pack.id)}
-                                  className={`p-3 rounded-xl border flex items-center gap-2 transition-all ${spyPack === pack.id ? 'bg-[#1A1F26] text-white border-[#1A1F26] shadow-md' : 'bg-white text-[#1A1F26] border-[#E6E1DC] hover:border-[#1A1F26]'}`}
-                              >
-                                  <span className="text-lg">{pack.emoji}</span>
-                                  <span className="text-xs font-bold">{pack.name[lang]}</span>
-                              </button>
-                          ))}
-                      </div>
-                  </div>
-
-                  {selectedPackData && (
-                      <div className="bg-[#F8FAFC] p-4 rounded-xl border border-[#E6E1DC]">
-                          <div className="flex items-center gap-2 text-[10px] font-bold text-[#8A9099] uppercase tracking-widest mb-3">
-                              <Map className="w-3 h-3" /> {t.locationsPreview}
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                              {selectedPackData.locations.map(loc => (
-                                  <span key={loc.id} className="text-[10px] font-bold bg-white px-2 py-1 rounded-md border border-[#E6E1DC] text-[#1A1F26]">
-                                      {loc.name[lang]}
-                                  </span>
-                              ))}
-                          </div>
-                      </div>
-                  )}
-              </div>
-          )}
-
-          {/* MINESWEEPER MODERN SETTINGS */}
-          {selectedGame?.id === 'minesweeper' && (
-              <div className="space-y-5 pt-5 border-t border-[#F1F5F9] animate-in fade-in">
-
-                  {/* Size Slider */}
-                  <div className="space-y-3">
-                      <div className="flex justify-between items-center">
-                          <label className="text-xs font-bold text-[#1A1F26] ml-1 flex items-center gap-2"><Grid className="w-3.5 h-3.5 text-gray-400"/> {t.msSize}</label>
-                          <div className="text-xs font-bold text-white bg-[#1A1F26] px-2 py-0.5 rounded tabular-nums">
-                              {msSize} × {msSize}
-                          </div>
-                      </div>
-                      <input type="range" min="10" max="100" step={1} value={msSize} onChange={e => setMsSize(Number(e.target.value))} className="w-full h-1.5 bg-gray-100 rounded-full appearance-none cursor-pointer accent-[#1A1F26]" />
-                  </div>
-
-                  {/* Mine Density */}
-                  <div className="space-y-3">
-                      <div className="flex justify-between items-center">
-                          <label className="text-xs font-bold text-[#1A1F26] ml-1 flex items-center gap-2"><Bomb className="w-3.5 h-3.5 text-gray-400"/> {t.msMines}</label>
-                          <div className="text-xs font-bold text-white bg-[#1A1F26] px-2 py-0.5 rounded tabular-nums">
-                              {msMineDensity}%
-                          </div>
-                      </div>
-                      <input type="range" min="10" max="40" step={1} value={msMineDensity} onChange={e => setMsMineDensity(Number(e.target.value))} className="w-full h-1.5 bg-gray-100 rounded-full appearance-none cursor-pointer accent-[#1A1F26]" />
-                      <div className="flex justify-between items-center text-[10px] font-bold text-gray-500 px-2 bg-[#F8FAFC] py-1.5 rounded mt-1">
-                          <span>{t.msTotalCells} {msSize * msSize}</span>
-                          <span className="text-[#9e1316]">{t.msTotalMines} {Math.floor((msSize * msSize) * (msMineDensity / 100))}</span>
-                      </div>
-                  </div>
-
-                  {/* Time Limit */}
-                  <div className="space-y-3">
-                      <div className="flex justify-between items-center">
-                          <label className="text-xs font-bold text-[#1A1F26] ml-1 flex items-center gap-2"><Clock className="w-3.5 h-3.5 text-gray-400"/> {t.msTime}</label>
-                          <span className="text-xs font-bold text-white bg-[#1A1F26] px-2 py-0.5 rounded tabular-nums">{msTimeLimit} {t.minutes}</span>
-                      </div>
-                      <input type="range" min="1" max="180" step={1} value={msTimeLimit} onChange={e => setMsTimeLimit(Number(e.target.value))} className="w-full h-1.5 bg-gray-100 rounded-full appearance-none cursor-pointer accent-[#1A1F26]" />
-                  </div>
-              </div>
-          )}
-
-          {/* FLAGER SETTINGS */}
-          {selectedGame?.id === 'flager' && (
-            <div className="space-y-5 pt-5 border-t border-[#F1F5F9] animate-in fade-in">
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                     <label className="text-[10px] font-black text-[#8A9099] uppercase tracking-widest ml-1 flex items-center gap-2"><Flag className="w-3.5 h-3.5 text-gray-400"/> {t.rounds}</label>
-                     <span className="text-xs font-bold text-white bg-[#1A1F26] px-2 py-0.5 rounded">{rounds}</span>
-                </div>
-                <input type="range" min="1" max="20" step={1} value={rounds} onChange={e => setRounds(Number(e.target.value))} className="w-full h-1.5 bg-gray-100 rounded-full appearance-none cursor-pointer accent-[#1A1F26]" />
-             </div>
-             <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                     <label className="text-[10px] font-black text-[#8A9099] uppercase tracking-widest ml-1 flex items-center gap-2"><Clock className="w-3.5 h-3.5 text-gray-400"/> {t.duration}</label>
-                     <span className="text-xs font-bold text-white bg-[#1A1F26] px-2 py-0.5 rounded">{roundDuration} {t.seconds}</span>
-                </div>
-                <input type="range" min="15" max="300" step={15} value={roundDuration} onChange={e => setRoundDuration(Number(e.target.value))} className="w-full h-1.5 bg-gray-100 rounded-full appearance-none cursor-pointer accent-[#1A1F26]" />
-             </div>
+          {/* Whatever this game declares in GAME_OPTIONS — no per-game JSX here. */}
+          {selectedGame && GAME_OPTIONS[selectedGame.id].length > 0 && (
+            <div className="space-y-6 pt-5 border-t border-[#F1F5F9] animate-in fade-in">
+              {GAME_OPTIONS[selectedGame.id].map(option => (
+                <OptionControl
+                  key={option.key}
+                  option={option}
+                  values={optionValues}
+                  lang={lang}
+                  onChange={setOption}
+                />
+              ))}
             </div>
           )}
 
@@ -608,7 +438,7 @@ export default function CreatePage() {
             <div className="flex flex-col">
                 <h1 className="text-lg md:text-xl font-bold text-[#1A1F26] tracking-tight leading-none">{step === 'selection' ? t.select : t.settings}</h1>
                 <p className="text-xs text-[#8A9099] font-medium hidden sm:block">
-                    {step === 'selection' ? t.selectSub : (selectedGame ? selectedGame.title[lang] : t.settingsSub)}
+                    {step === 'selection' ? t.selectSub : (selectedGame ? selectedGame.name[lang] : t.settingsSub)}
                 </p>
             </div>
           </div>

@@ -1,4 +1,4 @@
-export const APP_VERSION = '2.2.0';
+export const APP_VERSION = '2.3.0';
 
 export type VersionType = 'major' | 'minor' | 'patch' | 'init';
 
@@ -11,6 +11,19 @@ export interface VersionLog {
 }
 
 export const VERSION_HISTORY: VersionLog[] = [
+  /* ===================== 2.3.x ===================== */
+
+  {
+    ver: '2.3.0',
+    date: '21 SEP 2026',
+    type: 'minor',
+    title: { ru: 'Три новые игры', en: 'Three New Games' },
+    desc: {
+      ru: 'Стены, Точки и квадраты и Реверси — игр стало восемь. «Ещё раз» теперь открывает новую комнату с настройками родительской, во всех играх сразу. Переворот, который вообще не запускался, починен; отключившийся игрок больше не морозит комнату, а одновременные действия не съедают ход.',
+      en: 'Wall Rush, Dots & Boxes and Reversi bring the line-up to eight. "Play again" now opens a fresh room that inherits the old one’s settings, in every game. Coup, which could never start at all, is fixed; a player who disconnects no longer freezes the room, and simultaneous actions no longer cost a move.'
+    }
+  },
+
   /* ===================== 2.2.x ===================== */
 
   {

@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
 import { FlagerState, FlagerPlayerState } from '@/types/flager';
+import { requireGame, roomCapacity } from '@/games/registry';
 import { COUNTRY_CODES } from '@/data/flager/countries';
 import { updatePlayerStats } from '@/lib/playerStats';
 import { useLobbySync } from '@/hooks/core/useLobbySync';
@@ -14,6 +14,15 @@ const normalizeFlager = (state: FlagerState): FlagerState => {
   return state;
 };
 
+const GAME = requireGame('flager');
+
+/**
+ * How far past the round deadline any remaining player may close a round out
+ * on behalf of someone who never answered. Long enough that it never beats a
+ * player's own timeout on a slow connection.
+ */
+const STALLED_ROUND_GRACE_MS = 10_000;
+
 const generateFlags = (count: number): string[] => {
   const shuffled = [...COUNTRY_CODES].sort(() => 0.5 - Math.random());
   return shuffled.slice(0, count);
@@ -24,7 +33,7 @@ const START_DELAY = 3000;
 
 export function useFlagerGame(lobbyId: string | null, userId: string | undefined) {
   const {
-    gameState, setGameState, gameStateRef,
+    gameState, gameStateRef,
     roomMeta, loading, lobbyDeleted,
     updateState, deleteLobby
   } = useLobbySync<FlagerState>({
@@ -56,28 +65,28 @@ export function useFlagerGame(lobbyId: string | null, userId: string | undefined
 
   // --- ACTIONS ---
 
+  /**
+   * Seat the player. Retryable on purpose: an invite link posted in a group
+   * chat gets opened by everyone at once, and the old read-then-write form
+   * meant whoever lost that race simply never appeared in the room.
+   */
   const initGame = async (userProfile: { name: string; avatarUrl: string }) => {
     if (!userId || !lobbyId) return;
 
-    // Fetch fresh state to avoid overwriting
-    const { data } = await supabase.from('lobbies').select('game_state').eq('id', lobbyId).single();
-    const currentState = data?.game_state as FlagerState;
-    if (!currentState) return;
+    await updateState((current) => {
+      // Defensive: a broken players shape has been seen in the database.
+      const players = Array.isArray(current.players) ? current.players : [];
 
-    // Fix players array if broken in DB
-    if (!currentState.players || !Array.isArray(currentState.players)) currentState.players = [];
+      if (players.find(p => p.id === userId)) return null; // already seated
+      if (current.status !== 'waiting') return null;
+      if (players.length >= roomCapacity(GAME, current.settings?.maxPlayers)) return null;
 
-    if (!currentState.players.find(p => p.id === userId)) {
-      if (currentState.status !== 'waiting') return;
-
-      const newState = JSON.parse(JSON.stringify(currentState)) as FlagerState;
-      const isFirst = newState.players.length === 0;
-
-      newState.players.push({
+      const next: FlagerState = JSON.parse(JSON.stringify({ ...current, players }));
+      next.players.push({
           id: userId,
           name: userProfile.name,
           avatarUrl: userProfile.avatarUrl,
-          isHost: isFirst,
+          isHost: next.players.length === 0,
           score: 0,
           guesses: [],
           hasFinishedRound: false,
@@ -86,19 +95,17 @@ export function useFlagerGame(lobbyId: string | null, userId: string | undefined
           isReadyForNextRound: false
       });
 
-      await updateState(newState);
-    } else {
-        // Just update local state if already joined
-        setGameState(currentState);
-    }
+      return next;
+    });
   };
 
   const startGame = async () => {
-    const { data } = await supabase.from('lobbies').select('game_state').eq('id', lobbyId).single();
-    const currentGs = data?.game_state as FlagerState;
-    if (!currentGs) return;
+    await updateState((current) => {
+    // Retryable so a player joining on the same beat as the host presses
+    // start is carried into the match rather than dropped from it.
+    if (current.status !== 'waiting') return null;
 
-    if (!currentGs.players || !Array.isArray(currentGs.players)) currentGs.players = [];
+    const currentGs: FlagerState = Array.isArray(current.players) ? current : { ...current, players: [] };
 
     const rounds = currentGs.settings.totalRounds || 5;
     const flags = generateFlags(rounds);
@@ -120,7 +127,8 @@ export function useFlagerGame(lobbyId: string | null, userId: string | undefined
       })),
       notifications: []
     };
-    await updateState(newState);
+    return newState;
+    });
   };
 
   const checkRoundEnd = (newState: FlagerState, targetFlag: string) => {
@@ -219,20 +227,23 @@ export function useFlagerGame(lobbyId: string | null, userId: string | undefined
     });
   };
 
+  /**
+   * Retryable: between rounds everyone taps "ready" at roughly the same
+   * moment, so these writes collide by design. Losing one used to leave a
+   * player marked not-ready with no second chance to press it.
+   */
   const readyNextRound = async () => {
     if (!lobbyId || !userId) return;
 
-    const { data } = await supabase.from('lobbies').select('game_state').eq('id', lobbyId).single();
-    const currentGs = data?.game_state as FlagerState;
+    await updateState((current) => {
+    if (current.status !== 'round_end') return null;
+    if (!Array.isArray(current.players)) return null;
 
-    if (!currentGs || currentGs.status !== 'round_end') return;
-    if (!currentGs.players || !Array.isArray(currentGs.players)) currentGs.players = [];
-
-    const newState: FlagerState = JSON.parse(JSON.stringify(currentGs));
+    const newState: FlagerState = JSON.parse(JSON.stringify(current));
     const pIndex = newState.players.findIndex(p => p.id === userId);
-    if (pIndex !== -1) {
-        newState.players[pIndex].isReadyForNextRound = true;
-    }
+    if (pIndex === -1) return null;
+    if (newState.players[pIndex].isReadyForNextRound) return null; // already ready
+    newState.players[pIndex].isReadyForNextRound = true;
 
     const allReady = newState.players.every(p => p.isReadyForNextRound);
     if (allReady) {
@@ -251,48 +262,93 @@ export function useFlagerGame(lobbyId: string | null, userId: string | undefined
         }
     }
 
-    await updateState(newState);
+    return newState;
+    });
   };
 
   const leaveGame = async () => {
-     const currentGs = gameStateRef.current;
-     if (!lobbyId || !userId || !currentGs) return;
+     if (!lobbyId || !userId) return;
 
      // A finished match is a record, not live state: leaving must not rewrite
      // the results the other players are still looking at. Just walk away —
      // the page navigates us out.
-     if (currentGs.status === 'finished') return;
+     const snapshot = gameStateRef.current;
+     if (!snapshot || snapshot.status === 'finished') return;
 
-     const newState = JSON.parse(JSON.stringify(currentGs));
-     if (!newState.players || !Array.isArray(newState.players)) newState.players = [];
-
-     const leavingPlayer = newState.players.find((p: FlagerPlayerState) => p.id === userId);
-
-     if (!leavingPlayer) return;
-
-     const wasHost = leavingPlayer.isHost;
-
-     if (!newState.notifications) newState.notifications = [];
-     newState.notifications.push({
-         id: Date.now(),
-         type: 'leave',
-         message: {
-             ru: `${leavingPlayer.name} покинул игру`,
-             en: `${leavingPlayer.name} left the game`
-         }
-     });
-     if (newState.notifications.length > 3) newState.notifications.shift();
-
-     newState.players = newState.players.filter((p: FlagerPlayerState) => p.id !== userId);
-
-     if (newState.players.length === 0) {
+     // Last one out switches off the lights. The RPC re-checks server-side and
+     // refuses while anyone else is still in the room.
+     const others = (snapshot.players || []).filter((p) => p.id !== userId);
+     if (others.length === 0) {
          await deleteLobby();
-     } else {
-         if (wasHost && newState.players.length > 0) {
-            newState.players[0].isHost = true;
-         }
-         await updateState(newState);
+         return;
      }
+
+     await updateState((current) => {
+         if (current.status === 'finished') return null;
+
+         const newState: FlagerState = JSON.parse(JSON.stringify(current));
+         if (!Array.isArray(newState.players)) newState.players = [];
+
+         const leavingPlayer = newState.players.find((p: FlagerPlayerState) => p.id === userId);
+         if (!leavingPlayer) return null;
+
+         const wasHost = leavingPlayer.isHost;
+
+         if (!newState.notifications) newState.notifications = [];
+         newState.notifications.push({
+             id: Date.now(),
+             type: 'leave',
+             message: {
+                 ru: `${leavingPlayer.name} покинул игру`,
+                 en: `${leavingPlayer.name} left the game`
+             }
+         });
+         if (newState.notifications.length > 3) newState.notifications.shift();
+
+         newState.players = newState.players.filter((p: FlagerPlayerState) => p.id !== userId);
+         if (newState.players.length === 0) return null;
+
+         if (wasHost) newState.players[0].isHost = true;
+
+         // The round ends when every player has finished, and nobody else can
+         // finish on the leaver's behalf — so walking out mid-round used to
+         // strand everyone who had already answered.
+         if (newState.status === 'playing') {
+             const target = newState.targetChain[newState.currentRoundIndex];
+             if (target) checkRoundEnd(newState, target.toLowerCase());
+         }
+
+         return newState;
+     });
+  };
+
+  /**
+   * Backstop for a player who vanished rather than left: each client only ever
+   * times out its own round, so a closed tab left `hasFinishedRound` false for
+   * good. Once the round is comfortably over, whoever is still here closes it
+   * for everyone.
+   */
+  const forceRoundEnd = async () => {
+    await updateState((current) => {
+      if (current.status !== 'playing') return null;
+      if (!Array.isArray(current.players)) return null;
+
+      const overdueMs = Date.now() - (current.roundStartTime + current.settings.roundDuration * 1000);
+      if (overdueMs < STALLED_ROUND_GRACE_MS) return null;
+      if (current.players.every((p) => p.hasFinishedRound)) return null;
+
+      const newState: FlagerState = JSON.parse(JSON.stringify(current));
+      newState.players.forEach((p) => {
+        if (!p.hasFinishedRound) {
+          p.hasFinishedRound = true;
+          p.roundScore = 0;
+        }
+      });
+
+      const target = newState.targetChain[newState.currentRoundIndex];
+      if (target) checkRoundEnd(newState, target.toLowerCase());
+      return newState;
+    });
   };
 
   useEffect(() => {
@@ -322,6 +378,7 @@ export function useFlagerGame(lobbyId: string | null, userId: string | undefined
 
   return {
       gameState, roomMeta, loading, lobbyDeleted,
-      initGame, startGame, makeGuess, handleTimeout, readyNextRound, leaveGame
+      initGame, startGame, makeGuess, handleTimeout, readyNextRound, leaveGame,
+      forceRoundEnd
   };
 }

@@ -3,10 +3,11 @@
 import Image from 'next/image';
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  LogOut, Crown, Copy, Check, Users, ScrollText, Ship,
-  Bomb, Fingerprint, User, Play, Flag,
-  Wifi, WifiOff, XCircle
+  LogOut, Crown, Copy, Check, Users, User, Play,
+  Wifi, WifiOff, XCircle, Link as LinkIcon
 } from 'lucide-react';
+import { getGame } from '@/games/registry';
+import { GAME_ICONS } from '@/games/icons';
 import { usePresenceHeartbeat } from '@/hooks/usePresenceHeartbeat';
 import { supabase } from '@/lib/supabase';
 import { writeGameState } from '@/lib/gameStateSync';
@@ -33,14 +34,6 @@ interface UniversalLobbyProps {
   lang: 'ru' | 'en';
 }
 
-const GAME_ICONS: Record<string, React.ElementType> = {
-  coup: ScrollText,
-  battleship: Ship,
-  flager: Flag,
-  minesweeper: Bomb,
-  spyfall: Fingerprint,
-};
-
 const Toast = ({ msg, type }: { msg: string, type: 'join' | 'leave' | 'info' }) => (
     <div className={`flex items-center gap-2 px-4 py-3 rounded-xl shadow-xl border text-xs font-bold uppercase tracking-wider animate-in slide-in-from-top-4 fade-in duration-300 z-[100] ${type === 'join' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : type === 'leave' ? 'bg-red-50 border-red-200 text-red-700' : 'bg-blue-50 border-blue-200 text-blue-700'}`}>
         {msg}
@@ -60,6 +53,7 @@ export default function UniversalLobby({
   lang
 }: UniversalLobbyProps) {
   const [copied, setCopied] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
   const [notifications, setNotifications] = useState<{ id: number; msg: string; type: 'join' | 'leave' | 'info' }[]>([]);
   const prevPlayersRef = useRef<LobbyPlayer[]>(players);
 
@@ -72,7 +66,8 @@ export default function UniversalLobby({
   const { onlineUserIds, isSynced } = usePresenceHeartbeat(roomCode, currentUserId);
 
   const isHost = players.find(p => p.id === currentUserId)?.isHost;
-  const GameIcon = GAME_ICONS[gameType] || Users;
+  const game = getGame(gameType);
+  const GameIcon = game ? GAME_ICONS[game.id] : Users;
 
   const addNotification = (msg: string, type: 'join' | 'leave' | 'info') => {
       playSfx('notify');
@@ -87,6 +82,8 @@ export default function UniversalLobby({
       start: 'Начать игру',
       leave: 'Покинуть',
       code: 'Код комнаты',
+      copyLink: 'Скопировать ссылку',
+      linkCopied: 'Ссылка скопирована',
       minPlayers: `Нужно ${minPlayers}+ игроков`,
       host: 'Хост',
       you: 'Вы',
@@ -104,6 +101,8 @@ export default function UniversalLobby({
       start: 'Start Game',
       leave: 'Leave',
       code: 'Room Code',
+      copyLink: 'Copy invite link',
+      linkCopied: 'Link copied',
       minPlayers: `Need ${minPlayers}+ players`,
       host: 'Host',
       you: 'You',
@@ -138,24 +137,58 @@ export default function UniversalLobby({
       prevPlayersRef.current = current;
   }, [players, t]);
 
-  const handleCopy = async () => {
-    try {
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(roomCode);
-      } else {
-        // Fallback for legacy browsers / insecure contexts
-        const textArea = document.createElement("textarea");
-        textArea.value = roomCode;
-        document.body.appendChild(textArea);
-        textArea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textArea);
+  /**
+   * Copies text, falling back when the async clipboard is unavailable.
+   *
+   * The fallback used to be reached only when `navigator.clipboard` was
+   * missing entirely. It is usually present but *denied* — an insecure
+   * context, a permissions policy, an in-app browser — and then the write
+   * rejects, the error was swallowed and the button gave no feedback at all.
+   * So the fallback now runs on rejection too, not only on absence.
+   */
+  const copyText = async (value: string) => {
+    if (navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(value);
+        return true;
+      } catch {
+        // Denied rather than absent — drop through to the legacy path.
       }
-      setCopied(true);
+    }
+
+    try {
+      const textArea = document.createElement('textarea');
+      textArea.value = value;
+      textArea.setAttribute('readonly', '');
+      textArea.style.position = 'fixed';
+      textArea.style.opacity = '0';
+      document.body.appendChild(textArea);
+      textArea.select();
+      const ok = document.execCommand('copy');
+      document.body.removeChild(textArea);
+      return ok;
     } catch (err) {
       console.error('Copy failed', err);
+      return false;
     }
+  };
+
+  const handleCopy = async () => {
+    if (await copyText(roomCode)) setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  /**
+   * Copies the invite link rather than the code.
+   *
+   * This screen's own URL is already `/game/<type>?id=<lobby>`, which is
+   * exactly what a friend needs to open — so there is nothing to assemble and
+   * nothing that can drift out of step with the route.
+   */
+  const handleCopyLink = async () => {
+    if (typeof window === 'undefined') return;
+    if (await copyText(window.location.href)) setLinkCopied(true);
+    setTimeout(() => setLinkCopied(false), 2000);
   };
 
   const handleKickPlayer = async (targetId: string) => {
@@ -390,6 +423,15 @@ export default function UniversalLobby({
                     </div>
                 </div>
             </div>
+
+            <button
+                onClick={handleCopyLink}
+                className="w-full py-4 bg-white border border-[#E6E1DC] text-[#1A1F26] rounded-[20px] font-bold uppercase tracking-wider text-xs hover:border-[#1A1F26] hover:shadow-sm transition-all active:scale-[0.99] flex items-center justify-center gap-2"
+            >
+                {linkCopied
+                    ? <><Check className="w-4 h-4 text-emerald-600" /> {t.linkCopied}</>
+                    : <><LinkIcon className="w-4 h-4 text-[#8A9099]" /> {t.copyLink}</>}
+            </button>
 
             {isHost ? (
                 <button

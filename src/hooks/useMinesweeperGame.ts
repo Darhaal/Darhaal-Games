@@ -1,8 +1,17 @@
-import { supabase } from '@/lib/supabase';
 import { MinesweeperState, MinesweeperPlayer } from '@/types/minesweeper';
+import { requireGame, roomCapacity } from '@/games/registry';
 import { updatePlayerStats } from '@/lib/playerStats';
 import { useLobbySync } from '@/hooks/core/useLobbySync';
 import { generateEmptyBoard, placeMines, openCellIterative, chordCell as chordCellLogic } from '@/lib/gameLogic/minesweeper';
+
+const GAME = requireGame('minesweeper');
+
+/**
+ * How far past the time limit any remaining player may close the match out on
+ * behalf of someone who never answered. Long enough that it never beats a
+ * player's own timeout on a slow connection.
+ */
+const STALLED_MATCH_GRACE_MS = 10_000;
 
 const countMoves = (p: MinesweeperPlayer) => {
     let moves = 0;
@@ -12,7 +21,7 @@ const countMoves = (p: MinesweeperPlayer) => {
 
 export function useMinesweeperGame(lobbyId: string | null, userId: string | undefined) {
   const {
-    gameState, setGameState, gameStateRef,
+    gameState, gameStateRef,
     roomMeta, loading, lobbyDeleted,
     updateState, deleteLobby
   } = useLobbySync<MinesweeperState>({
@@ -100,41 +109,42 @@ export function useMinesweeperGame(lobbyId: string | null, userId: string | unde
       }
   };
 
+  /**
+   * Seat the player. Retryable on purpose: an invite link posted in a group
+   * chat gets opened by everyone at once, and the old read-then-write form
+   * meant whoever lost that race simply never appeared in the room.
+   */
   const initGame = async (userProfile: { name: string; avatarUrl: string }) => {
     if (!userId || !lobbyId) return;
 
-    const { data } = await supabase.from('lobbies').select('game_state').eq('id', lobbyId).single();
-    const currentState = data?.game_state as MinesweeperState;
-    if (!currentState) return;
+    await updateState((current) => {
+      if (current.players[userId]) return null; // already seated
+      if (current.status !== 'waiting') return null;
+      if (Object.keys(current.players).length >= roomCapacity(GAME, current.settings?.maxPlayers)) return null;
 
-    if (!currentState.players[userId]) {
-      if (currentState.status !== 'waiting') return;
-
-      const newState = JSON.parse(JSON.stringify(currentState)) as MinesweeperState;
-      const isFirst = Object.keys(newState.players).length === 0;
-
-      newState.players[userId] = {
+      const next: MinesweeperState = JSON.parse(JSON.stringify(current));
+      next.players[userId] = {
           id: userId,
           name: userProfile.name,
           avatarUrl: userProfile.avatarUrl,
-          isHost: isFirst,
+          isHost: Object.keys(next.players).length === 0,
           board: [],
           status: 'playing',
-          minesLeft: newState.settings.minesCount,
+          minesLeft: next.settings.minesCount,
           score: 0
       };
 
-      await updateState(newState);
-    } else {
-        setGameState(currentState);
-    }
+      return next;
+    });
   };
 
   const startGame = async () => {
-    const currentGs = gameStateRef.current;
-    if (!currentGs) return;
+    await updateState((current) => {
+    // Retryable so a player joining on the same beat as the host presses
+    // start is dealt a board rather than dropped from the match.
+    if (current.status !== 'waiting') return null;
 
-    const newState: MinesweeperState = JSON.parse(JSON.stringify(currentGs));
+    const newState: MinesweeperState = JSON.parse(JSON.stringify(current));
     newState.status = 'playing';
     newState.startTime = Date.now();
     newState.winner = null;
@@ -146,7 +156,8 @@ export function useMinesweeperGame(lobbyId: string | null, userId: string | unde
         newState.players[pid].score = 0;
     });
 
-    await updateState(newState);
+    return newState;
+    });
   };
 
   // Every player owns their own board, but all boards live in one row behind a
@@ -242,49 +253,84 @@ export function useMinesweeperGame(lobbyId: string | null, userId: string | unde
     });
   };
 
+  /**
+   * Backstop for a player who vanished rather than left.
+   *
+   * Each client only times out its own board, so a closed tab leaves that
+   * player `playing` for good — and the match only finishes once nobody is
+   * still playing. Everyone else was left staring at a finished-looking board
+   * that never showed results.
+   */
+  const forceTimeUp = async () => {
+    await updateState((current) => {
+      if (current.status !== 'playing') return null;
+
+      const limit = current.settings.timeLimit || 600;
+      const overdueMs = Date.now() - (current.startTime + limit * 1000);
+      if (overdueMs < STALLED_MATCH_GRACE_MS) return null;
+
+      const stillPlaying = Object.values(current.players).filter((p) => p.status === 'playing');
+      if (stillPlaying.length === 0) return null;
+
+      const newState: MinesweeperState = JSON.parse(JSON.stringify(current));
+      Object.values(newState.players).forEach((p) => {
+        // Their own client records their loss if it is still connected; this
+        // only settles the board so the room can show results.
+        if (p.status === 'playing') p.status = 'lost';
+      });
+      newState.status = 'finished';
+
+      return newState;
+    });
+  };
+
   const leaveGame = async () => {
-     const currentGs = gameStateRef.current;
-     if (!lobbyId || !userId || !currentGs) return;
+     if (!lobbyId || !userId) return;
 
      // A finished match is a record, not live state: leaving must not rewrite
      // the results the other players are still looking at. Just walk away —
      // the page navigates us out.
-     if (currentGs.status === 'finished') return;
+     const snapshot = gameStateRef.current;
+     if (!snapshot || snapshot.status === 'finished') return;
 
-     const newState: MinesweeperState = JSON.parse(JSON.stringify(currentGs));
-     const wasHost = newState.players[userId]?.isHost;
-
-     if (newState.status === 'waiting') {
-         delete newState.players[userId];
-     } else {
-         if (newState.players[userId]) {
-             newState.players[userId].status = 'left';
-         }
-     }
-
-     const remainingActive = Object.values(newState.players).filter((p) => p.status !== 'left');
-
-     if (remainingActive.length === 0) {
+     const othersLeft = Object.values(snapshot.players)
+         .some((p) => p.id !== userId && p.status !== 'left');
+     if (!othersLeft) {
          await deleteLobby();
-     } else {
-         if (wasHost) {
-             const nextHost = remainingActive[0];
-             if (nextHost) newState.players[nextHost.id].isHost = true;
-         }
-
-         if (newState.status === 'playing') {
-             const playing = remainingActive.filter((p: MinesweeperPlayer) => p.status === 'playing');
-             if (playing.length === 0) {
-                 newState.status = 'finished';
-             }
-         }
-
-         await updateState(newState);
+         return;
      }
+
+     await updateState((current) => {
+         if (current.status === 'finished') return null;
+         if (!current.players[userId]) return null;
+
+         const next: MinesweeperState = JSON.parse(JSON.stringify(current));
+         const wasHost = next.players[userId]?.isHost;
+
+         if (next.status === 'waiting') {
+             delete next.players[userId];
+         } else {
+             // Mid-match the record stays so the scoreboard keeps the name.
+             next.players[userId].status = 'left';
+         }
+
+         const remainingActive = Object.values(next.players).filter((p) => p.status !== 'left');
+         if (remainingActive.length === 0) return null;
+
+         if (wasHost) next.players[remainingActive[0].id].isHost = true;
+
+         if (next.status === 'playing') {
+             const playing = remainingActive.filter((p: MinesweeperPlayer) => p.status === 'playing');
+             if (playing.length === 0) next.status = 'finished';
+         }
+
+         return next;
+     });
   };
 
   return {
       gameState, roomMeta, loading, lobbyDeleted,
-      initGame, startGame, revealCell, toggleFlag, chordCell, leaveGame, handleTimeout
+      initGame, startGame, revealCell, toggleFlag, chordCell, leaveGame, handleTimeout,
+      forceTimeUp
   };
 }

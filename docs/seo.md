@@ -32,7 +32,7 @@ actually sees:
 > H1s and a duplicated body.
 
 `/` and `/games` deliberately carry different copy: the root explains the
-platform and how a room works, the hub helps you choose between the five games.
+platform and how a room works, the hub helps you choose between the games.
 Repeating one on the other would enter two of our own pages in the same
 auction.
 
@@ -147,8 +147,8 @@ Yandex is worth doing alongside Google here: the canonical locale is Russian
 and the Russian-speaking audience is the primary one.
 
 After verifying, submit `https://games.okhten.com/sitemap.xml` in both. It
-lists 13 URLs — the app entry, both hubs and all five games in both locales —
-each carrying its hreflang pair.
+lists the app entry, both hubs and every game in both locales, each carrying
+its hreflang pair.
 
 ## Post-deploy checklist
 

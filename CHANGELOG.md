@@ -7,6 +7,49 @@ releasing.
 Format: [Semantic Versioning](https://semver.org/). Types: **major** = platform
 milestone, **minor** = new game mode / feature, **patch** = fixes & improvements.
 
+## [2.3.0] — 2026-09-21 (minor) — **Three New Games**
+
+> The line-up grows from five games to eight, and adding the ninth is now a
+> single registry entry rather than a tour of a dozen files.
+
+### Added
+- **Wall Rush** — race to the far side of the board, or spend a wall and send
+  your rival the long way round. 1v1, 2v2 and four-player free-for-all, built
+  to the rules the reference game actually uses rather than plain Quoridor.
+- **Dots & Boxes** — 3×3 to 8×8, two to four players, including the rule the
+  game turns on: close a box and you go again, twice over for a double close.
+- **Reversi** — eight by eight, two players, with the automatic pass handled
+  properly. A player with no legal move does not stall the match; the turn
+  returns, and when neither side can move the game ends on the count.
+- **"Play again" opens a new room, in every game.** The new lobby inherits the
+  parent's settings — a private room stays private with the same password —
+  and both players pressing the button land in the same room rather than two.
+- **A game registry** (`src/games/registry.ts`): every per-game fact — name,
+  player range, colour, icon, options, initial state — lives in one keyed
+  record. A half-registered game is now a type error, not a runtime surprise.
+
+### Fixed
+- **Coup could never start.** `startGame` assigned `version: 1` after spreading
+  the current state, so the compare-and-swap write asked the database for a
+  version that had long passed. Any room with a second player refused to begin,
+  and no Coup match had ever been recorded in `player_stats`. Both rules that
+  keep the write path honest are now enforced by tests.
+- **Simultaneous actions no longer cost a move.** 31 of 37 write paths used a
+  non-retryable form of `updateState`, so Spyfall votes, Coup passes and blocks,
+  Flager "ready" taps and joins through an invite link could be dropped in
+  silence. All 37 now rebuild against fresh state on a conflict.
+- **A disconnecting player no longer freezes the room.** Five separate hangs:
+  the Spyfall vote had no timeout at all, Coup's AFK kick could only be fired by
+  the absent player, Battleship's timeout required it to be your turn, Flager
+  did not re-check the round end on leave, and Minesweeper never finished. Every
+  deadline is now authoritative and any client may act on it.
+- **The homepage promised five games** while the registry held eight — on the
+  page, in the `/games` intro and in the search snippet Google prints. The count
+  is derived from the registry now, in both languages and all three Russian
+  grammatical forms.
+- Russian counts read correctly: "1 квадрат", "2 квадрата", "5 квадратов",
+  rather than the genitive everywhere.
+
 ## [2.2.0] — 2026-09-02 (minor) — **Spyfall Expanded**
 
 ### Added

@@ -1,18 +1,27 @@
 import { useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
 import { GameState, Player, Role } from '@/types/coup';
 import { DICTIONARY } from '@/constants/coup';
 import { updatePlayerStats } from '@/lib/playerStats';
 import { useLobbySync } from '@/hooks/core/useLobbySync';
+import { requireGame, roomCapacity } from '@/games/registry';
 import { shuffleDeck, buildDeck, getRequiredRoles } from '@/lib/gameLogic/coup';
 
 // Module-level helper: sidesteps the react-compiler purity heuristic
 // (Date.now inside event handlers is a legitimate use)
 const now = () => Date.now();
 
+const GAME = requireGame('coup');
+
+/** A turn runs for a minute; a response window is half that. */
+const TURN_MS = 60 * 1000;
+const RESPONSE_MS = 30 * 1000;
+
+/** Phases in which other players may pass on the action on the table. */
+const RESPONSE_PHASES = ['waiting_for_challenges', 'waiting_for_blocks', 'waiting_for_block_challenges'];
+
 export function useCoupGame(lobbyId: string | null, userId: string | undefined) {
   const {
-    gameState, setGameState, gameStateRef,
+    gameState, gameStateRef,
     roomMeta, loading, lobbyDeleted,
     updateState, deleteLobby
   } = useLobbySync<GameState>({
@@ -55,10 +64,25 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
     state.turnDeadline = now() + (60 * 1000);
   };
 
+  /**
+   * Resolves an expired turn, kicking the player who let it expire when the
+   * phase has a single responsible player.
+   *
+   * Callable by anyone: the deadline is the authority, not the caller. The
+   * screen used to let only the responsible player fire this, which meant the
+   * AFK kick could only be triggered by the very player who had gone AFK —
+   * so a disconnect in `choosing_action`, `losing_influence` or
+   * `resolving_exchange` stopped the match for good.
+   */
   const skipTurn = async () => {
-      const currentGs = gameStateRef.current;
-      if (!currentGs) return;
-      const newState: GameState = JSON.parse(JSON.stringify(currentGs));
+      await updateState((current) => {
+      // The move that beat the clock may already have moved the phase on, in
+      // which case there is nothing left to time out.
+      if (current.status !== 'playing') return null;
+      // A caller whose clock runs early writes nothing, and once this lands the
+      // fresh deadline makes any second caller a no-op.
+      if (!current.turnDeadline || Date.now() < current.turnDeadline) return null;
+      const newState: GameState = JSON.parse(JSON.stringify(current));
 
       if (['choosing_action', 'losing_influence', 'resolving_exchange'].includes(newState.phase)) {
           let culpritId = newState.players[newState.turnIndex].id;
@@ -118,29 +142,35 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
           }
       }
 
-      await updateState(newState);
+      return newState;
+      });
   };
 
   const performAction = async (actionType: string, targetId?: string) => {
-    const currentGs = gameStateRef.current;
-    if (!currentGs || !userId) return;
+    if (!userId) return;
 
-    const newState: GameState = JSON.parse(JSON.stringify(currentGs));
+    await updateState((current) => {
+    // Re-checked against fresh state: a timeout or a leave can have moved the
+    // turn on between the button rendering and the write landing.
+    if (current.phase !== 'choosing_action') return null;
+    if (current.players[current.turnIndex]?.id !== userId) return null;
+
+    const newState: GameState = JSON.parse(JSON.stringify(current));
     const player = newState.players.find(p => p.id === userId);
-    if (!player) return;
+    if (!player) return null;
 
     if (targetId) {
         const targetPlayer = newState.players.find(p => p.id === targetId);
-        if (!targetPlayer || targetPlayer.isDead) return;
+        if (!targetPlayer || targetPlayer.isDead) return null;
     }
 
     const targetName = targetId ? newState.players.find(p => p.id === targetId)?.name : '';
 
     if (actionType === 'coup') {
-      if (player.coins < 7) return;
+      if (player.coins < 7) return null;
       player.coins -= 7;
     } else if (actionType === 'assassinate') {
-      if (player.coins < 3) return;
+      if (player.coins < 3) return null;
       player.coins -= 3;
     }
 
@@ -170,31 +200,41 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
       newState.phase = 'waiting_for_challenges';
     }
 
-    newState.turnDeadline = now() + (30 * 1000);
-    await updateState(newState);
+    newState.turnDeadline = now() + RESPONSE_MS;
+    return newState;
+    });
   };
 
+  /**
+   * Retryable, and this is the one that needed it most: once an action is on
+   * the table every other player can pass at the same instant, so these writes
+   * collide by design. Losing one used to drop that player's pass and leave
+   * the table waiting on a response that had already been given.
+   */
   const pass = async () => {
-    const currentGs = gameStateRef.current;
-    if (!currentGs || !userId) return;
-    const newState: GameState = JSON.parse(JSON.stringify(currentGs));
-    if (!newState.currentAction) return;
+    if (!userId) return;
 
+    await updateState((current) => {
+    if (!RESPONSE_PHASES.includes(current.phase)) return null;
+    if (!current.currentAction) return null;
+    if (current.passedPlayers?.includes(userId)) return null; // already passed
+
+    const newState: GameState = JSON.parse(JSON.stringify(current));
+    const action = newState.currentAction;
+    if (!action) return null;
     if (!newState.passedPlayers) newState.passedPlayers = [];
-    if (!newState.passedPlayers.includes(userId)) {
-        newState.passedPlayers.push(userId);
-    }
+    newState.passedPlayers.push(userId);
 
     const activePlayersCount = newState.players.filter(p => !p.isDead).length;
     const allOthersPassed = newState.passedPlayers.length >= (activePlayersCount - 1);
-    const isTarget = newState.currentAction.target === userId;
+    const isTarget = action.target === userId;
 
     if (isTarget || allOthersPassed) {
         if (newState.phase === 'waiting_for_challenges') {
-             if (['steal', 'assassinate'].includes(newState.currentAction.type)) {
+             if (['steal', 'assassinate'].includes(action.type)) {
                  newState.phase = 'waiting_for_blocks';
                  newState.passedPlayers = [];
-                 newState.turnDeadline = now() + (30 * 1000);
+                 newState.turnDeadline = now() + RESPONSE_MS;
              } else {
                  applyActionEffect(newState);
              }
@@ -206,23 +246,30 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
         }
     }
 
-    await updateState(newState);
+    return newState;
+    });
   };
 
   const challenge = async () => {
-    const currentGs = gameStateRef.current;
-    if (!currentGs || !userId) return;
-    const newState: GameState = JSON.parse(JSON.stringify(currentGs));
+    if (!userId) return;
+
+    await updateState((current) => {
+    // Two players can hit "challenge" together; the first one to land owns it,
+    // and the phase has moved to losing_influence by the time the second
+    // recomputes.
+    if (current.phase !== 'waiting_for_challenges' && current.phase !== 'waiting_for_block_challenges') return null;
+
+    const newState: GameState = JSON.parse(JSON.stringify(current));
     const challenger = newState.players.find(p => p.id === userId);
-    if (!challenger || !newState.currentAction) return;
+    if (!challenger || !newState.currentAction) return null;
 
     const isBlockChallenge = newState.phase === 'waiting_for_block_challenges';
     const accusedId = isBlockChallenge ? newState.currentAction.blockedBy : newState.currentAction.player;
 
-    if (challenger.id === accusedId) return;
+    if (challenger.id === accusedId) return null;
 
     const accused = newState.players.find(p => p.id === accusedId);
-    if (!accused) return;
+    if (!accused) return null;
 
     addLog(newState, challenger.name, `НЕ ВЕРИТ игроку ${accused.name}!`);
 
@@ -251,37 +298,47 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
       newState.currentAction.nextPhase = isBlockChallenge ? 'continue_action' : 'action_cancelled';
     }
 
-    newState.turnDeadline = now() + (60 * 1000);
-    await updateState(newState);
+    newState.turnDeadline = now() + TURN_MS;
+    return newState;
+    });
   };
 
   const block = async () => {
-    const currentGs = gameStateRef.current;
-    if (!currentGs || !userId) return;
-    const newState: GameState = JSON.parse(JSON.stringify(currentGs));
-    if (!newState.currentAction) return;
-    if (newState.currentAction.blockedBy) return;
+    if (!userId) return;
+
+    await updateState((current) => {
+    if (current.phase !== 'waiting_for_blocks') return null;
+
+    const newState: GameState = JSON.parse(JSON.stringify(current));
+    if (!newState.currentAction) return null;
+    // Whoever blocks first owns it — a second blocker arriving a moment later
+    // must not overwrite the first.
+    if (newState.currentAction.blockedBy) return null;
 
     newState.currentAction.blockedBy = userId;
     newState.phase = 'waiting_for_block_challenges';
     newState.passedPlayers = [];
-    newState.turnDeadline = now() + (30 * 1000);
+    newState.turnDeadline = now() + RESPONSE_MS;
 
     const blockerName = newState.players.find(p => p.id === userId)?.name || '?';
     addLog(newState, blockerName, `БЛОКИРУЕТ действие`);
 
-    await updateState(newState);
+    return newState;
+    });
   };
 
   const resolveLoss = async (cardIndex: number) => {
-    const currentGs = gameStateRef.current;
-    if (!currentGs || !userId) return;
-    const newState: GameState = JSON.parse(JSON.stringify(currentGs));
+    if (!userId) return;
 
-    if (newState.pendingPlayerId !== userId) return;
+    await updateState((current) => {
+    if (current.phase !== 'losing_influence') return null;
+
+    const newState: GameState = JSON.parse(JSON.stringify(current));
+
+    if (newState.pendingPlayerId !== userId) return null;
 
     const player = newState.players.find(p => p.id === userId);
-    if (!player || player.cards[cardIndex].revealed) return;
+    if (!player || player.cards[cardIndex]?.revealed) return null;
 
     player.cards[cardIndex].revealed = true;
     const lostRole = getRoleName(player.cards[cardIndex].role);
@@ -331,17 +388,19 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
         }
     }
 
-    await updateState(newState);
+    return newState;
+    });
   };
 
   const resolveExchange = async (selectedIndices: number[]) => {
-      const currentGs = gameStateRef.current;
-      if (!currentGs || !userId) return;
-      const newState: GameState = JSON.parse(JSON.stringify(currentGs));
-      if (newState.phase !== 'resolving_exchange' || newState.pendingPlayerId !== userId) return;
+      if (!userId) return;
+
+      await updateState((current) => {
+      const newState: GameState = JSON.parse(JSON.stringify(current));
+      if (newState.phase !== 'resolving_exchange' || newState.pendingPlayerId !== userId) return null;
 
       const player = newState.players.find(p => p.id === userId);
-      if (!player || !newState.exchangeBuffer) return;
+      if (!player || !newState.exchangeBuffer) return null;
 
       const buffer = newState.exchangeBuffer;
       let selectionPtr = 0;
@@ -364,7 +423,8 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
       addLog(newState, player.name, 'Обменял карты');
       nextTurn(newState);
 
-      await updateState(newState);
+      return newState;
+      });
   };
 
   const applyActionEffect = (state: GameState) => {
@@ -431,20 +491,21 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
   };
 
   // Self-join when the game is opened via a direct link
+  /**
+   * Seat the player. Retryable on purpose: an invite link posted in a group
+   * chat gets opened by everyone at once, and the old read-then-write form
+   * meant whoever lost that race simply never appeared in the room.
+   */
   const initGame = async (userProfile: { name: string; avatarUrl: string }) => {
     if (!userId || !lobbyId) return;
 
-    const { data } = await supabase.from('lobbies').select('game_state').eq('id', lobbyId).single();
-    const currentState = data?.game_state as GameState;
-    if (!currentState || !Array.isArray(currentState.players)) return;
+    await updateState((current) => {
+      if (!Array.isArray(current.players)) return null;
+      if (current.players.find(p => p.id === userId)) return null; // already seated
+      if (current.status !== 'waiting') return null;
+      if (current.players.length >= roomCapacity(GAME, current.settings?.maxPlayers)) return null;
 
-    if (!currentState.players.find(p => p.id === userId)) {
-      if (currentState.status !== 'waiting') return;
-      const maxPlayers = currentState.settings?.maxPlayers || 6;
-      if (currentState.players.length >= maxPlayers) return;
-
-      const newState = JSON.parse(JSON.stringify(currentState)) as GameState;
-      const isFirst = newState.players.length === 0;
+      const newState: GameState = JSON.parse(JSON.stringify(current));
       newState.players.push({
         id: userId,
         name: userProfile.name,
@@ -452,56 +513,72 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
         coins: 2,
         cards: [],
         isDead: false,
-        isHost: isFirst,
+        isHost: newState.players.length === 0,
         isReady: true
       });
-      await updateState(newState);
-    } else {
-      setGameState(currentState);
-    }
+      return newState;
+    });
   };
 
   const startGame = async () => {
-    const currentGs = gameStateRef.current;
-    if (!currentGs) return;
-    const shuffled = shuffleDeck(buildDeck());
+    await updateState((current) => {
+      if (current.status !== 'waiting') return null;
+      if (current.players.length < 2) return null;
 
-    const newPlayers = currentGs.players.map(p => ({
-      ...p, coins: 2, isDead: false,
-      cards: [{ role: shuffled.pop()!, revealed: false }, { role: shuffled.pop()!, revealed: false }]
-    }));
+      const shuffled = shuffleDeck(buildDeck());
+      const newPlayers = current.players.map(p => ({
+        ...p, coins: 2, isDead: false,
+        cards: [{ role: shuffled.pop()!, revealed: false }, { role: shuffled.pop()!, revealed: false }]
+      }));
 
-    const newState: GameState = {
-      ...currentGs, status: 'playing', players: newPlayers, deck: shuffled, turnIndex: 0,
-      phase: 'choosing_action', currentAction: null, logs: [], winner: undefined, winnerId: undefined,
-      lastActionTime: now(), version: 1, turnDeadline: now() + (60 * 1000),
-      startTime: now(),
-      passedPlayers: []
-    };
-    addLog(newState, 'Система', 'Игра началась! Всем удачи.');
-    await updateState(newState);
+      const newState: GameState = {
+        ...current, status: 'playing', players: newPlayers, deck: shuffled, turnIndex: 0,
+        phase: 'choosing_action', currentAction: null, logs: [], winner: undefined, winnerId: undefined,
+        lastActionTime: now(), turnDeadline: now() + TURN_MS,
+        startTime: now(),
+        passedPlayers: []
+        // NOTE: `version` is deliberately inherited from `current` and never
+        // reset. It used to be pinned to 1 here, which made the compare-and-swap
+        // ask the database for version 1 — true only in a room nobody had
+        // joined. As soon as a second player arrived the row was at version 2
+        // and every attempt to start was rejected, so the match simply never
+        // began. Verified against the live database: the RPC returns false for
+        // exactly that call.
+      };
+      addLog(newState, 'Система', 'Игра началась! Всем удачи.');
+      return newState;
+    });
   };
 
   const leaveGame = async () => {
-     const currentGs = gameStateRef.current;
-     if (!lobbyId || !userId || !currentGs) return;
+     if (!lobbyId || !userId) return;
 
      // A finished match is a record, not live state: leaving must not rewrite
      // the results the other players are still looking at. Just walk away —
      // the page navigates us out.
-     if (currentGs.status === 'finished') return;
+     const snapshot = gameStateRef.current;
+     if (!snapshot || snapshot.status === 'finished') return;
 
-     const newState = JSON.parse(JSON.stringify(currentGs));
-     const wasHost = newState.players.find((p: Player) => p.id === userId)?.isHost;
-     const leaverIdx = newState.players.findIndex((p: Player) => p.id === userId);
-     const wasCurrentTurn = leaverIdx === newState.turnIndex;
-
-     newState.players = newState.players.filter((p: Player) => p.id !== userId);
-
-     if (newState.players.length === 0) {
+     const others = (snapshot.players || []).filter((p: Player) => p.id !== userId);
+     if (others.length === 0) {
          await deleteLobby();
-     } else {
-         if (wasHost && newState.players.length > 0) {
+         return;
+     }
+
+     await updateState((current) => {
+         if (current.status === 'finished') return null;
+
+         const newState: GameState = JSON.parse(JSON.stringify(current));
+         const wasHost = newState.players.find((p: Player) => p.id === userId)?.isHost;
+         const leaverIdx = newState.players.findIndex((p: Player) => p.id === userId);
+         if (leaverIdx === -1) return null;
+         const wasCurrentTurn = leaverIdx === newState.turnIndex;
+
+         newState.players = newState.players.filter((p: Player) => p.id !== userId);
+
+         if (newState.players.length === 0) return null;
+
+         if (wasHost) {
             newState.players[0].isHost = true;
             addLog(newState, 'Система', `Хост вышел. Новый хост: ${newState.players[0].name}`);
          }
@@ -542,12 +619,12 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
                      newState.pendingPlayerId = undefined;
                      newState.exchangeBuffer = undefined;
                      newState.passedPlayers = [];
-                     newState.turnDeadline = now() + (60 * 1000);
+                     newState.turnDeadline = now() + TURN_MS;
                  }
              }
          }
-         await updateState(newState);
-     }
+         return newState;
+     });
   };
 
   // TRACK GAME END TO RECORD STATISTICS
