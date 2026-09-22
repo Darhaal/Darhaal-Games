@@ -213,7 +213,7 @@ export const GAME_RULES: Record<Locale, Record<GameId, GameRulesData>> = {
         {
           title: 'Цель',
           icon: Flag,
-          content: 'В дуэли и в паре доска 9×9: пешка стоит посередине одного края, дойти нужно до любой клетки противоположного. Вчетвером всё иначе — доска 11×11, и все четверо бегут в одну золотую клетку в самом центре. Кто дошёл первым, тот и выиграл; в режиме 2 на 2 достаточно, чтобы дошёл любой из пары.',
+          content: 'В дуэли и в паре доска 9×9: пешка стоит посередине одного края, дойти нужно до любой клетки противоположного. Втроём и вчетвером всё иначе — доска 11×11, и все бегут в одну золотую клетку в самом центре. Кто дошёл первым, тот и выиграл; в режиме 2 на 2 достаточно, чтобы дошёл любой из пары.',
           type: 'text'
         },
         {
@@ -229,7 +229,7 @@ export const GAME_RULES: Record<Locale, Record<GameId, GameRulesData>> = {
             'Стена длиной в две клетки ставится в промежуток между рядами или столбцами.',
             'Стены нельзя класть поверх друг друга, пересекать их или накладывать внахлёст.',
             'Поставленную стену уже не убрать и не сдвинуть.',
-            'Вдвоём у каждого по 10 стен, в паре по 5, вчетвером по 7. Кончились — остаётся только идти.'
+            'Вдвоём у каждого по 10 стен, втроём по 8, в паре по 5, вчетвером по 7. Кончились — остаётся только идти.'
           ],
           type: 'list'
         },
@@ -242,7 +242,7 @@ export const GAME_RULES: Record<Locale, Record<GameId, GameRulesData>> = {
         {
           title: 'Прыжок',
           icon: Zap,
-          content: 'Если вы стоите вплотную к чужой пешке, вы перепрыгиваете через неё и встаёте сразу за ней. Если прямо за ней стена или край доски — вместо прыжка вы обходите её сбоку, вставая слева или справа. Это единственный способ сходить по диагонали. Вчетвером, когда перед вами выстроились сразу две фишки, прыжок перемахивает через обе.',
+          content: 'Если вы стоите вплотную к чужой пешке, вы перепрыгиваете через неё и встаёте сразу за ней. Если прямо за ней стена или край доски — вместо прыжка вы обходите её сбоку, вставая слева или справа. Это единственный способ сходить по диагонали. В гонке к центру, где фишки скапливаются у одной клетки, прыжок перемахивает сразу через две.',
           type: 'text'
         },
         {
@@ -250,6 +250,7 @@ export const GAME_RULES: Record<Locale, Record<GameId, GameRulesData>> = {
           icon: Target,
           content: [
             '1 на 1 — доска 9×9, двое друг напротив друга, по 10 стен.',
+            'Втроём — доска 11×11, трое с трёх сторон, каждый сам за себя, по 8 стен, цель общая: золотая клетка в центре.',
             '2 на 2 — доска 9×9, четверо, партнёры напротив друг друга, ходы идут по кругу и потому чередуются между парами. По 5 стен.',
             'Вчетвером — доска 11×11, по одному с каждой стороны, по 7 стен, и цель у всех общая: золотая клетка в центре. Побеждает один, трое проигрывают.'
           ],
@@ -560,7 +561,7 @@ export const GAME_RULES: Record<Locale, Record<GameId, GameRulesData>> = {
         {
           title: 'Goal',
           icon: Flag,
-          content: 'In the duel and the team game the board is 9x9: your pawn starts mid-edge and has to reach any square on the opposite edge. Four at a table is different — an 11x11 board, and all four race for a single golden square in the very centre. First one home wins; in 2v2 either partner getting there is enough.',
+          content: 'In the duel and the team game the board is 9x9: your pawn starts mid-edge and has to reach any square on the opposite edge. Three and four at a table are different — an 11x11 board, and everyone races for a single golden square in the very centre. First one home wins; in 2v2 either partner getting there is enough.',
           type: 'text'
         },
         {
@@ -597,6 +598,7 @@ export const GAME_RULES: Record<Locale, Record<GameId, GameRulesData>> = {
           icon: Target,
           content: [
             '1v1 — a 9x9 board, two players facing each other, 10 walls each.',
+            'Three-way — an 11x11 board, three players on three sides, everyone for themselves, 8 walls each, all racing for the golden square in the centre.',
             '2v2 — a 9x9 board, four players with partners opposite, so turns run clockwise and alternate between the teams. 5 walls each.',
             'Four at a table — an 11x11 board, one player per side, 7 walls each, and a single shared target: the golden centre square. One winner, three losers.'
           ],

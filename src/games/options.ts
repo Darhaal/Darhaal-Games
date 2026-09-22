@@ -254,6 +254,24 @@ export const GAME_OPTIONS: Record<GameId, GameOption[]> = {
           }
         },
         {
+          value: 'trio',
+          emoji: '🔺',
+          label: { ru: 'Трое', en: 'Three-way' },
+          players: PLAYERS_FOR_MODE.trio,
+          preview: {
+            ru: [
+              'Трое с трёх сторон, каждый сам за себя',
+              `По ${WALLS_FOR_MODE.trio} стен на каждого`,
+              'Бегут в центр — кто первый, тот и выиграл'
+            ],
+            en: [
+              'Three players, three sides, everyone for themselves',
+              `${WALLS_FOR_MODE.trio} walls each`,
+              'All racing for the middle; first one there wins'
+            ]
+          }
+        },
+        {
           value: 'teams',
           emoji: '🤝',
           label: { ru: '2 на 2', en: '2v2' },

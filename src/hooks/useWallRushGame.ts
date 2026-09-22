@@ -29,10 +29,15 @@ export const sideOf = (state: WallRushState, player: WallRushPlayer) =>
 export const goalOf = (state: WallRushState) => GOAL_FOR_MODE[state.settings.mode];
 
 /**
- * Only the four-player table lets a pawn clear two in a line — the duel and
- * the team game keep the single hop.
+ * Clearing two pawns in a line, allowed where everyone races for the same
+ * square.
+ *
+ * Keyed to the goal rather than to the mode's name, because the goal is the
+ * reason: pawns pile up around a single target and a single hop stops being
+ * enough. A race to opposite edges spreads them out and keeps the single hop.
  */
-export const doubleJumpAllowed = (state: WallRushState) => state.settings.mode === 'ffa';
+export const doubleJumpAllowed = (state: WallRushState) =>
+  GOAL_FOR_MODE[state.settings.mode] === 'centre';
 
 /** Pawns still on the board, in the shape the rules functions want. */
 const pawnsOnBoard = (state: WallRushState) =>

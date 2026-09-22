@@ -1,4 +1,4 @@
-export const APP_VERSION = '2.4.1';
+export const APP_VERSION = '2.5.0';
 
 export type VersionType = 'major' | 'minor' | 'patch' | 'init';
 
@@ -11,6 +11,19 @@ export interface VersionLog {
 }
 
 export const VERSION_HISTORY: VersionLog[] = [
+  /* ===================== 2.5.x ===================== */
+
+  {
+    ver: '2.5.0',
+    date: '22 SEP 2026',
+    type: 'minor',
+    title: { ru: 'Стены втроём', en: 'Wall Rush for Three' },
+    desc: {
+      ru: 'В «Стенах» появился режим на троих: доска 11×11, трое с трёх сторон, по 8 стен, все бегут в золотую клетку в центре. И комната теперь закрывается, если её создатель ушёл, — с подтверждением, чтобы это не случилось случайно.',
+      en: 'Wall Rush gains a three-player mode: an 11x11 board, three players on three sides, 8 walls each, everyone racing for the golden square in the middle. And a room now closes when the person who opened it leaves — with a confirmation, so it does not happen by accident.'
+    }
+  },
+
   /* ===================== 2.4.x ===================== */
 
   {

@@ -2,9 +2,12 @@ import { describe, it, expect } from 'vitest';
 import {
   BOARD_SIZE, BOARD_FOR_MODE, GOAL_FOR_MODE, SEATS, WALLS_FOR_MODE, PLAYERS_FOR_MODE,
   seatsForMode, teamOf, startCell, isGoal, isBlocked, wallsClash, centreCell,
-  canPlaceWall, hasPathToGoal, distanceToGoal, legalMoves, openNeighbours
+  canPlaceWall, hasPathToGoal, distanceToGoal, legalMoves, openNeighbours, sameCell
 } from '@/lib/gameLogic/wallrush';
-import type { Cell, Wall } from '@/types/wallrush';
+import type { Cell, Wall, WallRushMode } from '@/types/wallrush';
+
+/** Every mode, so a new one is covered by the checks below the moment it exists. */
+const MODES: WallRushMode[] = ['duel', 'trio', 'teams', 'ffa'];
 
 const h = (x: number, y: number): Wall => ({ x, y, o: 'h' });
 const v = (x: number, y: number): Wall => ({ x, y, o: 'v' });
@@ -29,13 +32,41 @@ describe('wall rush rules', () => {
     });
 
     it('gives every mode its own board, allowance and target', () => {
-      // These three numbers are balance, not decoration: twenty walls on one
-      // board locks it solid, and the four-player table needs an odd, larger
-      // board because everyone converges on its middle square.
-      expect(WALLS_FOR_MODE).toEqual({ duel: 10, teams: 5, ffa: 7 });
-      expect(BOARD_FOR_MODE).toEqual({ duel: 9, teams: 9, ffa: 11 });
-      expect(GOAL_FOR_MODE).toEqual({ duel: 'opposite', teams: 'opposite', ffa: 'centre' });
-      expect(PLAYERS_FOR_MODE).toEqual({ duel: 2, teams: 4, ffa: 4 });
+      // These numbers are balance, not decoration: twenty walls on one board
+      // locks it solid, and a table that converges on the middle needs an
+      // odd, larger board for a middle to exist.
+      expect(WALLS_FOR_MODE).toEqual({ duel: 10, trio: 8, teams: 5, ffa: 7 });
+      expect(BOARD_FOR_MODE).toEqual({ duel: 9, trio: 11, teams: 9, ffa: 11 });
+      expect(GOAL_FOR_MODE).toEqual({
+        duel: 'opposite', trio: 'centre', teams: 'opposite', ffa: 'centre'
+      });
+      expect(PLAYERS_FOR_MODE).toEqual({ duel: 2, trio: 3, teams: 4, ffa: 4 });
+    });
+
+    it('seats each mode on as many sides as it has players', () => {
+      for (const mode of MODES) {
+        const sides = seatsForMode(mode);
+        expect(new Set(sides).size, `${mode} seats somebody twice`).toBe(sides.length);
+        expect(sides.length, `${mode} has the wrong number of sides`)
+          .toBe(PLAYERS_FOR_MODE[mode]);
+      }
+    });
+
+    it('gives every mode that races to the middle a board with one', () => {
+      for (const mode of MODES) {
+        if (GOAL_FOR_MODE[mode] !== 'centre') continue;
+        expect(BOARD_FOR_MODE[mode] % 2, `${mode} has no centre square`).toBe(1);
+      }
+    });
+
+    it('starts three players on three different squares, none of them the goal', () => {
+      const size = BOARD_FOR_MODE.trio;
+      const starts = seatsForMode('trio').map((side) => startCell(side, size));
+
+      expect(new Set(starts.map((c) => `${c.x},${c.y}`)).size).toBe(3);
+      for (const start of starts) {
+        expect(sameCell(start, centreCell(size)), 'a pawn starts on the goal').toBe(false);
+      }
     });
 
     it('puts a four-player table on an odd board so a centre square exists', () => {

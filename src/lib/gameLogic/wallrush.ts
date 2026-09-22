@@ -28,12 +28,17 @@ export type GoalKind = 'opposite' | 'centre';
 
 export const BOARD_FOR_MODE: Record<WallRushMode, number> = {
   duel: 9,
+  trio: 11,
   teams: 9,
   ffa: 11
 };
 
 export const GOAL_FOR_MODE: Record<WallRushMode, GoalKind> = {
   duel: 'opposite',
+  // Three players cannot each have an opposite edge, so they converge on the
+  // middle square instead — the same answer the four-player table needs, and
+  // for the same reason.
+  trio: 'centre',
   teams: 'opposite',
   ffa: 'centre'
 };
@@ -41,12 +46,16 @@ export const GOAL_FOR_MODE: Record<WallRushMode, GoalKind> = {
 /** Walls per player. Four players share a board, so they each get fewer. */
 export const WALLS_FOR_MODE: Record<WallRushMode, number> = {
   duel: 10,
+  // Between the duel and the four-player table: fewer rivals to spend walls
+  // on than in a crowd, more than one to watch for.
+  trio: 8,
   teams: 5,
   ffa: 7
 };
 
 export const PLAYERS_FOR_MODE: Record<WallRushMode, number> = {
   duel: 2,
+  trio: 3,
   teams: 4,
   ffa: 4
 };
@@ -57,9 +66,18 @@ export const centreCell = (size: number): Cell => ({
   y: Math.floor(size / 2)
 });
 
-/** Seats used by a mode: a duel is played across the board, north to south. */
+/**
+ * Seats used by a mode.
+ *
+ * A duel is played across the board, north to south. Three players take
+ * three of the four sides: with a centre goal every side is the same
+ * distance from the target, so which one is left empty changes nothing
+ * about the race — only who happens to sit opposite whom.
+ */
 export function seatsForMode(mode: WallRushMode): Side[] {
-  return mode === 'duel' ? ['north', 'south'] : SEATS;
+  if (mode === 'duel') return ['north', 'south'];
+  if (mode === 'trio') return ['north', 'east', 'south'];
+  return SEATS;
 }
 
 /** In `teams`, facing seats play together: 0 with 2, 1 with 3. */

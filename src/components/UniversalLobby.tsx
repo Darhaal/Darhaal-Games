@@ -10,6 +10,7 @@ import { getGame } from '@/games/registry';
 import { GAME_ICONS } from '@/games/icons';
 import { usePresenceHeartbeat } from '@/hooks/usePresenceHeartbeat';
 import { useLobbyTouch } from '@/hooks/useLobbyTouch';
+import { showToast } from '@/lib/toast';
 import { track } from '@/lib/analytics';
 import { GA_EVENTS } from '@/constants/analytics';
 import { supabase } from '@/lib/supabase';
@@ -65,6 +66,8 @@ export default function UniversalLobby({
 
   // Timers tracking offline players before auto-kick (id -> removal timestamp)
   const [kickTimers, setKickTimers] = useState<Record<string, number>>({});
+  // The host's leave closes the room for everyone, so it is confirmed first.
+  const [pendingClose, setPendingClose] = useState(false);
   // Clock tick for the countdown display (avoids calling Date.now() during render)
   const [nowTick, setNowTick] = useState(0);
 
@@ -103,6 +106,11 @@ export default function UniversalLobby({
       offline: 'Не в сети',
       kick: 'Исключить',
       kicked: 'Игрок исключен',
+      hostClosed: 'Хост покинул комнату — лобби закрыто',
+      closeTitle: 'Закрыть комнату?',
+      closeDesc: 'Комната исчезнет, остальные игроки будут отключены.',
+      closeCancel: 'Отмена',
+      closeConfirm: 'Закрыть',
       autoKick: 'Кик через',
       sec: 'с'
     },
@@ -122,6 +130,11 @@ export default function UniversalLobby({
       offline: 'Offline',
       kick: 'Kick',
       kicked: 'Player kicked',
+      hostClosed: 'The host left — the room is closed',
+      closeTitle: 'Close the room?',
+      closeDesc: 'The room disappears and everyone else is dropped.',
+      closeCancel: 'Cancel',
+      closeConfirm: 'Close',
       autoKick: 'Kick in',
       sec: 's'
     }
@@ -263,19 +276,47 @@ export default function UniversalLobby({
   };
 
   /**
-   * Takes the room over when the host has gone.
+   * Leaving, which for the host means closing the room.
    *
-   * The auto-kick below is run by the host and never kicks itself, so an
-   * absent host left the room frozen: nobody to remove the ghosts, and no
-   * "start" button for anyone. The remaining players now promote one of
-   * their own.
+   * The room belongs to whoever opened it. `leave_lobby` lets the host
+   * delete it outright — every other client sees the row disappear over
+   * realtime and lands on the "room closed" screen — while everyone else
+   * just leaves through the usual path.
    *
-   * `handleKickPlayer` deliberately does not promote anyone — it was written
-   * for a host removing someone else, where the host stays. Promoting has to
-   * happen in the same write as the removal, or the room spends a moment with
-   * no host at all and every client tries to fix it at once.
+   * Confirmed first: the host pressing this drops everybody, which is not
+   * what "leave" reads like.
    */
-  const handleHostGone = async (absentHostId: string) => {
+  const handleLeaveOrClose = () => {
+    if (!isHost || !lobbyId) {
+      onLeave();
+      return;
+    }
+    setPendingClose(true);
+  };
+
+  const confirmClose = async () => {
+    setPendingClose(false);
+    try {
+      await supabase.rpc('leave_lobby', { p_lobby_id: lobbyId });
+    } catch (e) {
+      console.error('Closing the room failed', e);
+    }
+    onLeave();
+  };
+
+  /**
+   * Closes the room when the host has gone.
+   *
+   * The room belongs to whoever opened it: if they leave, it closes rather
+   * than being handed to somebody who did not choose to run it. An earlier
+   * version promoted an heir instead, which kept rooms alive that nobody had
+   * asked to keep.
+   *
+   * The host cannot do this themselves — they are the one who vanished — so
+   * a remaining player removes them from the roster. Every client then sees
+   * a room with no host, says so, and leaves; the last one out deletes it.
+   */
+  const removeAbsentHost = async (absentHostId: string) => {
     try {
       const { data, error } = await supabase
         .from('lobbies')
@@ -297,28 +338,24 @@ export default function UniversalLobby({
       if (!stillHost) return;
 
       let players: LobbyPlayer[] | Record<string, LobbyPlayer>;
-      let remaining: LobbyPlayer[];
+      let remaining: number;
 
       if (Array.isArray(state.players)) {
-        remaining = state.players.filter((p) => p.id !== absentHostId);
-        players = remaining;
+        const rest = state.players.filter((p) => p.id !== absentHostId);
+        players = rest;
+        remaining = rest.length;
       } else {
         const rest = { ...state.players };
         delete rest[absentHostId];
-        remaining = Object.values(rest);
         players = rest;
+        remaining = Object.keys(rest).length;
       }
 
-      if (remaining.length === 0) {
+      if (remaining === 0) {
         await supabase.rpc('leave_lobby', { p_lobby_id: data.id });
         onLeave();
         return;
       }
-
-      // Prefer somebody who is actually here; fall back to roster order so
-      // two clients deciding at once still pick the same person.
-      const heir = remaining.find((p) => onlineUserIds.includes(p.id)) || remaining[0];
-      heir.isHost = true;
 
       await writeGameState(data.id as string, {
         ...state,
@@ -326,11 +363,11 @@ export default function UniversalLobby({
         version: (state.version || 0) + 1
       });
     } catch (e) {
-      console.error('Host handover failed', e);
+      console.error('Removing the absent host failed', e);
     }
   };
 
-  // --- HOST HANDOVER: the room outlives whoever opened it ---
+  // --- THE HOST LEFT: one client removes them, and the room winds up ---
   useEffect(() => {
     if (!isSynced || !currentUserId) return;
 
@@ -338,17 +375,35 @@ export default function UniversalLobby({
     if (!host || host.id === currentUserId) return;          // we are fine, or we are it
     if (onlineUserIds.includes(host.id)) return;             // host is here
 
-    // One client acts. The first player present, in roster order, excluding
-    // the host we are about to remove — everyone computes the same answer.
+    // One client acts, chosen by a rule everyone computes the same way.
     const actor = players.find((p) => p.id !== host.id && onlineUserIds.includes(p.id));
     if (actor?.id !== currentUserId) return;
 
-    // Longer than the ten seconds a player gets: losing the host reassigns
-    // control of the room, so a reload should not be enough to trigger it.
-    const timer = setTimeout(() => handleHostGone(host.id), 15000);
+    // Longer than the ten seconds a player gets: closing the room is final,
+    // so a reload should not be enough to trigger it.
+    const timer = setTimeout(() => removeAbsentHost(host.id), 15000);
     return () => clearTimeout(timer);
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- handleHostGone reads fresh state itself; listing it would restart the timer every render
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- removeAbsentHost reads fresh state itself; listing it would restart the timer every render
   }, [isSynced, currentUserId, players, onlineUserIds]);
+
+  /**
+   * A room with nobody at its head is closed, for everyone still in it.
+   *
+   * Derived rather than announced: no extra field to write, no message to
+   * miss. Whoever is last to act on it deletes the row on their way out.
+   */
+  useEffect(() => {
+    if (players.length === 0) return;
+    if (players.some((p) => p.isHost)) return;
+
+    // The app-level toast, not this screen's own: we are about to navigate
+    // away, and a notification living in this component's state would go
+    // with it. This one outlives the route change and is the only place the
+    // player is told why they were moved.
+    showToast(t.hostClosed, 'info');
+    onLeave();
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- onLeave is stable for this screen's lifetime
+  }, [players]);
 
   // --- AUTO-KICK SYSTEM (runs on the host only) ---
   useEffect(() => {
@@ -414,7 +469,7 @@ export default function UniversalLobby({
       </div>
 
       <header className="w-full max-w-6xl mx-auto p-6 flex justify-between items-center z-10 relative">
-        <button onClick={onLeave} className="group flex items-center gap-2 px-4 py-2 bg-white border border-[#E6E1DC] rounded-xl hover:border-red-200 hover:bg-red-50 transition-all shadow-sm">
+        <button onClick={handleLeaveOrClose} className="group flex items-center gap-2 px-4 py-2 bg-white border border-[#E6E1DC] rounded-xl hover:border-red-200 hover:bg-red-50 transition-all shadow-sm">
             <LogOut className="w-4 h-4 text-[#8A9099] group-hover:text-[#9e1316] transition-colors" />
             <span className="text-xs font-bold uppercase tracking-widest text-[#8A9099] group-hover:text-[#9e1316] hidden sm:block">{t.leave}</span>
         </button>
@@ -554,6 +609,41 @@ export default function UniversalLobby({
             )}
         </div>
       </main>
+
+      {/* Closing the room drops everybody, which is not what "leave" reads
+          like — so it is confirmed, in the app's own dialog rather than the
+          browser's. */}
+      {pendingClose && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-[#1A1F26]/50 backdrop-blur-sm animate-in fade-in duration-200"
+          onClick={() => setPendingClose(false)}
+        >
+          <div
+            className="bg-white p-7 rounded-3xl w-full max-w-xs text-center shadow-2xl border border-[#E6E1DC] animate-in zoom-in-95"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-14 h-14 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-red-100">
+              <LogOut className="w-6 h-6" />
+            </div>
+            <h3 className="text-lg font-black text-[#1A1F26] uppercase mb-1">{t.closeTitle}</h3>
+            <p className="text-xs font-bold text-[#8A9099] mb-6">{t.closeDesc}</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setPendingClose(false)}
+                className="flex-1 py-3 bg-[#F8FAFC] text-[#1A1F26] border border-[#E6E1DC] rounded-xl font-bold uppercase text-xs hover:bg-[#E6E1DC] transition-colors"
+              >
+                {t.closeCancel}
+              </button>
+              <button
+                onClick={confirmClose}
+                className="flex-1 py-3 bg-red-500 text-white rounded-xl font-bold uppercase text-xs hover:bg-red-600 transition-colors shadow-lg shadow-red-500/20"
+              >
+                {t.closeConfirm}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

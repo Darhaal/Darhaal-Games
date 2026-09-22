@@ -12,7 +12,7 @@ import type { GameNotification } from './notification';
 export type WallRushStatus = 'waiting' | 'playing' | 'finished';
 
 /** `duel` = 1v1, `teams` = 2v2 with partners opposite, `ffa` = four, each alone. */
-export type WallRushMode = 'duel' | 'teams' | 'ffa';
+export type WallRushMode = 'duel' | 'trio' | 'teams' | 'ffa';
 
 export type WallOrientation = 'h' | 'v';
 

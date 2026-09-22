@@ -7,6 +7,28 @@ releasing.
 Format: [Semantic Versioning](https://semver.org/). Types: **major** = platform
 milestone, **minor** = new game mode / feature, **patch** = fixes & improvements.
 
+## [2.5.0] — 2026-09-22 (minor) — **Wall Rush for Three**
+
+### Added
+- **A three-player Wall Rush.** An 11x11 board, three players on three sides,
+  8 walls each, all racing for the golden square in the middle. Three pawns
+  cannot each have an opposite edge, so the centre goal the four-player table
+  already uses is the answer here too — and with a centre goal every side sits
+  the same distance from the target, so which one is left empty changes
+  nothing about the race.
+
+### Changed
+- **A room closes when its host leaves.** It belongs to whoever opened it, and
+  handing it to somebody who did not choose to run it kept rooms alive that
+  nobody had asked to keep. The host's leave button now closes the room, after
+  a confirmation — dropping everyone is not what "leave" reads like. If the
+  host vanishes without leaving, a remaining player removes them and everyone
+  is told why and shown out; the last one deletes the row.
+- The double jump is now keyed to the goal rather than to the mode's name.
+  Pawns pile up around a single target and a single hop stops being enough —
+  that is the reason, so the three-player table gets it for the same reason
+  the four-player one does.
+
 ## [2.4.1] — 2026-09-22 (patch)
 
 ### Security
