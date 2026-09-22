@@ -3,6 +3,7 @@ import type { DotsPlayer, DotsState, Edge } from '@/types/dots';
 import { updatePlayerStats } from '@/lib/playerStats';
 import { useLobbySync } from '@/hooks/core/useLobbySync';
 import { requireGame, roomCapacity } from '@/games/registry';
+import { randomOf } from '@/lib/turnOrder';
 import { emptyBoard, drawEdge, isBoardFull, leaders, boxTally } from '@/lib/gameLogic/dots';
 
 const GAME = requireGame('dots');
@@ -98,7 +99,8 @@ export function useDotsGame(lobbyId: string | null, userId: string | undefined) 
       next.status = 'playing';
       next.winnerIds = [];
       next.startTime = now();
-      next.turnPlayerId = next.players[0].id;
+      // A random seat opens, so the host does not always draw first.
+      next.turnPlayerId = randomOf(next.players)!.id;
       next.turnDeadline = now() + next.settings.turnDuration * 1000;
       next.notifications = [];
 
@@ -123,6 +125,7 @@ export function useDotsGame(lobbyId: string | null, userId: string | undefined) 
       if (!result) return null; // already drawn, or off the board
 
       const next = result.state;
+      next.lastEdge = edge;
       if (result.claimed === 0) advanceTurn(next);
       else next.turnDeadline = now() + next.settings.turnDuration * 1000;
 

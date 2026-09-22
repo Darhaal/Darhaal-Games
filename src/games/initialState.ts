@@ -360,6 +360,7 @@ const REMATCH: { [K in GameId]: (parent: GameStateByType[K]) => GameStateByType[
     players: [],
     status: 'waiting',
     ...emptyBoard(p.settings.size),
+    lastEdge: undefined,
     turnPlayerId: null,
     turnDeadline: undefined,
     winnerIds: [],

@@ -46,6 +46,15 @@ export interface DotsState {
   boxes: (string | null)[];
 
   /**
+   * The line drawn most recently, so the board can show it.
+   *
+   * With every line the same weight, a move made while you were looking at
+   * the other side of the grid left nothing to find — on a 6×6 board that is
+   * sixty-odd identical sticks to scan. Undefined before the first move.
+   */
+  lastEdge?: Edge;
+
+  /**
    * Whose turn it is, by id rather than by index: a player leaving mid-match
    * shortens the array, and an index would then point at someone else.
    */

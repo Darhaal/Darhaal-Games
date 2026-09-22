@@ -172,7 +172,7 @@ export default function ReversiGame({
             colorOf={(seat) => SEAT_COLORS[seat % 4]}
           />
 
-          <p className="mt-2 text-[11px] font-medium text-[#8A9099]">
+          <p className="mt-3 text-sm font-medium text-[#8A9099]">
             {isMyTurn
               ? myMoves.size > 0 ? t.hint : t.passed
               : turnPlayer ? `${t.waitingFor}: ${turnPlayer.name}` : ''}
@@ -180,7 +180,7 @@ export default function ReversiGame({
         </section>
 
         <aside className="w-full lg:w-64 shrink-0 space-y-4">
-          <div className="text-sm font-bold text-center lg:text-left">
+          <div className="text-base font-bold text-center lg:text-left">
             {isFinished
               ? t.winner
               : isMyTurn
@@ -217,10 +217,10 @@ export default function ReversiGame({
 
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-bold truncate">{p.name}</span>
+                      <span className="text-sm font-bold truncate">{p.name}</span>
                       {p.isHost && <Crown className="w-3 h-3 text-amber-500 fill-current shrink-0" />}
                     </div>
-                    <div className="text-[10px] font-bold text-[#8A9099] mt-0.5">
+                    <div className="text-xs font-bold text-[#8A9099] mt-0.5">
                       {counts[p.seat] || 0} <span className="font-medium">{t.discs(counts[p.seat] || 0)}</span>
                     </div>
                   </div>
@@ -244,7 +244,7 @@ export default function ReversiGame({
             <div className="flex gap-2">
               <button
                 onClick={leaveGame}
-                className="flex-1 py-3 border border-[#E6E1DC] rounded-xl font-bold uppercase text-[11px] hover:bg-[#F8FAFC] transition-colors"
+                className="flex-1 py-3 border border-[#E6E1DC] rounded-xl font-bold uppercase text-xs hover:bg-[#F8FAFC] transition-colors"
               >
                 {t.toMenu}
               </button>
@@ -252,7 +252,7 @@ export default function ReversiGame({
                 gameId="reversi"
                 parentState={gameState}
                 lang={lang}
-                className="flex-1 py-3 bg-[#1A1F26] text-white rounded-xl font-bold uppercase text-[11px] hover:opacity-90 transition-opacity"
+                className="flex-1 py-3 bg-[#1A1F26] text-white rounded-xl font-bold uppercase text-xs hover:opacity-90 transition-opacity"
               />
             </div>
           </div>

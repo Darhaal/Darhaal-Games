@@ -120,7 +120,10 @@ export default function DotsGame({
           style={{
             gridColumn: 2 * col + 2,
             gridRow: 2 * row + 2,
-            backgroundColor: color ? `${color}26` : undefined
+            // 0x40 rather than 0x26: at fifteen percent the claimed box was
+            // barely a tint, and telling apart who owns which half of the
+            // board is the whole scoreboard.
+            backgroundColor: color ? `${color}40` : undefined
           }}
           className="rounded-[2px] transition-colors"
         />
@@ -128,11 +131,17 @@ export default function DotsGame({
     }
   }
 
+  const last = gameState.lastEdge;
+
   /** One line: drawn in its owner's colour, or offered in yours. */
   const line = (orientation: EdgeOrientation, index: number, row: number, col: number) => {
     const owner = orientation === 'h' ? gameState.hLines[index] : gameState.vLines[index];
     const color = colorOfPlayer(owner);
     const open = !owner && isMyTurn;
+    // The move just played, drawn heavier. Every line otherwise weighs the
+    // same, so a move made while you were reading the other side of the grid
+    // left nothing to find.
+    const justPlayed = !!owner && last?.orientation === orientation && last.index === index;
 
     return (
       <button
@@ -159,7 +168,9 @@ export default function DotsGame({
 
         <span
           className={`rounded-full transition-all ${
-            orientation === 'h' ? 'h-[4px] w-[86%]' : 'w-[4px] h-[86%]'
+            orientation === 'h'
+              ? justPlayed ? 'h-[7px] w-[92%]' : 'h-[4px] w-[86%]'
+              : justPlayed ? 'w-[7px] h-[92%]' : 'w-[4px] h-[86%]'
           } ${open ? 'bg-[#E0DDD6] group-hover:opacity-100' : ''}`}
           style={color ? { backgroundColor: color } : open ? { } : { backgroundColor: 'transparent' }}
         />
@@ -238,13 +249,13 @@ export default function DotsGame({
             colorOf={(seat) => SEAT_COLORS[seat % 4]}
           />
 
-          <p className="mt-2 text-[11px] font-medium text-[#8A9099]">
+          <p className="mt-3 text-sm font-medium text-[#8A9099]">
             {isMyTurn ? t.hint : turnPlayer ? `${t.waitingFor}: ${turnPlayer.name}` : ''}
           </p>
         </section>
 
         <aside className="w-full lg:w-64 shrink-0 space-y-4">
-          <div className="text-sm font-bold text-center lg:text-left">
+          <div className="text-base font-bold text-center lg:text-left">
             {isFinished
               ? t.winner
               : isMyTurn
@@ -281,10 +292,10 @@ export default function DotsGame({
 
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-bold truncate">{p.name}</span>
+                      <span className="text-sm font-bold truncate">{p.name}</span>
                       {p.isHost && <Crown className="w-3 h-3 text-amber-500 fill-current shrink-0" />}
                     </div>
-                    <div className="flex items-center gap-1 text-[10px] font-bold text-[#8A9099] mt-0.5">
+                    <div className="flex items-center gap-1 text-xs font-bold text-[#8A9099] mt-0.5">
                       <Trophy className="w-3 h-3" />
                       {tally[p.id] || 0} <span className="font-medium">{t.boxes(tally[p.id] || 0)}</span>
                     </div>
@@ -309,7 +320,7 @@ export default function DotsGame({
             <div className="flex gap-2">
               <button
                 onClick={leaveGame}
-                className="flex-1 py-3 border border-[#E6E1DC] rounded-xl font-bold uppercase text-[11px] hover:bg-[#F8FAFC] transition-colors"
+                className="flex-1 py-3 border border-[#E6E1DC] rounded-xl font-bold uppercase text-xs hover:bg-[#F8FAFC] transition-colors"
               >
                 {t.toMenu}
               </button>
@@ -317,7 +328,7 @@ export default function DotsGame({
                 gameId="dots"
                 parentState={gameState}
                 lang={lang}
-                className="flex-1 py-3 bg-[#1A1F26] text-white rounded-xl font-bold uppercase text-[11px] hover:opacity-90 transition-opacity"
+                className="flex-1 py-3 bg-[#1A1F26] text-white rounded-xl font-bold uppercase text-xs hover:opacity-90 transition-opacity"
               />
             </div>
           </div>

@@ -4,6 +4,7 @@ import { DICTIONARY } from '@/constants/coup';
 import { updatePlayerStats } from '@/lib/playerStats';
 import { useLobbySync } from '@/hooks/core/useLobbySync';
 import { requireGame, roomCapacity } from '@/games/registry';
+import { randomIndex } from '@/lib/turnOrder';
 import { shuffleDeck, buildDeck, getRequiredRoles } from '@/lib/gameLogic/coup';
 
 // Module-level helper: sidesteps the react-compiler purity heuristic
@@ -532,7 +533,9 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
       }));
 
       const newState: GameState = {
-        ...current, status: 'playing', players: newPlayers, deck: shuffled, turnIndex: 0,
+        ...current, status: 'playing', players: newPlayers, deck: shuffled,
+        // A random player opens rather than always the host.
+        turnIndex: randomIndex(newPlayers.length),
         phase: 'choosing_action', currentAction: null, logs: [], winner: undefined, winnerId: undefined,
         lastActionTime: now(), turnDeadline: now() + TURN_MS,
         startTime: now(),

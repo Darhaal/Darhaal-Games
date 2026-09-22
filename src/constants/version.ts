@@ -1,4 +1,4 @@
-export const APP_VERSION = '2.3.1';
+export const APP_VERSION = '2.3.2';
 
 export type VersionType = 'major' | 'minor' | 'patch' | 'init';
 
@@ -12,6 +12,16 @@ export interface VersionLog {
 
 export const VERSION_HISTORY: VersionLog[] = [
   /* ===================== 2.3.x ===================== */
+
+  {
+    ver: '2.3.2',
+    date: '22 SEP 2026',
+    type: 'patch',
+    desc: {
+      ru: 'Первый ход больше не достаётся хозяину комнаты по умолчанию — он разыгрывается: в Морском бою, Перевороте, Стенах, Точках и Реверси. В «Точках и квадратах» последняя проведённая линия нарисована толще, закрытые квадраты закрашены заметнее, текст крупнее. Кнопка правил теперь подписана, а не просто знак вопроса.',
+      en: 'The opening move is no longer the host’s by default — it is drawn for, in Battleship, Coup, Wall Rush, Dots & Boxes and Reversi. In Dots & Boxes the line just played is heavier, closed boxes are filled more clearly and the text is larger. The rules button is labelled rather than a bare question mark.'
+    }
+  },
 
   {
     ver: '2.3.1',

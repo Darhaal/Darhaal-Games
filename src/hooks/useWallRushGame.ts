@@ -3,6 +3,7 @@ import type { Cell, Wall, WallRushPlayer, WallRushState } from '@/types/wallrush
 import { updatePlayerStats } from '@/lib/playerStats';
 import { useLobbySync } from '@/hooks/core/useLobbySync';
 import { requireGame, roomCapacity } from '@/games/registry';
+import { randomOf } from '@/lib/turnOrder';
 import {
   BOARD_FOR_MODE, GOAL_FOR_MODE, WALLS_FOR_MODE, seatsForMode, teamOf,
   startCell, isGoal, canPlaceWall, legalMoves, sameCell
@@ -160,7 +161,9 @@ export function useWallRushGame(lobbyId: string | null, userId: string | undefin
       next.status = 'playing';
       next.winnerIds = [];
       next.startTime = now();
-      next.turnPlayerId = next.players[0].id;
+      // A random seat opens. Seats still decide sides and teams, so this
+      // changes who moves first and nothing else.
+      next.turnPlayerId = randomOf(next.players)!.id;
       next.turnDeadline = now() + next.settings.turnDuration * 1000;
       next.notifications = [];
 

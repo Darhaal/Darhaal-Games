@@ -1,4 +1,4 @@
-import { Target, Zap, Shield, Trophy, MousePointer2, Eye, Flag, Ship, RefreshCw, Crosshair, AlertTriangle, Search, Clock, Map as MapIcon } from 'lucide-react';
+import { Target, Zap, Shield, Trophy, MousePointer2, Eye, Flag, Ship, RefreshCw, Crosshair, AlertTriangle, Search, Clock, Grid, Map as MapIcon } from 'lucide-react';
 import { GameRulesData } from '@/components/GameRulesModal';
 import type { GameId, Locale } from '@/games/registry';
 
@@ -281,7 +281,13 @@ export const GAME_RULES: Record<Locale, Record<GameId, GameRulesData>> = {
         {
           title: 'Квадраты',
           icon: Trophy,
-          content: 'Если ваша линия замкнула квадрат, он становится вашим — и вы ходите ещё раз. Одна линия может закрыть сразу два квадрата, и оба достанутся вам. Ходите, пока закрываете.',
+          content: 'Если ваша линия замкнула квадрат, он закрашивается вашим цветом и засчитывается вам — и вы ходите ещё раз. Одна линия может закрыть сразу два квадрата, и оба достанутся вам. Ходите, пока закрываете.',
+          type: 'text'
+        },
+        {
+          title: 'Как читать доску',
+          icon: Grid,
+          content: 'Каждая линия окрашена в цвет того, кто её провёл, а закрытый квадрат — в цвет хозяина. Последняя проведённая линия нарисована толще остальных: по ней видно, куда только что сходил соперник.',
           type: 'text'
         },
         {
@@ -622,7 +628,13 @@ export const GAME_RULES: Record<Locale, Record<GameId, GameRulesData>> = {
         {
           title: 'Boxes',
           icon: Trophy,
-          content: 'If your line closes a box, the box is yours and you go again. One line can close two boxes at once, and both are yours. You keep going as long as you keep closing.',
+          content: 'If your line closes a box, it is filled in your colour and counted to you — and you go again. One line can close two boxes at once, and both are yours. You keep going as long as you keep closing.',
+          type: 'text'
+        },
+        {
+          title: 'Reading the board',
+          icon: Grid,
+          content: 'Every line carries the colour of whoever drew it, and a closed box is filled in its owner’s. The line drawn most recently is heavier than the rest, so you can see where your rival has just played.',
           type: 'text'
         },
         {

@@ -63,7 +63,7 @@ export function PlayerLegend({
       {players.map((p) => (
         <span key={p.id} className="flex items-center gap-2">
           <PlayerToken className="w-4 h-4" color={colorOf(p.seat)} seat={p.seat} />
-          <span className={`text-xs ${p.id === currentUserId ? 'font-black' : 'font-medium text-[#8A9099]'}`}>
+          <span className={`text-sm ${p.id === currentUserId ? 'font-black' : 'font-medium text-[#8A9099]'}`}>
             {p.name}
           </span>
         </span>

@@ -7,6 +7,30 @@ releasing.
 Format: [Semantic Versioning](https://semver.org/). Types: **major** = platform
 milestone, **minor** = new game mode / feature, **patch** = fixes & improvements.
 
+## [2.3.2] — 2026-09-22 (patch)
+
+### Changed
+- **The opening move is drawn for, not given to the host.** Every game handed
+  it to `players[0]`, which is whoever opened the room — so the host played
+  Dark in every Reversi, shot first in every Battleship and took the first line
+  in every Dots match. Battleship, Coup, Wall Rush and Dots now pick a random
+  starting seat; Reversi shuffles the seating, because seat 0 *is* Dark and
+  Dark opens, so colour and first move are the same draw. Wall Rush seats still
+  decide sides and teams — only who begins changed.
+- **The rules button is labelled.** A bare question mark could open anything,
+  and its tooltip never appears on a touch screen, which is exactly where a
+  player goes looking for the rules. The header now gives way at the title
+  rather than pushing the controls off a narrow screen.
+- Larger type across the Dots and Reversi boards, and a stronger fill on a
+  claimed box — at fifteen percent opacity it was barely a tint, and who owns
+  which half of the board is the whole scoreboard.
+
+### Added
+- **Dots & Boxes shows the last move**, drawn heavier than the rest. Every line
+  weighed the same, so a move made while you were reading the other side of the
+  grid left nothing to find. The in-game rules now say so, along with the
+  colouring they never mentioned either.
+
 ## [2.3.1] — 2026-09-21 (patch)
 
 > Rooms that nobody is in stop pretending otherwise.

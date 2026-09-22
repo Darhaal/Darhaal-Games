@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { BattleshipState, Ship } from '@/types/battleship';
 import { updatePlayerStats } from '@/lib/playerStats';
+import { randomOf } from '@/lib/turnOrder';
 import { useLobbySync } from '@/hooks/core/useLobbySync';
 import { getKey, isValidCoord, getShipCoords, checkPlacement, shuffleFleet } from '@/lib/gameLogic/battleship';
 
@@ -127,7 +128,9 @@ export function useBattleshipGame(
       if (playersArr.length === 2 && playersArr.every(p => p.isReady)) {
         newState.phase = 'playing';
         newState.status = 'playing';
-        newState.turn = playersArr[0].id;
+        // Shooting first is a real edge in Battleship; toss for it rather
+        // than handing it to whoever opened the room.
+        newState.turn = randomOf(playersArr)!.id;
         newState.turnDeadline = Date.now() + TURN_MS;
         newState.startTime = Date.now();
       }

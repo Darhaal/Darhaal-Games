@@ -1,6 +1,6 @@
 # Backlog
 
-State after **v2.3.0**. This is the real list, including the things that are
+State after **v2.3.1**. This is the real list, including the things that are
 open on purpose — see [docs/security.md](docs/security.md) for the reasoning
 behind the accepted risks.
 
@@ -58,24 +58,35 @@ behind the accepted risks.
 
 Kept short — the [changelog](CHANGELOG.md) has the full history.
 
-**An old link follows the rematch (2.3.x).** "Play again" opens a successor, so
+**A lobby nobody has open times out (2.3.1).** The auto-kick is run by the host
+and never kicks itself, so a host who closed their tab left the room frozen —
+nobody to clear the ghosts, and no start button for anyone. The host role now
+passes to the first player still present, and a waiting room untouched for ten
+minutes is collected every five minutes rather than sitting in the list for a
+week. Presence lives in the Realtime service and the sweep runs in SQL, so the
+lobby screen writes the fact down through `touch_lobby`.
+
+**Full rooms left the list (2.3.1).** A room with no seat sat there wearing a
+disabled "Full" button, which reads as something you might be able to do.
+
+**An old link follows the rematch (2.3.1).** "Play again" opens a successor, so
 the link already shared for the finished room pointed nowhere anyone would
 play again — and a private room shares exactly one link. A visitor who is not
 seated is now forwarded to the successor; a player still reading the scoreboard
 is left where they are.
 
-**The Spyfall score survives a rematch (2.3.x).** It is documented as running
+**The Spyfall score survives a rematch (2.3.1).** It is documented as running
 across a series of games and did so inside a room, but the successor starts
 with an empty roster, so the series reset whenever the table wanted another
 game. Scores now travel beside the roster and come back by id.
 
-**Guest accounts are collected (2.3.x).** Guest sign-in creates a real
+**Guest accounts are collected (2.3.1).** Guest sign-in creates a real
 `auth.users` row and nothing removed it; 20 of 31 accounts were guests.
 Anonymous accounts idle for 30 days are now swept daily, ten minutes after the
 lobby sweep frees the `host_id` references they would otherwise be held by.
 Registered accounts are never touched.
 
-**The signup trigger stopped calling a third party (2.3.x).** It still wrote an
+**The signup trigger stopped calling a third party (2.3.1).** It still wrote an
 `api.dicebear.com` URL with the user id inside into `profiles.avatar_url` long
 after the app moved to rendering the same artwork locally — the two had drifted
 despite a comment asking that they be kept in sync. 7 of 31 profiles were

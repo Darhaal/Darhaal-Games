@@ -3,6 +3,7 @@ import type { ReversiPlayer, ReversiState } from '@/types/reversi';
 import { updatePlayerStats } from '@/lib/playerStats';
 import { useLobbySync } from '@/hooks/core/useLobbySync';
 import { requireGame, roomCapacity } from '@/games/registry';
+import { shuffled } from '@/lib/turnOrder';
 import {
   BOARD_SIZE, startingBoard, applyMove, hasMove, leaders, tally
 } from '@/lib/gameLogic/reversi';
@@ -107,7 +108,9 @@ export function useReversiGame(lobbyId: string | null, userId: string | undefine
       const next = clone(current);
       next.size = BOARD_SIZE;
       next.board = startingBoard(BOARD_SIZE);
-      next.players = seated(next).map((p, index) => ({ ...p, seat: index, score: 0 }));
+      // Seat 0 is Dark and Dark opens, so drawing for colour and drawing
+      // for the first move are the same draw.
+      next.players = shuffled(seated(next)).map((p, index) => ({ ...p, seat: index, score: 0 }));
       next.status = 'playing';
       next.passes = 0;
       next.winnerIds = [];
