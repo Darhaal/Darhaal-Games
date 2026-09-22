@@ -7,6 +7,38 @@ releasing.
 Format: [Semantic Versioning](https://semver.org/). Types: **major** = platform
 milestone, **minor** = new game mode / feature, **patch** = fixes & improvements.
 
+## [2.5.3] — 2026-09-22 (patch)
+
+### Security
+- **Analytics is switched off.** Four releases in a row claimed to have stopped
+  the room id reaching Google, and end-to-end measurement showed each of them
+  still leaking. gtag attaches the page address to every hit, the address of a
+  game screen contains the room id, and a room link is its invitation — for a
+  private room, the only thing between it and a stranger.
+
+  `ANALYTICS_ENABLED` is now `false` and nothing is collected. The consent
+  banner, the privacy policy and every call site stay in place and inert.
+  `docs/analytics.md` records what was tried, why two of the "fixes" were
+  reported as working when they were not — the check watched `fetch` and
+  `sendBeacon`, while gtag sends by image pixel and XHR — and the end-to-end
+  check that has to pass before this goes back on.
+
+## [2.5.2] — 2026-09-22 (patch)
+
+### Security
+- **The room address has finally stopped reaching analytics.** 2.4.1 and 2.5.1
+  both claimed this and both were wrong, because both were checked by watching
+  `fetch` and `sendBeacon` — and gtag sends most hits by image pixel and XHR,
+  which the check never saw. With every transport intercepted, an end-to-end
+  run on a real room showed the room's UUID going out in `dl`.
+
+  What works, measured rather than assumed: `page_location` in the event's own
+  parameters. `gtag('set', …)` and `page_location` on `config` do not hold
+  reliably. The address now rides on every event and nowhere else.
+
+  Verified end to end after deploying: create a room, then assert the room's
+  id appears in no outgoing request at all.
+
 ## [2.5.1] — 2026-09-22 (patch)
 
 ### Security

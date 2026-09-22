@@ -5,6 +5,23 @@
  * site that uses GA — so it lives here rather than in an environment variable
  * nobody would remember to set.
  */
+/**
+ * Analytics is off.
+ *
+ * gtag reports the page address with every hit, and on this site the address
+ * of a game screen contains the room id — which for a private room is the
+ * whole of its security. Four separate attempts to make gtag report a
+ * redacted address instead were each verified and each still leaked:
+ * `page_location` on the event, on `config`, via `set`, and re-applied on
+ * navigation. Measured end to end on a real room, the id went out anyway.
+ *
+ * So nothing is collected until it can be shown not to. The consent banner,
+ * the privacy policy and the event call sites all stay in place and inert;
+ * turning this back on is one constant, and must not happen without the
+ * end-to-end check in docs/analytics.md passing.
+ */
+export const ANALYTICS_ENABLED = false;
+
 export const GA_MEASUREMENT_ID = 'G-EN84T7BSHC';
 
 /** Where the consent decision is remembered. Versioned: if what we ask for

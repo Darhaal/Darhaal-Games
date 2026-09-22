@@ -1,5 +1,5 @@
 import {
-  CONSENT_KEY, REDACTED_PARAMS,
+  ANALYTICS_ENABLED, CONSENT_KEY, REDACTED_PARAMS,
   type ConsentChoice, type GaEvent
 } from '@/constants/analytics';
 import { SITE_URL } from '@/constants/app';
@@ -37,6 +37,7 @@ declare global {
 
 /** Analytics runs on the real site only. */
 export const analyticsEnabled = (): boolean => {
+  if (!ANALYTICS_ENABLED) return false;
   if (typeof window === 'undefined') return false;
   try {
     return window.location.hostname === new URL(SITE_URL).hostname;
@@ -134,27 +135,26 @@ export function applyConsent(choice: ConsentChoice): void {
 export type EventParams = Record<string, string | number | boolean>;
 
 /**
- * Pins the address gtag reports to the redacted one.
+ * The redacted address, as event parameters.
  *
- * gtag fills `dl` from `document.location` on every hit unless told
- * otherwise, and most of the ways to tell it do not work. Measured against
- * the live library, only the two-argument `set` does:
+ * gtag fills `dl` from `document.location` on every hit unless the hit itself
+ * carries `page_location`. Measured against the live library on a room URL,
+ * with every transport intercepted — fetch, sendBeacon, XHR and the image
+ * pixel, which is the one that had been escaping earlier attempts:
  *
- *   gtag('set', 'page_location', …)   →  dl is the value given        ✓
- *   gtag('set', { page_location: … }) →  dl is still document.location
- *   gtag('event', …, { page_location: … }) →  same
- *   gtag('config', id, { page_location: … }) →  same
+ *   page_location in the event's own parameters  →  dl is the value given  ✓
+ *   gtag('set', …) before the event              →  unreliable
+ *   gtag('config', …) with page_location         →  unreliable
  *
- * The object form is the one the documentation suggests and the one that
- * silently does nothing, which is how a fix for this shipped once already
- * without fixing anything. Called before every hit, not only on navigation,
- * so a room id cannot ride out on an event fired between page views.
+ * Two releases claimed to have closed this and had not, both times because
+ * the check was done with an incomplete view of what the browser sent. So:
+ * on the event, every time, and nowhere else.
  */
-function pinLocation(): void {
+function locationParams(): { page_location: string; page_path: string } {
   const clean = redactUrl(window.location.pathname + window.location.search);
-  gtag('set', 'page_location', `${SITE_URL}${clean}`);
-  gtag('set', 'page_path', clean);
+  return { page_location: `${SITE_URL}${clean}`, page_path: clean };
 }
+
 
 /**
  * Reports an event, if the visitor allowed it.
@@ -167,8 +167,8 @@ export function track(event: GaEvent, params: EventParams = {}): void {
   if (!analyticsEnabled()) return;
   if (readConsent() !== 'granted') return;
 
-  pinLocation();
-  gtag('event', event, params);
+  // The address goes on the event itself; `set` does not reliably hold.
+  gtag('event', event, { ...locationParams(), ...params });
 }
 
 /** A page view with the room id taken out of the URL. */
@@ -180,6 +180,8 @@ export function trackPageView(path: string): void {
 
   // Pin the address first, then send the view. A repeated `config` is the
   // obvious way to do this and leaves `dl` as the browser's real URL.
-  pinLocation();
-  gtag('event', 'page_view', { page_path: clean });
+  gtag('event', 'page_view', {
+    page_location: `${SITE_URL}${clean}`,
+    page_path: clean
+  });
 }

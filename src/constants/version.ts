@@ -1,4 +1,4 @@
-export const APP_VERSION = '2.5.1';
+export const APP_VERSION = '2.5.3';
 
 export type VersionType = 'major' | 'minor' | 'patch' | 'init';
 
@@ -12,6 +12,26 @@ export interface VersionLog {
 
 export const VERSION_HISTORY: VersionLog[] = [
   /* ===================== 2.5.x ===================== */
+
+  {
+    ver: '2.5.3',
+    date: '22 SEP 2026',
+    type: 'patch',
+    desc: {
+      ru: 'Сбор статистики отключён. Он передавал в Google адрес страницы вместе с идентификатором комнаты, а ссылка на приватную комнату — это и есть доступ к ней. Четыре попытки это обойти не сработали, поэтому сбор выключен до тех пор, пока безопасность не будет доказана.',
+      en: 'Usage statistics are switched off. They were sending Google the page address together with the room identifier, and a private room’s link is its access. Four attempts to work around it failed, so collection is off until it can be shown to be safe.'
+    }
+  },
+
+  {
+    ver: '2.5.2',
+    date: '22 SEP 2026',
+    type: 'patch',
+    desc: {
+      ru: 'Адрес комнаты наконец перестал уходить в аналитику. Две предыдущие попытки не работали, и обе проверялись неполно — часть запросов уходила мимо перехвата. Теперь проверено сквозняком на настоящей комнате.',
+      en: 'The room address has finally stopped reaching analytics. The two previous attempts did not work, and both were checked incompletely — some requests were leaving by a route the check could not see. Verified end to end on a real room.'
+    }
+  },
 
   {
     ver: '2.5.1',
