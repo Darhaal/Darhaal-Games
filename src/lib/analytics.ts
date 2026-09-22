@@ -22,6 +22,7 @@ import { SITE_URL } from '@/constants/app';
 
 type GtagArgs =
   | ['js', Date]
+  | ['set', string, unknown]
   | ['set', Record<string, unknown>]
   | ['config', string, Record<string, unknown>?]
   | ['event', string, Record<string, unknown>?]
@@ -133,17 +134,26 @@ export function applyConsent(choice: ConsentChoice): void {
 export type EventParams = Record<string, string | number | boolean>;
 
 /**
- * The current address, redacted, in the shape gtag wants.
+ * Pins the address gtag reports to the redacted one.
  *
- * gtag fills `dl` from `document.location` on *every* hit unless it is told
- * otherwise, and a second `config` call does not override it. So the clean
- * value is attached to each hit explicitly. Without this the redaction is
- * real and entirely beside the point: the room id travels anyway, in the
- * field the library adds by itself.
+ * gtag fills `dl` from `document.location` on every hit unless told
+ * otherwise, and most of the ways to tell it do not work. Measured against
+ * the live library, only the two-argument `set` does:
+ *
+ *   gtag('set', 'page_location', …)   →  dl is the value given        ✓
+ *   gtag('set', { page_location: … }) →  dl is still document.location
+ *   gtag('event', …, { page_location: … }) →  same
+ *   gtag('config', id, { page_location: … }) →  same
+ *
+ * The object form is the one the documentation suggests and the one that
+ * silently does nothing, which is how a fix for this shipped once already
+ * without fixing anything. Called before every hit, not only on navigation,
+ * so a room id cannot ride out on an event fired between page views.
  */
-function currentLocation(): { page_location: string; page_path: string } {
+function pinLocation(): void {
   const clean = redactUrl(window.location.pathname + window.location.search);
-  return { page_location: `${SITE_URL}${clean}`, page_path: clean };
+  gtag('set', 'page_location', `${SITE_URL}${clean}`);
+  gtag('set', 'page_path', clean);
 }
 
 /**
@@ -157,7 +167,8 @@ export function track(event: GaEvent, params: EventParams = {}): void {
   if (!analyticsEnabled()) return;
   if (readConsent() !== 'granted') return;
 
-  gtag('event', event, { ...currentLocation(), ...params });
+  pinLocation();
+  gtag('event', event, params);
 }
 
 /** A page view with the room id taken out of the URL. */
@@ -166,11 +177,9 @@ export function trackPageView(path: string): void {
   if (readConsent() !== 'granted') return;
 
   const clean = redactUrl(path);
-  const location = { page_location: `${SITE_URL}${clean}`, page_path: clean };
 
-  // `set` first, so anything sent later inherits the clean address, then an
-  // explicit page_view event. A repeated `config` is the obvious way to do
-  // this and does not work: it leaves `dl` as the browser's real URL.
-  gtag('set', location);
-  gtag('event', 'page_view', location);
+  // Pin the address first, then send the view. A repeated `config` is the
+  // obvious way to do this and leaves `dl` as the browser's real URL.
+  pinLocation();
+  gtag('event', 'page_view', { page_path: clean });
 }

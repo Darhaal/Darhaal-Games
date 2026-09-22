@@ -1,4 +1,4 @@
-export const APP_VERSION = '2.5.0';
+export const APP_VERSION = '2.5.1';
 
 export type VersionType = 'major' | 'minor' | 'patch' | 'init';
 
@@ -12,6 +12,16 @@ export interface VersionLog {
 
 export const VERSION_HISTORY: VersionLog[] = [
   /* ===================== 2.5.x ===================== */
+
+  {
+    ver: '2.5.1',
+    date: '22 SEP 2026',
+    type: 'patch',
+    desc: {
+      ru: 'Адрес комнаты всё-таки уходил в аналитику: способ его подменить, описанный в документации Google, молча не работает. Заменён на тот, который проверен и работает.',
+      en: 'The room address was still reaching analytics: the documented way to override it silently does nothing. Replaced with the one that was measured and works.'
+    }
+  },
 
   {
     ver: '2.5.0',

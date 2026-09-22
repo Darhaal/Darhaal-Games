@@ -7,6 +7,26 @@ releasing.
 Format: [Semantic Versioning](https://semver.org/). Types: **major** = platform
 milestone, **minor** = new game mode / feature, **patch** = fixes & improvements.
 
+## [2.5.1] — 2026-09-22 (patch)
+
+### Security
+- **The room address was still reaching analytics**, after 2.4.1 claimed to
+  have stopped it. Measured against the live library rather than reasoned
+  about, only one of the four ways to override the reported address actually
+  does anything:
+
+  | | result |
+  |---|---|
+  | `gtag('set', 'page_location', …)` | **works** |
+  | `gtag('set', { page_location: … })` | ignored |
+  | `gtag('event', …, { page_location: … })` | ignored |
+  | `gtag('config', id, { page_location: … })` | ignored |
+
+  The object form is the one the documentation suggests, and it is the one
+  2.4.1 used — which is how a fix for this shipped once without fixing
+  anything. The address is now pinned before every hit, not only on
+  navigation, so nothing can ride out on an event fired between page views.
+
 ## [2.5.0] — 2026-09-22 (minor) — **Wall Rush for Three**
 
 ### Added
