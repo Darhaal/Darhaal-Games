@@ -23,9 +23,12 @@ const post = (payload: unknown) =>
 const ROOM = 'a6a7ac96-f617-4b55-ba3a-8c9fb76c651a';
 const CLIENT = '00000000-0000-4000-8000-000000000000';
 
+const SESSION = '11111111-1111-4111-8111-111111111111';
+
 const validEvent = (over: Record<string, unknown> = {}) => ({
   name: 'lobby_created',
   clientId: CLIENT,
+  sessionId: SESSION,
   path: '/play',
   params: { game: 'coup' },
   ...over
@@ -161,6 +164,34 @@ describe('the endpoint gives nothing away', () => {
 
     expect(sent).toHaveLength(1);
     expect(sent[0].url).toContain(GA_HOST);
+  });
+});
+
+describe('sessions', () => {
+  it('reports the visit, not the browser', async () => {
+    // The first version sent the client id here, which put every event a
+    // person ever fired into one session that never ended — GA would then
+    // never count a second visit.
+    await post(validEvent());
+
+    const params = (sent[0].body as { events: { params: Record<string, string> }[] })
+      .events[0].params;
+    expect(params.session_id).toBe(SESSION);
+    expect(params.session_id).not.toBe(CLIENT);
+  });
+
+  it('falls back to the browser id when no session is offered', async () => {
+    await post(validEvent({ sessionId: undefined }));
+
+    const body = sent[0].body as { events: { params: Record<string, string> }[] };
+    expect(body.events[0].params.session_id).toBe(CLIENT);
+  });
+
+  it('refuses a session id that is not one we would have made', async () => {
+    await post(validEvent({ sessionId: '; drop table lobbies' }));
+
+    const body = sent[0].body as { events: { params: Record<string, string> }[] };
+    expect(body.events[0].params.session_id).toBe(CLIENT);
   });
 });
 

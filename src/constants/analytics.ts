@@ -40,6 +40,14 @@ export const CONSENT_KEY = 'darhaal.analytics-consent.v2';
  */
 export const CLIENT_ID_KEY = 'darhaal.analytics-client.v1';
 
+/**
+ * The current visit. Rotates after this long without an event, which is the
+ * window GA itself uses — without it every event lands in one eternal
+ * session and a second visit is never counted as one.
+ */
+export const SESSION_KEY = 'darhaal.analytics-session.v1';
+export const SESSION_TIMEOUT_MS = 30 * 60 * 1000;
+
 export type ConsentChoice = 'granted' | 'denied';
 
 /**
@@ -65,6 +73,7 @@ export const GA_EVENTS = {
   matchStarted: 'match_started',
   matchFinished: 'match_finished',
   rematchStarted: 'rematch_started',
+  roomClosed: 'room_closed',
   appError: 'app_error'
 } as const;
 

@@ -91,6 +91,7 @@ const cleanClientId = (input: unknown): string | null =>
 function buildPayload(
   name: string,
   clientId: string,
+  sessionId: string,
   path: string,
   params: unknown
 ) {
@@ -105,7 +106,7 @@ function buildPayload(
           page_path: path,
           // Without this GA treats every event as its own session.
           engagement_time_msec: 1,
-          session_id: clientId
+          session_id: sessionId
         }
       }
     ]
@@ -125,6 +126,7 @@ async function validate(apiSecret: string) {
   const probe = buildPayload(
     'page_view',
     '00000000-0000-4000-8000-000000000000',
+    '00000000-0000-4000-8000-000000000001',
     '/health-check',
     { game: 'validation' }
   );
@@ -174,16 +176,20 @@ export async function POST(request: Request) {
     return ok();
   }
 
-  const { name, clientId, path, params } = (payload ?? {}) as Record<string, unknown>;
+  const { name, clientId, sessionId, path, params } = (payload ?? {}) as Record<string, unknown>;
 
   if (typeof name !== 'string' || !KNOWN_EVENTS.has(name)) return ok();
 
   const id = cleanClientId(clientId);
   if (!id) return ok();
 
+  // A visit without a usable session id is counted as its own visit rather
+  // than folded into the browser's, which is what the first version did.
+  const session = cleanClientId(sessionId) ?? id;
+
   const cleanedPath = cleanPath(path);
 
-  const body = buildPayload(name, id, cleanedPath, params);
+  const body = buildPayload(name, id, session, cleanedPath, params);
 
   try {
     await fetch(

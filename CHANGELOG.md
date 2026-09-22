@@ -7,6 +7,25 @@ releasing.
 Format: [Semantic Versioning](https://semver.org/). Types: **major** = platform
 milestone, **minor** = new game mode / feature, **patch** = fixes & improvements.
 
+## [2.6.2] — 2026-09-22 (patch)
+
+### Fixed
+- **Every event was landing in one endless session.** `session_id` was being
+  set to the browser id, so GA saw a single visit per person that never
+  ended: return visits were never counted and every engagement figure derived
+  from sessions was wrong. The browser now keeps a session id that rotates
+  after thirty minutes without an event, which is the window GA itself uses,
+  and the server validates it before passing it on.
+
+### Added
+- `room_closed`, with `where` telling apart a host who closed the room and a
+  host who vanished. The behaviour shipped in 2.5.0; it was simply not
+  counted.
+- `docs/analytics.md` now lists the custom dimensions to register in GA.
+  Every event already carries `game`, so the data to break `match_started`
+  down by game is there — GA just will not show a parameter in a report until
+  it is registered, and registration is not retroactive.
+
 ## [2.6.1] — 2026-09-22 (patch)
 
 ### Added

@@ -1,5 +1,6 @@
 import {
   ANALYTICS_ENABLED, ANALYTICS_ENDPOINT, CLIENT_ID_KEY, CONSENT_KEY, REDACTED_PARAMS,
+  SESSION_KEY, SESSION_TIMEOUT_MS,
   type ConsentChoice, type GaEvent
 } from '@/constants/analytics';
 import { SITE_URL } from '@/constants/app';
@@ -78,7 +79,10 @@ export function readConsent(): ConsentChoice | null {
 export function writeConsent(choice: ConsentChoice): void {
   try {
     window.localStorage.setItem(CONSENT_KEY, choice);
-    if (choice === 'denied') window.localStorage.removeItem(CLIENT_ID_KEY);
+    if (choice === 'denied') {
+      window.localStorage.removeItem(CLIENT_ID_KEY);
+      window.localStorage.removeItem(SESSION_KEY);
+    }
   } catch {
     // Not remembering the answer is no reason to ignore it for this visit.
   }
@@ -106,6 +110,35 @@ function clientId(): string {
   }
 }
 
+/**
+ * The id of this visit.
+ *
+ * A new one after half an hour without an event, which is how GA decides a
+ * visit has ended. The first version of this sent the browser id here, which
+ * put every event a person ever fired into a single session that never ended
+ * — GA would then never count a second visit, and every engagement figure
+ * derived from sessions was wrong.
+ */
+function sessionId(): string {
+  const now = Date.now();
+  try {
+    const raw = window.localStorage.getItem(SESSION_KEY);
+    if (raw) {
+      const { id, seen } = JSON.parse(raw) as { id: string; seen: number };
+      if (id && typeof seen === 'number' && now - seen < SESSION_TIMEOUT_MS) {
+        window.localStorage.setItem(SESSION_KEY, JSON.stringify({ id, seen: now }));
+        return id;
+      }
+    }
+
+    const fresh = crypto.randomUUID();
+    window.localStorage.setItem(SESSION_KEY, JSON.stringify({ id: fresh, seen: now }));
+    return fresh;
+  } catch {
+    return crypto.randomUUID();
+  }
+}
+
 /** Values safe to attach to an event: no free text, no identifiers. */
 export type EventParams = Record<string, string | number | boolean>;
 
@@ -124,6 +157,7 @@ export function track(event: GaEvent, params: EventParams = {}): void {
   const body = JSON.stringify({
     name: event,
     clientId: clientId(),
+    sessionId: sessionId(),
     // Redacted here and again on the server.
     path: redactUrl(window.location.pathname + window.location.search),
     params

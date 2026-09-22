@@ -296,6 +296,7 @@ export default function UniversalLobby({
 
   const confirmClose = async () => {
     setPendingClose(false);
+    track(GA_EVENTS.roomClosed, { game: gameType, players: players.length, where: 'host_left' });
     try {
       await supabase.rpc('leave_lobby', { p_lobby_id: lobbyId });
     } catch (e) {
@@ -400,6 +401,7 @@ export default function UniversalLobby({
     // away, and a notification living in this component's state would go
     // with it. This one outlives the route change and is the only place the
     // player is told why they were moved.
+    track(GA_EVENTS.roomClosed, { game: gameType, players: players.length, where: 'host_gone' });
     showToast(t.hostClosed, 'info');
     onLeave();
   // eslint-disable-next-line react-hooks/exhaustive-deps -- onLeave is stable for this screen's lifetime

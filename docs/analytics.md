@@ -66,6 +66,30 @@ variable. It is a secret: server-side only, never `NEXT_PUBLIC_`.
 Without it the route collects nothing and the site behaves exactly as if
 analytics were off.
 
+## Seeing it broken down by game
+
+Every event carries `game`, and the lifecycle events carry `players`,
+`max_players`, `is_private`, `result`, `duration_seconds` and `where`. GA
+stores all of them but shows none of them in a report until each is
+registered as a custom dimension — so out of the box the Events report says
+`match_started` and not which game.
+
+*Admin → Custom definitions → Create custom dimension*, scope **Event**, and
+the event parameter name typed exactly as it is sent:
+
+| dimension | parameter | what it answers |
+|---|---|---|
+| Game | `game` | which games are played |
+| Players | `players` | how many sat down |
+| Max players | `max_players` | what sizes rooms are made for |
+| Private | `is_private` | how many rooms are private |
+| Result | `result` | win or loss |
+| Duration | `duration_seconds` | how long a match runs |
+| Where | `where` | which path an error or closure came from |
+
+Registration is not retroactive: a dimension starts collecting from the
+moment it is created, so it is worth doing all of them at once.
+
 ## Is it actually running?
 
 ```

@@ -1,4 +1,4 @@
-export const APP_VERSION = '2.6.1';
+export const APP_VERSION = '2.6.2';
 
 export type VersionType = 'major' | 'minor' | 'patch' | 'init';
 
@@ -12,6 +12,16 @@ export interface VersionLog {
 
 export const VERSION_HISTORY: VersionLog[] = [
   /* ===================== 2.6.x ===================== */
+
+  {
+    ver: '2.6.2',
+    date: '22 SEP 2026',
+    type: 'patch',
+    desc: {
+      ru: 'Исправлен подсчёт визитов в статистике: все события одного человека попадали в один бесконечный визит, поэтому повторные заходы никогда не считались. Добавлено событие закрытия комнаты.',
+      en: 'Fixed visit counting in the statistics: every event from one person landed in a single endless visit, so return visits were never counted. Added an event for a room being closed.'
+    }
+  },
 
   {
     ver: '2.6.1',
