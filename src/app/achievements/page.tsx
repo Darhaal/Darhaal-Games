@@ -61,7 +61,7 @@ const StatCard = ({ label, value, icon: Icon, color }: {
             <Icon className="w-6 h-6" />
         </div>
         <div>
-            <div className="text-[10px] font-bold text-[#8A9099] tracking-wider uppercase">{label}</div>
+            <div className="text-2xs font-bold text-[#8A9099] tracking-wider uppercase">{label}</div>
             <div className="text-xl font-black text-[#1A1F26]">{value}</div>
         </div>
     </div>
@@ -91,29 +91,29 @@ const GameStatCard = ({ data, modeLabel, gameId, t }: {
                       {title}
                   </h3>
                   {modeLabel && (
-                      <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded tracking-wider mt-1 inline-block ${modeLabel === t.modes.single ? 'bg-blue-50 text-blue-600' : 'bg-orange-50 text-orange-600'}`}>
+                      <span className={`text-2xs font-bold uppercase px-2 py-0.5 rounded tracking-wider mt-1 inline-block ${modeLabel === t.modes.single ? 'bg-blue-50 text-blue-600' : 'bg-orange-50 text-orange-600'}`}>
                           {modeLabel}
                       </span>
                   )}
               </div>
-              {total === 0 && <span className="text-[10px] font-bold bg-[#F5F5F0] text-[#8A9099] px-3 py-1 rounded-full tracking-wider">{t.noStats}</span>}
+              {total === 0 && <span className="text-2xs font-bold bg-[#F5F5F0] text-[#8A9099] px-3 py-1 rounded-full tracking-wider">{t.noStats}</span>}
           </div>
 
           <div className={`grid grid-cols-2 gap-y-4 gap-x-2 relative z-10 ${total === 0 ? 'opacity-40 grayscale' : ''}`}>
               <div>
-                  <div className="text-[10px] font-bold text-[#8A9099] mb-1 uppercase tracking-wider">{t.wins}</div>
+                  <div className="text-2xs font-bold text-[#8A9099] mb-1 uppercase tracking-wider">{t.wins}</div>
                   <div className="text-xl font-black text-emerald-600 flex items-center gap-1">
                       {data.wins} <Trophy className="w-3 h-3" />
                   </div>
               </div>
               <div>
-                  <div className="text-[10px] font-bold text-[#8A9099] mb-1 uppercase tracking-wider">{t.losses}</div>
+                  <div className="text-2xs font-bold text-[#8A9099] mb-1 uppercase tracking-wider">{t.losses}</div>
                   <div className="text-xl font-black text-red-500 flex items-center gap-1">
                       {data.lost} <Skull className="w-3 h-3" />
                   </div>
               </div>
               <div>
-                  <div className="text-[10px] font-bold text-[#8A9099] mb-1 uppercase tracking-wider">{t.playTime}</div>
+                  <div className="text-2xs font-bold text-[#8A9099] mb-1 uppercase tracking-wider">{t.playTime}</div>
                   <div className="text-xl font-black text-[#1A1F26] flex items-center gap-1">
                       {Math.round(data.time)}m
                   </div>
@@ -121,7 +121,7 @@ const GameStatCard = ({ data, modeLabel, gameId, t }: {
 
               {extraLabel && (
                   <div>
-                      <div className="text-[10px] font-bold text-[#8A9099] mb-1 uppercase tracking-wider">{extraLabel}</div>
+                      <div className="text-2xs font-bold text-[#8A9099] mb-1 uppercase tracking-wider">{extraLabel}</div>
                       <div className="text-xl font-black text-[#1A1F26] flex items-center gap-1">
                           {data.extra || 0}
                           <GameIcon className="w-3 h-3 text-[#9e1316]" />
@@ -132,7 +132,7 @@ const GameStatCard = ({ data, modeLabel, gameId, t }: {
 
           {total > 0 && (
               <div className="mt-6 relative z-10">
-                  <div className="flex justify-between text-[9px] font-bold text-[#8A9099] mb-2">
+                  <div className="flex justify-between text-3xs font-bold text-[#8A9099] mb-2">
                       <span>Winrate</span>
                       <span>{wr}%</span>
                   </div>
@@ -315,11 +315,11 @@ function AchievementsContent() {
                       <User className="w-16 h-16 text-gray-400 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
                   )}
                   {user.is_anonymous && (
-                      <div className="absolute bottom-0 left-0 right-0 bg-[#1A1F26] text-white text-[9px] font-bold text-center py-1 tracking-wider">{t.guest}</div>
+                      <div className="absolute bottom-0 left-0 right-0 bg-[#1A1F26] text-white text-3xs font-bold text-center py-1 tracking-wider">{t.guest}</div>
                   )}
               </div>
               <div className="text-center md:text-left">
-                  <div className="text-[10px] font-black text-[#9e1316] tracking-[0.2em] mb-2 flex items-center justify-center md:justify-start gap-2 uppercase">
+                  <div className="text-2xs font-black text-[#9e1316] tracking-[0.2em] mb-2 flex items-center justify-center md:justify-start gap-2 uppercase">
                     <Star className="w-3 h-3 fill-current" /> {t.profile}
                   </div>
                   <h1 className="text-3xl md:text-5xl font-black text-[#1A1F26] tracking-tighter leading-none mb-4">
@@ -377,7 +377,7 @@ function AchievementsContent() {
       </main>
 
       <footer className="w-full p-8 text-center z-10 mt-auto opacity-40 hover:opacity-100 transition-opacity">
-        <p className="text-[#1A1F26] text-[10px] font-black tracking-[0.3em] cursor-default flex items-center justify-center gap-2">
+        <p className="text-[#1A1F26] text-2xs font-black tracking-[0.3em] cursor-default flex items-center justify-center gap-2">
             <Zap className="w-3 h-3 text-[#9e1316]" /> {t.footer}
         </p>
       </footer>

@@ -191,11 +191,11 @@ function HomeContent({ landing }: { landing: React.ReactNode }) {
         <div className="absolute bottom-8 flex flex-col items-center gap-3">
            <Link
              href="/games"
-             className="text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-[#9e1316] transition-colors"
+             className="text-2xs font-bold uppercase tracking-widest text-gray-400 hover:text-[#9e1316] transition-colors"
            >
              {t.catalogue}
            </Link>
-           <div className="text-gray-400 text-[10px] font-bold uppercase tracking-widest opacity-50 flex items-center gap-2">
+           <div className="text-gray-400 text-2xs font-bold uppercase tracking-widest opacity-50 flex items-center gap-2">
              <GitCommit className="w-3 h-3" /> v{APP_VERSION} Stable
            </div>
         </div>
@@ -249,7 +249,7 @@ function HomeContent({ landing }: { landing: React.ReactNode }) {
                <span className="text-xl font-black tracking-tighter leading-none text-gray-900">
                  Darhaal <span className="text-[#9e1316]">Games</span>
                </span>
-               <span className="text-[9px] font-bold text-gray-400 uppercase tracking-[0.3em] pl-0.5">Platform</span>
+               <span className="text-3xs font-bold text-gray-400 uppercase tracking-[0.3em] pl-0.5">Platform</span>
             </div>
         </div>
 
@@ -273,7 +273,7 @@ function HomeContent({ landing }: { landing: React.ReactNode }) {
                 </span>
                 <div className="flex items-center gap-1.5">
                     <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-                    <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider group-hover:text-gray-600 transition-colors">
+                    <span className="text-3xs font-bold text-gray-400 uppercase tracking-wider group-hover:text-gray-600 transition-colors">
                       {t.status}
                     </span>
                 </div>
@@ -325,7 +325,7 @@ function HomeContent({ landing }: { landing: React.ReactNode }) {
              <div className="relative z-20 text-left mt-auto">
                  <div className="flex items-center gap-2 mb-2">
                      <span className="w-2 h-2 bg-[#9e1316] rounded-full animate-pulse" />
-                     <span className="text-[#9e1316] text-[10px] font-black uppercase tracking-widest">{t.menu.play.sub}</span>
+                     <span className="text-[#9e1316] text-2xs font-black uppercase tracking-widest">{t.menu.play.sub}</span>
                  </div>
                  <h3 className="text-4xl md:text-5xl font-black text-gray-900 mb-2 tracking-tighter group-hover:translate-x-1 transition-transform">{t.menu.play.title}</h3>
                  <div className="flex items-center justify-between mt-4">
@@ -349,7 +349,7 @@ function HomeContent({ landing }: { landing: React.ReactNode }) {
                         <Plus className="w-6 h-6" />
                     </div>
                     <div>
-                        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 group-hover:text-blue-500 transition-colors">{t.menu.create.sub}</div>
+                        <div className="text-2xs font-bold text-gray-400 uppercase tracking-wider mb-1 group-hover:text-blue-500 transition-colors">{t.menu.create.sub}</div>
                         <h3 className="text-2xl font-black text-gray-900">{t.menu.create.title}</h3>
                     </div>
                 </div>
@@ -367,7 +367,7 @@ function HomeContent({ landing }: { landing: React.ReactNode }) {
                         </div>
                     </div>
                     <div>
-                        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 group-hover:text-amber-600 transition-colors">{t.menu.achievements.sub}</div>
+                        <div className="text-2xs font-bold text-gray-400 uppercase tracking-wider mb-1 group-hover:text-amber-600 transition-colors">{t.menu.achievements.sub}</div>
                         <h3 className="text-2xl font-black text-gray-900">{t.menu.achievements.title}</h3>
                     </div>
                 </div>
@@ -386,7 +386,7 @@ function HomeContent({ landing }: { landing: React.ReactNode }) {
                  </div>
              </div>
              <div className="relative z-10 text-left">
-                 <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 group-hover:text-emerald-600 transition-colors">{t.menu.settings.sub}</div>
+                 <div className="text-2xs font-bold text-gray-400 uppercase tracking-wider mb-1 group-hover:text-emerald-600 transition-colors">{t.menu.settings.sub}</div>
                  <h3 className="text-xl font-black text-gray-900">{t.menu.settings.title}</h3>
              </div>
           </button>
@@ -401,13 +401,13 @@ function HomeContent({ landing }: { landing: React.ReactNode }) {
         <div className="relative group/version">
              <div className="inline-flex items-center gap-1 px-3 py-1 bg-white/50 backdrop-blur-md border border-gray-200 rounded-full cursor-help hover:border-[#9e1316]/30 transition-colors">
                 <GitCommit className="w-3 h-3 text-[#9e1316]" />
-                <span className="text-[9px] font-black tracking-widest uppercase text-gray-900">v{APP_VERSION}</span>
+                <span className="text-3xs font-black tracking-widest uppercase text-gray-900">v{APP_VERSION}</span>
              </div>
 
              {/* Timeline Popover */}
              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-72 bg-white/95 backdrop-blur-2xl border border-gray-200 rounded-2xl shadow-2xl p-0 opacity-0 invisible group-hover/version:opacity-100 group-hover/version:visible transition-all duration-300 transform group-hover/version:translate-y-0 translate-y-2 z-50 text-left overflow-hidden pointer-events-none group-hover/version:pointer-events-auto">
                  <div className="p-3 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
-                     <h4 className="text-[10px] font-black uppercase text-gray-900 tracking-[0.2em]">{t.changelog}</h4>
+                     <h4 className="text-2xs font-black uppercase text-gray-900 tracking-[0.2em]">{t.changelog}</h4>
                      <Clock className="w-3 h-3 text-[#9e1316]" />
                  </div>
                  <div className="max-h-[250px] overflow-y-auto custom-scrollbar p-4 space-y-4">
@@ -415,10 +415,10 @@ function HomeContent({ landing }: { landing: React.ReactNode }) {
                         <div key={i} className="relative pl-4 border-l-2 border-gray-100 last:border-transparent pb-1">
                            <div className={`absolute -left-[5px] top-1.5 w-2 h-2 rounded-full ${getVerColor(log.type)} ring-4 ring-white shadow-sm`} />
                            <div className="flex justify-between items-center mb-1">
-                               <span className="text-[9px] font-black text-gray-900 bg-gray-50 px-1.5 py-0.5 rounded">{log.ver}</span>
-                               <span className="text-[8px] font-bold text-gray-400 uppercase tracking-wide">{log.date}</span>
+                               <span className="text-3xs font-black text-gray-900 bg-gray-50 px-1.5 py-0.5 rounded">{log.ver}</span>
+                               <span className="text-3xs font-bold text-gray-400 uppercase tracking-wide">{log.date}</span>
                            </div>
-                           <div className="text-[10px] text-gray-500 leading-snug font-medium">
+                           <div className="text-2xs text-gray-500 leading-snug font-medium">
                                {log.desc?.[lang]}
                            </div>
                         </div>
@@ -427,7 +427,7 @@ function HomeContent({ landing }: { landing: React.ReactNode }) {
              </div>
         </div>
 
-        <p className="text-gray-900 text-[10px] font-black tracking-[0.3em] cursor-default flex items-center justify-center gap-2">
+        <p className="text-gray-900 text-2xs font-black tracking-[0.3em] cursor-default flex items-center justify-center gap-2">
             <Image src="/logo512.png" alt="Logo" width={16} height={16} className="w-4 h-4 object-contain" /> {t.footer}
         </p>
       </footer>

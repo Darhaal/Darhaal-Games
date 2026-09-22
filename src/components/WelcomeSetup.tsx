@@ -149,7 +149,7 @@ export default function WelcomeSetup({
             type="button"
             onClick={reroll}
             disabled={saving}
-            className="mt-3 inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[#8A9099] hover:text-[#9e1316] transition-colors disabled:opacity-50"
+            className="mt-3 inline-flex items-center gap-1.5 text-2xs font-bold uppercase tracking-wider text-[#8A9099] hover:text-[#9e1316] transition-colors disabled:opacity-50"
           >
             <RefreshCw className="w-3 h-3" /> {t.reroll}
           </button>
@@ -175,7 +175,7 @@ export default function WelcomeSetup({
             className="w-full bg-[#F8FAFC] border border-[#E6E1DC] rounded-2xl px-4 py-3.5 text-center text-base font-bold text-[#1A1F26] placeholder:text-[#8A9099]/60 placeholder:font-medium focus:outline-none focus:border-[#9e1316]/40 focus:bg-white transition-colors disabled:opacity-60"
           />
           {error && (
-            <p className="mt-2 text-center text-[11px] font-bold text-[#9e1316]">{error}</p>
+            <p className="mt-2 text-center text-xs font-bold text-[#9e1316]">{error}</p>
           )}
         </div>
 
@@ -190,7 +190,7 @@ export default function WelcomeSetup({
         <button
           onClick={handleSkip}
           disabled={saving}
-          className="mt-2 w-full py-2 text-[10px] font-bold uppercase tracking-widest text-[#8A9099] hover:text-[#1A1F26] transition-colors disabled:opacity-50"
+          className="mt-2 w-full py-2 text-2xs font-bold uppercase tracking-widest text-[#8A9099] hover:text-[#1A1F26] transition-colors disabled:opacity-50"
         >
           {t.skip}
         </button>

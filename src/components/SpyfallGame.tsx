@@ -263,7 +263,7 @@ export default function SpyfallGame({ gameState, userId, startGame, endGame, lea
 
                   <div className="grid grid-cols-2 gap-4">
                       <div className="bg-[#F8FAFC] p-4 rounded-2xl border border-[#E6E1DC] flex flex-col items-center gap-2 group">
-                          <span className="text-[10px] font-black text-[#8A9099] uppercase tracking-widest">{t.loc}</span>
+                          <span className="text-2xs font-black text-[#8A9099] uppercase tracking-widest">{t.loc}</span>
                           <div className="w-full h-20 rounded-xl overflow-hidden relative">
                               {actualLocation ? (
                                   <LocationArt locationId={actualLocation.id} className="group-hover:scale-110 transition-transform duration-500" />
@@ -274,7 +274,7 @@ export default function SpyfallGame({ gameState, userId, startGame, endGame, lea
                           <span className="font-black text-[#1A1F26] leading-none mt-1">{actualLocation?.name[lang]}</span>
                       </div>
                       <div className="bg-[#F8FAFC] p-4 rounded-2xl border border-[#E6E1DC] flex flex-col items-center gap-2">
-                          <span className="text-[10px] font-black text-[#8A9099] uppercase tracking-widest">{t.spy}</span>
+                          <span className="text-2xs font-black text-[#8A9099] uppercase tracking-widest">{t.spy}</span>
                           <div className="w-20 h-20 rounded-full border-4 border-white shadow-md overflow-hidden">
                               <Image src={spyPlayer?.avatarUrl || "/logo512.png"} alt="" width={80} height={80} className="w-full h-full object-cover" />
                           </div>
@@ -309,7 +309,7 @@ export default function SpyfallGame({ gameState, userId, startGame, endGame, lea
               <div className="text-center mb-12 relative z-10">
                   <div className="inline-flex items-center gap-2 bg-white px-4 py-2 rounded-full border border-[#E6E1DC] shadow-sm mb-4">
                       <Fingerprint className="w-4 h-4 text-[#9e1316]" />
-                      <span className="text-[10px] font-black text-[#1A1F26] uppercase tracking-[0.2em]">{t.branding}</span>
+                      <span className="text-2xs font-black text-[#1A1F26] uppercase tracking-[0.2em]">{t.branding}</span>
                   </div>
                   <h1 className="text-6xl md:text-8xl font-black text-[#1A1F26] tracking-tighter leading-none mb-4">{t.pro}</h1>
                   <p className="text-[#8A9099] font-bold text-xs uppercase tracking-[0.3em]">{t.waiting}</p>
@@ -328,7 +328,7 @@ export default function SpyfallGame({ gameState, userId, startGame, endGame, lea
                           </div>
                           <div className="mt-3 flex flex-col items-center">
                               <span className="text-xs font-black text-[#1A1F26] bg-white px-3 py-1.5 rounded-full border border-[#E6E1DC] shadow-sm tracking-wide">{p.name}</span>
-                              <span className="text-[9px] font-bold text-[#9e1316] mt-1 flex items-center gap-1"><Star className="w-3 h-3 fill-current"/> {p.score || 0}</span>
+                              <span className="text-3xs font-bold text-[#9e1316] mt-1 flex items-center gap-1"><Star className="w-3 h-3 fill-current"/> {p.score || 0}</span>
                           </div>
                       </div>
                   ))}
@@ -396,7 +396,7 @@ export default function SpyfallGame({ gameState, userId, startGame, endGame, lea
                         <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-10 mix-blend-overlay" />
 
                         <div className="relative z-10 text-center flex flex-col items-center min-h-[160px] justify-center">
-                            <div className="text-[10px] font-black text-[#8A9099] uppercase tracking-[0.3em] mb-4 flex items-center gap-2 border border-[#E6E1DC] px-3 py-1 rounded-full">
+                            <div className="text-2xs font-black text-[#8A9099] uppercase tracking-[0.3em] mb-4 flex items-center gap-2 border border-[#E6E1DC] px-3 py-1 rounded-full">
                                 <Fingerprint className="w-3 h-3" /> {t.roleTitle}
                             </div>
 
@@ -450,7 +450,7 @@ export default function SpyfallGame({ gameState, userId, startGame, endGame, lea
                         {me?.isSpy && (
                             <button
                                 onClick={() => setShowGuessModal(true)}
-                                className="flex items-center gap-2 px-4 py-2 bg-[#9e1316] text-white rounded-xl font-bold uppercase text-[10px] tracking-widest hover:bg-[#7a0f11] transition-all shadow-md animate-pulse"
+                                className="flex items-center gap-2 px-4 py-2 bg-[#9e1316] text-white rounded-xl font-bold uppercase text-2xs tracking-widest hover:bg-[#7a0f11] transition-all shadow-md animate-pulse"
                             >
                                 <Target className="w-3 h-3" /> {t.guessLoc}
                             </button>
@@ -507,7 +507,7 @@ export default function SpyfallGame({ gameState, userId, startGame, endGame, lea
                                             <span className={`text-sm font-bold truncate ${isMe ? 'text-[#9e1316]' : 'text-[#1A1F26]'}`}>
                                                 {p.name} {isMe && '(Вы)'}
                                             </span>
-                                            <span className="text-[9px] font-bold text-[#8A9099] flex items-center gap-1">
+                                            <span className="text-3xs font-bold text-[#8A9099] flex items-center gap-1">
                                                 <Star className="w-3 h-3 fill-current text-[#9e1316]"/> {p.score}
                                             </span>
                                         </div>
@@ -517,13 +517,13 @@ export default function SpyfallGame({ gameState, userId, startGame, endGame, lea
                                     {!isMe && gameState.status === 'playing' && !alreadyNominated && (
                                         <button
                                             onClick={() => setAccuseTarget(p.id)}
-                                            className="opacity-0 group-hover:opacity-100 focus:opacity-100 px-3 py-1.5 bg-[#1A1F26] text-white rounded-lg text-[10px] font-bold uppercase hover:bg-[#9e1316] transition-all shadow-md active:scale-95 shrink-0"
+                                            className="opacity-0 group-hover:opacity-100 focus:opacity-100 px-3 py-1.5 bg-[#1A1F26] text-white rounded-lg text-2xs font-bold uppercase hover:bg-[#9e1316] transition-all shadow-md active:scale-95 shrink-0"
                                         >
                                             {t.accuse}
                                         </button>
                                     )}
                                     {alreadyNominated && !isMe && (
-                                        <span className="text-[10px] font-bold text-[#E6E1DC] uppercase tracking-wider shrink-0">-</span>
+                                        <span className="text-2xs font-bold text-[#E6E1DC] uppercase tracking-wider shrink-0">-</span>
                                     )}
                                 </div>
                             );

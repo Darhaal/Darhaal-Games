@@ -119,7 +119,7 @@ const GridCell = memo(({
         content = <div className={`${isSmall ? 'w-1.5 h-1.5' : 'w-2 h-2'} rounded-full bg-[#8A9099]/40`} />;
     } else if (status === 'hit') {
         bgClass = "bg-red-50";
-        content = <span className={`${isSmall ? 'text-[10px]' : 'text-xl'} text-[#9e1316] font-black leading-none`}>✕</span>;
+        content = <span className={`${isSmall ? 'text-2xs' : 'text-xl'} text-[#9e1316] font-black leading-none`}>✕</span>;
     } else if (status === 'killed') {
         bgClass = "bg-[#1A1F26]";
         content = <span className={`${isSmall ? 'text-[8px]' : 'text-sm'} text-white font-bold`}>☠</span>;
@@ -435,10 +435,10 @@ export default function BattleshipGame({
                         <div className="flex justify-between items-center bg-white p-4 rounded-[24px] border border-[#E6E1DC] shadow-sm w-full">
                             <div className="flex items-center gap-4">
                                 <div className="w-12 h-12 rounded-full bg-[#F5F5F0] overflow-hidden border-2 border-white shadow-md">{me?.avatarUrl ? <Image src={me.avatarUrl} alt="" width={48} height={48} className="w-full h-full object-cover" /> : <User className="w-6 h-6 m-auto mt-2 text-gray-400"/>}</div>
-                                <div><div className="font-black text-sm uppercase">{me?.name || 'You'}</div><div className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-md inline-block mt-1 ${me?.isReady ? 'bg-emerald-100 text-emerald-700' : 'bg-yellow-100 text-yellow-700'}`}>{me?.isReady ? t.ready : t.placing}</div></div>
+                                <div><div className="font-black text-sm uppercase">{me?.name || 'You'}</div><div className={`text-2xs font-bold uppercase px-2 py-0.5 rounded-md inline-block mt-1 ${me?.isReady ? 'bg-emerald-100 text-emerald-700' : 'bg-yellow-100 text-yellow-700'}`}>{me?.isReady ? t.ready : t.placing}</div></div>
                             </div>
                             <div className="flex items-center gap-4 text-right">
-                                <div><div className="font-black text-sm uppercase">{opponent?.name || t.enemy}</div><div className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-md inline-block mt-1 ${opponent?.isReady ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>{opponent?.isReady ? t.ready : (!opponent ? t.waiting : t.placing)}</div></div>
+                                <div><div className="font-black text-sm uppercase">{opponent?.name || t.enemy}</div><div className={`text-2xs font-bold uppercase px-2 py-0.5 rounded-md inline-block mt-1 ${opponent?.isReady ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>{opponent?.isReady ? t.ready : (!opponent ? t.waiting : t.placing)}</div></div>
                                 <div className="w-12 h-12 rounded-full bg-[#F5F5F0] overflow-hidden border-2 border-white shadow-md opacity-80">{opponent?.avatarUrl ? <Image src={opponent.avatarUrl} alt="" width={48} height={48} className="w-full h-full object-cover" /> : <User className="w-6 h-6 m-auto mt-2 text-gray-400"/>}</div>
                             </div>
                         </div>
@@ -471,12 +471,12 @@ export default function BattleshipGame({
                                             const isSelected = selectedType === ship.type;
                                             return (
                                                 <div key={ship.type} draggable={!isFull} onDragStart={(e) => handleDragStartMenu(e, ship.type)} onClick={() => !isFull && setSelectedType(ship.type)} className={`w-full flex items-center justify-between p-3 rounded-2xl border-2 transition-all duration-200 cursor-pointer ${isFull ? 'bg-[#F8FAFC] border-transparent opacity-40 grayscale cursor-default' : ''} ${isSelected ? 'bg-[#1A1F26] text-white border-[#1A1F26] shadow-lg scale-[1.02]' : 'bg-white border-[#F5F5F0] hover:border-[#E6E1DC]'}`}>
-                                                    <div className="flex items-center gap-4"><div className="w-8 h-8 rounded-full bg-[#F5F5F0] flex items-center justify-center text-[10px] font-black text-[#8A9099]">{ship.size}x</div><span className="hidden lg:inline text-[10px] font-bold uppercase tracking-wider">{ship.type}</span></div><span className="text-xs font-black">{placedCount}/{ship.count}</span>
+                                                    <div className="flex items-center gap-4"><div className="w-8 h-8 rounded-full bg-[#F5F5F0] flex items-center justify-center text-2xs font-black text-[#8A9099]">{ship.size}x</div><span className="hidden lg:inline text-2xs font-bold uppercase tracking-wider">{ship.type}</span></div><span className="text-xs font-black">{placedCount}/{ship.count}</span>
                                                 </div>
                                             );
                                         })}
                                     </div>
-                                    <p className="text-[10px] text-center text-gray-400 mt-4 uppercase font-bold hidden lg:block">{t.instructions}</p>
+                                    <p className="text-2xs text-center text-gray-400 mt-4 uppercase font-bold hidden lg:block">{t.instructions}</p>
                                 </div>
                                 <div className="flex gap-4">
                                     <button onClick={autoPlaceShips} className="flex-1 py-4 bg-white border-2 border-[#E6E1DC] text-[#1A1F26] rounded-2xl font-bold text-xs uppercase hover:bg-[#F8FAFC] flex items-center justify-center gap-2"><Shuffle className="w-4 h-4" /> {t.auto}</button>
@@ -493,7 +493,7 @@ export default function BattleshipGame({
                                 <div className="relative"><div className="w-14 h-14 rounded-full border-2 border-white shadow-md overflow-hidden bg-[#F5F5F0]">{me?.avatarUrl ? <Image src={me.avatarUrl} alt="" width={56} height={56} className="w-full h-full object-cover" /> : <User className="w-6 h-6 m-auto mt-2 text-gray-400"/>}</div>{isMyTurn && <div className="absolute bottom-0 right-0 w-4 h-4 bg-emerald-500 border-2 border-white rounded-full animate-pulse shadow-sm"></div>}</div>
                                 <div className="flex flex-col"><span className="font-black text-[#1A1F26] text-sm uppercase tracking-tight">{me?.name || 'You'}</span><div className="flex items-center gap-2 text-xs font-bold text-[#8A9099] bg-[#F5F5F0] px-2 py-0.5 rounded-lg mt-1"><Shield className="w-3 h-3 text-emerald-600" /><span>{me?.aliveShipsCount}/10</span></div></div>
                             </div>
-                            <div className="flex flex-col items-center justify-center w-full md:w-1/3 order-first md:order-none"><div className={`text-[10px] font-black uppercase tracking-[0.2em] px-6 py-2 rounded-full border shadow-sm transition-all duration-300 ${isMyTurn ? 'bg-[#9e1316] text-white border-[#9e1316] scale-105' : 'bg-white text-[#8A9099] border-[#E6E1DC]'}`}>{isMyTurn ? t.yourTurn : t.enemyTurn}</div></div>
+                            <div className="flex flex-col items-center justify-center w-full md:w-1/3 order-first md:order-none"><div className={`text-2xs font-black uppercase tracking-[0.2em] px-6 py-2 rounded-full border shadow-sm transition-all duration-300 ${isMyTurn ? 'bg-[#9e1316] text-white border-[#9e1316] scale-105' : 'bg-white text-[#8A9099] border-[#E6E1DC]'}`}>{isMyTurn ? t.yourTurn : t.enemyTurn}</div></div>
                             <div className="flex items-center gap-4 w-full md:w-1/3 justify-end">
                                 <div className="flex flex-col items-end"><span className="font-black text-[#1A1F26] text-sm uppercase tracking-tight">{opponent?.name || t.enemy}</span><div className="flex items-center gap-2 text-xs font-bold text-[#8A9099] bg-[#F5F5F0] px-2 py-0.5 rounded-lg mt-1"><span>{opponent?.aliveShipsCount}/10</span><Crosshair className="w-3 h-3 text-[#9e1316]" /></div></div>
                                 <div className="relative"><div className="w-14 h-14 rounded-full border-2 border-white shadow-md overflow-hidden bg-[#F5F5F0]">{opponent?.avatarUrl ? <Image src={opponent.avatarUrl} alt="" width={56} height={56} className="w-full h-full object-cover" /> : <User className="w-8 h-8 text-gray-400 m-auto mt-2" />}</div>{!isMyTurn && <div className="absolute bottom-0 right-0 w-4 h-4 bg-[#9e1316] border-2 border-white rounded-full animate-pulse shadow-sm"></div>}</div>
@@ -502,7 +502,7 @@ export default function BattleshipGame({
                         <div className="flex flex-col lg:flex-row gap-8 items-start justify-center w-full">
                             <div className="flex-1 w-full max-w-lg mx-auto lg:order-2">
                                 <div className={`bg-white p-6 rounded-[40px] shadow-2xl border-4 transition-all duration-500 relative ${isMyTurn ? 'border-[#9e1316] shadow-[#9e1316]/20 z-10' : 'border-[#E6E1DC] opacity-95'}`}>
-                                    <div className="absolute top-8 left-8 text-[10px] font-bold text-[#8A9099] uppercase tracking-widest flex items-center gap-2"><Crosshair className="w-4 h-4"/> {t.zoneEnemy}</div>
+                                    <div className="absolute top-8 left-8 text-2xs font-bold text-[#8A9099] uppercase tracking-widest flex items-center gap-2"><Crosshair className="w-4 h-4"/> {t.zoneEnemy}</div>
                                     <div className="mt-8 grid grid-cols-10 gap-px bg-[#E6E1DC] border-2 border-[#1A1F26] rounded-xl overflow-hidden cursor-crosshair">
                                         {Array.from({ length: 100 }).map((_, i) => {
                                             const x = i % 10, y = Math.floor(i / 10);
@@ -514,7 +514,7 @@ export default function BattleshipGame({
                             </div>
                             <div className="flex flex-col gap-6 lg:order-1 w-full max-w-xs mx-auto lg:mx-0">
                                 <div className="bg-white p-5 rounded-[32px] shadow-lg border border-[#E6E1DC] opacity-90 hover:opacity-100 transition-opacity relative group">
-                                    <div className="absolute top-5 left-5 text-[10px] font-bold text-[#8A9099] uppercase tracking-widest flex items-center gap-2"><Shield className="w-3 h-3"/> {t.zoneMe}</div>
+                                    <div className="absolute top-5 left-5 text-2xs font-bold text-[#8A9099] uppercase tracking-widest flex items-center gap-2"><Shield className="w-3 h-3"/> {t.zoneMe}</div>
                                     <div className="mt-8 grid grid-cols-10 gap-px bg-[#E6E1DC] border border-[#E6E1DC] w-fit mx-auto rounded overflow-hidden">
                                         {Array.from({ length: 100 }).map((_, i) => {
                                             const x = i % 10, y = Math.floor(i / 10);
@@ -526,9 +526,9 @@ export default function BattleshipGame({
                                 <div className="bg-white border border-[#E6E1DC] p-6 rounded-[32px] shadow-sm flex flex-col gap-4 relative overflow-hidden">
                                     <div className="flex items-center gap-2 text-xs font-black uppercase text-[#1A1F26] tracking-widest mb-2 relative z-10"><BarChart3 className="w-4 h-4 text-[#9e1316]" /> {t.stats}</div>
                                     <div className="space-y-4">
-                                        <div className="space-y-1"><div className="text-[9px] font-bold uppercase text-[#8A9099] mb-2">{t.zoneMe}</div><FleetStatusList ships={myShips} isEnemy={false} /></div>
+                                        <div className="space-y-1"><div className="text-3xs font-bold uppercase text-[#8A9099] mb-2">{t.zoneMe}</div><FleetStatusList ships={myShips} isEnemy={false} /></div>
                                         <div className="h-px bg-[#F5F5F0] w-full" />
-                                        <div className="space-y-1"><div className="text-[9px] font-bold uppercase text-[#8A9099] mb-2">{t.enemy}</div><FleetStatusList ships={opponent?.ships || []} isEnemy={true} /></div>
+                                        <div className="space-y-1"><div className="text-3xs font-bold uppercase text-[#8A9099] mb-2">{t.enemy}</div><FleetStatusList ships={opponent?.ships || []} isEnemy={true} /></div>
                                     </div>
                                 </div>
                             </div>

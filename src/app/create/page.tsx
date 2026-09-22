@@ -57,7 +57,7 @@ const TRANSLATIONS = {
 };
 
 const LABEL_CLASS =
-  'text-[10px] font-black text-[#8A9099] uppercase tracking-widest ml-1 flex items-center gap-2';
+  'text-2xs font-black text-[#8A9099] uppercase tracking-widest ml-1 flex items-center gap-2';
 const BADGE_CLASS = 'text-xs font-bold text-white bg-[#1A1F26] px-2 py-0.5 rounded tabular-nums';
 const RANGE_CLASS =
   'w-full h-1.5 bg-gray-100 rounded-full appearance-none cursor-pointer accent-[#1A1F26]';
@@ -103,7 +103,7 @@ function OptionControl({
           className={RANGE_CLASS}
         />
         {note && (
-          <div className="text-[10px] font-bold text-gray-500 px-2 bg-[#F8FAFC] py-1.5 rounded text-center">
+          <div className="text-2xs font-bold text-gray-500 px-2 bg-[#F8FAFC] py-1.5 rounded text-center">
             {note}
           </div>
         )}
@@ -139,14 +139,14 @@ function OptionControl({
 
       {selected?.preview && (
         <div className="bg-[#F8FAFC] p-4 rounded-xl border border-[#E6E1DC]">
-          <div className="text-[10px] font-bold text-[#8A9099] uppercase tracking-widest mb-3">
+          <div className="text-2xs font-bold text-[#8A9099] uppercase tracking-widest mb-3">
             {option.previewLabel[lang]}
           </div>
           <div className="flex flex-wrap gap-2">
             {selected.preview[lang].map((item) => (
               <span
                 key={item}
-                className="text-[10px] font-bold bg-white px-2 py-1 rounded-md border border-[#E6E1DC] text-[#1A1F26]"
+                className="text-2xs font-bold bg-white px-2 py-1 rounded-md border border-[#E6E1DC] text-[#1A1F26]"
               >
                 {item}
               </span>
@@ -357,7 +357,7 @@ export default function CreatePage() {
                    onChange={e => setMaxPlayers(Number(e.target.value))}
                    className={RANGE_CLASS}
                />
-               <div className="flex justify-between text-[10px] font-medium text-gray-400 px-1">
+               <div className="flex justify-between text-2xs font-medium text-gray-400 px-1">
                    <span>{selectedGame.players.min}</span>
                    <span>{selectedGame.players.max}</span>
                </div>
@@ -454,7 +454,7 @@ export default function CreatePage() {
       </div>
 
       <footer className="w-full p-8 text-center z-10 opacity-40 hover:opacity-100 transition-opacity">
-        <p className="text-[#1A1F26] text-[10px] font-black uppercase tracking-[0.3em] cursor-default flex items-center justify-center gap-2">
+        <p className="text-[#1A1F26] text-2xs font-black uppercase tracking-[0.3em] cursor-default flex items-center justify-center gap-2">
             <Zap className="w-3 h-3 text-[#9e1316]" /> {t.footer}
         </p>
       </footer>

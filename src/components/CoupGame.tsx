@@ -212,7 +212,7 @@ export default function CoupGame({
                 <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-white shadow-sm mb-2"><Image src={p.avatarUrl} alt="" width={48} height={48} className="w-full h-full object-cover" /></div>
                 <div className="text-xs font-bold mb-1 truncate max-w-[80px]">{p.name}</div>
                 <div className="flex gap-1 mb-2">{p.cards.map((c, i) => <div key={i} className={`w-3 h-5 rounded-sm border ${c.revealed ? 'bg-red-200' : 'bg-[#1A1F26]'}`} />)}</div>
-                <div className="flex items-center gap-1 text-[10px] font-bold text-yellow-600 bg-yellow-50 px-2 rounded-full"><Coins className="w-3 h-3" /> {p.coins}</div>
+                <div className="flex items-center gap-1 text-2xs font-bold text-yellow-600 bg-yellow-50 px-2 rounded-full"><Coins className="w-3 h-3" /> {p.coins}</div>
               </div>
             );
           })}

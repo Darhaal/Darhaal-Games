@@ -60,20 +60,20 @@ export default function PublicShell({
           <nav className="flex items-center gap-2 md:gap-4">
             <Link
               href={localizedPath(locale, '/games')}
-              className="text-[11px] font-bold uppercase tracking-wider text-gray-500 hover:text-[#9e1316] transition-colors px-2 py-1"
+              className="text-xs font-bold uppercase tracking-wider text-gray-500 hover:text-[#9e1316] transition-colors px-2 py-1"
             >
               {t.nav}
             </Link>
             <Link
               href={localizedPath(other, '/games')}
               hrefLang={other}
-              className="text-[11px] font-bold uppercase tracking-wider text-gray-500 hover:text-[#9e1316] transition-colors px-2 py-1"
+              className="text-xs font-bold uppercase tracking-wider text-gray-500 hover:text-[#9e1316] transition-colors px-2 py-1"
             >
               {t.switch}
             </Link>
             <Link
               href="/"
-              className="bg-[#1A1F26] text-white text-[11px] font-bold uppercase tracking-wider px-4 py-2.5 rounded-full hover:bg-[#9e1316] transition-colors"
+              className="bg-[#1A1F26] text-white text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-full hover:bg-[#9e1316] transition-colors"
             >
               {t.play}
             </Link>
@@ -85,11 +85,11 @@ export default function PublicShell({
 
       <footer className="w-full border-t border-gray-200 bg-white/60 mt-16">
         <div className="max-w-6xl mx-auto px-4 md:px-6 py-8 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2 text-[10px] font-black tracking-[0.2em] uppercase text-gray-500">
+          <div className="flex items-center gap-2 text-2xs font-black tracking-[0.2em] uppercase text-gray-500">
             <Image src="/logo512.png" alt="" width={16} height={16} className="w-4 h-4 object-contain" />
             {COPYRIGHT}
           </div>
-          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+          <p className="text-2xs font-bold uppercase tracking-wider text-gray-400">
             {APP_NAME} — {t.tagline}
           </p>
         </div>

@@ -199,7 +199,7 @@ export default function AuthForm() {
 
       <button
         onClick={() => changeLang(lang === 'ru' ? 'en' : 'ru')}
-        className="absolute top-6 right-6 sm:top-8 sm:right-8 p-2 rounded-full hover:bg-[#F5F5F0] text-[#8A9099] hover:text-[#1A1F26] transition-colors flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest z-10"
+        className="absolute top-6 right-6 sm:top-8 sm:right-8 p-2 rounded-full hover:bg-[#F5F5F0] text-[#8A9099] hover:text-[#1A1F26] transition-colors flex items-center gap-1 text-2xs font-bold uppercase tracking-widest z-10"
       >
         <Globe className="w-4 h-4" />
         {lang.toUpperCase()}
@@ -219,7 +219,7 @@ export default function AuthForm() {
 
       <form onSubmit={handleAuth} className="space-y-4 sm:space-y-5">
         <div className="space-y-2">
-          <label className="text-[10px] font-bold text-[#8A9099] uppercase tracking-wider ml-1">
+          <label className="text-2xs font-bold text-[#8A9099] uppercase tracking-wider ml-1">
              {isSignUp ? t.usernameLabel : (lang === 'ru' ? 'Имя или Email' : 'Username or Email')}
           </label>
           <div className="relative group">
@@ -236,7 +236,7 @@ export default function AuthForm() {
 
         {isSignUp && (
           <div className="space-y-2 animate-in fade-in slide-in-from-top-4 duration-300">
-            <label className="text-[10px] font-bold text-[#8A9099] uppercase tracking-wider ml-1">{t.emailLabel}</label>
+            <label className="text-2xs font-bold text-[#8A9099] uppercase tracking-wider ml-1">{t.emailLabel}</label>
             <div className="relative group">
               <Mail className="absolute left-4 top-3.5 w-5 h-5 text-[#8A9099] group-focus-within:text-[#9e1316] transition-colors" />
               <input
@@ -251,7 +251,7 @@ export default function AuthForm() {
         )}
 
         <div className="space-y-2">
-          <label className="text-[10px] font-bold text-[#8A9099] uppercase tracking-wider ml-1">{t.passLabel}</label>
+          <label className="text-2xs font-bold text-[#8A9099] uppercase tracking-wider ml-1">{t.passLabel}</label>
           <div className="relative group">
             <Lock className="absolute left-4 top-3.5 w-5 h-5 text-[#8A9099] group-focus-within:text-[#9e1316] transition-colors" />
             <input
@@ -299,7 +299,7 @@ export default function AuthForm() {
               type="button"
               onClick={handleForgotPassword}
               disabled={loading}
-              className="text-[10px] font-bold text-[#8A9099] hover:text-[#9e1316] uppercase tracking-widest transition-colors hover:underline underline-offset-4 disabled:opacity-50"
+              className="text-2xs font-bold text-[#8A9099] hover:text-[#9e1316] uppercase tracking-widest transition-colors hover:underline underline-offset-4 disabled:opacity-50"
             >
               {t.forgotPass}
             </button>
@@ -309,18 +309,18 @@ export default function AuthForm() {
 
       <div className="my-6 sm:my-8 flex items-center gap-4">
         <div className="h-px bg-[#E6E1DC] flex-1" />
-        <span className="text-[#8A9099] text-[10px] uppercase font-bold tracking-widest">OR</span>
+        <span className="text-[#8A9099] text-2xs uppercase font-bold tracking-widest">OR</span>
         <div className="h-px bg-[#E6E1DC] flex-1" />
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:gap-4">
-        <button onClick={handleGoogleLogin} disabled={loading} className="bg-white hover:bg-[#F5F5F0] border border-[#E6E1DC] text-[#8A9099] hover:text-[#1A1F26] py-3 rounded-2xl transition-all flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-wide">
+        <button onClick={handleGoogleLogin} disabled={loading} className="bg-white hover:bg-[#F5F5F0] border border-[#E6E1DC] text-[#8A9099] hover:text-[#1A1F26] py-3 rounded-2xl transition-all flex items-center justify-center gap-2 text-2xs font-bold uppercase tracking-wide">
             {/* lucide v1 dropped its brand icons; the label carries the meaning */}
             <LogIn className="w-4 h-4" />
             <span>Google</span>
         </button>
 
-        <button onClick={handleGuestLogin} disabled={loading} className="bg-white hover:bg-[#F5F5F0] border border-dashed border-[#E6E1DC] text-[#8A9099] hover:text-[#1A1F26] py-3 rounded-2xl transition-all flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-wide">
+        <button onClick={handleGuestLogin} disabled={loading} className="bg-white hover:bg-[#F5F5F0] border border-dashed border-[#E6E1DC] text-[#8A9099] hover:text-[#1A1F26] py-3 rounded-2xl transition-all flex items-center justify-center gap-2 text-2xs font-bold uppercase tracking-wide">
             <Ghost className="w-4 h-4" />
             <span>{t.btnGuest}</span>
         </button>
@@ -337,7 +337,7 @@ export default function AuthForm() {
 
       {!isSignUp && (
          <div className="mt-4 text-center">
-             <span className="text-[10px] text-[#8A9099] font-bold uppercase tracking-widest">{t.guestInfo}</span>
+             <span className="text-2xs text-[#8A9099] font-bold uppercase tracking-widest">{t.guestInfo}</span>
          </div>
       )}
     </div>

@@ -396,7 +396,7 @@ export default function WallRushGame({
                 >
                   {me?.wallsLeft ?? 0}
                 </div>
-                <div className="text-[10px] font-bold text-[#8A9099] uppercase tracking-wider mt-1 leading-tight">
+                <div className="text-2xs font-bold text-[#8A9099] uppercase tracking-wider mt-1 leading-tight">
                   {dragging ? t.dragHint : me?.wallsLeft === 0 ? t.noWalls : ''}
                 </div>
               </div>
@@ -445,7 +445,7 @@ export default function WallRushGame({
                       <span className="text-xs font-bold truncate">{p.name}</span>
                       {p.isHost && <Crown className="w-3 h-3 text-amber-500 fill-current shrink-0" />}
                       {(p.score || 0) > 0 && (
-                        <span className="flex items-center gap-0.5 text-[10px] font-bold text-[#8A9099] shrink-0">
+                        <span className="flex items-center gap-0.5 text-2xs font-bold text-[#8A9099] shrink-0">
                           <Trophy className="w-3 h-3" />{p.score}
                         </span>
                       )}
@@ -457,10 +457,10 @@ export default function WallRushGame({
                         <span key={i} className="w-[3px] h-2.5 rounded-full" style={{ backgroundColor: color }} />
                       ))}
                       {p.wallsLeft === 0 && (
-                        <span className="text-[10px] font-medium text-[#C4C2BC]">{t.noWalls}</span>
+                        <span className="text-2xs font-medium text-[#C4C2BC]">{t.noWalls}</span>
                       )}
                       {gameState.settings.mode === 'teams' && (
-                        <span className="ml-2 text-[9px] font-bold text-[#8A9099] uppercase">
+                        <span className="ml-2 text-3xs font-bold text-[#8A9099] uppercase">
                           {teamOf(p.seat) === 0 ? t.teamA : t.teamB}
                         </span>
                       )}
@@ -495,7 +495,7 @@ export default function WallRushGame({
             <div className="flex gap-2">
               <button
                 onClick={leaveGame}
-                className="flex-1 py-3 border border-[#E6E1DC] rounded-xl font-bold uppercase text-[11px] hover:bg-[#F8FAFC] transition-colors"
+                className="flex-1 py-3 border border-[#E6E1DC] rounded-xl font-bold uppercase text-xs hover:bg-[#F8FAFC] transition-colors"
               >
                 {t.toMenu}
               </button>
@@ -504,7 +504,7 @@ export default function WallRushGame({
                 gameId="wallrush"
                 parentState={gameState}
                 lang={lang}
-                className="flex-1 py-3 bg-[#1A1F26] text-white rounded-xl font-bold uppercase text-[11px] hover:opacity-90 transition-opacity"
+                className="flex-1 py-3 bg-[#1A1F26] text-white rounded-xl font-bold uppercase text-xs hover:opacity-90 transition-opacity"
               />
             </div>
           </div>

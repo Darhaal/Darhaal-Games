@@ -46,7 +46,7 @@ export const GameCard = ({ role, revealed, isMe, onClick, selected, lang, small 
             <div className={`absolute inset-0 backface-hidden rounded-2xl border-[3px] overflow-hidden bg-white flex flex-col p-1.5 sm:p-2 ${revealed ? 'grayscale brightness-90' : ''}`} style={{ borderColor: config.color }}>
             <div className="absolute inset-0 opacity-5 pointer-events-none bg-black" />
             <div className="w-full flex justify-between items-start z-10 mb-1">
-                <span className="font-black text-[8px] sm:text-[10px] uppercase tracking-wider truncate" style={{ color: config.color }}>{info.name}</span>
+                <span className="font-black text-[8px] sm:text-2xs uppercase tracking-wider truncate" style={{ color: config.color }}>{info.name}</span>
                 <config.icon className="w-3 h-3 sm:w-4 sm:h-4 opacity-50" style={{ color: config.color }} />
             </div>
             <div className="flex-1 flex flex-col items-center justify-center z-10">
@@ -103,7 +103,7 @@ interface ActionBtnProps {
 export const ActionBtn = ({ label, onClick, disabled, color = 'bg-white', icon: Icon }: ActionBtnProps) => (
   <button onClick={onClick} disabled={disabled} className={`flex flex-col items-center justify-center gap-1 p-2 rounded-xl border-b-[3px] transition-all active:translate-y-0.5 active:border-b-0 h-full relative overflow-hidden w-full ${disabled ? 'opacity-40 cursor-not-allowed bg-gray-100 border-gray-200 text-gray-400' : `${color} hover:brightness-95 text-[#1A1F26] shadow-sm`}`}>
     {Icon && <Icon className="w-4 h-4 mb-0.5" />}
-    <span className="text-[9px] font-black uppercase leading-none text-center">{label}</span>
+    <span className="text-3xs font-black uppercase leading-none text-center">{label}</span>
   </button>
 );
 
@@ -131,10 +131,10 @@ export const GuideModal = ({ onClose, lang }: { onClose: () => void, lang: Lang 
                    <div className="shrink-0"><GameCard role={role} revealed={false} isMe={true} lang={lang} small={true} /></div>
                    <div className="flex-1 min-w-0">
                       <div className="font-black text-sm uppercase truncate" style={{ color: config.color }}>{info.name}</div>
-                      <p className="text-[10px] text-gray-500 leading-tight mt-1 mb-2 line-clamp-3">{info.desc}</p>
+                      <p className="text-2xs text-gray-500 leading-tight mt-1 mb-2 line-clamp-3">{info.desc}</p>
                       <div className="flex flex-wrap gap-1">
-                          <span className="text-[9px] font-bold bg-gray-100 px-2 py-1 rounded text-gray-600 border border-gray-200 truncate max-w-full">{info.action}</span>
-                          {info.block !== '-' && <span className="text-[9px] font-bold bg-red-50 text-red-600 px-2 py-1 rounded border border-red-100 truncate max-w-full">Block: {info.block}</span>}
+                          <span className="text-3xs font-bold bg-gray-100 px-2 py-1 rounded text-gray-600 border border-gray-200 truncate max-w-full">{info.action}</span>
+                          {info.block !== '-' && <span className="text-3xs font-bold bg-red-50 text-red-600 px-2 py-1 rounded border border-red-100 truncate max-w-full">Block: {info.block}</span>}
                       </div>
                    </div>
                 </div>
@@ -158,7 +158,7 @@ export const LogPanel = ({ logs, lang }: { logs: GameLog[], lang: Lang }) => {
 
       <div className={`fixed md:absolute top-24 left-4 z-30 w-72 max-h-64 bg-white/95 backdrop-blur-md rounded-2xl border border-[#E6E1DC] shadow-xl flex flex-col overflow-hidden transition-all duration-300 transform ${isOpen ? 'translate-x-0 opacity-100' : '-translate-x-full opacity-0 md:translate-x-0 md:opacity-100'}`}>
          <div className="px-4 py-3 border-b border-[#E6E1DC] bg-gray-50/50 flex justify-between items-center">
-           <div className="text-[10px] font-black uppercase text-[#8A9099] flex items-center gap-2 tracking-wider"><History className="w-3 h-3" /> {DICTIONARY[lang].ui.logs}</div>
+           <div className="text-2xs font-black uppercase text-[#8A9099] flex items-center gap-2 tracking-wider"><History className="w-3 h-3" /> {DICTIONARY[lang].ui.logs}</div>
            <button onClick={() => setIsOpen(false)} className="md:hidden"><X className="w-4 h-4 text-gray-400" /></button>
          </div>
          <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
@@ -167,7 +167,7 @@ export const LogPanel = ({ logs, lang }: { logs: GameLog[], lang: Lang }) => {
               <div key={i} className="text-xs px-3 py-2 rounded-xl hover:bg-gray-50 flex flex-col gap-1 border border-transparent hover:border-gray-100 transition-colors">
                  <div className="flex justify-between items-center">
                    <span className="font-bold text-[#1A1F26] truncate max-w-[120px]">{log.user}</span>
-                   <span className="text-[9px] text-gray-400">{log.time}</span>
+                   <span className="text-3xs text-gray-400">{log.time}</span>
                  </div>
                  <span className="text-gray-600 leading-snug">{log.action}</span>
               </div>

@@ -99,7 +99,7 @@ export default function GamesHub({ locale }: { locale: Locale }) {
                   {copy.tagline}
                 </p>
 
-                <dl className="mt-5 flex items-center gap-4 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                <dl className="mt-5 flex items-center gap-4 text-2xs font-bold uppercase tracking-wider text-gray-400">
                   <div className="flex items-center gap-1.5">
                     <dt className="sr-only">{t.players}</dt>
                     <dd>
@@ -115,7 +115,7 @@ export default function GamesHub({ locale }: { locale: Locale }) {
                   </div>
                 </dl>
 
-                <span className="mt-4 text-[11px] font-bold uppercase tracking-wider text-[#9e1316] opacity-0 group-hover:opacity-100 transition-opacity">
+                <span className="mt-4 text-xs font-bold uppercase tracking-wider text-[#9e1316] opacity-0 group-hover:opacity-100 transition-opacity">
                   {t.readMore} →
                 </span>
               </article>

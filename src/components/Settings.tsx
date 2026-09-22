@@ -258,7 +258,7 @@ export default function Settings({ isOpen, onClose, user, currentLang, setLang, 
              </div>
              <div>
                 <span className="font-black text-xl text-[#1A1F26] tracking-tight block leading-none">Darhaal Games</span>
-                <span className="text-[10px] font-bold text-[#8A9099] uppercase tracking-[0.2em]">Settings</span>
+                <span className="text-2xs font-bold text-[#8A9099] uppercase tracking-[0.2em]">Settings</span>
              </div>
           </div>
 
@@ -292,7 +292,7 @@ export default function Settings({ isOpen, onClose, user, currentLang, setLang, 
                   </div>
                   <div className="min-w-0">
                       <div className="text-xs font-black text-[#1A1F26] truncate">{user.name}</div>
-                      <div className="text-[9px] font-bold text-[#8A9099] truncate uppercase tracking-wide">
+                      <div className="text-3xs font-bold text-[#8A9099] truncate uppercase tracking-wide">
                         {user.isAnonymous ? 'Guest' : 'Member'}
                       </div>
                   </div>
@@ -341,7 +341,7 @@ export default function Settings({ isOpen, onClose, user, currentLang, setLang, 
                             </div>
 
                             <div className="flex flex-col items-center md:items-start gap-1 flex-1">
-                                <label className="text-[10px] font-bold text-[#8A9099] uppercase tracking-widest pl-1">{t.nickname}</label>
+                                <label className="text-2xs font-bold text-[#8A9099] uppercase tracking-widest pl-1">{t.nickname}</label>
                                 {isEditingName ? (
                                     <div className="flex gap-3 w-full max-w-sm animate-in fade-in slide-in-from-left-2">
                                         <input
@@ -486,7 +486,7 @@ export default function Settings({ isOpen, onClose, user, currentLang, setLang, 
                                         <Mail className="w-6 h-6" />
                                     </div>
                                     <div>
-                                        <div className="text-[10px] font-bold text-[#8A9099] uppercase tracking-wider mb-1">Email Address</div>
+                                        <div className="text-2xs font-bold text-[#8A9099] uppercase tracking-wider mb-1">Email Address</div>
                                         <div className="text-lg font-bold text-[#1A1F26]">{user.email}</div>
                                     </div>
                                 </div>

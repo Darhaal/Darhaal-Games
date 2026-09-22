@@ -86,7 +86,7 @@ export default function HomeLanding({ locale = 'ru' }: { locale?: Locale }) {
                 <p className="mt-2 text-sm text-gray-500 font-medium leading-relaxed flex-1">
                   {g.tagline}
                 </p>
-                <div className="mt-4 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                <div className="mt-4 text-2xs font-bold uppercase tracking-wider text-gray-400">
                   {range} · ~{game.playtimeMinutes} {locale === 'ru' ? 'мин' : 'min'}
                 </div>
               </article>
@@ -138,13 +138,13 @@ export default function HomeLanding({ locale = 'ru' }: { locale?: Locale }) {
       </section>
 
       <footer className="max-w-5xl mx-auto px-4 md:px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-3">
-        <span className="text-[10px] font-black tracking-[0.2em] uppercase text-gray-500">
+        <span className="text-2xs font-black tracking-[0.2em] uppercase text-gray-500">
           {COPYRIGHT}
         </span>
         <Link
           href={localizedPath(locale === 'ru' ? 'en' : 'ru', '/games')}
           hrefLang={locale === 'ru' ? 'en' : 'ru'}
-          className="text-[10px] font-bold uppercase tracking-wider text-gray-400 hover:text-[#9e1316] transition-colors"
+          className="text-2xs font-bold uppercase tracking-wider text-gray-400 hover:text-[#9e1316] transition-colors"
         >
           {locale === 'ru' ? 'English' : 'Русский'}
         </Link>

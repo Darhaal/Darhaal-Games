@@ -83,7 +83,7 @@ export default function GameDetail({
 
       <article className="max-w-3xl mx-auto px-4 md:px-6 pt-10 md:pt-14">
         <nav aria-label="Breadcrumb" className="mb-8">
-          <ol className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+          <ol className="flex items-center gap-2 text-2xs font-bold uppercase tracking-wider text-gray-400">
             <li>
               <Link href={localizedPath(locale, '/games')} className="hover:text-[#9e1316] transition-colors">
                 {t.crumbGames}
@@ -103,17 +103,17 @@ export default function GameDetail({
 
         <dl className="mt-8 grid grid-cols-3 gap-3 border-y border-gray-200 py-5">
           <div>
-            <dt className="text-[10px] font-bold uppercase tracking-wider text-gray-400">{t.players}</dt>
+            <dt className="text-2xs font-bold uppercase tracking-wider text-gray-400">{t.players}</dt>
             <dd className="mt-1 text-lg font-black tracking-tight text-gray-900">{range}</dd>
           </div>
           <div>
-            <dt className="text-[10px] font-bold uppercase tracking-wider text-gray-400">{t.duration}</dt>
+            <dt className="text-2xs font-bold uppercase tracking-wider text-gray-400">{t.duration}</dt>
             <dd className="mt-1 text-lg font-black tracking-tight text-gray-900">
               ~{game.playtimeMinutes} {t.minutes}
             </dd>
           </div>
           <div>
-            <dt className="text-[10px] font-bold uppercase tracking-wider text-gray-400">{t.genre}</dt>
+            <dt className="text-2xs font-bold uppercase tracking-wider text-gray-400">{t.genre}</dt>
             <dd className="mt-1 text-sm font-black tracking-tight text-gray-900 leading-tight pt-1">
               {game.genre[locale]}
             </dd>

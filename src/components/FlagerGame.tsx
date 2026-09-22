@@ -226,7 +226,7 @@ const FlagRevealCanvas = ({ targetCode, guesses, isRoundDone, t }: { targetCode:
        <div className="absolute inset-0 shadow-[inset_0_0_50px_rgba(0,0,0,0.5)] z-30 pointer-events-none" />
 
        {!isRoundDone && (
-         <div className="absolute top-3 right-3 bg-black/60 text-[#9e1316] text-[10px] font-mono px-2 py-1 rounded backdrop-blur-sm z-40 border border-[#9e1316]/40 animate-pulse">
+         <div className="absolute top-3 right-3 bg-black/60 text-[#9e1316] text-2xs font-mono px-2 py-1 rounded backdrop-blur-sm z-40 border border-[#9e1316]/40 animate-pulse">
             {t.pixelMatch}
          </div>
        )}
@@ -247,7 +247,7 @@ const PodiumItem = ({ p, place, delay, currentUserId }: { p: FlagerPlayerState |
                     <div className={`w-12 h-12 md:w-16 md:h-16 rounded-full border-4 ${isMe ? 'border-[#9e1316]' : 'border-white'} shadow-lg overflow-hidden bg-gray-200`}>
                          <Image src={p.avatarUrl || defaultAvatar(p.id)} alt="" width={64} height={64} className="w-full h-full object-cover" />
                     </div>
-                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-[#1A1F26] text-white text-[9px] md:text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap border border-white/20 max-w-[80px] truncate">
+                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-[#1A1F26] text-white text-3xs md:text-2xs font-bold px-2 py-0.5 rounded-full whitespace-nowrap border border-white/20 max-w-[80px] truncate">
                         {p.name}
                     </div>
                 </div>
@@ -413,7 +413,7 @@ export default function FlagerGame({ gameState, userId, makeGuess, handleTimeout
                             <div className="mt-8 bg-[#F5F5F0] rounded-2xl p-4 md:p-6 border border-[#E6E1DC]">
                                 <table className="w-full text-left">
                                     <thead>
-                                        <tr className="text-[10px] font-black text-[#8A9099] uppercase tracking-widest border-b border-[#E6E1DC]">
+                                        <tr className="text-2xs font-black text-[#8A9099] uppercase tracking-widest border-b border-[#E6E1DC]">
                                             <th className="pb-3 pl-2">{t.player}</th>
                                             <th className="pb-3 text-center hidden sm:table-cell">{t.accuracy}</th>
                                             <th className="pb-3 text-center">{t.guessed}</th>
@@ -582,7 +582,7 @@ export default function FlagerGame({ gameState, userId, makeGuess, handleTimeout
                         />
                         <Search className={`absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors ${shake ? 'text-red-500' : 'text-gray-400'}`} />
                         <div className="absolute right-4 top-1/2 -translate-y-1/2 hidden md:flex gap-1">
-                            <kbd className="bg-gray-100 border border-gray-200 rounded px-2 py-1 text-[10px] font-bold text-gray-400">TAB</kbd>
+                            <kbd className="bg-gray-100 border border-gray-200 rounded px-2 py-1 text-2xs font-bold text-gray-400">TAB</kbd>
                         </div>
                    </div>
 
@@ -617,7 +617,7 @@ export default function FlagerGame({ gameState, userId, makeGuess, handleTimeout
                               <Image src={cData?.flagPath || ""} alt="" width={40} height={28} className="w-10 h-7 object-cover rounded shadow-sm grayscale-[0.2]" />
                               <div className="flex flex-col min-w-0">
                                   <span className={`font-bold text-sm truncate ${isTarget ? 'text-emerald-800' : 'text-[#1A1F26]'}`}>{cData?.name[lang]}</span>
-                                  <span className="text-[10px] text-gray-400 font-bold uppercase">{cData?.continent}</span>
+                                  <span className="text-2xs text-gray-400 font-bold uppercase">{cData?.continent}</span>
                               </div>
                           </div>
                       );
@@ -630,11 +630,11 @@ export default function FlagerGame({ gameState, userId, makeGuess, handleTimeout
                   <div className="absolute top-0 right-0 w-32 h-32 bg-[#9e1316] rounded-full blur-[60px] opacity-20 group-hover:opacity-40 transition-opacity" />
                   <div className="relative z-10 flex justify-between items-end">
                       <div>
-                          <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">{t.score}</div>
+                          <div className="text-2xs font-bold text-gray-400 uppercase tracking-widest mb-1">{t.score}</div>
                           <div className="text-4xl font-black tracking-tighter">{me?.score || 0}</div>
                       </div>
                       <div className="text-right">
-                          <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">{t.accuracy}</div>
+                          <div className="text-2xs font-bold text-gray-400 uppercase tracking-widest mb-1">{t.accuracy}</div>
                           <div className={`text-xl font-bold flex items-center gap-1 justify-end ${calculateAccuracy(me) > 80 ? 'text-emerald-400' : 'text-white'}`}>
                               <Target className="w-4 h-4" /> {calculateAccuracy(me)}%
                           </div>
@@ -668,14 +668,14 @@ export default function FlagerGame({ gameState, userId, makeGuess, handleTimeout
                                       <div className="flex flex-col">
                                           <span className={`font-bold text-sm ${isMe ? 'text-[#1A1F26]' : 'text-gray-600'}`}>{p.name}</span>
                                           <div className="flex items-center gap-2">
-                                              <span className="text-[9px] font-bold uppercase tracking-wider flex items-center gap-1">
+                                              <span className="text-3xs font-bold uppercase tracking-wider flex items-center gap-1">
                                                   {isDone ? (
                                                       hasFailed ? <span className="text-red-500">{t.missionFailedShort}</span> : <span className="text-emerald-600">{t.targetFound}</span>
                                                   ) : (
                                                       <span className="text-gray-400 animate-pulse">{t.searching}</span>
                                                   )}
                                               </span>
-                                              <span className="text-[9px] font-bold text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-md">
+                                              <span className="text-3xs font-bold text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-md">
                                                   {p.guesses?.length || 0}/10
                                               </span>
                                           </div>
@@ -685,7 +685,7 @@ export default function FlagerGame({ gameState, userId, makeGuess, handleTimeout
                                   <div className="flex flex-col items-end">
                                        <span className={`font-black text-sm ${isMe ? 'text-[#1A1F26]' : 'text-gray-500'}`}>{p.score}</span>
                                        {isDone && p.roundScore > 0 && (
-                                           <span className="font-bold text-[10px] text-emerald-600">+{p.roundScore}</span>
+                                           <span className="font-bold text-2xs text-emerald-600">+{p.roundScore}</span>
                                        )}
                                   </div>
                               </div>
@@ -714,7 +714,7 @@ export default function FlagerGame({ gameState, userId, makeGuess, handleTimeout
                             <Image src={COUNTRIES[currentFlagCode.toLowerCase()]?.flagPath || ""} alt="" fill sizes="(max-width: 768px) 100vw, 512px" className="object-cover" />
                             <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
                             <div className="absolute bottom-4 left-6">
-                                <div className="text-white/60 text-[10px] font-bold uppercase tracking-widest mb-1">{t.correctAnswer}</div>
+                                <div className="text-white/60 text-2xs font-bold uppercase tracking-widest mb-1">{t.correctAnswer}</div>
                                 <div className="text-2xl md:text-3xl font-black text-white">{COUNTRIES[currentFlagCode.toLowerCase()]?.name[lang]}</div>
                             </div>
                         </div>

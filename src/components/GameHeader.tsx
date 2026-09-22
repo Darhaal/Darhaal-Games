@@ -55,7 +55,7 @@ export default function GameHeader({
             </h1>
             <div className="hidden sm:flex items-center gap-1.5 mt-1">
                <span className="w-1.5 h-1.5 rounded-full bg-[#9e1316]" />
-               <span className="text-[10px] font-bold text-[#8A9099] uppercase tracking-[0.2em] group-hover:text-[#1A1F26] transition-colors">
+               <span className="text-2xs font-bold text-[#8A9099] uppercase tracking-[0.2em] group-hover:text-[#1A1F26] transition-colors">
                  by Darhaal
                </span>
             </div>
@@ -92,7 +92,7 @@ export default function GameHeader({
               className="flex items-center gap-1.5 px-2 md:px-3 py-2.5 rounded-xl text-[#8A9099] hover:bg-[#F5F5F0] hover:text-[#1A1F26] transition-all border border-transparent hover:border-[#E6E1DC]"
             >
               <Book className="w-5 h-5 shrink-0" />
-              <span className="font-bold uppercase text-[10px] tracking-wide md:tracking-widest">{t.guide}</span>
+              <span className="font-bold uppercase text-2xs tracking-wide md:tracking-widest">{t.guide}</span>
             </button>
           )}
 
@@ -104,7 +104,7 @@ export default function GameHeader({
               className="flex items-center gap-1.5 px-2 md:px-3 py-2.5 rounded-xl text-[#8A9099] hover:bg-[#F5F5F0] hover:text-[#1A1F26] transition-all border border-transparent hover:border-[#E6E1DC]"
             >
               <HelpCircle className="w-5 h-5 shrink-0" />
-              <span className="font-bold uppercase text-[10px] tracking-wide md:tracking-widest">{t.rules}</span>
+              <span className="font-bold uppercase text-2xs tracking-wide md:tracking-widest">{t.rules}</span>
             </button>
           )}
 
@@ -112,7 +112,7 @@ export default function GameHeader({
 
           <button
             onClick={onLeave}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white border border-[#E6E1DC] text-[#1A1F26] rounded-xl font-bold uppercase text-[10px] tracking-widest hover:bg-[#F5F5F0] hover:text-[#9e1316] hover:border-[#9e1316]/20 transition-all shadow-sm active:scale-95"
+            className="flex items-center gap-2 px-4 py-2.5 bg-white border border-[#E6E1DC] text-[#1A1F26] rounded-xl font-bold uppercase text-2xs tracking-widest hover:bg-[#F5F5F0] hover:text-[#9e1316] hover:border-[#9e1316]/20 transition-all shadow-sm active:scale-95"
           >
             <LogOut className="w-4 h-4" />
             <span className="hidden md:inline">{t.leave}</span>

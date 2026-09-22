@@ -1,5 +1,43 @@
 @import "tailwindcss";
 
+/**
+ * Two sizes below Tailwind's smallest, named rather than written as
+ * `text-[10px]` in a hundred places. Being tokens is the point: a literal
+ * pixel value cannot respond to anything, and these are the sizes that
+ * needed to.
+ *
+ * Not `@theme inline` — inlining bakes the value into each utility, and
+ * these have to stay variables so the block below can move them.
+ */
+@theme {
+  --text-3xs: 0.5625rem;          /* 9px  */
+  --text-3xs--line-height: 1.45;
+  --text-2xs: 0.625rem;           /* 10px */
+  --text-2xs--line-height: 1.45;
+}
+
+/**
+ * The small end of the scale grows on a large screen.
+ *
+ * The interface was drawn for a laptop, where 10px reads as a caption; on a
+ * 27" monitor at arm's length the same caption is a smudge. Only the bottom
+ * of the scale moves — headings and body copy are already comfortable, and
+ * growing everything would just reflow every layout.
+ *
+ * Small screens are untouched: that is where the tight sizes earn their keep.
+ */
+@media (min-width: 1280px) {
+  :root {
+    --text-3xs: 0.6563rem;        /* 9  -> 10.5 */
+    --text-2xs: 0.7188rem;        /* 10 -> 11.5 */
+    --text-xs: 0.8438rem;         /* 12 -> 13.5 */
+    --text-xs--line-height: 1.4;
+    --text-sm: 0.9375rem;         /* 14 -> 15   */
+    --text-sm--line-height: 1.45;
+  }
+}
+
+
 :root {
   --background: #ffffff;
   --foreground: #171717;

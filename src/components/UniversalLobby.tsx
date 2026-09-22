@@ -419,7 +419,7 @@ export default function UniversalLobby({
                {roomName}
             </h1>
             <div className="flex items-center gap-2 mt-2">
-                <div className="text-[10px] font-bold text-[#9e1316] uppercase tracking-[0.2em] bg-[#9e1316]/5 px-3 py-1 rounded-full border border-[#9e1316]/10 animate-pulse">
+                <div className="text-2xs font-bold text-[#9e1316] uppercase tracking-[0.2em] bg-[#9e1316]/5 px-3 py-1 rounded-full border border-[#9e1316]/10 animate-pulse">
                     {t.waiting}
                 </div>
             </div>
@@ -466,11 +466,11 @@ export default function UniversalLobby({
                       <div className="flex flex-col overflow-hidden">
                           <div className="font-black text-[#1A1F26] text-sm truncate">{p.name}</div>
                           <div className="flex items-center gap-2">
-                            <div className="text-[10px] font-bold text-[#8A9099] uppercase tracking-wider">
+                            <div className="text-2xs font-bold text-[#8A9099] uppercase tracking-wider">
                                 {isMe ? <span className="text-[#9e1316]">{t.you}</span> : (p.isHost ? t.host : 'Player')}
                             </div>
                             {!isOnline && (
-                                <span className="text-[9px] font-bold text-red-500 uppercase tracking-wider flex items-center gap-1 animate-pulse">
+                                <span className="text-3xs font-bold text-red-500 uppercase tracking-wider flex items-center gap-1 animate-pulse">
                                     {kickTime !== null && kickTime > 0 ? `${t.autoKick} ${kickTime}${t.sec}` : t.offline}
                                 </span>
                             )}
@@ -507,7 +507,7 @@ export default function UniversalLobby({
             >
                 <div className="absolute inset-0 bg-gradient-to-tr from-[#9e1316]/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                 <div className="relative z-10">
-                    <div className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-4 group-hover:text-white/80 transition-colors">{t.code}</div>
+                    <div className="text-2xs font-bold text-gray-400 uppercase tracking-[0.2em] mb-4 group-hover:text-white/80 transition-colors">{t.code}</div>
                     <div className="text-5xl font-black tracking-widest font-mono group-hover:scale-110 transition-transform duration-300">
                         {roomCode}
                     </div>

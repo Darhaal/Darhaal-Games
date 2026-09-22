@@ -1,4 +1,4 @@
-export const APP_VERSION = '2.3.2';
+export const APP_VERSION = '2.3.3';
 
 export type VersionType = 'major' | 'minor' | 'patch' | 'init';
 
@@ -12,6 +12,16 @@ export interface VersionLog {
 
 export const VERSION_HISTORY: VersionLog[] = [
   /* ===================== 2.3.x ===================== */
+
+  {
+    ver: '2.3.3',
+    date: '22 SEP 2026',
+    type: 'patch',
+    desc: {
+      ru: 'Мелкий текст по всему сайту стал крупнее на больших экранах: подписи, счётчики и пояснения, которые были рассчитаны на ноутбук и превращались в точки на большом мониторе. На телефоне и планшете размеры прежние — там компактность на месте.',
+      en: 'Small text across the site grows on a large screen: the captions, counters and side notes that were drawn for a laptop and turned into specks on a big monitor. Phones and tablets keep the sizes they had, where the tight ones earn their keep.'
+    }
+  },
 
   {
     ver: '2.3.2',

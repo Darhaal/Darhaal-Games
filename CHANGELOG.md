@@ -7,6 +7,21 @@ releasing.
 Format: [Semantic Versioning](https://semver.org/). Types: **major** = platform
 milestone, **minor** = new game mode / feature, **patch** = fixes & improvements.
 
+## [2.3.3] — 2026-09-22 (patch)
+
+### Changed
+- **Small text grows on a large screen.** The interface was drawn for a laptop,
+  where a 10px caption reads fine; on a 27" monitor at arm's length the same
+  caption is a smudge. Past 1280px the bottom of the type scale moves up —
+  roughly 9→10.5, 10→11.5, 12→13.5, 14→15 — while headings and body copy stay
+  where they are, so nothing reflows. Phones and tablets are untouched, which
+  is where the tight sizes earn their keep.
+- 123 hardcoded `text-[10px]` / `text-[9px]` / `text-[11px]` became the named
+  tokens `text-2xs`, `text-3xs` and `text-xs`. A literal pixel value cannot
+  respond to a screen size, which is why they were the sizes that needed to.
+  A test now rejects new ones; the handful left are glyphs sized to their
+  container, like the skull in a sunk Battleship cell.
+
 ## [2.3.2] — 2026-09-22 (patch)
 
 ### Changed

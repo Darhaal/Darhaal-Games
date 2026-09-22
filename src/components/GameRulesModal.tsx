@@ -97,7 +97,7 @@ export default function GameRulesModal({ isOpen, onClose, rules }: GameRulesModa
                     <ul className="grid gap-3">
                        {(rules.sections[activeTab].content as string[]).map((item, i) => (
                           <li key={i} className="flex gap-4 p-4 rounded-2xl border border-[#F1F5F9] bg-[#F8FAFC]/50 hover:border-[#E6E1DC] transition-colors">
-                             <div className="w-5 h-5 rounded-full border-2 border-[#E6E1DC] flex items-center justify-center shrink-0 mt-0.5 text-[10px] font-black text-[#8A9099] bg-white">
+                             <div className="w-5 h-5 rounded-full border-2 border-[#E6E1DC] flex items-center justify-center shrink-0 mt-0.5 text-2xs font-black text-[#8A9099] bg-white">
                                 {i + 1}
                              </div>
                              <span className="text-sm font-medium text-[#1A1F26] leading-relaxed">{item}</span>

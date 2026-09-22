@@ -327,7 +327,7 @@ const BoardView = ({ player, isMe, onReveal, onFlag, onChord, scale = 1, isTouch
                 </div>
                 <div className="flex flex-col">
                     <span className="text-xs font-black uppercase text-[#1A1F26] truncate max-w-[100px]">{player.name} {isMe && '(Вы)'}</span>
-                    <span className="flex items-center gap-1 text-[10px] font-bold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded w-fit">
+                    <span className="flex items-center gap-1 text-2xs font-bold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded w-fit">
                         <Flag className="w-3 h-3 text-[#9e1316]" /> {player.minesLeft}
                     </span>
                 </div>
@@ -531,7 +531,7 @@ export default function MinesweeperGame({ gameState, userId, revealCell, toggleF
                     <div className="p-8 bg-[#F8FAFC] overflow-y-auto custom-scrollbar">
                         <table className="w-full text-left border-collapse">
                             <thead>
-                                <tr className="text-[10px] font-black text-[#8A9099] uppercase tracking-widest border-b border-[#E6E1DC]">
+                                <tr className="text-2xs font-black text-[#8A9099] uppercase tracking-widest border-b border-[#E6E1DC]">
                                     <th className="pb-4 pl-4">{t.player}</th>
                                     <th className="pb-4 text-center">{t.status}</th>
                                     <th className="pb-4 text-center">{t.timeStat}</th>
@@ -545,14 +545,14 @@ export default function MinesweeperGame({ gameState, userId, revealCell, toggleF
                                             <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden border border-gray-100"><Image src={p.avatarUrl} alt="" width={40} height={40} className="w-full h-full object-cover"/></div>
                                             <div>
                                                 <div className="text-sm">{p.name}</div>
-                                                {idx === 0 && gameState.winner && <div className="text-[9px] text-[#FBBF24] font-black uppercase flex items-center gap-1"><Trophy className="w-3 h-3"/> Winner</div>}
+                                                {idx === 0 && gameState.winner && <div className="text-3xs text-[#FBBF24] font-black uppercase flex items-center gap-1"><Trophy className="w-3 h-3"/> Winner</div>}
                                             </div>
                                         </td>
                                         <td className="py-4 text-center">
-                                            {p.status === 'won' && <span className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider">{t.won}</span>}
-                                            {p.status === 'lost' && <span className="bg-red-100 text-red-700 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider">{t.dead}</span>}
-                                            {p.status === 'left' && <span className="bg-gray-200 text-gray-700 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider">{t.left}</span>}
-                                            {p.status === 'playing' && <span className="bg-gray-100 text-gray-600 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider">{t.alive}</span>}
+                                            {p.status === 'won' && <span className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-lg text-2xs font-black uppercase tracking-wider">{t.won}</span>}
+                                            {p.status === 'lost' && <span className="bg-red-100 text-red-700 px-3 py-1 rounded-lg text-2xs font-black uppercase tracking-wider">{t.dead}</span>}
+                                            {p.status === 'left' && <span className="bg-gray-200 text-gray-700 px-3 py-1 rounded-lg text-2xs font-black uppercase tracking-wider">{t.left}</span>}
+                                            {p.status === 'playing' && <span className="bg-gray-100 text-gray-600 px-3 py-1 rounded-lg text-2xs font-black uppercase tracking-wider">{t.alive}</span>}
                                         </td>
                                         <td className="py-4 text-center font-mono text-sm font-bold text-[#1A1F26]">
                                             {p.score ? `${Math.floor(p.score/60)}:${(p.score%60).toString().padStart(2,'0')}` : '—'}
