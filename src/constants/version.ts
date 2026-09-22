@@ -1,4 +1,4 @@
-export const APP_VERSION = '2.3.3';
+export const APP_VERSION = '2.4.1';
 
 export type VersionType = 'major' | 'minor' | 'patch' | 'init';
 
@@ -11,6 +11,29 @@ export interface VersionLog {
 }
 
 export const VERSION_HISTORY: VersionLog[] = [
+  /* ===================== 2.4.x ===================== */
+
+  {
+    ver: '2.4.1',
+    date: '22 SEP 2026',
+    type: 'patch',
+    desc: {
+      ru: 'Исправлено: в аналитику всё-таки уходил полный адрес страницы вместе с идентификатором комнаты. Вырезание работало, но Google подставлял адрес сам, помимо него. Теперь очищенный адрес прикрепляется к каждому событию.',
+      en: 'Fixed: the full page address, room identifier and all, was still reaching analytics. The stripping worked, but Google filled the address in by itself alongside it. The cleaned address is now attached to every event.'
+    }
+  },
+
+  {
+    ver: '2.4.0',
+    date: '22 SEP 2026',
+    type: 'minor',
+    title: { ru: 'Аналитика и приватность', en: 'Analytics and Privacy' },
+    desc: {
+      ru: 'Появилась страница политики конфиденциальности и аналитика посещений — она спрашивает разрешение и не загружается, пока вы не согласились. Ссылки на комнаты в неё не попадают: идентификатор комнаты вырезается из адреса, потому что ссылка на приватную комнату — это ключ от неё.',
+      en: 'A privacy policy page, and usage analytics that asks permission and is not loaded until you agree. Room links stay out of it: the room identifier is stripped from the address, because a private room’s link is the key to it.'
+    }
+  },
+
   /* ===================== 2.3.x ===================== */
 
   {

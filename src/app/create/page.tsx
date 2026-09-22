@@ -20,6 +20,8 @@ import {
   type GameOption, type OptionValues
 } from '@/games/options';
 import { createInitialState } from '@/games/initialState';
+import { track } from '@/lib/analytics';
+import { GA_EVENTS } from '@/constants/analytics';
 
 const TRANSLATIONS = {
   ru: {
@@ -269,8 +271,17 @@ export default function CreatePage() {
       }
 
       if (error || !data) throw error || new Error('Insert failed');
+
+      // Categories and counts only — never the room id, which is its invitation.
+      track(GA_EVENTS.lobbyCreated, {
+        game: selectedGame.id,
+        max_players: maxPlayers,
+        is_private: isPrivate
+      });
+
       router.push(`/game/${selectedGame.id}?id=${data.id}`);
     } catch (error: unknown) {
+      track(GA_EVENTS.appError, { where: 'create_lobby' });
       showToast(t.error + ': ' + errorMessage(error), 'error');
       setLoading(false);
     }

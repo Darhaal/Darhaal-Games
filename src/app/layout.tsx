@@ -1,6 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import AppToaster from "@/components/AppToaster";
+import Analytics from "@/components/Analytics";
+import ConsentBanner from "@/components/ConsentBanner";
+import { Suspense } from "react";
 import JsonLd from "@/components/seo/JsonLd";
 import { APP_NAME, APP_TAGLINE, COMPANY_NAME, SITE_URL } from "@/constants/app";
 import { absoluteUrl, organizationJsonLd, websiteJsonLd } from "@/lib/seo";
@@ -126,6 +129,15 @@ export default function RootLayout({
         <JsonLd data={websiteJsonLd("ru")} />
         {children}
         <AppToaster />
+        {/* Both read the URL, which opts their subtree out of static
+            rendering — a Suspense boundary keeps that from spreading to the
+            page itself. */}
+        <Suspense fallback={null}>
+          <Analytics />
+        </Suspense>
+        <Suspense fallback={null}>
+          <ConsentBanner />
+        </Suspense>
       </body>
     </html>
   );

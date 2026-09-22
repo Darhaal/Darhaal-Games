@@ -14,6 +14,8 @@ import {
 } from 'lucide-react';
 import { GAMES, getGame, roomCapacity } from '@/games/registry';
 import { GAME_ICONS } from '@/games/icons';
+import { track } from '@/lib/analytics';
+import { GA_EVENTS } from '@/constants/analytics';
 
 // Minimal player info inside game_state (shape differs per game)
 interface LobbyPlayerInfo {
@@ -252,7 +254,10 @@ function PlayContent() {
         return;
     }
 
-    // Joining happens on the game page (initGame in every game)
+    // Joining happens on the game page (initGame in every game).
+    // Reported here rather than at the "already in this room" branch above,
+    // which is a player returning to their own room, not joining one.
+    track(GA_EVENTS.lobbyJoined, { game: getGame(gameType)?.id ?? 'unknown' });
     router.push(`/game/${gameType}?id=${lobby.id}`);
   };
 

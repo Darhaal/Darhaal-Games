@@ -13,6 +13,7 @@ import type { Metadata } from 'next';
 import { APP_NAME, COMPANY_NAME, SITE_URL } from '@/constants/app';
 import type { GameContent, GameFaq, Locale } from '@/content/games';
 import { GAME_COUNT_COPY } from '@/content/gameCount';
+import { PRIVACY_CONTENT } from '@/content/privacy';
 
 /** Absolute URL for a site-relative path (`/games` → `https://…/games`). */
 export const absoluteUrl = (path = '/'): string =>
@@ -188,6 +189,34 @@ const HUB_COPY = {
 const OG_LOCALE: Record<Locale, string> = { ru: 'ru_RU', en: 'en_US' };
 
 /** Metadata for the /games hub in the given locale. */
+/**
+ * Metadata for the privacy policy, in the given locale.
+ *
+ * `robots: index` on purpose — a policy nobody can find is not a policy.
+ */
+export const privacyMetadata = (locale: Locale): Metadata => {
+  const copy = PRIVACY_CONTENT[locale];
+  const url = absoluteUrl(localizedPath(locale, '/privacy'));
+
+  return {
+    title: copy.metaTitle,
+    description: copy.metaDescription,
+    alternates: buildAlternates(locale, '/privacy'),
+    openGraph: {
+      type: 'article',
+      title: copy.metaTitle,
+      description: copy.metaDescription,
+      url,
+      locale: OG_LOCALE[locale]
+    },
+    twitter: {
+      card: 'summary',
+      title: copy.metaTitle,
+      description: copy.metaDescription
+    }
+  };
+};
+
 export const hubMetadata = (locale: Locale): Metadata => {
   const copy = HUB_COPY[locale];
   const url = absoluteUrl(localizedPath(locale, '/games'));

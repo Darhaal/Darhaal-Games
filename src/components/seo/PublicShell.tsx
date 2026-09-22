@@ -21,14 +21,16 @@ const T = {
     play: 'Играть',
     switch: 'English',
     tagline: 'Играйте с друзьями прямо в браузере',
-    rights: 'Все права защищены.'
+    rights: 'Все права защищены.',
+    privacy: 'Конфиденциальность'
   },
   en: {
     nav: 'Games',
     play: 'Play',
     switch: 'Русский',
     tagline: 'Play with friends right in your browser',
-    rights: 'All rights reserved.'
+    rights: 'All rights reserved.',
+    privacy: 'Privacy'
   }
 } as const;
 
@@ -89,9 +91,17 @@ export default function PublicShell({
             <Image src="/logo512.png" alt="" width={16} height={16} className="w-4 h-4 object-contain" />
             {COPYRIGHT}
           </div>
-          <p className="text-2xs font-bold uppercase tracking-wider text-gray-400">
-            {APP_NAME} — {t.tagline}
-          </p>
+          <div className="flex items-center gap-4">
+            <Link
+              href={localizedPath(locale, '/privacy')}
+              className="text-2xs font-bold uppercase tracking-wider text-gray-500 hover:text-[#9e1316] transition-colors"
+            >
+              {t.privacy}
+            </Link>
+            <p className="text-2xs font-bold uppercase tracking-wider text-gray-400">
+              {APP_NAME} — {t.tagline}
+            </p>
+          </div>
         </div>
       </footer>
     </div>

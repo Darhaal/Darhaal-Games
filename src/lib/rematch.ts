@@ -2,6 +2,8 @@ import { supabase } from '@/lib/supabase';
 import { generateRoomCode } from '@/constants/app';
 import { createRematchState, type GameStateByType } from '@/games/initialState';
 import type { GameId } from '@/games/registry';
+import { track } from '@/lib/analytics';
+import { GA_EVENTS } from '@/constants/analytics';
 
 /**
  * "Play again" opens a new room rather than resetting the finished one.
@@ -38,7 +40,10 @@ export async function startRematch<T extends GameId>(
       p_state: fresh
     });
 
-    if (!error && data) return data as string;
+    if (!error && data) {
+      track(GA_EVENTS.rematchStarted, { game: gameId });
+      return data as string;
+    }
     if (error?.code !== '23505') {
       if (error) console.error('rematch failed:', error.message);
       return null;

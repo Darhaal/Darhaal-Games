@@ -10,6 +10,8 @@ import { getGame } from '@/games/registry';
 import { GAME_ICONS } from '@/games/icons';
 import { usePresenceHeartbeat } from '@/hooks/usePresenceHeartbeat';
 import { useLobbyTouch } from '@/hooks/useLobbyTouch';
+import { track } from '@/lib/analytics';
+import { GA_EVENTS } from '@/constants/analytics';
 import { supabase } from '@/lib/supabase';
 import { writeGameState } from '@/lib/gameStateSync';
 import { playSfx } from '@/lib/sound';
@@ -197,6 +199,12 @@ export default function UniversalLobby({
     if (typeof window === 'undefined') return;
     if (await copyText(window.location.href)) setLinkCopied(true);
     setTimeout(() => setLinkCopied(false), 2000);
+  };
+
+  /** The one button that starts a match, whichever game it is. */
+  const handleStart = () => {
+    track(GA_EVENTS.matchStarted, { game: gameType, players: players.length });
+    onStart();
   };
 
   const handleKickPlayer = async (targetId: string) => {
@@ -531,7 +539,7 @@ export default function UniversalLobby({
 
             {isHost ? (
                 <button
-                    onClick={onStart}
+                    onClick={handleStart}
                     disabled={players.length < minPlayers}
                     className="w-full py-5 bg-white border-2 border-[#1A1F26] text-[#1A1F26] rounded-[24px] font-black uppercase tracking-[0.15em] text-sm hover:bg-[#1A1F26] hover:text-white hover:shadow-xl hover:shadow-[#1A1F26]/20 disabled:opacity-50 disabled:hover:bg-white disabled:hover:text-[#1A1F26] disabled:cursor-not-allowed transition-all active:translate-y-1 flex items-center justify-center gap-3"
                 >

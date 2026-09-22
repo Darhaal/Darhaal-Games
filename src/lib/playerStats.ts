@@ -1,5 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import { GAMES, type GameId } from '@/games/registry';
+import { track } from '@/lib/analytics';
+import { GA_EVENTS } from '@/constants/analytics';
 
 /** Alias kept for readability at call sites; the registry owns the list. */
 export type GameType = GameId;
@@ -20,6 +22,15 @@ interface GameSessionStats {
 
 export async function updatePlayerStats(userId: string, session: GameSessionStats) {
     if (!userId) return;
+
+    // Every game records its result through here, so one call covers all of
+    // them. The user id stays in this function — what leaves is the shape of
+    // the match, not who played it.
+    track(GA_EVENTS.matchFinished, {
+        game: session.gameType,
+        result: session.result,
+        duration_seconds: Math.round(session.durationSeconds)
+    });
 
     try {
         const { data: currentStats, error: fetchError } = await supabase

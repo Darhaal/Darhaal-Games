@@ -7,6 +7,55 @@ releasing.
 Format: [Semantic Versioning](https://semver.org/). Types: **major** = platform
 milestone, **minor** = new game mode / feature, **patch** = fixes & improvements.
 
+## [2.4.1] — 2026-09-22 (patch)
+
+### Security
+- **The room id was reaching Google anyway.** 2.4.0 stripped it from the URL
+  before reporting, and the stripping worked — but gtag fills `dl` from
+  `document.location` on every hit by itself, and a repeated `config` call
+  does not override it. So the redaction ran and was beside the point: the
+  raw `/game/reversi?id=…` travelled in a field the library adds.
+  The cleaned address is now attached explicitly to every hit, and page views
+  go through `set` plus an explicit `page_view` event rather than a second
+  `config`.
+
+  Caught by checking what actually left the browser on production, which the
+  unit tests could not see: they proved the redactor correct, and the redactor
+  was correct. It simply was not the thing filling in the field.
+
+> 2.4.0 was tagged and deployed but never published to the public repository;
+> this release carries both.
+
+## [2.4.0] — 2026-09-22 (minor) — **Analytics and Privacy**
+
+> The site learns what people play, without learning who they are.
+
+### Added
+- **Google Analytics, behind consent.** gtag.js is not merely told to store
+  nothing — it is not put on the page until the visitor has said yes, so a
+  refusal means the script is never fetched and can neither set a cookie nor
+  read one. Consent Mode v2 starts at denied for everything; advertising
+  storage stays denied even after a yes, because the site does not advertise.
+  Both buttons on the banner are the same size and weight.
+- **Events**: lobby created, lobby joined, match started, match finished with
+  its duration, rematch, and uncaught errors. The error count is hooked to
+  real crashes rather than to the toast layer, which also carries ordinary
+  refusals like a wrong room password — the app working, not the app breaking.
+- **A privacy policy** at `/privacy` and `/en/privacy`, written from what the
+  code does rather than from a template: every claim in it is checkable
+  against a file. Linked from the footer, the sitemap and the banner.
+
+### Security
+- **Room links are stripped before anything is reported.** A room link *is*
+  the invitation, and for a private room it is the only thing standing between
+  it and a stranger — but it also sits in the address bar, which is exactly
+  what GA reports as `page_location`. `send_page_view` is therefore off and
+  views go through a redactor that replaces `id`, `code`, `returnUrl` and
+  `token`. Crash messages get the same treatment: anything URL-shaped is
+  dropped before the reason is sent.
+- Analytics runs on the production host only, so a developer reloading
+  localhost cannot move the numbers.
+
 ## [2.3.3] — 2026-09-22 (patch)
 
 ### Changed

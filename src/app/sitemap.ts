@@ -1,6 +1,7 @@
 import type { MetadataRoute } from 'next';
 import { CONTENT_REVISION, GAMES_CONTENT } from '@/content/games';
 import { absoluteUrl, localizedPath } from '@/lib/seo';
+import { POLICY_UPDATED } from '@/content/privacy';
 
 /**
  * Only genuinely public, indexable URLs belong here — the app screens are
@@ -28,6 +29,14 @@ export default function sitemap(): MetadataRoute.Sitemap {
     alternates: { languages: withAlternates('/games') }
   }));
 
+  const privacy: MetadataRoute.Sitemap = (['ru', 'en'] as const).map((locale) => ({
+    url: absoluteUrl(localizedPath(locale, '/privacy')),
+    lastModified: new Date(POLICY_UPDATED),
+    changeFrequency: 'yearly',
+    priority: 0.3,
+    alternates: { languages: withAlternates('/privacy') }
+  }));
+
   const details: MetadataRoute.Sitemap = GAMES_CONTENT.flatMap((game) =>
     (['ru', 'en'] as const).map((locale) => ({
       url: absoluteUrl(localizedPath(locale, `/games/${game.slug}`)),
@@ -46,6 +55,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 1
     },
     ...hub,
-    ...details
+    ...details,
+    ...privacy
   ];
 }
