@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { redactUrl, shortReason } from '@/lib/analytics';
-import { GA_EVENTS, REDACTED_PARAMS } from '@/constants/analytics';
+import { ALLOWED_PARAMS, GA_EVENTS, REDACTED_PARAMS } from '@/constants/analytics';
 
 /**
  * These two functions are what stands between a private room's invite link
@@ -84,14 +84,16 @@ describe('shortReason', () => {
   });
 });
 
-describe('what the app is allowed to report', () => {
-  const walk = (dir: string): string[] =>
+const walk = (dir: string): string[] =>
     readdirSync(dir).flatMap((name) => {
       const full = join(dir, name);
       if (statSync(full).isDirectory()) return walk(full);
       return /\.tsx?$/.test(name) ? [full] : [];
     });
 
+const walkSrc = () => walk('src');
+
+describe('what the app is allowed to report', () => {
   it('never passes an identifier to track()', () => {
     // A cheap read of every call site. The parameters are meant to be
     // categories and counts; anything named like an id, a nickname or an
@@ -128,26 +130,83 @@ describe('what the app is allowed to report', () => {
 
 describe('nothing is sent before consent', () => {
   const store = new Map<string, string>();
+  let posted: string[];
 
   beforeEach(() => {
     store.clear();
+    posted = [];
     vi.stubGlobal('window', {
-      location: { hostname: 'games.okhten.com' },
+      location: { hostname: 'games.okhten.com', pathname: '/play', search: '' },
       localStorage: {
         getItem: (k: string) => store.get(k) ?? null,
-        setItem: (k: string, v: string) => void store.set(k, v)
-      },
-      dataLayer: [] as unknown[]
+        setItem: (k: string, v: string) => void store.set(k, v),
+        removeItem: (k: string) => void store.delete(k)
+      }
     });
+    vi.stubGlobal('navigator', { sendBeacon: (url: string) => { posted.push(url); return true; } });
+    vi.stubGlobal('fetch', (url: string) => { posted.push(String(url)); return Promise.resolve(); });
+    vi.stubGlobal('Blob', class { constructor(public parts: unknown[]) {} });
+    vi.stubGlobal('crypto', { randomUUID: () => '00000000-0000-4000-8000-000000000000' });
   });
 
   afterEach(() => vi.unstubAllGlobals());
 
-  it('queues nothing while the answer is missing', async () => {
+  it('posts nothing while the answer is missing', async () => {
     const { track } = await import('@/lib/analytics');
     track(GA_EVENTS.lobbyCreated, { game: 'coup' });
 
-    expect((globalThis as unknown as { window: { dataLayer: unknown[] } }).window.dataLayer)
-      .toHaveLength(0);
+    expect(posted).toEqual([]);
+  });
+
+  it('posts nothing after a refusal', async () => {
+    const { track, writeConsent } = await import('@/lib/analytics');
+    writeConsent('denied');
+    track(GA_EVENTS.lobbyCreated, { game: 'coup' });
+
+    expect(posted).toEqual([]);
+  });
+
+  it('forgets the browser id when the answer is no', async () => {
+    const { writeConsent } = await import('@/lib/analytics');
+    store.set('darhaal.analytics-client.v1', 'some-id');
+    writeConsent('denied');
+
+    expect(store.has('darhaal.analytics-client.v1')).toBe(false);
+  });
+
+  it('posts to this site and nowhere else once allowed', async () => {
+    const { track, writeConsent } = await import('@/lib/analytics');
+    writeConsent('granted');
+    track(GA_EVENTS.lobbyCreated, { game: 'coup' });
+
+    expect(posted).toEqual(['/api/analytics']);
+    // The browser must never address Google directly — that is the whole
+    // reason this arrangement exists.
+    expect(posted.some((u) => u.includes('google'))).toBe(false);
+  });
+});
+
+describe('the parameters an event may carry', () => {
+  it('has nothing on the allow-list that identifies anybody', () => {
+    const identifying = /(^|_)(id|user|email|name|nick|avatar|room|code|token|password)($|_)/i;
+    const offenders = ALLOWED_PARAMS.filter((p) => identifying.test(p) && p !== 'page_path');
+
+    expect(offenders, `these would carry an identifier: ${offenders.join(', ')}`).toEqual([]);
+  });
+
+  it('accounts for every parameter the app actually sends', () => {
+    // A parameter the server does not know is dropped in silence, which is
+    // the safe failure but an invisible one — so the two lists are compared.
+    const used = new Set<string>();
+    for (const file of walkSrc()) {
+      const text = readFileSync(file, 'utf8');
+      for (const call of text.matchAll(/track\(\s*(?:GA_EVENTS\.\w+|'[\w_]+')\s*,\s*\{([^}]*)\}/g)) {
+        for (const key of call[1].matchAll(/(\w+)\s*:/g)) used.add(key[1]);
+      }
+    }
+
+    for (const key of used) {
+      expect(ALLOWED_PARAMS as readonly string[], `${key} is sent but not allowed`).toContain(key);
+    }
   });
 });

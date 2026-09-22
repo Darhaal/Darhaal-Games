@@ -61,10 +61,12 @@ export const PRIVACY_CONTENT: Record<Locale, PolicyCopy> = {
       {
         title: 'Аналитика',
         body: [
-          'Мы используем Google Analytics, чтобы понимать, во что играют и что ломается. Он не загружается, пока вы не нажали «Разрешить»: до этого момента скрипт Google просто отсутствует на странице и не может ни поставить, ни прочитать cookie.',
-          'Если вы разрешили, отправляются обезличенные события: какая игра, сколько игроков, сколько длилась партия, какая ошибка произошла. Ваш идентификатор, никнейм, почта и содержимое партии в Google не уходят.',
-          'Отдельно про ссылки: ссылка на комнату — это приглашение, а у приватной комнаты она единственное, что отделяет её от посторонних. Поэтому идентификаторы комнат вырезаются из адресов до отправки и в Google не попадают.',
-          'Рекламные функции Google отключены, IP-адрес обезличивается. Решение можно изменить в любой момент, очистив данные сайта в браузере.'
+          'Мы считаем, во что играют и что ломается. Сбор не начинается, пока вы не нажали «Разрешить».',
+          'Google Analytics не загружается в ваш браузер. Скрипты Google на страницах отсутствуют, cookie Google не ставятся. Страница отправляет событие на наш собственный адрес, а дальше его передаём мы, со своего сервера.',
+          'Поэтому ваш IP-адрес в Google не попадает: с их стороны виден адрес нашего сервера, а не ваш.',
+          'Что отправляется: какая игра, сколько игроков, сколько длилась партия, какая ошибка произошла, и на какой странице это было. Список допустимых полей фиксирован в коде, всё остальное сервер отбрасывает, не передавая. Ваш идентификатор, никнейм, почта и содержимое партии не отправляются.',
+          'Отдельно про ссылки: ссылка на комнату — это приглашение, а у приватной комнаты она единственное, что отделяет её от посторонних. Идентификаторы комнат вырезаются из адреса дважды — в браузере и ещё раз на сервере, который не доверяет пришедшему. Сам адрес страницы для Google собирает наш сервер, а не браузер.',
+          'Чтобы отличать одного посетителя от другого, при согласии создаётся случайный идентификатор и хранится в вашем браузере. Он ни из чего не выводится, ничего о вас не значит и исчезает, когда вы очищаете данные сайта. При отказе он удаляется.'
         ]
       },
       {
@@ -126,10 +128,12 @@ export const PRIVACY_CONTENT: Record<Locale, PolicyCopy> = {
       {
         title: 'Analytics',
         body: [
-          'We use Google Analytics to understand what people play and what breaks. It is not loaded until you have pressed "Allow": until then the Google script is simply not on the page, and can neither set nor read a cookie.',
-          'If you allow it, anonymous events are sent: which game, how many players, how long a match ran, which error occurred. Your identifier, nickname, email and anything from the match itself do not go to Google.',
-          'One thing in particular: a room link is an invitation, and for a private room it is the only thing standing between it and a stranger. Room identifiers are therefore stripped from addresses before anything is reported, and never reach Google.',
-          'Google advertising features are switched off and IP addresses are anonymised. You can change your answer at any time by clearing the site data in your browser.'
+          'We count what people play and what breaks. Nothing is collected until you have pressed "Allow".',
+          'Google Analytics does not load in your browser. There is no Google script on these pages and no Google cookie is set. The page sends an event to an address of our own, and we forward it from our server.',
+          'Your IP address therefore does not reach Google: what they see is our server’s address, not yours.',
+          'What is sent: which game, how many players, how long a match ran, which error occurred, and which page it happened on. The list of permitted fields is fixed in the code and the server discards anything else rather than passing it on. Your identifier, nickname, email and anything from the match itself are not sent.',
+          'One thing in particular: a room link is an invitation, and for a private room it is the only thing standing between it and a stranger. Room identifiers are stripped from the address twice — in the browser and again on the server, which does not trust what arrived. The page address Google receives is assembled by our server, not taken from your browser.',
+          'To tell one visitor’s events from another’s, a random identifier is created when you consent and kept in your browser. It is derived from nothing, means nothing about you, and goes when you clear the site data. Declining deletes it.'
         ]
       },
       {

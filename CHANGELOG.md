@@ -7,6 +7,40 @@ releasing.
 Format: [Semantic Versioning](https://semver.org/). Types: **major** = platform
 milestone, **minor** = new game mode / feature, **patch** = fixes & improvements.
 
+## [2.6.0] — 2026-09-22 (minor) — **Analytics Without a Middleman**
+
+> Measurement that cannot leak a room link, because the browser never names a
+> page to Google.
+
+### Added
+- **Analytics is back, through this site's own server.** The page posts an
+  event to `/api/analytics`; that route forwards it to GA4 over the
+  Measurement Protocol. Google supplies nothing that runs in the browser:
+  no script, no cookie, and the visitor's IP address never reaches them —
+  the request comes from the server and `ip_override` is deliberately not
+  sent.
+- The route refuses an unknown event name, a client id it would not have
+  generated, any parameter outside `ALLOWED_PARAMS`, and anything at all
+  without `GA_API_SECRET`. It answers `204` in every case, because a
+  measurement endpoint that reports on itself is a way to probe the site.
+
+### Security
+- **The room id cannot reach Google now, rather than being asked not to.**
+  Four releases tried to talk gtag out of reporting the page address and all
+  four leaked, because gtag fills that field in itself from
+  `document.location`. The address is now a string the server assembles from
+  a path it has redacted itself, ignoring whatever the client sent. The id is
+  stripped twice: once in the browser, once on arrival.
+- `tests/analytics-route.test.ts` asserts on the outgoing payload directly —
+  the thing the four failed attempts never checked. Removing the redaction
+  from the route fails four of its tests, which was verified rather than
+  assumed.
+
+### Changed
+- The privacy policy now describes this arrangement, which is a better one to
+  describe: no third-party script, no third-party cookie, no IP, a random
+  browser id that is deleted on refusal.
+
 ## [2.5.3] — 2026-09-22 (patch)
 
 ### Security

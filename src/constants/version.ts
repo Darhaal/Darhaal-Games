@@ -1,4 +1,4 @@
-export const APP_VERSION = '2.5.3';
+export const APP_VERSION = '2.6.0';
 
 export type VersionType = 'major' | 'minor' | 'patch' | 'init';
 
@@ -11,6 +11,19 @@ export interface VersionLog {
 }
 
 export const VERSION_HISTORY: VersionLog[] = [
+  /* ===================== 2.6.x ===================== */
+
+  {
+    ver: '2.6.0',
+    date: '22 SEP 2026',
+    type: 'minor',
+    title: { ru: 'Аналитика без посредника', en: 'Analytics Without a Middleman' },
+    desc: {
+      ru: 'Статистика вернулась, устроенная иначе: Google Analytics больше не загружается в браузер вообще — ни скриптов, ни cookie, ни вашего IP-адреса. Страница сообщает событие нам, а передаём его мы, со своего сервера, и адрес страницы собираем сами. Ссылка на комнату туда попасть не может.',
+      en: 'Statistics are back, arranged differently: Google Analytics no longer loads in the browser at all — no script, no cookie, and your IP address never reaches it. The page reports an event to us and we forward it from our server, assembling the page address ourselves. A room link cannot get through.'
+    }
+  },
+
   /* ===================== 2.5.x ===================== */
 
   {

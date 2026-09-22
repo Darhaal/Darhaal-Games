@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useLang } from '@/hooks/useLang';
-import { applyConsent, writeConsent } from '@/lib/analytics';
+import { writeConsent } from '@/lib/analytics';
 import { publishConsentChange, useConsent } from '@/hooks/useConsent';
 import type { ConsentChoice } from '@/constants/analytics';
 
@@ -41,7 +41,6 @@ export default function ConsentBanner() {
 
   const answer = (choice: ConsentChoice) => {
     writeConsent(choice);
-    applyConsent(choice);
     // The store this component reads is the one it just wrote to.
     publishConsentChange();
   };
