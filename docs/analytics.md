@@ -66,6 +66,27 @@ variable. It is a secret: server-side only, never `NEXT_PUBLIC_`.
 Without it the route collects nothing and the site behaves exactly as if
 analytics were off.
 
+## Is it actually running?
+
+```
+GET /api/analytics             → { configured, measurementId }
+GET /api/analytics?validate=1  → … plus { accepted, messages }
+```
+
+`configured` says whether this deployment has `GA_API_SECRET`. Vercel applies
+a new environment variable only on the next deploy, so "the key was added" and
+"the key is live" are different statements and this is the one that answers
+the second.
+
+`validate=1` sends a probe to Google's debug endpoint and returns Google's own
+verdict — GA drops a malformed event in silence on the real endpoint, so a set
+key does not by itself mean events arrive. The probe is built by the same
+function as a real event; a self-check that builds its own payload proves only
+that the self-check works.
+
+Neither carries a secret or anything about a visitor. That analytics exists is
+already on the consent banner and in the privacy policy.
+
 ## Checking it
 
 `tests/analytics-route.test.ts` inspects the outgoing payload directly, which

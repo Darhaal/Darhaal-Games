@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { POST } from '@/app/api/analytics/route';
+import { GET, POST } from '@/app/api/analytics/route';
 
 /**
  * What the server actually sends to Google.
@@ -161,5 +161,67 @@ describe('the endpoint gives nothing away', () => {
 
     expect(sent).toHaveLength(1);
     expect(sent[0].url).toContain(GA_HOST);
+  });
+});
+
+describe('the health check', () => {
+  const check = (query = '') =>
+    GET(new Request(`https://games.okhten.com/api/analytics${query}`));
+
+  it('says a deployment with a secret is configured', async () => {
+    const body = await (await check()).json();
+
+    expect(body.configured).toBe(true);
+  });
+
+  it('says a deployment without one is not', async () => {
+    vi.stubEnv('GA_API_SECRET', '');
+    const body = await (await check()).json();
+
+    expect(body.configured).toBe(false);
+  });
+
+  it('never repeats the secret back', async () => {
+    vi.stubEnv('GA_API_SECRET', 'super-secret-value');
+    const text = JSON.stringify(await (await check('?validate=1')).json());
+
+    expect(text).not.toContain('super-secret-value');
+  });
+
+  it('does not call Google unless asked to', async () => {
+    await check();
+
+    expect(sent).toEqual([]);
+  });
+
+  it('validates against the payload it really sends', async () => {
+    vi.stubGlobal('fetch', (url: string, init?: { body?: string }) => {
+      sent.push({ url: String(url), body: init?.body ? JSON.parse(init.body) : undefined });
+      return Promise.resolve(new Response(JSON.stringify({ validationMessages: [] }), {
+        status: 200, headers: { 'Content-Type': 'application/json' }
+      }));
+    });
+
+    const body = await (await check('?validate=1')).json();
+
+    expect(body.accepted).toBe(true);
+    expect(sent[0].url).toContain('/debug/mp/collect');
+    // The probe must go through the same builder as a real event, or it
+    // proves only that the probe works.
+    expect(sent[0].body).toMatchObject({
+      events: [{ name: 'page_view', params: { page_path: '/health-check' } }]
+    });
+  });
+
+  it('reports Google’s complaints rather than swallowing them', async () => {
+    vi.stubGlobal('fetch', () => Promise.resolve(new Response(
+      JSON.stringify({ validationMessages: [{ description: 'bad param' }] }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } }
+    )));
+
+    const body = await (await check('?validate=1')).json();
+
+    expect(body.accepted).toBe(false);
+    expect(JSON.stringify(body.messages)).toContain('bad param');
   });
 });

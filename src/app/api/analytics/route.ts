@@ -70,6 +70,94 @@ function cleanPath(input: unknown): string {
 const cleanClientId = (input: unknown): string | null =>
   typeof input === 'string' && /^[0-9a-f-]{36}$/i.test(input) ? input : null;
 
+/**
+ * Is this deployment collecting anything?
+ *
+ * The POST answers 204 to everything on purpose, which left no way at all to
+ * tell a configured deployment from one whose environment variable never took
+ * — and Vercel only applies a new variable on the next deploy, so "I added
+ * the key" and "the key is live" are different statements.
+ *
+ * Says whether a secret is present, never what it is, and nothing about any
+ * visitor. That analytics exists is already on the consent banner and in the
+ * privacy policy, so this gives nothing away that the site does not announce.
+ */
+/**
+ * The exact shape sent to Google.
+ *
+ * Shared with the validator below on purpose: a self-check that builds its
+ * own payload proves only that the self-check works.
+ */
+function buildPayload(
+  name: string,
+  clientId: string,
+  path: string,
+  params: unknown
+) {
+  return {
+    client_id: clientId,
+    events: [
+      {
+        name,
+        params: {
+          ...cleanParams(params),
+          page_location: `https://games.okhten.com${path}`,
+          page_path: path,
+          // Without this GA treats every event as its own session.
+          engagement_time_msec: 1,
+          session_id: clientId
+        }
+      }
+    ]
+  };
+}
+
+/**
+ * Asks Google whether it would accept what we send.
+ *
+ * GA drops a malformed event in silence on the real endpoint, so "the key is
+ * set" and "the events arrive" are still different statements. The debug
+ * endpoint answers the second one. Only reached with `?validate=1`, returns
+ * Google's own verdict about our payload shape, and carries no secret and no
+ * visitor data.
+ */
+async function validate(apiSecret: string) {
+  const probe = buildPayload(
+    'page_view',
+    '00000000-0000-4000-8000-000000000000',
+    '/health-check',
+    { game: 'validation' }
+  );
+
+  const res = await fetch(
+    `https://www.google-analytics.com/debug/mp/collect?measurement_id=${GA_MEASUREMENT_ID}&api_secret=${apiSecret}`,
+    { method: 'POST', body: JSON.stringify(probe) }
+  );
+
+  const report = (await res.json()) as { validationMessages?: unknown[] };
+  const messages = report.validationMessages ?? [];
+
+  return {
+    accepted: Array.isArray(messages) && messages.length === 0,
+    messages
+  };
+}
+
+export async function GET(request: Request) {
+  const apiSecret = process.env.GA_API_SECRET;
+  const base = { configured: Boolean(apiSecret), measurementId: GA_MEASUREMENT_ID };
+
+  if (!apiSecret || new URL(request.url).searchParams.get('validate') !== '1') {
+    return NextResponse.json(base);
+  }
+
+  try {
+    return NextResponse.json({ ...base, ...(await validate(apiSecret)) });
+  } catch {
+    return NextResponse.json({ ...base, accepted: null, messages: ['validation call failed'] });
+  }
+}
+
 export async function POST(request: Request) {
   // Always 204, whatever happens. A measurement endpoint that reports on
   // itself is a way to probe the site, and there is nothing the page would
@@ -95,22 +183,7 @@ export async function POST(request: Request) {
 
   const cleanedPath = cleanPath(path);
 
-  const body = {
-    client_id: id,
-    events: [
-      {
-        name,
-        params: {
-          ...cleanParams(params),
-          page_location: `https://games.okhten.com${cleanedPath}`,
-          page_path: cleanedPath,
-          // Without this GA treats every event as its own session.
-          engagement_time_msec: 1,
-          session_id: id
-        }
-      }
-    ]
-  };
+  const body = buildPayload(name, id, cleanedPath, params);
 
   try {
     await fetch(

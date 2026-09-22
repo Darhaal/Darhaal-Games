@@ -7,6 +7,22 @@ releasing.
 Format: [Semantic Versioning](https://semver.org/). Types: **major** = platform
 milestone, **minor** = new game mode / feature, **patch** = fixes & improvements.
 
+## [2.6.1] — 2026-09-22 (patch)
+
+### Added
+- **A way to tell whether analytics is actually running.** The POST answers
+  `204` to everything by design, which left no way to distinguish a configured
+  deployment from one whose environment variable never took — and Vercel only
+  applies a new variable on the next deploy, so "the key was added" and "the
+  key is live" are different statements.
+
+  `GET /api/analytics` reports whether a secret is present, never what it is.
+  `?validate=1` sends a probe to Google's debug endpoint and returns Google's
+  own verdict, because GA drops a malformed event in silence on the real one.
+  The probe goes through the same payload builder as a real event: a
+  self-check that builds its own payload proves only that the self-check
+  works.
+
 ## [2.6.0] — 2026-09-22 (minor) — **Analytics Without a Middleman**
 
 > Measurement that cannot leak a room link, because the browser never names a

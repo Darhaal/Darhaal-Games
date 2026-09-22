@@ -1,4 +1,4 @@
-export const APP_VERSION = '2.6.0';
+export const APP_VERSION = '2.6.1';
 
 export type VersionType = 'major' | 'minor' | 'patch' | 'init';
 
@@ -12,6 +12,16 @@ export interface VersionLog {
 
 export const VERSION_HISTORY: VersionLog[] = [
   /* ===================== 2.6.x ===================== */
+
+  {
+    ver: '2.6.1',
+    date: '22 SEP 2026',
+    type: 'patch',
+    desc: {
+      ru: 'Теперь можно проверить, что сбор статистики действительно настроен и что Google принимает то, что мы отправляем, — раньше об этом нельзя было узнать снаружи никак.',
+      en: 'It is now possible to check that collection really is configured and that Google accepts what we send — previously there was no way to tell from outside.'
+    }
+  },
 
   {
     ver: '2.6.0',
