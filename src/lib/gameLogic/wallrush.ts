@@ -248,6 +248,21 @@ export function canPlaceWall(
  * a third pawn) stands behind it you step to either side of it instead. That
  * side-step is the only way a pawn ever leaves its row and column in one move.
  */
+/**
+ * The legal move a direction key stands for: straight along it — one square,
+ * or two when jumping an adjacent pawn. The sideways step around a blocked
+ * jump has no single direction, so that one stays a tap on the board.
+ */
+export function moveInDirection(
+  from: Cell,
+  moves: Cell[],
+  dir: 'up' | 'down' | 'left' | 'right'
+): Cell | null {
+  const dx = dir === 'left' ? -1 : dir === 'right' ? 1 : 0;
+  const dy = dir === 'up' ? -1 : dir === 'down' ? 1 : 0;
+  return moves.find((m) => Math.sign(m.x - from.x) === dx && Math.sign(m.y - from.y) === dy) ?? null;
+}
+
 export function legalMoves(
   walls: Wall[],
   from: Cell,

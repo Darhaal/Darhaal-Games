@@ -1,4 +1,4 @@
-export const APP_VERSION = '2.7.0';
+export const APP_VERSION = '2.8.0';
 
 export type VersionType = 'major' | 'minor' | 'patch' | 'init';
 
@@ -11,6 +11,19 @@ export interface VersionLog {
 }
 
 export const VERSION_HISTORY: VersionLog[] = [
+  /* ===================== 2.8.x ===================== */
+
+  {
+    ver: '2.8.0',
+    date: '24 SEP 2026',
+    type: 'minor',
+    title: { ru: 'Клавиши, которые работают', en: 'Keys That Work' },
+    desc: {
+      ru: 'Поле Wall Rush стало цельной доской: квадратные плитки, стены заполняют желобок целиком и аккуратно смыкаются — в линию, углом и буквой Т, — а линии финиша перенесены в рамку. В «Сапёре» заработал пробел: флаг или аккорд по клетке под курсором; колесо мыши масштабирует поле, стрелки двигают его. В Wall Rush пешкой можно ходить стрелками, а стену в руке поворачивать клавишей R или пробелом. Набор текста в чате больше не нажимает игровые клавиши. Все сочетания описаны в правилах каждой игры.',
+      en: 'The Wall Rush board is now one piece: square tiles, walls that fill their groove and meet cleanly — in line, at a corner and in a T — and finish lines moved into the rim. Space now works in Minesweeper: a flag or a chord on the cell under the pointer; the mouse wheel zooms the board and the arrows move it. In Wall Rush the arrows move your pawn and R or Space turns the wall in your hand. Typing in the chat no longer presses game keys. Every shortcut is in each game’s rules.'
+    }
+  },
+
   /* ===================== 2.7.x ===================== */
 
   {

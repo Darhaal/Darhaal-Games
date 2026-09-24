@@ -1,4 +1,4 @@
-import { Target, Zap, Shield, Trophy, MousePointer2, Eye, Flag, Ship, RefreshCw, Crosshair, AlertTriangle, Search, Clock, Grid, Map as MapIcon } from 'lucide-react';
+import { Target, Zap, Shield, Trophy, MousePointer2, Eye, Flag, Ship, RefreshCw, Crosshair, AlertTriangle, Search, Clock, Grid, Keyboard, Map as MapIcon } from 'lucide-react';
 import { GameRulesData } from '@/components/GameRulesModal';
 import type { GameId, Locale } from '@/games/registry';
 
@@ -37,7 +37,7 @@ export const GAME_RULES: Record<Locale, Record<GameId, GameRulesData>> = {
           icon: MapIcon,
           content: [
             'Расстановка: перетащите корабль с верфи на поле — или выберите его кликом и кликните по клетке. Клик по уже поставленному кораблю берёт его обратно.',
-            'Поворот: клавиша R / Пробел / Q, правый клик по полю или кнопка поворота. Кнопка «Авто» расставит флот случайно.',
+            'Поворот: клавиша R (или Q, E), пробел, правый клик по полю или кнопка поворота. Кнопка «Авто» расставит флот случайно.',
             'ВАЖНОЕ ПРАВИЛО: между кораблями должно быть расстояние минимум в одну клетку. Они не могут касаться друг друга даже углами.'
           ],
           type: 'list'
@@ -94,6 +94,15 @@ export const GAME_RULES: Record<Locale, Record<GameId, GameRulesData>> = {
           icon: Eye,
           content: 'Это главное правило игры! Вы можете объявить ЛЮБОЕ действие, даже если у вас нет соответствующей карты. Например, сказать "Я Герцог" и взять 3 монеты, имея на руках двух Ассасинов. Но любой игрок может сказать "НЕ ВЕРЮ!" (Challenge). Если вас поймали на лжи — вы теряете карту. Если вы говорили правду (и показали карту) — карту теряет тот, кто вам не поверил (а вы берете новую карту из колоды).',
           type: 'text'
+        },
+        {
+          title: 'Управление',
+          icon: Keyboard,
+          content: [
+            'Свои действия — кнопками в панели внизу экрана. Когда ходит другой, над панелью всплывают кнопки ответа: оспорить, заблокировать или пропустить.',
+            'Переворот, кража и убийство просят цель: нажмите на игрока. Esc отменяет выбор цели.'
+          ],
+          type: 'list'
         }
       ]
     },
@@ -122,10 +131,11 @@ export const GAME_RULES: Record<Locale, Record<GameId, GameRulesData>> = {
           title: 'Управление (PRO)',
           icon: MousePointer2,
           content: [
-            'ЛКМ: открыть клетку.',
-            'ПКМ (или долгое нажатие на телефоне): поставить/снять флаг.',
-            'АККОРД: клик по открытой цифре (или СКМ). Если вокруг цифры стоит ровно столько флагов, сколько она показывает, мгновенно откроются все остальные клетки вокруг. Главный инструмент скоростной игры!',
-            'Навигация по большому полю: зажмите ЛКМ и тяните для панорамирования, WASD — перемещение, «+»/«−» или кнопки лупы — масштаб.'
+            'ЛКМ или касание: открыть клетку.',
+            'Флаг: ПКМ, ПРОБЕЛ по клетке под курсором или долгое нажатие на телефоне. На телефоне есть и переключатель «Копать / Флаг».',
+            'АККОРД: клик, СКМ или ПРОБЕЛ по открытой цифре. Если вокруг неё стоит ровно столько флагов, сколько она показывает, мгновенно откроются все остальные клетки вокруг. Главный инструмент скоростной игры!',
+            'Перемещение по полю: зажмите ЛКМ и тяните, или WASD / стрелки.',
+            'Масштаб: колесо мыши над полем, «+» / «−» или кнопки лупы. «0» возвращает поле на место.'
           ],
           type: 'list'
         },
@@ -170,6 +180,16 @@ export const GAME_RULES: Record<Locale, Record<GameId, GameRulesData>> = {
           icon: Search,
           content: 'Начинайте с "разноцветных" флагов (например, ЮАР, Сейшелы, ЦАР), чтобы "просканировать" сразу много цветов и понять структуру загаданного флага.',
           type: 'text'
+        },
+        {
+          title: 'Управление',
+          icon: Keyboard,
+          content: [
+            'Начните печатать название страны — появятся подсказки.',
+            'Стрелки ↑ / ↓ выбирают подсказку, Enter или Tab отвечают ею, Esc прячет список.',
+            'После раунда Enter нажимает «Далее».'
+          ],
+          type: 'list'
         }
       ]
     },
@@ -203,6 +223,15 @@ export const GAME_RULES: Record<Locale, Record<GameId, GameRulesData>> = {
           icon: AlertTriangle,
           content: 'Любой игрок 1 раз за раунд может нажать кнопку "Обвинить". Начинается голосование. Если ВСЕ (кроме обвиняемого) голосуют ЗА — игра заканчивается вердиктом. Если хоть один голосует ПРОТИВ — игра продолжается.',
           type: 'text'
+        },
+        {
+          title: 'Управление',
+          icon: Keyboard,
+          content: [
+            'Кнопка «Показать / Скрыть» под карточкой открывает и прячет вашу роль.',
+            'Esc закрывает окно угадывания локации и подтверждение обвинения. Голосование закрыть нельзя — это обязательный шаг.'
+          ],
+          type: 'list'
         }
       ]
     },
@@ -264,6 +293,16 @@ export const GAME_RULES: Record<Locale, Record<GameId, GameRulesData>> = {
             'Берегите стены на конец: в эндшпиле один удачный барьер решает партию, а в начале он почти ничего не стоит.',
             'Вчетвером стены дороже вдвое: их вдвое меньше, а соперников вдвое больше. Не тратьте их на того, кто и так отстаёт.',
             'В паре не стройте против одного и того же — разводите цели, иначе вы просто дублируете работу.'
+          ],
+          type: 'list'
+        },
+        {
+          title: 'Управление',
+          icon: Keyboard,
+          content: [
+            'Ход пешкой: нажмите на подсвеченную клетку или стрелку / WASD в нужную сторону. Прыжок через соседнюю пешку — та же стрелка; обход сбоку — только нажатием на клетку.',
+            'Стена: возьмите её из лотка под доской и перетащите в промежуток. Пока держите, R, Q, E или пробел поворачивают стену, Esc возвращает её в лоток.',
+            'Там, где стену поставить нельзя, предпросмотр не появляется — отпустите, и ничего не случится.'
           ],
           type: 'list'
         }
@@ -386,7 +425,7 @@ export const GAME_RULES: Record<Locale, Record<GameId, GameRulesData>> = {
           icon: MapIcon,
           content: [
             'Placement: drag a ship from the shipyard onto the grid — or select it and click a cell. Clicking a placed ship picks it back up.',
-            'Rotate: R / Spacebar / Q, right-click on the grid, or the rotate button. "Auto" deploys the fleet randomly.',
+            'Rotate: R (or Q, E), Space, right-click on the grid, or the rotate button. "Auto" deploys the fleet randomly.',
             'CRITICAL: Ships cannot touch each other, not even diagonally. A 1-cell gap is mandatory.'
           ],
           type: 'list'
@@ -442,6 +481,15 @@ export const GAME_RULES: Record<Locale, Record<GameId, GameRulesData>> = {
           icon: Eye,
           content: 'This is the heart of the game. You can claim ANY action, regardless of your cards. Claim to be a Duke to take 3 coins? Sure! But anyone can CHALLENGE you. If caught lying, you lose a card. If truthful (and you prove it), the challenger loses a card.',
           type: 'text'
+        },
+        {
+          title: 'Controls',
+          icon: Keyboard,
+          content: [
+            'Your own actions are buttons in the panel at the bottom of the screen. When someone else moves, the answers — challenge, block or pass — pop up above it.',
+            'Coup, steal and assassinate ask for a target: tap a player. Esc cancels the choice.'
+          ],
+          type: 'list'
         }
       ]
     },
@@ -470,10 +518,11 @@ export const GAME_RULES: Record<Locale, Record<GameId, GameRulesData>> = {
           title: 'Pro Controls',
           icon: MousePointer2,
           content: [
-            'Left Click: open a cell.',
-            'Right Click (or Long Press on mobile): place/remove a flag.',
-            'CHORD: click an opened number (or Middle Click). When the number has exactly that many flags around it, all remaining neighbors open instantly. Essential for speedruns!',
-            'Board navigation: hold Left Click and drag to pan, WASD to move, "+"/"-" or the magnifier buttons to zoom.'
+            'Left Click or tap: open a cell.',
+            'Flag: Right Click, SPACE over the cell under the pointer, or Long Press on mobile. Phones also get a Dig / Flag switch.',
+            'CHORD: click, Middle Click or SPACE on an opened number. When it has exactly that many flags around it, all remaining neighbours open instantly. Essential for speedruns!',
+            'Moving around: hold Left Click and drag, or WASD / arrow keys.',
+            'Zoom: the mouse wheel over the board, "+" / "-", or the magnifier buttons. "0" puts the board back.'
           ],
           type: 'list'
         },
@@ -518,6 +567,16 @@ export const GAME_RULES: Record<Locale, Record<GameId, GameRulesData>> = {
           icon: Search,
           content: 'Start with colorful flags (South Africa, Seychelles) to "scan" for multiple colors at once.',
           type: 'text'
+        },
+        {
+          title: 'Controls',
+          icon: Keyboard,
+          content: [
+            'Start typing a country name and suggestions appear.',
+            'Arrow keys ↑ / ↓ pick a suggestion, Enter or Tab answers with it, Esc hides the list.',
+            'After a round, Enter presses "Next".'
+          ],
+          type: 'list'
         }
       ]
     },
@@ -551,6 +610,15 @@ export const GAME_RULES: Record<Locale, Record<GameId, GameRulesData>> = {
           icon: AlertTriangle,
           content: 'Any player can "Accuse" once per round. A vote starts. Unanimous "Guilty" verdict ends the game. Any "Innocent" vote continues the game.',
           type: 'text'
+        },
+        {
+          title: 'Controls',
+          icon: Keyboard,
+          content: [
+            'The Reveal / Hide button under your card shows and hides your role.',
+            'Esc closes the location guess and the accusation prompt. The vote cannot be closed — it is a required step.'
+          ],
+          type: 'list'
         }
       ]
     },
@@ -612,6 +680,16 @@ export const GAME_RULES: Record<Locale, Record<GameId, GameRulesData>> = {
             'Save walls for the end. One barrier in the endgame decides a match; the same wall on turn two barely matters.',
             'With four players walls are twice as precious: half the allowance, twice the rivals. Do not spend them on whoever is already behind.',
             'Partnered up, do not both wall the same rival — split your targets or you are duplicating each other.'
+          ],
+          type: 'list'
+        },
+        {
+          title: 'Controls',
+          icon: Keyboard,
+          content: [
+            'Moving: tap a highlighted square, or press an arrow key / WASD in that direction. Jumping an adjacent pawn is the same key; stepping round it sideways is a tap on the square.',
+            'Walls: pick one up from the tray below the board and drag it into a groove. While you hold it, R, Q, E or Space turns it and Esc puts it back.',
+            'Where a wall cannot go, no preview appears — let go and nothing happens.'
           ],
           type: 'list'
         }

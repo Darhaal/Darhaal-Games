@@ -35,7 +35,7 @@ export default function GameRulesModal({ isOpen, onClose, rules }: GameRulesModa
   if (!isOpen || !rules) return null;
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-[#1A1F26]/20 backdrop-blur-xl animate-in fade-in duration-300 font-sans" onClick={onClose}>
+    <div role="dialog" aria-modal="true" aria-label={rules.title} className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-[#1A1F26]/20 backdrop-blur-xl animate-in fade-in duration-300 font-sans" onClick={onClose}>
       <div
         className="bg-white rounded-[32px] w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl border border-white/50 relative overflow-hidden animate-in zoom-in-95 duration-300"
         onClick={(e) => e.stopPropagation()}

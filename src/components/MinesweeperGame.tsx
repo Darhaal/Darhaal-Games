@@ -14,6 +14,8 @@ import GameRulesModal from './GameRulesModal';
 import { GAME_RULES } from '@/constants/rules';
 import { playSfx } from '@/lib/sound';
 import { useEscape } from '@/hooks/useEscape';
+import { useGameKeys } from '@/hooks/useGameKeys';
+import { directionOf, isSpace, isZoomIn, isZoomOut, isZoomReset } from '@/lib/keys';
 
 // --- THEME & STYLES ---
 const COLORS = {
@@ -122,6 +124,9 @@ const CellComponent = memo(({
 
   return (
     <div
+      data-cell
+      data-x={cell.x}
+      data-y={cell.y}
       onContextMenu={onContextMenu}
       onAuxClick={onAuxClick}
       onPointerDown={onPointerDown}
@@ -178,31 +183,48 @@ const BoardView = ({ player, isMe, onReveal, onFlag, onChord, scale = 1, isTouch
       };
   };
 
-  // Keyboard navigation
-  useEffect(() => {
-      if (!isMe) return;
-      const handleKeyDown = (e: KeyboardEvent) => {
-          if (player.status !== 'playing') return;
+  // Where the pointer last was over the board, so Space can act on the cell
+  // under it — the keyboard has no cursor of its own.
+  const lastPointer = useRef<{ x: number; y: number } | null>(null);
+
+  const cellUnderPointer = (): Cell | null => {
+      const at = lastPointer.current;
+      if (!at) return null;
+      const el = document.elementFromPoint(at.x, at.y)?.closest<HTMLElement>('[data-cell]');
+      if (!el) return null;
+      return player.board[Number(el.dataset.y)]?.[Number(el.dataset.x)] ?? null;
+  };
+
+  /**
+   * Keyboard, as the rules describe it:
+   *   Space        flag / unflag the cell under the pointer; on an open
+   *                number, open its neighbours (chord)
+   *   WASD, arrows move around the board
+   *   + / −        zoom; 0 puts the view back
+   */
+  useGameKeys(isMe && player.status === 'playing', (e) => {
+      if (isSpace(e)) {
+          if (e.repeat) return true; // holding the key must not flip the flag back and forth
+          const cell = cellUnderPointer();
+          if (!cell) return true;
+          if (!cell.isOpen) onFlag(cell.x, cell.y);
+          else if (cell.neighborCount > 0) onChord(cell.x, cell.y);
+          return true;
+      }
+
+      const dir = directionOf(e);
+      if (dir) {
           const step = 40 / zoom;
-          let newX = offset.x;
-          let newY = offset.y;
-          switch(e.code) {
-              case 'KeyW': newY += step; break;
-              case 'KeyS': newY -= step; break;
-              case 'KeyA': newX += step; break;
-              case 'KeyD': newX -= step; break;
-              case 'Equal':
-              case 'NumpadAdd': setZoom(z => Math.min(4, z + 0.25)); return;
-              case 'Minus':
-              case 'NumpadSubtract': setZoom(z => Math.max(0.5, z - 0.25)); return;
-              default: return;
-          }
-          setOffset(clampOffset(newX, newY, zoom));
-      };
-      window.addEventListener('keydown', handleKeyDown);
-      return () => window.removeEventListener('keydown', handleKeyDown);
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- clampOffset is recreated each render; re-binding the key listener every render is unnecessary
-  }, [isMe, zoom, offset, player.status]);
+          const dx = dir === 'left' ? step : dir === 'right' ? -step : 0;
+          const dy = dir === 'up' ? step : dir === 'down' ? -step : 0;
+          setOffset(clampOffset(offset.x + dx, offset.y + dy, zoom));
+          return true;
+      }
+
+      if (isZoomIn(e)) { setZoom(z => Math.min(4, z + 0.25)); return true; }
+      if (isZoomOut(e)) { setZoom(z => Math.max(0.5, z - 0.25)); return true; }
+      if (isZoomReset(e)) { setZoom(1); setOffset({ x: 0, y: 0 }); return true; }
+  });
 
   // --- MOUSE / TOUCH HANDLERS ---
 
@@ -263,6 +285,7 @@ const BoardView = ({ player, isMe, onReveal, onFlag, onChord, scale = 1, isTouch
   };
 
   const onContainerPointerMove = (e: React.PointerEvent) => {
+      lastPointer.current = { x: e.clientX, y: e.clientY };
       if (!isDragging.current) return;
       const dx = (e.clientX - dragStart.current.x) / zoom;
       const dy = (e.clientY - dragStart.current.y) / zoom;
@@ -303,14 +326,22 @@ const BoardView = ({ player, isMe, onReveal, onFlag, onChord, scale = 1, isTouch
       }
   };
 
-  const handleWheel = (e: React.WheelEvent) => {
-      if (e.ctrlKey || !isMe) {
+  // The wheel zooms the board, as it would a map. Attached by hand rather
+  // than through onWheel: React registers wheel listeners as passive, so
+  // preventDefault there is ignored and Ctrl + wheel zoomed the whole page
+  // along with the board.
+  useEffect(() => {
+      const el = containerRef.current;
+      if (!el) return;
+      const onWheel = (e: WheelEvent) => {
           e.preventDefault();
-          const delta = -e.deltaY * 0.001;
-          const nextZoom = Math.min(Math.max(0.5, zoom + delta), 4);
-          setZoom(nextZoom);
-      }
-  };
+          // Firefox can report lines rather than pixels.
+          const dy = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
+          setZoom(z => Math.min(4, Math.max(0.5, z - dy * 0.001)));
+      };
+      el.addEventListener('wheel', onWheel, { passive: false });
+      return () => el.removeEventListener('wheel', onWheel);
+  }, []);
 
   const borderColor = player.status === 'won' ? 'border-emerald-500 shadow-emerald-500/20' : (player.status === 'lost' || player.status === 'left') ? 'border-red-500 shadow-red-500/20' : 'border-[#E6E1DC] shadow-[#1A1F26]/5';
   const overlayOpacity = (player.status === 'left') ? 'grayscale opacity-75' : '';
@@ -345,8 +376,8 @@ const BoardView = ({ player, isMe, onReveal, onFlag, onChord, scale = 1, isTouch
             className="flex-1 overflow-hidden relative bg-[#F8FAFC] cursor-grab active:cursor-grabbing touch-none select-none"
             onPointerDown={onContainerPointerDown}
             onPointerMove={onContainerPointerMove}
+            onPointerLeave={() => { lastPointer.current = null; }}
             onPointerUp={onContainerPointerUp}
-            onWheel={handleWheel}
             onContextMenu={(e) => e.preventDefault()}
         >
             <div className="absolute inset-0 opacity-5 pointer-events-none" style={{ backgroundImage: 'radial-gradient(#94a3b8 1px, transparent 1px)', backgroundSize: '20px 20px' }} />

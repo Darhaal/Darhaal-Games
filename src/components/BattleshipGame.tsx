@@ -13,6 +13,8 @@ import RematchButton from './RematchButton';
 import GameRulesModal from './GameRulesModal';
 import { GAME_RULES } from '@/constants/rules';
 import { playSfx } from '@/lib/sound';
+import { useGameKeys } from '@/hooks/useGameKeys';
+import { isRotate } from '@/lib/keys';
 
 const CELL_SIZE_L = "w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10";
 const CELL_SIZE_S = "w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6";
@@ -37,7 +39,7 @@ const DICTIONARY = {
         zoneMe: 'Мой Флот',
         shipsAlive: 'Состояние Флота',
         enemy: 'Противник',
-        dragHint: 'Перетащите корабли. Пробел/Q для поворота.',
+        dragHint: 'Перетащите корабли. R или пробел — поворот.',
         rotate: 'Повернуть',
         clear: 'Сброс',
         horizontal: 'ГОРИЗОНТАЛЬНО',
@@ -68,7 +70,7 @@ const DICTIONARY = {
         zoneMe: 'My Fleet',
         shipsAlive: 'Fleet Status',
         enemy: 'Enemy',
-        dragHint: 'Drag ships. Space/Q to rotate.',
+        dragHint: 'Drag ships. R or Space to rotate.',
         rotate: 'Rotate',
         clear: 'Reset',
         horizontal: 'HORIZONTAL',
@@ -266,19 +268,14 @@ export default function BattleshipGame({
         if (phase === 'finished') playSfx(gameState.winner === userId ? 'win' : 'lose');
     }, [phase, gameState.winner, userId]);
 
-    // Keyboard: rotate the ship being placed (setup phase only, so it does not
-    // swallow Space/scroll during the battle phase)
-    useEffect(() => {
-        if (phase !== 'setup') return;
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (['Space', 'KeyQ', 'KeyE', 'KeyR'].includes(e.code)) {
-                e.preventDefault();
-                setOrientation(prev => prev === 'horizontal' ? 'vertical' : 'horizontal');
-            }
-        };
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [phase]);
+    // Keyboard: R, Q, E or Space rotates the ship being placed. Setup only, so
+    // it does not swallow Space/scroll during the battle, and never while
+    // typing in the chat.
+    useGameKeys(phase === 'setup', (e) => {
+        if (!isRotate(e)) return;
+        setOrientation(prev => prev === 'horizontal' ? 'vertical' : 'horizontal');
+        return true;
+    });
 
     const getMyCellContent = (x: number, y: number) => {
         const s = myShips.find((s: Ship) => {

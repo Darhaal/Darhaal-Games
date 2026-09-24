@@ -210,7 +210,7 @@ export const GAMES_CONTENT: GameContent[] = [
         ],
         howToPlay: [
           'Выберите размер поля и количество мин или возьмите готовый уровень сложности.',
-          'Левый клик открывает клетку, правый — ставит флаг на подозрительной мине.',
+          'Левый клик открывает клетку, правый клик или пробел под курсором — ставит флаг на подозрительной мине.',
           'Читайте цифры: число показывает, сколько мин граничит с этой клеткой.',
           'Левый клик по открытой цифре делает аккорд — открывает соседние клетки, если рядом уже стоит нужное число флагов.',
           'Масштабируйте поле колесом мыши или с клавиатуры, если играете на большой сетке.',
@@ -267,7 +267,7 @@ export const GAMES_CONTENT: GameContent[] = [
         ],
         howToPlay: [
           'Pick a grid size and mine count, or start from a difficulty preset.',
-          'Left click reveals a cell, right click plants a flag on a suspected mine.',
+          'Left click reveals a cell; a right click, or Space over it, plants a flag on a suspected mine.',
           'Read the numbers: each one counts the mines touching that cell.',
           'Left click a revealed number to chord — it opens the remaining neighbours once the flag count matches.',
           'Zoom with the scroll wheel or the keyboard when playing on a large grid.',
@@ -690,7 +690,7 @@ export const GAMES_CONTENT: GameContent[] = [
         howToPlay: [
           'Создайте комнату, выберите режим и отправьте друзьям ссылку или шестизначный код.',
           'Пешки встают посередине своих краёв. Вдвоём и в паре цель — любая клетка противоположного края; вчетвером — золотая клетка в центре поля.',
-          'За ход сделайте ровно одно: шагните на соседнюю клетку или поставьте стену.',
+          'За ход сделайте ровно одно: шагните на соседнюю клетку (нажатием или стрелкой) или перетащите стену из лотка на доску — R или пробел повернут её прямо в руке.',
           'Стоите вплотную к чужой пешке — перепрыгните её; если за ней стена или край, обойдите сбоку.',
           'Следите за остатком стен: когда они кончатся, останется только бежать.',
           'Первый, кто дошёл до цели, побеждает. В режиме 2 на 2 хватит, чтобы дошёл любой из пары.'
@@ -753,7 +753,7 @@ export const GAMES_CONTENT: GameContent[] = [
         howToPlay: [
           'Create a room, pick a mode, and send friends the link or the six-character code.',
           'Pawns start in the middle of their own edges. In a duel or a team game the target is any square on the opposite edge; four at a table it is the golden centre square.',
-          'On your turn do exactly one thing: step to an adjacent square, or place a wall.',
+          'On your turn do exactly one thing: step to an adjacent square (tap it, or use the arrow keys), or drag a wall from the tray onto the board — R or Space turns it while you hold it.',
           'Face to face with another pawn, hop over it; if a wall or the edge is behind it, step around the side.',
           'Watch your wall count — once they are gone, all you can do is run.',
           'First pawn home wins. In 2v2 either partner getting there wins it for both.'

@@ -732,7 +732,9 @@ export default function FlagerGame({ gameState, userId, makeGuess, handleTimeout
                         </div>
 
                         {!me?.isReadyForNextRound ? (
-                            <button onClick={readyNextRound} className="w-full py-4 bg-[#1A1F26] text-white rounded-xl font-black uppercase tracking-widest hover:bg-[#9e1316] hover:shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2 group">
+                            // Focused on arrival, so Enter carries on from the
+                            // keyboard the answer was typed on.
+                            <button autoFocus onClick={readyNextRound} className="w-full py-4 bg-[#1A1F26] text-white rounded-xl font-black uppercase tracking-widest hover:bg-[#9e1316] hover:shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2 group">
                                 {t.nextRound} <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                             </button>
                         ) : (

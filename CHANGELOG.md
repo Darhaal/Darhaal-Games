@@ -7,6 +7,44 @@ releasing.
 Format: [Semantic Versioning](https://semver.org/). Types: **major** = platform
 milestone, **minor** = new game mode / feature, **patch** = fixes & improvements.
 
+## [2.8.0] — 2026-09-24 (minor) — **Keys That Work**
+
+> Every shortcut the rules promise now does what they say — and none of them
+> fires while you are typing.
+
+### Added
+- **Keyboard controls, written down.** Each game with a shortcut has a
+  Controls section in its rules (RU and EN); `docs/games.md` has the full
+  table.
+  - Minesweeper: **Space** flags the cell under the pointer, or chords an open
+    number; **arrows** pan as well as WASD; **0** resets the view.
+  - Wall Rush: **arrows / WASD** step the pawn, jumping one in the way; while a
+    wall is in hand, **R, Q, E or Space** turn it and **Esc** puts it back.
+  - Flager: after a round "Next" is focused, so **Enter** carries on.
+- **A Wall Rush board that reads as a board.** Grooves and rim are one stone
+  surface with square tiles set into it; finish lines sit in the rim, and the
+  goal row is washed faintly in its owner's colour.
+
+### Fixed
+- **Space did nothing in Minesweeper.** It now flags or chords.
+- **Typing in the chat pressed game keys.** "wasd" panned the Minesweeper
+  board and a space rotated a Battleship ship instead of appearing in the
+  message. Board keys now go through one hook that ignores text fields,
+  dialogs, Ctrl/Alt/Cmd combinations, and anything pressed while a modal such
+  as the rules is open.
+- **Ctrl + wheel zoomed the whole page** along with the Minesweeper board:
+  React registers wheel listeners as passive, so the board could not stop the
+  browser's zoom. A native listener now does, and the wheel alone zooms the
+  board, the way a map works.
+- **Walls floated in their grooves and hung off the board.** A wall now fills
+  its groove and sits flush against the tiles. Where walls meet is decided
+  per intersection: two in line meet half way, a wall ending against another's
+  middle stops at it instead of painting over it, an L corner is filled once,
+  and nothing reaches past the board edge.
+- WASD also works on a Russian layout, and with input methods that report the
+  character but not the key.
+- `docs/games.md` described five games; it now covers all eight.
+
 ## [2.7.0] — 2026-09-24 (minor) — **Talk at the Table**
 
 > Something to say "gg" in, and a reason to: the score now follows the table

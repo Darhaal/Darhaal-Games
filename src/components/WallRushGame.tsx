@@ -5,8 +5,11 @@ import Image from 'next/image';
 import { BrickWall, Crown, Flag, Trophy } from 'lucide-react';
 import type { Cell, Wall, WallOrientation, WallRushPlayer, WallRushState } from '@/types/wallrush';
 import {
-  GOAL_FOR_MODE, canPlaceWall, centreCell, isGoal, legalMoves, sameCell, seatsForMode, teamOf
+  GOAL_FOR_MODE, canPlaceWall, centreCell, isGoal, legalMoves, moveInDirection, sameCell, seatsForMode, teamOf
 } from '@/lib/gameLogic/wallrush';
+import { useGameKeys } from '@/hooks/useGameKeys';
+import { directionOf, isEscape, isRotate } from '@/lib/keys';
+import { wallKey, wallReaches, type WallReach } from '@/lib/gameLogic/wallrushJoints';
 import PlayerToken, { PlayerLegend } from './PlayerToken';
 import { SEAT_COLORS, TEAM_COLORS, UNOWNED } from '@/games/palette';
 import GameHeader from './GameHeader';
@@ -73,60 +76,57 @@ const UI_TEXT = {
 const colorFor = (state: WallRushState, seat: number) =>
   (state.settings.mode === 'teams' ? TEAM_COLORS : SEAT_COLORS)[seat % 4];
 
-/** Width of a wall gutter as a fraction of a cell. */
+/** Width of a groove as a fraction of a cell. */
 const GUTTER_FR = 0.34;
 
-/**
- * How far a wall is drawn beyond the three tracks it occupies.
- *
- * Its span is cell + gutter + cell, so two walls laid in line leave the
- * gutter between them undrawn. One gutter of extra width — half at each end —
- * closes that, and the arithmetic is kept here rather than as a magic
- * percentage so it follows GUTTER_FR if that ever changes.
- */
-const OVERHANG_PCT = Math.round((1 + GUTTER_FR / (2 + GUTTER_FR)) * 1000) / 10;
+/** Width of the board's rim, in the same units — a little wider than a groove. */
+const FRAME_FR = 0.46;
 
 /**
- * A wall, drawn as brickwork.
- *
- * Full length rather than the old 92%: two walls laid end to end now meet,
- * which is how the board reads as a barrier rather than a row of dashes.
- *
- * The pattern is two courses with the joints staggered, the way bricks are
- * actually laid — a single row of evenly spaced lines reads as a ladder. The
- * mortar is white at low opacity so it works on any seat colour rather than
- * needing one shade per player.
+ * One groove as a percentage of a wall's own length (cell + groove + cell),
+ * which is what an absolutely placed bar's offsets are measured against.
  */
-function WallBar({ o, color }: { o: WallOrientation; color: string }) {
+const GROOVE_OF_WALL_PCT = (GUTTER_FR / (2 + GUTTER_FR)) * 100;
+
+/** The board: grooves and rim are one surface, the cells are tiles set into it. */
+const BOARD_BG = '#E3DDD1';
+const TILE_BG = '#FBFAF7';
+
+/**
+ * A wall, drawn as brickwork, filling whatever box it is given.
+ *
+ * On the board that box is the whole groove, so the wall sits flush against
+ * the tiles on either side instead of floating in the middle of a gap. The
+ * pattern is two courses with the joints staggered, the way bricks are laid —
+ * a single row of evenly spaced lines reads as a ladder — and the bricks are
+ * sized from the wall's own thickness (container units), so they keep their
+ * proportions from a phone to a desktop.
+ */
+function WallBar({
+  o, color, style, className = ''
+}: { o: WallOrientation; color: string; style?: React.CSSProperties; className?: string }) {
   const horizontal = o === 'h';
 
   // Mortar is a dark line, not a light one: against a saturated seat colour a
   // white joint bleaches the wall and it reads as hatching rather than brick.
+  const brick = horizontal ? '130cqh' : '130cqw';
   const course = (shift: boolean): React.CSSProperties => ({
     backgroundColor: color,
-    backgroundImage: `repeating-linear-gradient(${horizontal ? '90deg' : '180deg'},
-      rgba(0,0,0,0.26) 0 1.5px, rgba(0,0,0,0) 1.5px 13px)`,
+    backgroundImage: `linear-gradient(${horizontal ? '90deg' : '180deg'}, rgba(0,0,0,0.28) 0 1.5px, transparent 1.5px)`,
+    backgroundSize: horizontal ? `${brick} 100%` : `100% ${brick}`,
     // Half a brick, so no joint sits above another.
-    backgroundPosition: shift ? (horizontal ? '6.5px 0' : '0 6.5px') : '0 0'
+    backgroundPosition: shift ? (horizontal ? '65cqh 0' : '0 65cqw') : '0 0'
   });
 
   return (
     <span
-      // shrink-0 matters: the bar is a flex item, and without it the parent
-      // shrinks the overhang below back to the track width — which is why
-      // vertical walls met and horizontal ones did not.
-      className={`flex shrink-0 overflow-hidden rounded-[2px] ${
-        horizontal ? 'h-[72%] flex-col' : 'w-[72%] flex-row'
-      }`}
+      className={`flex overflow-hidden rounded-[1.5px] ${horizontal ? 'flex-col' : 'flex-row'} ${className}`}
       style={{
-        // Fills most of the gutter — the old 26% of it was a hairline, too
-        // thin to carry a pattern or to read as a barrier.
-        boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.18)',
-        // Half a gutter of overhang at each end, so two walls laid in line
-        // meet. A wall spans cell + gutter + cell, which leaves the gutter
-        // between two of them undrawn: the barrier was continuous and only
-        // looked like it had a hole in it.
-        [horizontal ? 'width' : 'height']: `${OVERHANG_PCT}%`
+        containerType: 'size',
+        // Lit from above: a highlight on the top edge, a shadow falling on
+        // the tiles — enough to read as a piece laid on the board.
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.28), 0 1px 2px rgba(0,0,0,0.28)',
+        ...style
       }}
     >
       <span className="flex-1" style={course(false)} />
@@ -137,6 +137,18 @@ function WallBar({ o, color }: { o: WallOrientation; color: string }) {
     </span>
   );
 }
+
+/**
+ * Where a wall's bar sits inside the three tracks it spans: the full width of
+ * the groove, and along its length reaching into the intersections at its
+ * ends by however much `wallReaches` decided.
+ */
+const barPlacement = (o: WallOrientation, reach: WallReach): React.CSSProperties =>
+  o === 'h'
+    ? { position: 'absolute', top: 0, bottom: 0,
+        left: `${-reach.start * GROOVE_OF_WALL_PCT}%`, right: `${-reach.end * GROOVE_OF_WALL_PCT}%` }
+    : { position: 'absolute', left: 0, right: 0,
+        top: `${-reach.start * GROOVE_OF_WALL_PCT}%`, bottom: `${-reach.end * GROOVE_OF_WALL_PCT}%` };
 
 export default function WallRushGame({
   gameState, userId, movePawn, placeWall, resign, handleTimeout, leaveGame, lang
@@ -260,16 +272,59 @@ export default function WallRushGame({
     setSlot(null);
   }, [dragging, slot, canDropHere, placeWall]);
 
+  /**
+   * Keyboard, as the rules describe it:
+   *   arrows / WASD   step your pawn that way (jumping a pawn in the way)
+   *   R, Q, E, Space  turn the wall in hand while dragging it
+   *   Esc             put the wall back without placing it
+   */
+  useGameKeys(gameState.status === 'playing' && !!me, (e) => {
+    if (dragging) {
+      if (isEscape(e)) { setDragging(null); setSlot(null); return true; }
+      if (isRotate(e)) { setDragging((o) => (o === 'h' ? 'v' : 'h')); return true; }
+      return;
+    }
+
+    const dir = directionOf(e);
+    if (!dir || !isMyTurn || !gameState.pawns[userId]) return;
+    const target = moveInDirection(gameState.pawns[userId], myMoves, dir);
+    if (target && !e.repeat) movePawn(target);
+    return true;
+  });
+
   const pawnAt = (cell: Cell): WallRushPlayer | undefined =>
     gameState.players.find((p) => gameState.pawns[p.id] && sameCell(gameState.pawns[p.id], cell));
 
+  /** Which edge of the board a player starting on `side` is racing to. */
+  const goalEdge = (side: string): 'bottom' | 'top' | 'right' | 'left' =>
+    side === 'north' ? 'bottom' : side === 'south' ? 'top' : side === 'west' ? 'right' : 'left';
+
   /**
-   * Which outer edge a goal square sits on, so the marker is a line rather
-   * than a box. Capitalised because it is spliced into a camelCase style key —
-   * `borderbottom` is silently ignored by React, `borderBottom` is not.
+   * The rim as a percentage of the board's width. Padding percentages are
+   * measured against width on every side, and the board is square, so one
+   * number places the rim, and the finish lines inside it, on all four.
    */
-  const goalEdge = (side: string): 'Bottom' | 'Top' | 'Right' | 'Left' =>
-    side === 'north' ? 'Bottom' : side === 'south' ? 'Top' : side === 'west' ? 'Right' : 'Left';
+  const rimPct = (FRAME_FR / (units + 2 * FRAME_FR)) * 100;
+
+  /** A finish line in the rim along the edge a player is racing to. */
+  const finishLine = (p: WallRushPlayer) => {
+    const edge = goalEdge(sides[p.seat]);
+    const across = edge === 'top' || edge === 'bottom';
+    return (
+      <span
+        key={`goal${p.id}`}
+        aria-hidden
+        className="absolute rounded-full"
+        style={{
+          backgroundColor: colorFor(gameState, p.seat),
+          [edge]: `${rimPct * 0.28}%`,
+          ...(across
+            ? { left: `${rimPct}%`, right: `${rimPct}%`, height: `${rimPct * 0.44}%` }
+            : { top: `${rimPct}%`, bottom: `${rimPct}%`, width: `${rimPct * 0.44}%` })
+        }}
+      />
+    );
+  };
 
   const goalOwner = (cell: Cell): WallRushPlayer | undefined =>
     gameState.status !== 'waiting' && !racingToCentre
@@ -295,6 +350,10 @@ export default function WallRushGame({
       const owner = goalOwner(cell);
       const isCentre = racingToCentre && sameCell(cell, centre);
 
+      // A goal row is washed faintly in its owner's colour; the rim beside it
+      // carries the solid line.
+      const goalTint = owner ? colorFor(gameState, owner.seat) : null;
+
       board.push(
         <button
           key={`c${x},${y}`}
@@ -304,19 +363,22 @@ export default function WallRushGame({
           style={{
             gridColumn: 2 * x + 1,
             gridRow: 2 * y + 1,
-            // A line along the outer edge in the owner's colour, rather than a
-            // ring around every square — a ring made the end rows look like a
-            // separate strip of boxes.
-            ...(owner
-              ? { [`border${goalEdge(sides[owner.seat])}`]: `3px solid ${colorFor(gameState, owner.seat)}` }
-              : {})
-          }}
-          className={`relative aspect-square rounded-[3px] transition-colors ${
-            isCentre
-              ? 'bg-amber-50 ring-1 ring-amber-400'
+            // Square tiles: a wall is square-ended and fills the groove, so
+            // any rounding here shows as a notch of board between the two.
+            backgroundColor: isCentre
+              ? '#FEF3C7'
               : isTarget
-                ? 'bg-[#E4E1D8] cursor-pointer hover:bg-[#DAD6CB]'
-                : 'bg-[#EFEDE7]'
+                ? `color-mix(in srgb, ${myColor} 14%, ${TILE_BG})`
+                : goalTint
+                  ? `color-mix(in srgb, ${goalTint} 7%, ${TILE_BG})`
+                  : TILE_BG,
+            // Set into the board: a lit top edge and a slightly darker foot.
+            boxShadow: isCentre
+              ? 'inset 0 0 0 2px #FBBF24'
+              : 'inset 0 1px 0 rgba(255,255,255,0.9), inset 0 -2px 0 rgba(0,0,0,0.06)'
+          }}
+          className={`relative aspect-square transition-[filter] ${
+            isTarget ? 'cursor-pointer hover:brightness-95' : ''
           }`}
           aria-label={`${x + 1},${y + 1}`}
         >
@@ -344,47 +406,37 @@ export default function WallRushGame({
     }
   }
 
-  // Walls already on the board, in the colour of whoever built them.
-  for (const w of gameState.walls) {
-    board.push(
-      <span
-        key={`w${w.o}${w.x},${w.y}`}
-        aria-hidden
-        style={
-          w.o === 'h'
-            ? { gridColumn: `${2 * w.x + 1} / span 3`, gridRow: 2 * w.y + 2 }
-            : { gridColumn: 2 * w.x + 2, gridRow: `${2 * w.y + 1} / span 3` }
-        }
-        className="flex items-center justify-center pointer-events-none"
-      >
-        <WallBar o={w.o} color={wallColor(w)} />
-      </span>
-    );
-  }
-
   /**
    * The piece under the pointer, drawn with the same grid placement a real
-   * wall gets — spanning three tracks rather than one gutter, so what you see
-   * while dragging is the size of what you are about to place.
+   * wall gets — spanning three tracks rather than one groove, so what you see
+   * while dragging is the size of what you are about to place. It joins the
+   * walls around it the way it will once dropped.
    */
-  if (dragging && slot && canDropHere) {
-    board.push(
-      <span
-        key="preview"
-        aria-hidden
-        style={
-          dragging === 'h'
-            ? { gridColumn: `${2 * slot.x + 1} / span 3`, gridRow: 2 * slot.y + 2 }
-            : { gridColumn: 2 * slot.x + 2, gridRow: `${2 * slot.y + 1} / span 3` }
-        }
-        className="flex items-center justify-center pointer-events-none"
-      >
-        <span className="w-full h-full flex items-center justify-center opacity-60">
-          <WallBar o={dragging} color={myColor} />
-        </span>
-      </span>
-    );
-  }
+  const preview: Wall | null = dragging && slot && canDropHere ? { ...slot, o: dragging } : null;
+  const reaches = wallReaches(preview ? [...gameState.walls, preview] : gameState.walls, size);
+
+  const wallAt = (w: Wall, color: string, key: string, faded = false) => (
+    <span
+      key={key}
+      aria-hidden
+      style={
+        w.o === 'h'
+          ? { gridColumn: `${2 * w.x + 1} / span 3`, gridRow: 2 * w.y + 2 }
+          : { gridColumn: 2 * w.x + 2, gridRow: `${2 * w.y + 1} / span 3` }
+      }
+      className={`relative pointer-events-none ${faded ? 'opacity-60' : ''}`}
+    >
+      <WallBar
+        o={w.o}
+        color={color}
+        style={barPlacement(w.o, reaches.get(wallKey(w)) ?? { start: 0, end: 0 })}
+      />
+    </span>
+  );
+
+  // Walls already on the board, in the colour of whoever built them.
+  for (const w of gameState.walls) board.push(wallAt(w, wallColor(w), `w${wallKey(w)}`));
+  if (preview) board.push(wallAt(preview, myColor, 'preview', true));
 
   const orderedPlayers = [...gameState.players].sort((a, b) => a.seat - b.seat);
 
@@ -417,9 +469,11 @@ export default function WallRushGame({
       }`}
       aria-label={o === 'h' ? 'horizontal wall' : 'vertical wall'}
     >
-      <span className={`flex items-center justify-center ${o === 'h' ? 'w-12 h-8' : 'w-8 h-12'}`}>
-        <WallBar o={o} color={canBuild ? myColor : '#D8D6D0'} />
-      </span>
+      <WallBar
+        o={o}
+        color={canBuild ? myColor : '#D8D6D0'}
+        className={o === 'h' ? 'w-14 h-4' : 'w-4 h-12'}
+      />
     </button>
   );
 
@@ -448,11 +502,25 @@ export default function WallRushGame({
       <main className="flex-1 w-full max-w-5xl mx-auto px-4 py-6 flex flex-col lg:flex-row gap-8">
         <section className="flex-1 flex flex-col items-center min-w-0">
           <div className="w-full max-w-[min(92vw,560px)]">
-            <div ref={boardRef} className="relative">
-              <div className="grid" style={{ gridTemplateColumns: track, gridTemplateRows: track }}>
+            {/* The board: one stone surface — rim and grooves — with the
+                tiles set into it. The pointer maths reads the grid itself,
+                not the rim around it. */}
+            <div
+              className="relative rounded-2xl"
+              style={{
+                padding: `${rimPct}%`,
+                backgroundColor: BOARD_BG,
+                boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.08)'
+              }}
+            >
+              {!racingToCentre && gameState.status !== 'waiting' && orderedPlayers.map(finishLine)}
+              <div
+                ref={boardRef}
+                className="grid"
+                style={{ gridTemplateColumns: track, gridTemplateRows: track }}
+              >
                 {board}
               </div>
-
             </div>
 
             {/* LEGEND — which piece on the board is whose */}
@@ -579,6 +647,9 @@ export default function WallRushGame({
       {/* RESIGN — in the app's own dialog, not the browser's */}
       {pendingResign && (
         <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={t.resignTitle}
           className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-[#1A1F26]/50 backdrop-blur-sm animate-in fade-in duration-200"
           onClick={() => setPendingResign(false)}
         >
