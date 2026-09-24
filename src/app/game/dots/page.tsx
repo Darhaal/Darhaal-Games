@@ -11,7 +11,9 @@ import { useDotsGame } from '@/hooks/useDotsGame';
 import { useRematchRedirect } from '@/hooks/useRematchRedirect';
 import DotsGame from '@/components/DotsGame';
 import GameNotJoined from '@/components/GameNotJoined';
+import LobbyChat from '@/components/LobbyChat';
 import { requireGame, roomCapacity } from '@/games/registry';
+import { seriesNamesOf, seriesWinsOf } from '@/lib/series';
 
 /** Player limits come from the registry; the room's own cap still wins. */
 const GAME = requireGame('dots');
@@ -130,31 +132,39 @@ function DotsContent() {
     }));
 
     return (
-      <UniversalLobby
-        lobbyId={lobbyId}
-        roomCode={roomMeta?.code || ''}
-        roomName={roomMeta?.name || 'Dots & Boxes'}
-        gameType="dots"
-        players={playersList}
-        currentUserId={userId}
-        minPlayers={GAME.players.min}
-        maxPlayers={roomCapacity(GAME, gameState.settings?.maxPlayers)}
-        onStart={startGame}
-        onLeave={handleLeave}
-        lang={lang}
-      />
+      <>
+        <UniversalLobby
+          seriesWins={seriesWinsOf(gameState)}
+          seriesNames={seriesNamesOf(gameState)}
+          lobbyId={lobbyId}
+          roomCode={roomMeta?.code || ''}
+          roomName={roomMeta?.name || 'Dots & Boxes'}
+          gameType="dots"
+          players={playersList}
+          currentUserId={userId}
+          minPlayers={GAME.players.min}
+          maxPlayers={roomCapacity(GAME, gameState.settings?.maxPlayers)}
+          onStart={startGame}
+          onLeave={handleLeave}
+          lang={lang}
+        />
+        {seated && <LobbyChat lobbyId={lobbyId} userId={userId} lang={lang} />}
+      </>
     );
   }
 
   return (
-    <DotsGame
-      gameState={gameState}
-      userId={userId}
-      drawLine={drawLine}
-      handleTimeout={handleTimeout}
-      leaveGame={handleLeave}
-      lang={lang}
-    />
+    <>
+      <DotsGame
+        gameState={gameState}
+        userId={userId}
+        drawLine={drawLine}
+        handleTimeout={handleTimeout}
+        leaveGame={handleLeave}
+        lang={lang}
+      />
+      {seated && <LobbyChat lobbyId={lobbyId} userId={userId} lang={lang} />}
+    </>
   );
 }
 

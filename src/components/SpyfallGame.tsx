@@ -362,7 +362,9 @@ export default function SpyfallGame({ gameState, userId, startGame, endGame, lea
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] font-sans text-[#1A1F26] relative overflow-hidden flex flex-col">
+    // Bottom padding is room for the chat button: on a phone the players'
+    // "accuse" buttons are the last thing on the page.
+    <div className="min-h-screen bg-[#F8FAFC] font-sans text-[#1A1F26] relative overflow-hidden flex flex-col pb-24">
         <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-40 mix-blend-overlay pointer-events-none fixed" />
 
         {/* These were written into game_state and never rendered — a player

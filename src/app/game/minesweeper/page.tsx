@@ -10,7 +10,9 @@ import { useMinesweeperGame } from '@/hooks/useMinesweeperGame';
 import { useRematchRedirect } from '@/hooks/useRematchRedirect';
 import MinesweeperGame from '@/components/MinesweeperGame';
 import GameNotJoined from '@/components/GameNotJoined';
+import LobbyChat from '@/components/LobbyChat';
 import { requireGame, roomCapacity } from '@/games/registry';
+import { seriesNamesOf, seriesWinsOf } from '@/lib/series';
 
 /** Player limits come from the registry; the room's own cap still wins. */
 const GAME = requireGame('minesweeper');
@@ -106,15 +108,17 @@ function MinesweeperContent() {
 
   if (!gameState) return <div className="min-h-screen flex items-center justify-center font-bold text-gray-400">{t.lobbyNotFound}</div>;
 
+  const seated = !!gameState.players[userId];
+
   // Late visitor: the game is already running and we are not part of it
-  if (gameState.status !== 'waiting' && !gameState.players[userId]) {
+  if (gameState.status !== 'waiting' && !seated) {
       return <GameNotJoined lang={lang} />;
   }
 
   // The invite link bypasses the lobby list, so the room's own cap has to
   // be enforced here too — otherwise a shared link seated any number of
   // players in a room the host had limited.
-  if (!gameState.players[userId] && Object.keys(gameState.players).length >= roomCapacity(GAME, gameState.settings?.maxPlayers)) {
+  if (!seated && Object.keys(gameState.players).length >= roomCapacity(GAME, gameState.settings?.maxPlayers)) {
       return <GameNotJoined lang={lang} reason="full" />;
   }
 
@@ -128,35 +132,43 @@ function MinesweeperContent() {
       }));
 
       return (
-        <UniversalLobby
-          lobbyId={lobbyId}
-          roomCode={roomMeta?.code || ''}
-          roomName={roomMeta?.name || 'Minesweeper'}
-          gameType="minesweeper"
-          players={playersList}
-          currentUserId={userId}
-          minPlayers={GAME.players.min}
-          maxPlayers={roomCapacity(GAME, gameState.settings?.maxPlayers)}
-          onStart={startGame}
-          onLeave={handleLeave}
-          lang={lang}
-        />
+        <>
+          <UniversalLobby
+            seriesWins={seriesWinsOf(gameState)}
+            seriesNames={seriesNamesOf(gameState)}
+            lobbyId={lobbyId}
+            roomCode={roomMeta?.code || ''}
+            roomName={roomMeta?.name || 'Minesweeper'}
+            gameType="minesweeper"
+            players={playersList}
+            currentUserId={userId}
+            minPlayers={GAME.players.min}
+            maxPlayers={roomCapacity(GAME, gameState.settings?.maxPlayers)}
+            onStart={startGame}
+            onLeave={handleLeave}
+            lang={lang}
+          />
+          {seated && <LobbyChat lobbyId={lobbyId} userId={userId} lang={lang} />}
+        </>
       );
   }
 
   return (
-    <MinesweeperGame
-      gameState={gameState}
-      userId={userId}
-      revealCell={revealCell}
-      toggleFlag={toggleFlag}
-      chordCell={chordCell}
-      startGame={startGame}
-      leaveGame={handleLeave}
-      handleTimeout={handleTimeout}
-      forceTimeUp={forceTimeUp}
-      lang={lang}
-    />
+    <>
+      <MinesweeperGame
+        gameState={gameState}
+        userId={userId}
+        revealCell={revealCell}
+        toggleFlag={toggleFlag}
+        chordCell={chordCell}
+        startGame={startGame}
+        leaveGame={handleLeave}
+        handleTimeout={handleTimeout}
+        forceTimeUp={forceTimeUp}
+        lang={lang}
+      />
+      {seated && <LobbyChat lobbyId={lobbyId} userId={userId} lang={lang} />}
+    </>
   );
 }
 

@@ -11,7 +11,9 @@ import { useRematchRedirect } from '@/hooks/useRematchRedirect';
 import UniversalLobby, { LobbyPlayer } from '@/components/UniversalLobby';
 import BattleshipGame from '@/components/BattleshipGame';
 import GameNotJoined from '@/components/GameNotJoined';
+import LobbyChat from '@/components/LobbyChat';
 import { requireGame, roomCapacity } from '@/games/registry';
+import { seriesNamesOf, seriesWinsOf } from '@/lib/series';
 
 /** Player limits come from the registry; the room's own cap still wins. */
 const GAME = requireGame('battleship');
@@ -125,15 +127,17 @@ function BattleshipContent() {
       );
   }
 
+  const seated = !!gameState.players?.[user.id];
+
   // Late visitor: the game is already running and we are not part of it
-  if (gameState.status !== 'waiting' && !gameState.players?.[user.id]) {
+  if (gameState.status !== 'waiting' && !seated) {
       return <GameNotJoined lang={lang} />;
   }
 
   // The invite link bypasses the lobby list, so the room's own cap has to
   // be enforced here too — otherwise a shared link seated any number of
   // players in a room the host had limited.
-  if (!gameState.players?.[user.id] && Object.keys(gameState.players ?? {}).length >= roomCapacity(GAME, gameState.settings?.maxPlayers)) {
+  if (!seated && Object.keys(gameState.players ?? {}).length >= roomCapacity(GAME, gameState.settings?.maxPlayers)) {
       return <GameNotJoined lang={lang} reason="full" />;
   }
 
@@ -147,37 +151,45 @@ function BattleshipContent() {
       }));
 
       return (
-        <UniversalLobby
-          lobbyId={lobbyId}
-          roomCode={roomMeta?.code || ''}
-          roomName={roomMeta?.name || 'Battleship'}
-          gameType="battleship"
-          players={playersList}
-          currentUserId={user.id}
-          minPlayers={GAME.players.min}
-          maxPlayers={roomCapacity(GAME, gameState.settings?.maxPlayers)}
-          onStart={startGame}
-          onLeave={handleLeave}
-          lang={lang}
-        />
+        <>
+          <UniversalLobby
+            seriesWins={seriesWinsOf(gameState)}
+            seriesNames={seriesNamesOf(gameState)}
+            lobbyId={lobbyId}
+            roomCode={roomMeta?.code || ''}
+            roomName={roomMeta?.name || 'Battleship'}
+            gameType="battleship"
+            players={playersList}
+            currentUserId={user.id}
+            minPlayers={GAME.players.min}
+            maxPlayers={roomCapacity(GAME, gameState.settings?.maxPlayers)}
+            onStart={startGame}
+            onLeave={handleLeave}
+            lang={lang}
+          />
+          {seated && <LobbyChat lobbyId={lobbyId} userId={user.id} lang={lang} />}
+        </>
       );
   }
 
   return (
-    <BattleshipGame
-      gameState={gameState}
-      userId={user.id}
-      myShips={myShips}
-      autoPlaceShips={autoPlaceShips}
-      clearShips={clearShips}
-      placeShipManual={placeShipManual}
-      removeShip={removeShip}
-      submitShips={submitShips}
-      fireShot={fireShot}
-      leaveGame={handleLeave}
-      handleTimeout={handleTimeout}
-      lang={lang}
-    />
+    <>
+      <BattleshipGame
+        gameState={gameState}
+        userId={user.id}
+        myShips={myShips}
+        autoPlaceShips={autoPlaceShips}
+        clearShips={clearShips}
+        placeShipManual={placeShipManual}
+        removeShip={removeShip}
+        submitShips={submitShips}
+        fireShot={fireShot}
+        leaveGame={handleLeave}
+        handleTimeout={handleTimeout}
+        lang={lang}
+      />
+      {seated && <LobbyChat lobbyId={lobbyId} userId={user.id} lang={lang} />}
+    </>
   );
 }
 

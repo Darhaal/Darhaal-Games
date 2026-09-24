@@ -1,8 +1,8 @@
 # Darhaal Games
 
-![Version](https://img.shields.io/badge/version-2.6.2-blue.svg) ![License](https://img.shields.io/badge/license-View%20%26%20Study%20Only-red.svg) ![Tests](https://img.shields.io/badge/tests-460-brightgreen.svg)
+![Version](https://img.shields.io/badge/version-2.7.0-blue.svg) ![License](https://img.shields.io/badge/license-View%20%26%20Study%20Only-red.svg) ![Tests](https://img.shields.io/badge/tests-505-brightgreen.svg)
 
-Five board and logic games you can play with friends in a browser. One person
+Eight board and logic games you can play with friends in a browser. One person
 creates a room, shares the link, everyone else joins — no install, no account
 required.
 
@@ -61,6 +61,9 @@ build if any attack succeeds.
 | **Flager** | 1–4 | Canvas pixel-reveal mechanic, ~200 countries, score decays with time |
 | **Battleship** | 2 | Drag-and-drop placement with live rule validation, extra turn on a hit |
 | **Coup** | 2–6 | Nested state machine: action → challenge → block → resolution |
+| **Wall Rush** | 2–4 | Duel, three-way, 2v2 and free-for-all; path-finding keeps every wall legal; resign and stay to watch |
+| **Dots & Boxes** | 2–4 | Close a box and move again; the last line drawn is marked |
+| **Reversi** | 2 | Legal moves shown; a turn with none passes by itself |
 
 Rules, tactics and per-game notes: [`docs/games.md`](docs/games.md).
 

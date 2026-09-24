@@ -410,7 +410,9 @@ export default function BattleshipGame({
     }
 
     return (
-        <div className="min-h-screen bg-[#F8FAFC] text-[#1A1F26] flex flex-col font-sans overflow-hidden relative">
+        // Bottom padding is room for the chat button: on a phone "ready" is
+        // the last thing on the page and would otherwise stop underneath it.
+        <div className="min-h-screen bg-[#F8FAFC] text-[#1A1F26] flex flex-col font-sans overflow-hidden relative pb-24">
             <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-50 mix-blend-overlay pointer-events-none" />
 
             <GameHeader

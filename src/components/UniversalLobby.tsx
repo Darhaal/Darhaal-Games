@@ -26,6 +26,10 @@ export interface LobbyPlayer {
 }
 
 interface UniversalLobbyProps {
+  /** Points taken by each player since the first room in this chain. */
+  seriesWins?: Record<string, number>;
+  /** Their names, so someone who has not rejoined yet is still named. */
+  seriesNames?: Record<string, string>;
   /** Needed for the keep-alive ping; the room is addressed by id, not code. */
   lobbyId: string | null;
   roomCode: string;
@@ -47,6 +51,8 @@ const Toast = ({ msg, type }: { msg: string, type: 'join' | 'leave' | 'info' }) 
 );
 
 export default function UniversalLobby({
+  seriesWins,
+  seriesNames,
   lobbyId,
   roomCode,
   roomName,
@@ -78,6 +84,23 @@ export default function UniversalLobby({
   // the cleanup job, so a room whose last tab closed used to linger for days.
   useLobbyTouch(lobbyId, !!currentUserId);
 
+  /**
+   * The series, highest first.
+   *
+   * Someone who won earlier and has since left still counts — the score of a
+   * series is what happened, not who is in the room now — so the tally is the
+   * source of names, falling back to the roster when it has one.
+   */
+  const series = Object.entries(seriesWins ?? {})
+    .filter(([, wins]) => wins > 0)
+    .map(([id, wins]) => ({
+      id,
+      wins,
+      // Live roster first, then the name carried from the room before.
+      name: players.find((p) => p.id === id)?.name ?? seriesNames?.[id] ?? '—'
+    }))
+    .sort((a, b) => b.wins - a.wins);
+
   const isHost = players.find(p => p.id === currentUserId)?.isHost;
   const game = getGame(gameType);
   const GameIcon = game ? GAME_ICONS[game.id] : Users;
@@ -106,6 +129,7 @@ export default function UniversalLobby({
       offline: 'Не в сети',
       kick: 'Исключить',
       kicked: 'Игрок исключен',
+      series: 'Счёт серии',
       hostClosed: 'Хост покинул комнату — лобби закрыто',
       closeTitle: 'Закрыть комнату?',
       closeDesc: 'Комната исчезнет, остальные игроки будут отключены.',
@@ -130,6 +154,7 @@ export default function UniversalLobby({
       offline: 'Offline',
       kick: 'Kick',
       kicked: 'Player kicked',
+      series: 'Series score',
       hostClosed: 'The host left — the room is closed',
       closeTitle: 'Close the room?',
       closeDesc: 'The room disappears and everyone else is dropped.',
@@ -461,7 +486,9 @@ export default function UniversalLobby({
 
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-[#1A1F26] flex flex-col font-sans relative overflow-hidden">
+    // Bottom padding is room for the chat button: without it, on a phone the
+    // start button scrolls no further than underneath it.
+    <div className="min-h-screen bg-[#F8FAFC] text-[#1A1F26] flex flex-col font-sans relative overflow-hidden pb-24">
       <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-50 mix-blend-overlay pointer-events-none" />
 
       <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] flex flex-col gap-2 w-full max-w-sm px-4 pointer-events-none">
@@ -566,6 +593,24 @@ export default function UniversalLobby({
         </div>
 
         <div className="w-full lg:w-1/3 flex flex-col gap-6">
+            {/* The chain this room belongs to. "Play again" opens a new room
+                every time, so without this a fourth match looks like a first. */}
+            {series.length > 0 && (
+              <div className="bg-white border border-[#E6E1DC] rounded-[24px] p-5 shadow-sm">
+                <div className="text-2xs font-bold text-gray-400 uppercase tracking-[0.2em] mb-3">
+                  {t.series}
+                </div>
+                <div className="space-y-2">
+                  {series.map(({ id, name, wins }) => (
+                    <div key={id} className="flex items-center justify-between gap-3">
+                      <span className="text-sm font-bold text-[#1A1F26] truncate">{name}</span>
+                      <span className="text-lg font-black tabular-nums text-[#9e1316]">{wins}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div
                 onClick={handleCopy}
                 className="bg-[#1A1F26] text-white p-8 rounded-[32px] shadow-2xl shadow-[#1A1F26]/20 text-center cursor-pointer group relative overflow-hidden transition-transform active:scale-[0.98]"

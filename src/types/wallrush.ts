@@ -77,6 +77,15 @@ export interface WallRushState {
   turnDeadline?: number;
 
   /** Winners. More than one id in `teams`, where a partnership wins together. */
+  /**
+   * Players who gave up but stayed to watch.
+   *
+   * Being out of the race is already expressed by having no pawn — that is
+   * what `finishIfUncontested` counts — so this exists only to tell apart
+   * "resigned" from "left", which the board and the roster show differently.
+   */
+  resigned?: string[];
+
   winnerIds: string[];
 
   startTime: number;

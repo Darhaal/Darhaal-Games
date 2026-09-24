@@ -5,9 +5,12 @@ import { useLobbySync } from '@/hooks/core/useLobbySync';
 import { requireGame, roomCapacity } from '@/games/registry';
 import { randomOf } from '@/lib/turnOrder';
 import {
-  BOARD_FOR_MODE, GOAL_FOR_MODE, WALLS_FOR_MODE, seatsForMode, teamOf,
+  BOARD_FOR_MODE, GOAL_FOR_MODE, WALLS_FOR_MODE, seatsForMode,
   startCell, isGoal, canPlaceWall, legalMoves, sameCell
 } from '@/lib/gameLogic/wallrush';
+import {
+  advanceTurn, finish, finishIfUncontested, resignPlayer, seated
+} from '@/lib/gameLogic/wallrushFlow';
 
 const GAME = requireGame('wallrush');
 
@@ -17,9 +20,6 @@ const now = () => Date.now();
 
 const clone = (state: WallRushState): WallRushState => JSON.parse(JSON.stringify(state));
 
-/** Seats in play, in turn order. */
-const seated = (state: WallRushState): WallRushPlayer[] =>
-  [...state.players].sort((a, b) => a.seat - b.seat);
 
 /** Which edge a player started on, and therefore which edge they must reach. */
 export const sideOf = (state: WallRushState, player: WallRushPlayer) =>
@@ -49,52 +49,8 @@ const pawnsOnBoard = (state: WallRushState) =>
 const otherPawns = (state: WallRushState, exceptId: string): Cell[] =>
   state.players.filter((p) => p.id !== exceptId && state.pawns[p.id]).map((p) => state.pawns[p.id]);
 
-/** The next seat round the table, skipping anyone who has left. */
-function advanceTurn(state: WallRushState): void {
-  const order = seated(state);
-  if (order.length === 0) {
-    state.turnPlayerId = null;
-    return;
-  }
 
-  const current = order.findIndex((p) => p.id === state.turnPlayerId);
-  const next = order[(current + 1) % order.length];
-  state.turnPlayerId = next.id;
-  state.turnDeadline = now() + state.settings.turnDuration * 1000;
-}
 
-/**
- * Declares the winner. In `teams` a partnership wins together, so both ids go
- * in — the scoreboard and the statistics both read this list rather than
- * re-deriving who was allied with whom.
- */
-function finish(state: WallRushState, winner: WallRushPlayer): WallRushState {
-  const partners = state.settings.mode === 'teams'
-    ? state.players.filter((p) => teamOf(p.seat) === teamOf(winner.seat))
-    : [winner];
-
-  state.status = 'finished';
-  state.winnerIds = partners.map((p) => p.id);
-  state.turnPlayerId = null;
-  state.turnDeadline = undefined;
-  state.players = state.players.map((p) =>
-    state.winnerIds.includes(p.id) ? { ...p, score: (p.score || 0) + 1 } : p
-  );
-
-  return state;
-}
-
-/** Ends the match when only one side is left standing. */
-function finishIfUncontested(state: WallRushState): WallRushState | null {
-  const remaining = state.players.filter((p) => state.pawns[p.id]);
-  if (remaining.length === 0) return null;
-
-  const sidesLeft = state.settings.mode === 'teams'
-    ? new Set(remaining.map((p) => teamOf(p.seat))).size
-    : remaining.length;
-
-  return sidesLeft <= 1 ? finish(state, remaining[0]) : null;
-}
 
 export function useWallRushGame(lobbyId: string | null, userId: string | undefined) {
   const {
@@ -248,6 +204,24 @@ export function useWallRushGame(lobbyId: string | null, userId: string | undefin
     });
   };
 
+  /**
+   * Gives up the race but keeps the seat.
+   *
+   * Losing the pawn is what takes a player out: `finishIfUncontested` counts
+   * pawns, `otherPawns` reads them, and `advanceTurn` now walks past anyone
+   * without one. So resigning is the same removal that leaving performs,
+   * minus the part where the player is taken out of the room.
+   *
+   * In a duel that ends the match, because one pawn is left and a race needs
+   * two. At three or four it does not — the rest keep playing, and the player
+   * who resigned watches them do it.
+   */
+  const resign = async () => {
+    if (!userId) return;
+
+    await updateState((current) => resignPlayer(clone(current), userId, now()));
+  };
+
   const leaveGame = async () => {
     if (!lobbyId || !userId) return;
 
@@ -322,6 +296,6 @@ export function useWallRushGame(lobbyId: string | null, userId: string | undefin
 
   return {
     gameState, roomMeta, loading, lobbyDeleted,
-    initGame, startGame, movePawn, placeWall, handleTimeout, leaveGame
+    initGame, startGame, movePawn, placeWall, resign, handleTimeout, leaveGame
   };
 }

@@ -3,6 +3,7 @@ import { SpyfallState } from '@/types/spyfall';
 import { SPYFALL_PACKS } from '@/data/spyfall/locations';
 import { updatePlayerStats } from '@/lib/playerStats';
 import { useLobbySync } from '@/hooks/core/useLobbySync';
+import { roundAwards } from '@/lib/gameLogic/spyfall';
 
 // Module-level helper: sidesteps the react-compiler purity heuristic
 // (Date.now inside event handlers is a legitimate use)
@@ -58,21 +59,10 @@ function finishRound(
   next.winner = winner;
   next.winReason = reason;
 
-  next.players = next.players.map((p) => {
-    let points = p.score || 0;
-
-    if (winner === 'spy') {
-      // Spy won: +5 to the spy
-      if (p.isSpy) points += 5;
-    } else if (!p.isSpy) {
-      // Locals won: +1 to every local
-      points += 1;
-      // Bonus for a successful accusation: +1 to the nomination author
-      if (reason === 'spy_caught' && next.nomination?.authorId === p.id) points += 1;
-    }
-
-    return { ...p, score: points };
-  });
+  // The rule itself lives in gameLogic/spyfall.ts, because the score of a
+  // series reads it too and two copies would drift.
+  const awards = roundAwards(next.players, winner, reason, next.nomination?.authorId);
+  next.players = next.players.map((p) => ({ ...p, score: (p.score || 0) + (awards[p.id] ?? 0) }));
 
   return next;
 }

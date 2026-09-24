@@ -11,7 +11,9 @@ import { useRematchRedirect } from '@/hooks/useRematchRedirect';
 import UniversalLobby, { LobbyPlayer } from '@/components/UniversalLobby';
 import CoupGame from '@/components/CoupGame';
 import GameNotJoined from '@/components/GameNotJoined';
+import LobbyChat from '@/components/LobbyChat';
 import { requireGame, roomCapacity } from '@/games/registry';
+import { seriesNamesOf, seriesWinsOf } from '@/lib/series';
 
 /** Player limits come from the registry; the room's own cap still wins. */
 const GAME = requireGame('coup');
@@ -108,15 +110,17 @@ function CoupContent() {
 
   if (!gameState) return <div className="min-h-screen flex items-center justify-center font-bold text-gray-400">{t.lobbyNotFound}</div>;
 
+  const seated = !!gameState.players?.find(p => p.id === userId);
+
   // Late visitor: the game is already running and we are not part of it
-  if (gameState.status !== 'waiting' && !gameState.players?.find(p => p.id === userId)) {
+  if (gameState.status !== 'waiting' && !seated) {
       return <GameNotJoined lang={lang} />;
   }
 
   // The invite link bypasses the lobby list, so the room's own cap has to
   // be enforced here too — otherwise a shared link seated any number of
   // players in a room the host had limited.
-  if (!gameState.players?.find(p => p.id === userId) && (gameState.players?.length ?? 0) >= roomCapacity(GAME, gameState.settings?.maxPlayers)) {
+  if (!seated && (gameState.players?.length ?? 0) >= roomCapacity(GAME, gameState.settings?.maxPlayers)) {
       return <GameNotJoined lang={lang} reason="full" />;
   }
 
@@ -130,36 +134,45 @@ function CoupContent() {
       }));
 
       return (
-        <UniversalLobby
-          lobbyId={lobbyId}
-          roomCode={roomMeta?.code || ''}
-          roomName={roomMeta?.name || 'Coup'}
-          gameType="coup"
-          players={playersList}
-          currentUserId={userId}
-          minPlayers={GAME.players.min}
-          maxPlayers={roomCapacity(GAME, gameState.settings?.maxPlayers)}
-          onStart={startGame}
-          onLeave={handleLeave}
-          lang={lang}
-        />
+        <>
+          <UniversalLobby
+            seriesWins={seriesWinsOf(gameState)}
+            seriesNames={seriesNamesOf(gameState)}
+            lobbyId={lobbyId}
+            roomCode={roomMeta?.code || ''}
+            roomName={roomMeta?.name || 'Coup'}
+            gameType="coup"
+            players={playersList}
+            currentUserId={userId}
+            minPlayers={GAME.players.min}
+            maxPlayers={roomCapacity(GAME, gameState.settings?.maxPlayers)}
+            onStart={startGame}
+            onLeave={handleLeave}
+            lang={lang}
+          />
+          {seated && <LobbyChat lobbyId={lobbyId} userId={userId} lang={lang} />}
+        </>
       );
   }
 
   return (
-    <CoupGame
-      gameState={gameState}
-      userId={userId}
-      performAction={performAction}
-      challenge={challenge}
-      block={block}
-      pass={pass}
-      resolveLoss={resolveLoss}
-      resolveExchange={resolveExchange}
-      leaveGame={handleLeave}
-      skipTurn={skipTurn}
-      lang={lang}
-    />
+    <>
+      <CoupGame
+        gameState={gameState}
+        userId={userId}
+        performAction={performAction}
+        challenge={challenge}
+        block={block}
+        pass={pass}
+        resolveLoss={resolveLoss}
+        resolveExchange={resolveExchange}
+        leaveGame={handleLeave}
+        skipTurn={skipTurn}
+        lang={lang}
+      />
+      {/* Your hand is pinned to the bottom edge; the chat keeps off it. */}
+      {seated && <LobbyChat lobbyId={lobbyId} userId={userId} lang={lang} anchor="top" />}
+    </>
   );
 }
 

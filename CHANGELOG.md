@@ -7,6 +7,52 @@ releasing.
 Format: [Semantic Versioning](https://semver.org/). Types: **major** = platform
 milestone, **minor** = new game mode / feature, **patch** = fixes & improvements.
 
+## [2.7.0] — 2026-09-24 (minor) — **Talk at the Table**
+
+> Something to say "gg" in, and a reason to: the score now follows the table
+> from one room to the next.
+
+### Added
+- **Chat in every room of all eight games,** in the lobby, through the match
+  and on the results, with a row of thirty emoji. It is one component mounted
+  as the same element in both the lobby and the match view, so starting the
+  game keeps it open with a half-typed message intact.
+- Messages live in their own table, `lobby_messages`, and not in
+  `game_state`: that row is written under a compare-and-swap, and every
+  message there would be a write competing with somebody's move.
+  - Readable only by the room's participants (row-level security). Holding
+    the link is not enough.
+  - Writable only through `send_lobby_message`, which checks the seat, trims
+    and caps the text at 300 characters, allows five messages in five
+    seconds, and takes the author's name from the room's roster, so a message
+    cannot claim to come from somebody else.
+  - Deleted with the room by cascade, on the schedule rooms already have.
+  - Delivered over realtime and fetched again on every reconnect, merged by
+    id: a phone that slept through part of a match catches up, and a message
+    that arrives both ways shows once.
+- An unread count on the closed chat, for other people's messages only; how
+  far you read is kept for the tab, so a reload does not resurface them.
+- **The score of a series.** "Play again" opens a new room, and the tally now
+  travels with it: the new lobby shows who has taken how many, including
+  players who have not rejoined yet.
+- **Spyfall scoring:** a spy's win is worth 5, a local's 1, plus a point for
+  the accusation that caught the spy. The in-room scoreboard and the series
+  read the same rule.
+- **Resign in Wall Rush.** The pawn leaves the board and the player stays to
+  watch. A duel ends for the player who stayed; at three or four the rest
+  play on; in 2v2 a partner carries the team. The turn order skips anyone no
+  longer racing, instead of handing a spectator a thirty-second clock.
+
+### Changed
+- Wall Rush walls are laid as brickwork, fill most of the gutter, and meet:
+  two walls in line used to leave the gutter between them undrawn, so a
+  continuous barrier looked broken.
+- On phones, the lobby, Battleship and Spyfall leave room at the bottom so
+  their last buttons scroll clear of the chat button. In Coup, and on
+  Flager's results, where controls are pinned to the bottom edge, the chat
+  button sits at the top instead.
+- Privacy policy: what chat stores, who can read it, and when it goes.
+
 ## [2.6.2] — 2026-09-22 (patch)
 
 ### Fixed

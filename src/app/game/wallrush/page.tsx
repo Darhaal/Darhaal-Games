@@ -11,7 +11,9 @@ import { useWallRushGame } from '@/hooks/useWallRushGame';
 import { useRematchRedirect } from '@/hooks/useRematchRedirect';
 import WallRushGame from '@/components/WallRushGame';
 import GameNotJoined from '@/components/GameNotJoined';
+import LobbyChat from '@/components/LobbyChat';
 import { requireGame, roomCapacity } from '@/games/registry';
+import { seriesNamesOf, seriesWinsOf } from '@/lib/series';
 
 /** Player limits come from the registry; the room's own cap still wins. */
 const GAME = requireGame('wallrush');
@@ -60,7 +62,7 @@ function WallRushContent() {
 
   const {
     gameState, roomMeta, loading, lobbyDeleted,
-    initGame, startGame, movePawn, placeWall, handleTimeout, leaveGame
+    initGame, startGame, movePawn, placeWall, resign, handleTimeout, leaveGame
   } = useWallRushGame(lobbyId, userId);
 
   // An old link to this room follows "play again" into its successor.
@@ -134,32 +136,41 @@ function WallRushContent() {
     const seats = roomCapacity(GAME, gameState.settings?.maxPlayers);
 
     return (
-      <UniversalLobby
-        lobbyId={lobbyId}
-        roomCode={roomMeta?.code || ''}
-        roomName={roomMeta?.name || 'Wall Rush'}
-        gameType="wallrush"
-        players={playersList}
-        currentUserId={userId}
-        minPlayers={seats}
-        maxPlayers={seats}
-        onStart={startGame}
-        onLeave={handleLeave}
-        lang={lang}
-      />
+      <>
+        <UniversalLobby
+          seriesWins={seriesWinsOf(gameState)}
+          seriesNames={seriesNamesOf(gameState)}
+          lobbyId={lobbyId}
+          roomCode={roomMeta?.code || ''}
+          roomName={roomMeta?.name || 'Wall Rush'}
+          gameType="wallrush"
+          players={playersList}
+          currentUserId={userId}
+          minPlayers={seats}
+          maxPlayers={seats}
+          onStart={startGame}
+          onLeave={handleLeave}
+          lang={lang}
+        />
+        {seated && <LobbyChat lobbyId={lobbyId} userId={userId} lang={lang} />}
+      </>
     );
   }
 
   return (
-    <WallRushGame
-      gameState={gameState}
-      userId={userId}
-      movePawn={movePawn}
-      placeWall={placeWall}
-      handleTimeout={handleTimeout}
-      leaveGame={handleLeave}
-      lang={lang}
-    />
+    <>
+      <WallRushGame
+        gameState={gameState}
+        userId={userId}
+        movePawn={movePawn}
+        placeWall={placeWall}
+        resign={resign}
+        handleTimeout={handleTimeout}
+        leaveGame={handleLeave}
+        lang={lang}
+      />
+      {seated && <LobbyChat lobbyId={lobbyId} userId={userId} lang={lang} />}
+    </>
   );
 }
 

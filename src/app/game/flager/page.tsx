@@ -10,7 +10,9 @@ import { useFlagerGame } from '@/hooks/useFlagerGame';
 import { useRematchRedirect } from '@/hooks/useRematchRedirect';
 import FlagerGame from '@/components/FlagerGame';
 import GameNotJoined from '@/components/GameNotJoined';
+import LobbyChat from '@/components/LobbyChat';
 import { requireGame, roomCapacity } from '@/games/registry';
+import { seriesNamesOf, seriesWinsOf } from '@/lib/series';
 
 /** Player limits come from the registry; the room's own cap still wins. */
 const GAME = requireGame('flager');
@@ -103,15 +105,17 @@ function FlagerContent() {
 
   if (!gameState) return <div className="min-h-screen flex items-center justify-center font-bold text-gray-400">{t.lobbyNotFound}</div>;
 
+  const seated = !!gameState.players.find(p => p.id === userId);
+
   // Late visitor: the game is already running and we are not part of it
-  if (gameState.status !== 'waiting' && !gameState.players.find(p => p.id === userId)) {
+  if (gameState.status !== 'waiting' && !seated) {
       return <GameNotJoined lang={lang} />;
   }
 
   // The invite link bypasses the lobby list, so the room's own cap has to
   // be enforced here too — otherwise a shared link seated any number of
   // players in a room the host had limited.
-  if (!gameState.players.find(p => p.id === userId) && gameState.players.length >= roomCapacity(GAME, gameState.settings?.maxPlayers)) {
+  if (!seated && gameState.players.length >= roomCapacity(GAME, gameState.settings?.maxPlayers)) {
       return <GameNotJoined lang={lang} reason="full" />;
   }
 
@@ -125,33 +129,49 @@ function FlagerContent() {
       }));
 
       return (
-        <UniversalLobby
-          lobbyId={lobbyId}
-          roomCode={roomMeta?.code || ''}
-          roomName={roomMeta?.name || 'Flager'}
-          gameType="flager"
-          players={playersList}
-          currentUserId={userId}
-          minPlayers={GAME.players.min}
-          maxPlayers={roomCapacity(GAME, gameState.settings?.maxPlayers)}
-          onStart={startGame}
-          onLeave={handleLeave}
-          lang={lang}
-        />
+        <>
+          <UniversalLobby
+            seriesWins={seriesWinsOf(gameState)}
+            seriesNames={seriesNamesOf(gameState)}
+            lobbyId={lobbyId}
+            roomCode={roomMeta?.code || ''}
+            roomName={roomMeta?.name || 'Flager'}
+            gameType="flager"
+            players={playersList}
+            currentUserId={userId}
+            minPlayers={GAME.players.min}
+            maxPlayers={roomCapacity(GAME, gameState.settings?.maxPlayers)}
+            onStart={startGame}
+            onLeave={handleLeave}
+            lang={lang}
+          />
+          {seated && <LobbyChat lobbyId={lobbyId} userId={userId} lang={lang} />}
+        </>
       );
   }
 
   return (
-    <FlagerGame
-      gameState={gameState}
-      userId={userId}
-      makeGuess={makeGuess}
-      handleTimeout={handleTimeout}
-      forceRoundEnd={forceRoundEnd}
-      readyNextRound={readyNextRound}
-      leaveGame={handleLeave}
-      lang={lang}
-    />
+    <>
+      <FlagerGame
+        gameState={gameState}
+        userId={userId}
+        makeGuess={makeGuess}
+        handleTimeout={handleTimeout}
+        forceRoundEnd={forceRoundEnd}
+        readyNextRound={readyNextRound}
+        leaveGame={handleLeave}
+        lang={lang}
+      />
+      {/* The results pin "play again" and "menu" to the bottom edge. */}
+      {seated && (
+        <LobbyChat
+          lobbyId={lobbyId}
+          userId={userId}
+          lang={lang}
+          anchor={gameState.status === 'finished' ? 'top' : 'bottom'}
+        />
+      )}
+    </>
   );
 }
 

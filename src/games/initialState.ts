@@ -12,6 +12,7 @@ import { WALLS_FOR_MODE, PLAYERS_FOR_MODE, BOARD_FOR_MODE } from '@/lib/gameLogi
 import { SPYFALL_PACKS } from '@/data/spyfall/locations';
 import type { GameId } from './registry';
 import { num, str, type OptionValues } from './options';
+import { nextSeriesNames, nextSeriesWins } from '@/lib/series';
 
 /**
  * Builds the `game_state` a freshly created lobby starts from.
@@ -406,7 +407,14 @@ export function createRematchState<T extends GameId>(
   id: T,
   parent: GameStateByType[T]
 ): GameStateByType[T] {
-  return REMATCH[id](parent);
+  // The per-game factory empties the room; the series tally is the one thing
+  // that has to survive it, so it is applied here rather than repeated in
+  // eight places that would each have to remember.
+  return {
+    ...REMATCH[id](parent),
+    seriesWins: nextSeriesWins(id, parent),
+    seriesNames: nextSeriesNames(parent)
+  };
 }
 
 export function createInitialState<T extends GameId>(

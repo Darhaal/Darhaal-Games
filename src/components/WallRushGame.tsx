@@ -2,7 +2,7 @@
 
 import React, { useMemo, useRef, useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
-import { BrickWall, Crown, Trophy } from 'lucide-react';
+import { BrickWall, Crown, Flag, Trophy } from 'lucide-react';
 import type { Cell, Wall, WallOrientation, WallRushPlayer, WallRushState } from '@/types/wallrush';
 import {
   GOAL_FOR_MODE, canPlaceWall, centreCell, isGoal, legalMoves, sameCell, seatsForMode, teamOf
@@ -22,6 +22,7 @@ interface WallRushGameProps {
   userId: string;
   movePawn: (cell: Cell) => void;
   placeWall: (wall: Wall) => void;
+  resign: () => void;
   handleTimeout: () => void;
   leaveGame: () => void;
   lang: 'ru' | 'en';
@@ -38,7 +39,14 @@ const UI_TEXT = {
     toMenu: 'В меню',
     noWalls: 'Стены кончились',
     teamA: 'Пара A',
-    teamB: 'Пара B'
+    teamB: 'Пара B',
+    resign: 'Сдаться',
+    resigned: 'сдался',
+    watching: 'Вы сдались — досматриваете партию',
+    resignTitle: 'Сдаться?',
+    resignDesc: 'Ваша пешка уйдёт с доски. Вы останетесь в комнате и сможете досмотреть партию.',
+    resignDescDuel: 'Соперник сразу победит. Вы останетесь в комнате.',
+    cancel: 'Отмена'
   },
   en: {
     dragHint: 'Drag onto the board',
@@ -50,7 +58,14 @@ const UI_TEXT = {
     toMenu: 'Main menu',
     noWalls: 'Out of walls',
     teamA: 'Team A',
-    teamB: 'Team B'
+    teamB: 'Team B',
+    resign: 'Resign',
+    resigned: 'resigned',
+    watching: 'You resigned — watching the rest of the match',
+    resignTitle: 'Resign?',
+    resignDesc: 'Your pawn leaves the board. You stay in the room and can watch the match out.',
+    resignDescDuel: 'Your rival wins at once. You stay in the room.',
+    cancel: 'Cancel'
   }
 };
 
@@ -61,15 +76,75 @@ const colorFor = (state: WallRushState, seat: number) =>
 /** Width of a wall gutter as a fraction of a cell. */
 const GUTTER_FR = 0.34;
 
-/** Bar proportions for a wall of the given orientation. */
-const barShape = (o: WallOrientation) =>
-  o === 'h' ? 'h-[26%] w-[92%]' : 'w-[26%] h-[92%]';
+/**
+ * How far a wall is drawn beyond the three tracks it occupies.
+ *
+ * Its span is cell + gutter + cell, so two walls laid in line leave the
+ * gutter between them undrawn. One gutter of extra width — half at each end —
+ * closes that, and the arithmetic is kept here rather than as a magic
+ * percentage so it follows GUTTER_FR if that ever changes.
+ */
+const OVERHANG_PCT = Math.round((1 + GUTTER_FR / (2 + GUTTER_FR)) * 1000) / 10;
+
+/**
+ * A wall, drawn as brickwork.
+ *
+ * Full length rather than the old 92%: two walls laid end to end now meet,
+ * which is how the board reads as a barrier rather than a row of dashes.
+ *
+ * The pattern is two courses with the joints staggered, the way bricks are
+ * actually laid — a single row of evenly spaced lines reads as a ladder. The
+ * mortar is white at low opacity so it works on any seat colour rather than
+ * needing one shade per player.
+ */
+function WallBar({ o, color }: { o: WallOrientation; color: string }) {
+  const horizontal = o === 'h';
+
+  // Mortar is a dark line, not a light one: against a saturated seat colour a
+  // white joint bleaches the wall and it reads as hatching rather than brick.
+  const course = (shift: boolean): React.CSSProperties => ({
+    backgroundColor: color,
+    backgroundImage: `repeating-linear-gradient(${horizontal ? '90deg' : '180deg'},
+      rgba(0,0,0,0.26) 0 1.5px, rgba(0,0,0,0) 1.5px 13px)`,
+    // Half a brick, so no joint sits above another.
+    backgroundPosition: shift ? (horizontal ? '6.5px 0' : '0 6.5px') : '0 0'
+  });
+
+  return (
+    <span
+      // shrink-0 matters: the bar is a flex item, and without it the parent
+      // shrinks the overhang below back to the track width — which is why
+      // vertical walls met and horizontal ones did not.
+      className={`flex shrink-0 overflow-hidden rounded-[2px] ${
+        horizontal ? 'h-[72%] flex-col' : 'w-[72%] flex-row'
+      }`}
+      style={{
+        // Fills most of the gutter — the old 26% of it was a hairline, too
+        // thin to carry a pattern or to read as a barrier.
+        boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.18)',
+        // Half a gutter of overhang at each end, so two walls laid in line
+        // meet. A wall spans cell + gutter + cell, which leaves the gutter
+        // between two of them undrawn: the barrier was continuous and only
+        // looked like it had a hole in it.
+        [horizontal ? 'width' : 'height']: `${OVERHANG_PCT}%`
+      }}
+    >
+      <span className="flex-1" style={course(false)} />
+      <span
+        className={`flex-1 ${horizontal ? 'border-t' : 'border-l'} border-black/20`}
+        style={course(true)}
+      />
+    </span>
+  );
+}
 
 export default function WallRushGame({
-  gameState, userId, movePawn, placeWall, handleTimeout, leaveGame, lang
+  gameState, userId, movePawn, placeWall, resign, handleTimeout, leaveGame, lang
 }: WallRushGameProps) {
   const t = UI_TEXT[lang];
   const [showRules, setShowRules] = useState(false);
+  // Resigning cannot be undone, so it is confirmed first.
+  const [pendingResign, setPendingResign] = useState(false);
   const [timeLeft, setTimeLeft] = useState(gameState.settings.turnDuration);
 
   /**
@@ -90,6 +165,11 @@ export default function WallRushGame({
   const racingToCentre = goal === 'centre';
   const me = gameState.players.find((p) => p.id === userId);
   const isMyTurn = gameState.status === 'playing' && gameState.turnPlayerId === userId;
+  // Seated, match running, pawn gone: a spectator of their own room.
+  const iResigned = gameState.status === 'playing' && !!me && !gameState.pawns[userId];
+  const canResign = gameState.status === 'playing' && !!me && !!gameState.pawns[userId];
+  const stillRacing = gameState.players.filter((p) => gameState.pawns[p.id]).length;
+  const resignedIds = new Set(gameState.resigned ?? []);
   const turnPlayer = gameState.players.find((p) => p.id === gameState.turnPlayerId);
   const isFinished = gameState.status === 'finished';
   const myColor = me ? colorFor(gameState, me.seat) : SEAT_COLORS[0];
@@ -277,7 +357,7 @@ export default function WallRushGame({
         }
         className="flex items-center justify-center pointer-events-none"
       >
-        <span className={`rounded-full ${barShape(w.o)}`} style={{ backgroundColor: wallColor(w) }} />
+        <WallBar o={w.o} color={wallColor(w)} />
       </span>
     );
   }
@@ -299,10 +379,9 @@ export default function WallRushGame({
         }
         className="flex items-center justify-center pointer-events-none"
       >
-        <span
-          className={`rounded-full ${barShape(dragging)} opacity-60`}
-          style={{ backgroundColor: myColor }}
-        />
+        <span className="w-full h-full flex items-center justify-center opacity-60">
+          <WallBar o={dragging} color={myColor} />
+        </span>
       </span>
     );
   }
@@ -338,10 +417,9 @@ export default function WallRushGame({
       }`}
       aria-label={o === 'h' ? 'horizontal wall' : 'vertical wall'}
     >
-      <span
-        className={`rounded-full ${o === 'h' ? 'w-12 h-2.5' : 'w-2.5 h-12'}`}
-        style={{ backgroundColor: canBuild ? myColor : '#D8D6D0' }}
-      />
+      <span className={`flex items-center justify-center ${o === 'h' ? 'w-12 h-8' : 'w-8 h-12'}`}>
+        <WallBar o={o} color={canBuild ? myColor : '#D8D6D0'} />
+      </span>
     </button>
   );
 
@@ -385,22 +463,44 @@ export default function WallRushGame({
               colorOf={(seat) => colorFor(gameState, seat)}
             />
 
-            {/* TRAY — two walls, always in reach; moving needs no tool at all */}
-            <div className="mt-4 flex items-center gap-3">
-              {trayPiece('h')}
-              {trayPiece('v')}
-              <div className="w-28 shrink-0 text-right">
-                <div
-                  className="text-2xl font-black tabular-nums leading-none"
-                  style={{ color: canBuild ? myColor : '#C4C2BC' }}
-                >
-                  {me?.wallsLeft ?? 0}
-                </div>
-                <div className="text-2xs font-bold text-[#8A9099] uppercase tracking-wider mt-1 leading-tight">
-                  {dragging ? t.dragHint : me?.wallsLeft === 0 ? t.noWalls : ''}
+            {iResigned ? (
+              // Out of the race, still at the table: the board keeps updating,
+              // only the controls go.
+              <div className="mt-4 py-5 rounded-2xl bg-[#F4F3F0] text-center text-sm font-bold text-[#8A9099]">
+                {t.watching}
+              </div>
+            ) : (
+              <>
+              {/* TRAY — two walls, always in reach; moving needs no tool at all */}
+              <div className="mt-4 flex items-center gap-3">
+                {trayPiece('h')}
+                {trayPiece('v')}
+                <div className="w-28 shrink-0 text-right">
+                  <div
+                    className="text-2xl font-black tabular-nums leading-none"
+                    style={{ color: canBuild ? myColor : '#C4C2BC' }}
+                  >
+                    {me?.wallsLeft ?? 0}
+                  </div>
+                  <div className="text-2xs font-bold text-[#8A9099] uppercase tracking-wider mt-1 leading-tight">
+                    {dragging ? t.dragHint : me?.wallsLeft === 0 ? t.noWalls : ''}
+                  </div>
                 </div>
               </div>
-            </div>
+              </>
+            )}
+
+            {canResign && (
+              <div className="mt-3 flex justify-end">
+                <button
+                  onClick={() => setPendingResign(true)}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-2xs font-bold uppercase tracking-widest text-[#8A9099] border border-transparent hover:border-red-200 hover:bg-red-50 hover:text-red-500 transition-colors"
+                >
+                  <Flag className="w-3.5 h-3.5" />
+                  {t.resign}
+                </button>
+              </div>
+            )}
           </div>
         </section>
 
@@ -442,8 +542,11 @@ export default function WallRushGame({
 
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-bold truncate">{p.name}</span>
+                      <span className={`text-xs font-bold truncate ${resignedIds.has(p.id) ? 'text-[#B5B3AD] line-through' : ''}`}>{p.name}</span>
                       {p.isHost && <Crown className="w-3 h-3 text-amber-500 fill-current shrink-0" />}
+                      {resignedIds.has(p.id) && (
+                        <span className="text-3xs font-bold uppercase tracking-wider text-[#B5B3AD] shrink-0">{t.resigned}</span>
+                      )}
                       {(p.score || 0) > 0 && (
                         <span className="flex items-center gap-0.5 text-2xs font-bold text-[#8A9099] shrink-0">
                           <Trophy className="w-3 h-3" />{p.score}
@@ -472,6 +575,42 @@ export default function WallRushGame({
           </div>
         </aside>
       </main>
+
+      {/* RESIGN — in the app's own dialog, not the browser's */}
+      {pendingResign && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-[#1A1F26]/50 backdrop-blur-sm animate-in fade-in duration-200"
+          onClick={() => setPendingResign(false)}
+        >
+          <div
+            className="bg-white p-7 rounded-3xl w-full max-w-xs text-center shadow-2xl border border-[#E6E1DC] animate-in zoom-in-95"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-14 h-14 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-red-100">
+              <Flag className="w-6 h-6" />
+            </div>
+            <h3 className="text-lg font-black text-[#1A1F26] uppercase mb-1">{t.resignTitle}</h3>
+            <p className="text-xs font-bold text-[#8A9099] mb-6">
+              {/* Say what actually happens: in a duel it ends the match. */}
+              {stillRacing <= 2 && gameState.settings.mode !== 'teams' ? t.resignDescDuel : t.resignDesc}
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setPendingResign(false)}
+                className="flex-1 py-3 bg-[#F8FAFC] text-[#1A1F26] border border-[#E6E1DC] rounded-xl font-bold uppercase text-xs hover:bg-[#E6E1DC] transition-colors"
+              >
+                {t.cancel}
+              </button>
+              <button
+                onClick={() => { setPendingResign(false); resign(); }}
+                className="flex-1 py-3 bg-red-500 text-white rounded-xl font-bold uppercase text-xs hover:bg-red-600 transition-colors shadow-lg shadow-red-500/20"
+              >
+                {t.resign}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* RESULT */}
       {isFinished && (

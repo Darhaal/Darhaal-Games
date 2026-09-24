@@ -1,4 +1,4 @@
-export const APP_VERSION = '2.6.2';
+export const APP_VERSION = '2.7.0';
 
 export type VersionType = 'major' | 'minor' | 'patch' | 'init';
 
@@ -11,6 +11,19 @@ export interface VersionLog {
 }
 
 export const VERSION_HISTORY: VersionLog[] = [
+  /* ===================== 2.7.x ===================== */
+
+  {
+    ver: '2.7.0',
+    date: '24 SEP 2026',
+    type: 'minor',
+    title: { ru: 'Разговор за столом', en: 'Talk at the Table' },
+    desc: {
+      ru: 'В каждой комнате всех восьми игр появился чат с тридцатью смайликами — в лобби, во время партии и на итогах. Его видят только те, кто сидит в комнате, и он удаляется вместе с ней. «Сыграть ещё» теперь помнит счёт серии: в лобби новой комнаты видно, кто сколько взял. В «Шпионе» победа шпиона стоит 5 очков, мирного — 1. В Wall Rush можно сдаться и остаться досматривать, а стены выложены кирпичом и смыкаются без зазоров.',
+      en: 'Every room in all eight games now has a chat with thirty emoji — in the lobby, during the match and on the results. Only the people seated in the room can read it, and it is deleted with the room. "Play again" now remembers the score of the series: the new room’s lobby shows who has taken how many. In Spyfall a spy’s win is worth 5 points and a local’s 1. In Wall Rush you can resign and stay to watch, and the walls are laid as brickwork that meets without gaps.'
+    }
+  },
+
   /* ===================== 2.6.x ===================== */
 
   {

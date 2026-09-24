@@ -11,7 +11,9 @@ import { useReversiGame } from '@/hooks/useReversiGame';
 import { useRematchRedirect } from '@/hooks/useRematchRedirect';
 import ReversiGame from '@/components/ReversiGame';
 import GameNotJoined from '@/components/GameNotJoined';
+import LobbyChat from '@/components/LobbyChat';
 import { requireGame, roomCapacity } from '@/games/registry';
+import { seriesNamesOf, seriesWinsOf } from '@/lib/series';
 
 /** Player limits come from the registry; the room's own cap still wins. */
 const GAME = requireGame('reversi');
@@ -130,31 +132,39 @@ function ReversiContent() {
     }));
 
     return (
-      <UniversalLobby
-        lobbyId={lobbyId}
-        roomCode={roomMeta?.code || ''}
-        roomName={roomMeta?.name || 'Reversi'}
-        gameType="reversi"
-        players={playersList}
-        currentUserId={userId}
-        minPlayers={GAME.players.min}
-        maxPlayers={roomCapacity(GAME, gameState.settings?.maxPlayers)}
-        onStart={startGame}
-        onLeave={handleLeave}
-        lang={lang}
-      />
+      <>
+        <UniversalLobby
+          seriesWins={seriesWinsOf(gameState)}
+          seriesNames={seriesNamesOf(gameState)}
+          lobbyId={lobbyId}
+          roomCode={roomMeta?.code || ''}
+          roomName={roomMeta?.name || 'Reversi'}
+          gameType="reversi"
+          players={playersList}
+          currentUserId={userId}
+          minPlayers={GAME.players.min}
+          maxPlayers={roomCapacity(GAME, gameState.settings?.maxPlayers)}
+          onStart={startGame}
+          onLeave={handleLeave}
+          lang={lang}
+        />
+        {seated && <LobbyChat lobbyId={lobbyId} userId={userId} lang={lang} />}
+      </>
     );
   }
 
   return (
-    <ReversiGame
-      gameState={gameState}
-      userId={userId}
-      placeDisc={placeDisc}
-      handleTimeout={handleTimeout}
-      leaveGame={handleLeave}
-      lang={lang}
-    />
+    <>
+      <ReversiGame
+        gameState={gameState}
+        userId={userId}
+        placeDisc={placeDisc}
+        handleTimeout={handleTimeout}
+        leaveGame={handleLeave}
+        lang={lang}
+      />
+      {seated && <LobbyChat lobbyId={lobbyId} userId={userId} lang={lang} />}
+    </>
   );
 }
 
