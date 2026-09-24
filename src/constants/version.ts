@@ -1,4 +1,4 @@
-export const APP_VERSION = '2.8.0';
+export const APP_VERSION = '2.9.0';
 
 export type VersionType = 'major' | 'minor' | 'patch' | 'init';
 
@@ -11,6 +11,19 @@ export interface VersionLog {
 }
 
 export const VERSION_HISTORY: VersionLog[] = [
+  /* ===================== 2.9.x ===================== */
+
+  {
+    ver: '2.9.0',
+    date: '24 SEP 2026',
+    type: 'minor',
+    title: { ru: 'Wall Rush начисто', en: 'Wall Rush, Redrawn' },
+    desc: {
+      ru: 'Wall Rush в стиле остального сайта. Доска — белые клетки на сером, строгая, стены — ровные полосы мягкого цвета игрока. Рядом три карточки: чей ход и сколько времени осталось, ваши стены, игроки с той же фишкой, что на доске. После партии итоги можно убрать и посмотреть финальную позицию.',
+      en: 'Wall Rush in the style of the rest of the site. The board is white squares on grey, square-cornered, and walls are plain bars in the owner’s softened colour. Beside it, three cards: whose turn and how much of it is left, your walls, and the players with the same piece they have on the board. After a match the result can be put aside to look at the final position.'
+    }
+  },
+
   /* ===================== 2.8.x ===================== */
 
   {

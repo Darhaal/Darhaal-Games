@@ -7,6 +7,36 @@ releasing.
 Format: [Semantic Versioning](https://semver.org/). Types: **major** = platform
 milestone, **minor** = new game mode / feature, **patch** = fixes & improvements.
 
+## [2.9.0] — 2026-09-24 (minor) — **Wall Rush, Redrawn**
+
+> The game screen in the same hand as the menus, and that hand written down.
+
+### Changed
+- **The Wall Rush board is plain again.** White squares on a grey
+  (`#E6E1DC`) grid, square at every corner including the outer edge, which is
+  one gap wide. Walls are flat bars in the owner's colour softened toward
+  white, square-ended so walls in line still meet; a wall whose owner has
+  left keeps its full grey so it does not disappear into the grid. Finish
+  lines run along the outer edge in the same soft tone. The stone rim, the
+  tiles and the brick pattern from 2.8.0 are gone.
+- **The panels around the board are the main menu's cards.**
+  - *Turn*: whose move, their piece, a one-line hint, and a thin bar of the
+    turn clock in their colour that turns red in the last five seconds.
+  - *Your walls*: the count, the tray — plain bars with slightly eased
+    corners — a hint that follows what you can do right now, and Resign
+    under a divider.
+  - *Players*: each avatar carries the same shaped piece as the board, so the
+    list is the legend; the separate legend is gone.
+
+### Added
+- **"View the board" on the result**, to put it aside and study the final
+  position; "Results" in the turn card brings it back. Escape closes the
+  result and the resign dialog.
+- **`docs/design-system.md`** — the look of the main menu, `/create` and
+  `/play` written down: tokens, and copyable recipes for cards, buttons,
+  inputs, chips, empty states, headers and modals, plus the rules for game
+  boards. **`CLAUDE.md`** points to it.
+
 ## [2.8.0] — 2026-09-24 (minor) — **Keys That Work**
 
 > Every shortcut the rules promise now does what they say — and none of them
