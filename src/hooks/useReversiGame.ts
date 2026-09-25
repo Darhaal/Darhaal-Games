@@ -7,6 +7,7 @@ import { shuffled } from '@/lib/turnOrder';
 import {
   BOARD_SIZE, startingBoard, applyMove, hasMove, leaders, tally
 } from '@/lib/gameLogic/reversi';
+import { pushNotice, leftTheGame } from '@/lib/notifications';
 
 const GAME = requireGame('reversi');
 
@@ -113,6 +114,7 @@ export function useReversiGame(lobbyId: string | null, userId: string | undefine
       next.players = shuffled(seated(next)).map((p, index) => ({ ...p, seat: index, score: 0 }));
       next.status = 'playing';
       next.passes = 0;
+      next.lastMove = undefined;
       next.winnerIds = [];
       next.startTime = now();
       // Dark opens, as the game has always been played.
@@ -138,6 +140,8 @@ export function useReversiGame(lobbyId: string | null, userId: string | undefine
 
       const next = clone(current);
       next.board = board;
+      // Marked on the board, so a move made while you looked away is found.
+      next.lastMove = index;
       passTurnTo(next, me.seat);
       return next;
     });
@@ -190,15 +194,7 @@ export function useReversiGame(lobbyId: string | null, userId: string | undefine
       if (next.players.length === 0) return null;
       if (leaving.isHost) next.players[0].isHost = true;
 
-      if (!next.notifications) next.notifications = [];
-      next.notifications.push({
-        id: now(),
-        message: {
-          ru: `${leaving.name} покинул игру`,
-          en: `${leaving.name} left the game`
-        },
-        type: 'leave'
-      });
+      pushNotice(next, leftTheGame(leaving.name), 'leave');
 
       // Reversi is one colour each, so a departure ends the match there and
       // then — the player left behind takes it.

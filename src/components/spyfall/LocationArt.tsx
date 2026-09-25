@@ -38,8 +38,10 @@ export default function LocationArt({
 
   return (
     <div className={`absolute inset-0 overflow-hidden ${className}`} aria-hidden>
-      {/* `square` fills the card; the SVG scales to the box via the wrapper. */}
-      <div className="absolute inset-0 [&>svg]:w-full [&>svg]:h-full">
+      {/* The art is square and the cards are wide: a square as wide as the
+          card, centred, covers it and the overflow is cropped. Fitting it to
+          the box instead letterboxed it, with grey bands down both sides. */}
+      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full aspect-square [&>svg]:w-full [&>svg]:h-full">
         <Avatar name={locationId} variant="marble" colors={PALETTE} square size={100} />
       </div>
 

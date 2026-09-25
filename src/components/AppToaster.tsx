@@ -52,10 +52,9 @@ export default function AppToaster() {
       const { msg, type } = (e as CustomEvent<ToastPayload>).detail;
       push(msg, type);
     };
-    const onSyncConflict = () => {
-      const saved = localStorage.getItem('dg_lang');
-      push(SYNC_MSG[saved === 'en' ? 'en' : 'ru'], 'sync');
-    };
+    // The reader's language from useLang, which starts in English; reading
+    // the stored choice here fell back to Russian for anyone yet to pick one.
+    const onSyncConflict = () => push(SYNC_MSG[lang], 'sync');
 
     window.addEventListener(TOAST_EVENT_NAME, onToast);
     window.addEventListener(SYNC_CONFLICT_EVENT, onSyncConflict);

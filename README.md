@@ -1,6 +1,6 @@
 # Darhaal Games
 
-![Version](https://img.shields.io/badge/version-2.9.0-blue.svg) ![License](https://img.shields.io/badge/license-View%20%26%20Study%20Only-red.svg) ![Tests](https://img.shields.io/badge/tests-524-brightgreen.svg)
+![Version](https://img.shields.io/badge/version-2.10.0-blue.svg) ![License](https://img.shields.io/badge/license-View%20%26%20Study%20Only-red.svg) ![Tests](https://img.shields.io/badge/tests-638-brightgreen.svg)
 
 Eight board and logic games you can play with friends in a browser. One person
 creates a room, shares the link, everyone else joins — no install, no account
@@ -29,7 +29,9 @@ constantly in Minesweeper, where every player has their own board and clicks are
 independent. Writes go through a compare-and-swap RPC; on a conflict the update
 is rebuilt against fresh state and retried, so nobody loses their move. Verified
 against the live database: twelve simultaneous clicks, twelve applied, six
-conflicts silently resolved.
+conflicts silently resolved — and kept verified by tests that run the real game
+hooks, several players at once, against an in-memory copy of the room
+([`tests/support/`](tests/support/)).
 
 **A public layer bolted onto an auth-walled app.** Every application route is a
 client component behind a login screen, so search engines saw nothing. The fix
@@ -117,7 +119,7 @@ not forgotten.
 | Hosting | Vercel |
 
 No state-management library: the shared sync hook and React state cover it.
-Zero `any`, zero `@ts-ignore`, zero dependency vulnerabilities, 239 tests.
+Zero `any`, zero `@ts-ignore`, zero dependency vulnerabilities, 638 tests.
 
 ---
 

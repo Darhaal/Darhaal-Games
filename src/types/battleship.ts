@@ -1,3 +1,5 @@
+import type { GameNotification } from './notification';
+
 export type Lang = 'ru' | 'en';
 
 export type ShipType = 'battleship' | 'cruiser' | 'destroyer' | 'submarine';
@@ -35,7 +37,8 @@ export interface BattleshipState {
   phase: 'setup' | 'playing' | 'finished';
   status: 'waiting' | 'playing' | 'finished';
   winner: string | null;
-  logs: { text: string; time: string }[];
+  /** A fleet ready, a turn lost to the clock — shown as a toast. */
+  notifications?: GameNotification[];
   lastActionTime: number;
   // Battle phase start (epoch ms) — used to measure match duration
   startTime?: number;

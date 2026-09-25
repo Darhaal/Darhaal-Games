@@ -4,6 +4,7 @@ import { updatePlayerStats } from '@/lib/playerStats';
 import { randomOf } from '@/lib/turnOrder';
 import { useLobbySync } from '@/hooks/core/useLobbySync';
 import { getKey, isValidCoord, getShipCoords, checkPlacement, shuffleFleet } from '@/lib/gameLogic/battleship';
+import { pushNotice } from '@/lib/notifications';
 
 /** A turn runs for a minute before it is passed on. */
 const TURN_MS = 60 * 1000;
@@ -85,7 +86,7 @@ export function useBattleshipGame(
     if (!user?.id) return;
     await updateState((current) => {
       if (current.status !== 'waiting') return null;
-      return { ...current, status: 'playing', phase: 'setup', logs: [] };
+      return { ...current, status: 'playing', phase: 'setup', notifications: [] };
     });
   };
 
@@ -125,6 +126,10 @@ export function useBattleshipGame(
       newState.players[user.id].aliveShipsCount = ships.length;
 
       const playersArr = Object.values(newState.players);
+      // The one still placing ships learns the other side is waiting on them.
+      if (playersArr.some(p => !p.isReady)) {
+        pushNotice(newState, { ru: `${newState.players[user.id].name} расставил флот`, en: `${newState.players[user.id].name} has placed their fleet` }, 'info');
+      }
       if (playersArr.length === 2 && playersArr.every(p => p.isReady)) {
         newState.phase = 'playing';
         newState.status = 'playing';
@@ -217,7 +222,12 @@ export function useBattleshipGame(
       const opponentId = Object.keys(current.players).find(id => id !== current.turn);
       if (!opponentId) return null;
 
-      return { ...current, turn: opponentId, turnDeadline: Date.now() + TURN_MS };
+      const next: BattleshipState = { ...current, turn: opponentId, turnDeadline: Date.now() + TURN_MS };
+      const late = current.turn ? current.players[current.turn]?.name : undefined;
+      if (late) {
+        pushNotice(next, { ru: `${late} не успел — ход переходит`, en: `${late} ran out of time — the turn passes` }, 'alert');
+      }
+      return next;
     });
   };
 

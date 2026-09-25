@@ -1,5 +1,6 @@
 import type { WallRushPlayer, WallRushState } from '@/types/wallrush';
 import { teamOf } from './wallrush';
+import { pushNotice } from '@/lib/notifications';
 
 /**
  * How a Wall Rush match moves on: whose turn it is next, when it is over,
@@ -104,12 +105,7 @@ export function resignPlayer(
   delete state.pawns[playerId];
   state.resigned = [...(state.resigned ?? []), playerId];
 
-  if (!state.notifications) state.notifications = [];
-  state.notifications.push({
-    id: at,
-    message: { ru: `${player.name} сдался`, en: `${player.name} resigned` },
-    type: 'leave'
-  });
+  pushNotice(state, { ru: `${player.name} сдался`, en: `${player.name} resigned` }, 'leave', at);
 
   const over = finishIfUncontested(state);
   if (over) return over;

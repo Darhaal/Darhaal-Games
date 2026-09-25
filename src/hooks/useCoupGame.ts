@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { GameState, Player, Role } from '@/types/coup';
 import { DICTIONARY } from '@/constants/coup';
+import { SYSTEM, type LocalizedText } from '@/types/coup';
 import { updatePlayerStats } from '@/lib/playerStats';
 import { useLobbySync } from '@/hooks/core/useLobbySync';
 import { requireGame, roomCapacity } from '@/games/registry';
@@ -31,13 +32,18 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
     channelPrefix: 'lobby-coup'
   });
 
-  const addLog = (state: GameState, user: string, action: string) => {
+  // Written once into the shared state and read by players in either
+  // language, so every entry carries both.
+  const addLog = (state: GameState, user: string, action: LocalizedText) => {
     const time = new Date().toLocaleTimeString('ru-RU', { hour12: false, hour: '2-digit', minute:'2-digit' });
     state.logs.unshift({ user, action, time });
     state.logs = state.logs.slice(0, 50);
   };
 
-  const getRoleName = (role: Role) => DICTIONARY['ru'].roles[role]?.name || role;
+  const roleName = (role: Role): LocalizedText => ({
+    ru: DICTIONARY.ru.roles[role]?.name || role,
+    en: DICTIONARY.en.roles[role]?.name || role
+  });
 
   const nextTurn = (state: GameState) => {
     const alivePlayers = state.players.filter(p => !p.isDead);
@@ -47,7 +53,7 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
       state.winnerId = alivePlayers[0]?.id;
       state.phase = 'choosing_action';
       state.turnDeadline = undefined;
-      addLog(state, '🏆', `Победитель: ${state.winner}!`);
+      addLog(state, '🏆', { ru: `Победитель: ${state.winner}!`, en: `Winner: ${state.winner}!` });
       return;
     }
 
@@ -62,7 +68,7 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
     state.pendingPlayerId = undefined;
     state.exchangeBuffer = undefined;
     state.passedPlayers = [];
-    state.turnDeadline = now() + (60 * 1000);
+    state.turnDeadline = now() + TURN_MS;
   };
 
   /**
@@ -93,37 +99,8 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
 
           const culprit = newState.players.find(p => p.id === culpritId);
           if (culprit) {
-             addLog(newState, 'Система', `Игрок ${culprit.name} кикнут за AFK.`);
-
-             const culpritIdx = newState.players.findIndex(p => p.id === culpritId);
-             newState.players = newState.players.filter(p => p.id !== culpritId);
-
-             if (culpritIdx < newState.turnIndex) {
-                 newState.turnIndex--;
-             }
-
-             if (newState.turnIndex >= newState.players.length) {
-                 newState.turnIndex = 0;
-             }
-
-             const alive = newState.players.filter(p => !p.isDead);
-             if (alive.length <= 1) {
-                 newState.status = 'finished';
-                 newState.winner = alive[0]?.name || 'Unknown';
-                 newState.winnerId = alive[0]?.id;
-                 addLog(newState, '🏆', `Победитель: ${newState.winner}!`);
-             } else {
-                 while (newState.players[newState.turnIndex].isDead) {
-                    newState.turnIndex = (newState.turnIndex + 1) % newState.players.length;
-                 }
-
-                 newState.phase = 'choosing_action';
-                 newState.currentAction = null;
-                 newState.pendingPlayerId = undefined;
-                 newState.exchangeBuffer = undefined;
-                 newState.passedPlayers = [];
-                 newState.turnDeadline = now() + (60 * 1000);
-             }
+             addLog(newState, SYSTEM, { ru: `${culprit.name} выбывает за бездействие`, en: `${culprit.name} was removed for being idle` });
+             dropPlayer(newState, culpritId);
           }
       }
       else if (['waiting_for_challenges', 'waiting_for_blocks', 'waiting_for_block_challenges'].includes(newState.phase)) {
@@ -133,12 +110,12 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
               if (['steal', 'assassinate'].includes(newState.currentAction?.type || '')) {
                   newState.phase = 'waiting_for_blocks';
                   newState.passedPlayers = [];
-                  newState.turnDeadline = now() + (30 * 1000);
+                  newState.turnDeadline = now() + RESPONSE_MS;
               } else {
                   applyActionEffect(newState);
               }
           } else if (newState.phase === 'waiting_for_block_challenges') {
-              addLog(newState, 'Система', 'Время вышло. Блок принят.');
+              addLog(newState, SYSTEM, { ru: 'Время вышло. Блок принят.', en: 'Time is up. The block stands.' });
               nextTurn(newState);
           }
       }
@@ -180,13 +157,13 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
     newState.passedPlayers = [];
 
     switch (actionType) {
-        case 'income': addLog(newState, player.name, 'Взял Доход (+1)'); break;
-        case 'foreign_aid': addLog(newState, player.name, 'Хочет взять Помощь (+2)'); break;
-        case 'tax': addLog(newState, player.name, 'Объявил Налог (+3) (Герцог)'); break;
-        case 'steal': addLog(newState, player.name, `Хочет украсть у ${targetName} (Капитан)`); break;
-        case 'exchange': addLog(newState, player.name, 'Хочет сменить карты (Посол)'); break;
-        case 'assassinate': addLog(newState, player.name, `Платит убийце за ${targetName} (-3)`); break;
-        case 'coup': addLog(newState, player.name, `УСТРАИВАЕТ ПЕРЕВОРОТ против ${targetName}!`); break;
+        case 'income': addLog(newState, player.name, { ru: 'Взял доход (+1)', en: 'Took income (+1)' }); break;
+        case 'foreign_aid': addLog(newState, player.name, { ru: 'Хочет взять помощь (+2)', en: 'Wants foreign aid (+2)' }); break;
+        case 'tax': addLog(newState, player.name, { ru: 'Объявил налог (+3) — Герцог', en: 'Claims tax (+3) — Duke' }); break;
+        case 'steal': addLog(newState, player.name, { ru: `Хочет украсть у ${targetName} — Капитан`, en: `Wants to steal from ${targetName} — Captain` }); break;
+        case 'exchange': addLog(newState, player.name, { ru: 'Хочет сменить карты — Посол', en: 'Wants to exchange cards — Ambassador' }); break;
+        case 'assassinate': addLog(newState, player.name, { ru: `Платит убийце за ${targetName} (−3)`, en: `Pays an assassin for ${targetName} (−3)` }); break;
+        case 'coup': addLog(newState, player.name, { ru: `Устраивает переворот против ${targetName}!`, en: `Launches a coup against ${targetName}!` }); break;
     }
 
     if (actionType === 'income') {
@@ -226,29 +203,36 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
     if (!newState.passedPlayers) newState.passedPlayers = [];
     newState.passedPlayers.push(userId);
 
-    const activePlayersCount = newState.players.filter(p => !p.isDead).length;
-    const allOthersPassed = newState.passedPlayers.length >= (activePlayersCount - 1);
-    const isTarget = action.target === userId;
-
-    if (isTarget || allOthersPassed) {
-        if (newState.phase === 'waiting_for_challenges') {
-             if (['steal', 'assassinate'].includes(action.type)) {
-                 newState.phase = 'waiting_for_blocks';
-                 newState.passedPlayers = [];
-                 newState.turnDeadline = now() + RESPONSE_MS;
-             } else {
-                 applyActionEffect(newState);
-             }
-        } else if (newState.phase === 'waiting_for_blocks') {
-             applyActionEffect(newState);
-        } else if (newState.phase === 'waiting_for_block_challenges') {
-             addLog(newState, 'Система', 'Блок принят. Действие отменено.');
-             nextTurn(newState);
-        }
-    }
+    if (action.target === userId || allOthersPassed(newState)) settleUnanswered(newState);
 
     return newState;
     });
+  };
+
+  /** Everyone who could answer the action on the table has passed. */
+  const allOthersPassed = (state: GameState) => {
+    const activePlayersCount = state.players.filter(p => !p.isDead).length;
+    return (state.passedPlayers?.length ?? 0) >= activePlayersCount - 1;
+  };
+
+  /** Moves a response phase on as if nobody objected. */
+  const settleUnanswered = (state: GameState) => {
+    const action = state.currentAction;
+    if (!action) return;
+    if (state.phase === 'waiting_for_challenges') {
+         if (['steal', 'assassinate'].includes(action.type)) {
+             state.phase = 'waiting_for_blocks';
+             state.passedPlayers = [];
+             state.turnDeadline = now() + RESPONSE_MS;
+         } else {
+             applyActionEffect(state);
+         }
+    } else if (state.phase === 'waiting_for_blocks') {
+         applyActionEffect(state);
+    } else if (state.phase === 'waiting_for_block_challenges') {
+         addLog(state, SYSTEM, { ru: 'Блок принят. Действие отменено.', en: 'Block accepted. The action is cancelled.' });
+         nextTurn(state);
+    }
   };
 
   const challenge = async () => {
@@ -272,7 +256,7 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
     const accused = newState.players.find(p => p.id === accusedId);
     if (!accused) return null;
 
-    addLog(newState, challenger.name, `НЕ ВЕРИТ игроку ${accused.name}!`);
+    addLog(newState, challenger.name, { ru: `Не верит игроку ${accused.name}!`, en: `Challenges ${accused.name}!` });
 
     const requiredRoles = getRequiredRoles(newState.currentAction.type, isBlockChallenge);
     const hasRole = accused.cards.some(c => !c.revealed && requiredRoles.includes(c.role));
@@ -280,7 +264,7 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
     if (hasRole) {
       const cardIdx = accused.cards.findIndex(c => !c.revealed && requiredRoles.includes(c.role));
       const oldRole = accused.cards[cardIdx].role;
-      addLog(newState, accused.name, `Показал карту: ${getRoleName(oldRole)}!`);
+      addLog(newState, accused.name, { ru: `Показал карту: ${roleName(oldRole).ru}!`, en: `Shows a card: ${roleName(oldRole).en}!` });
 
       newState.deck.push(oldRole);
       newState.deck = shuffleDeck(newState.deck);
@@ -292,7 +276,7 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
       newState.currentAction.nextPhase = isBlockChallenge ? 'blocked_end' : 'continue_action';
 
     } else {
-      addLog(newState, accused.name, `БЛЕФОВАЛ! (Нет нужной карты)`);
+      addLog(newState, accused.name, { ru: 'Блефовал — нужной карты нет!', en: 'Was bluffing — no such card!' });
       newState.phase = 'losing_influence';
       newState.pendingPlayerId = accused.id;
 
@@ -322,7 +306,7 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
     newState.turnDeadline = now() + RESPONSE_MS;
 
     const blockerName = newState.players.find(p => p.id === userId)?.name || '?';
-    addLog(newState, blockerName, `БЛОКИРУЕТ действие`);
+    addLog(newState, blockerName, { ru: 'Блокирует действие', en: 'Blocks the action' });
 
     return newState;
     });
@@ -342,55 +326,67 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
     if (!player || player.cards[cardIndex]?.revealed) return null;
 
     player.cards[cardIndex].revealed = true;
-    const lostRole = getRoleName(player.cards[cardIndex].role);
-    addLog(newState, player.name, `СБРОСИЛ КАРТУ: ${lostRole}`);
+    const lostRole = roleName(player.cards[cardIndex].role);
+    addLog(newState, player.name, { ru: `Сбросил карту: ${lostRole.ru}`, en: `Lost a card: ${lostRole.en}` });
 
     if (player.cards.every(c => c.revealed)) {
        player.isDead = true;
        player.coins = 0;
-       addLog(newState, player.name, 'Выбывает из игры ☠️');
+       addLog(newState, player.name, { ru: 'Выбывает из игры ☠️', en: 'Is out of the game ☠️' });
     }
 
-    const action = newState.currentAction;
+    afterCardLost(newState);
+    return newState;
+    });
+  };
+
+  /**
+   * Carries the action on once the card owed has been given up: the
+   * challenge that caused it decides whether the action, or the block against
+   * it, goes ahead. Also used when the player owing the card walks out.
+   */
+  const afterCardLost = (state: GameState) => {
+    const action = state.currentAction;
     if (!action) {
-       nextTurn(newState);
+       nextTurn(state);
     } else {
         if (action.type === 'coup') {
-            nextTurn(newState);
+            nextTurn(state);
         }
-        else if (action.type === 'assassinate' && newState.phase === 'losing_influence' && !action.nextPhase) {
-            nextTurn(newState);
+        else if (action.type === 'assassinate' && state.phase === 'losing_influence' && !action.nextPhase) {
+            nextTurn(state);
         }
         else if (action.nextPhase) {
              const next = action.nextPhase;
              delete action.nextPhase;
 
              if (next === 'action_cancelled') {
-                 addLog(newState, 'Система', 'Действие отменено');
-                 nextTurn(newState);
+                 addLog(state, SYSTEM, { ru: 'Действие отменено', en: 'The action is cancelled' });
+                 nextTurn(state);
              } else if (next === 'blocked_end') {
-                 addLog(newState, 'Система', 'Блок успешен, действие отменено');
-                 nextTurn(newState);
+                 addLog(state, SYSTEM, { ru: 'Блок устоял, действие отменено', en: 'The block holds, the action is cancelled' });
+                 nextTurn(state);
              } else if (next === 'continue_action') {
                  if (action.blockedBy) {
-                     addLog(newState, 'Система', 'Блок провалился, действие выполняется');
-                     applyActionEffect(newState);
+                     addLog(state, SYSTEM, { ru: 'Блок не устоял, действие выполняется', en: 'The block fails, the action goes ahead' });
+                     applyActionEffect(state);
                  } else {
                      if (['steal', 'assassinate'].includes(action.type)) {
-                         newState.phase = 'waiting_for_blocks';
-                         newState.turnDeadline = now() + (30 * 1000);
+                         // A fresh window: passes given before the challenge
+                         // answered a different question.
+                         state.phase = 'waiting_for_blocks';
+                         state.pendingPlayerId = undefined;
+                         state.passedPlayers = [];
+                         state.turnDeadline = now() + RESPONSE_MS;
                      } else {
-                         applyActionEffect(newState);
+                         applyActionEffect(state);
                      }
                  }
              }
         } else {
-          nextTurn(newState);
+          nextTurn(state);
         }
     }
-
-    return newState;
-    });
   };
 
   const resolveExchange = async (selectedIndices: number[]) => {
@@ -421,11 +417,89 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
       newState.deck = shuffleDeck(newState.deck);
 
       newState.exchangeBuffer = undefined;
-      addLog(newState, player.name, 'Обменял карты');
+      addLog(newState, player.name, { ru: 'Обменял карты', en: 'Exchanged cards' });
       nextTurn(newState);
 
       return newState;
       });
+  };
+
+  const passHost = (state: GameState, leaver: Player) => {
+    if (!leaver.isHost || state.players.length === 0) return;
+    state.players[0].isHost = true;
+    addLog(state, SYSTEM, { ru: `Хост вышел. Новый хост: ${state.players[0].name}`, en: `The host left. New host: ${state.players[0].name}` });
+  };
+
+  /** A fresh turn for whoever sits at `turnIndex`, skipping the dead. */
+  const startTurn = (state: GameState) => {
+    while (state.players[state.turnIndex].isDead) {
+      state.turnIndex = (state.turnIndex + 1) % state.players.length;
+    }
+    state.phase = 'choosing_action';
+    state.currentAction = null;
+    state.pendingPlayerId = undefined;
+    state.exchangeBuffer = undefined;
+    state.passedPlayers = [];
+    state.turnDeadline = now() + TURN_MS;
+  };
+
+  /**
+   * Takes a player out of a running match — they left, or the clock removed
+   * them — and carries the table on from where it was. What happens to the
+   * action on the table depends on the part they had in it:
+   *
+   * - their own turn: it goes with them, and the next player moves;
+   * - the action was aimed at them: nothing is left to act on, the turn passes;
+   * - they blocked someone else's action: the block goes with them;
+   * - they lost a challenge and still owed a card: the challenge has already
+   *   decided the outcome, so it is carried out as if the card had been given;
+   * - they could only answer: their silence no longer holds the table up.
+   *
+   * Leaving used to reset every one of these to a fresh turn for the player
+   * who acted, which handed them a second turn and undid claims they had
+   * already proved.
+   */
+  const dropPlayer = (state: GameState, id: string) => {
+    const idx = state.players.findIndex(p => p.id === id);
+    if (idx === -1) return;
+    const leaver = state.players[idx];
+    const action = state.currentAction;
+    const wasTurn = idx === state.turnIndex;
+    const wasTarget = action?.target === id;
+    const wasBlocker = action?.blockedBy === id;
+    const owedCard = state.phase === 'losing_influence' && state.pendingPlayerId === id;
+
+    // The hand leaves with its owner; the two cards an exchange drew go back.
+    if (wasTurn && state.exchangeBuffer) {
+      const live = leaver.cards.filter(c => !c.revealed).length;
+      state.deck = shuffleDeck([...state.deck, ...state.exchangeBuffer.slice(live)]);
+    }
+
+    state.players.splice(idx, 1);
+    if (idx < state.turnIndex) state.turnIndex--;
+    if (state.turnIndex >= state.players.length) state.turnIndex = 0;
+    state.passedPlayers = (state.passedPlayers || []).filter(p => p !== id);
+    passHost(state, leaver);
+
+    if (state.players.filter(p => !p.isDead).length <= 1) {
+      nextTurn(state); // declares the winner
+      return;
+    }
+
+    if (wasTurn) {
+      startTurn(state);
+    } else if (wasTarget) {
+      addLog(state, SYSTEM, { ru: 'Цель вышла из игры — действие отменено', en: 'The target has left — the action is cancelled' });
+      nextTurn(state);
+    } else if (wasBlocker) {
+      addLog(state, SYSTEM, { ru: 'Блокирующий вышел — действие выполняется', en: 'The blocker has left — the action goes ahead' });
+      applyActionEffect(state);
+    } else if (owedCard) {
+      state.pendingPlayerId = undefined;
+      afterCardLost(state);
+    } else if (RESPONSE_PHASES.includes(state.phase) && allOthersPassed(state)) {
+      settleUnanswered(state);
+    }
   };
 
   const applyActionEffect = (state: GameState) => {
@@ -435,7 +509,7 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
       const target = state.players.find(p => p.id === action.target);
       if (!actor) {
           // The actor left the game — do not hang in the phase, advance the turn
-          addLog(state, 'Система', 'Автор действия вышел. Действие отменено.');
+          addLog(state, SYSTEM, { ru: 'Автор действия вышел. Действие отменено.', en: 'The player acting has left. The action is cancelled.' });
           nextTurn(state);
           return;
       }
@@ -443,12 +517,12 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
       switch(action.type) {
           case 'tax':
               actor.coins += 3;
-              addLog(state, actor.name, 'Получил налог (+3)');
+              addLog(state, actor.name, { ru: 'Получил налог (+3)', en: 'Collected tax (+3)' });
               nextTurn(state);
               break;
           case 'foreign_aid':
               actor.coins += 2;
-              addLog(state, actor.name, 'Получил помощь (+2)');
+              addLog(state, actor.name, { ru: 'Получил помощь (+2)', en: 'Collected foreign aid (+2)' });
               nextTurn(state);
               break;
           case 'steal':
@@ -456,7 +530,7 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
                   const amount = Math.min(2, target.coins);
                   target.coins -= amount;
                   actor.coins += amount;
-                  addLog(state, actor.name, `Украл ${amount} у ${target.name}`);
+                  addLog(state, actor.name, { ru: `Украл ${amount} у ${target.name}`, en: `Stole ${amount} from ${target.name}` });
               }
               nextTurn(state);
               break;
@@ -465,8 +539,8 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
                   state.phase = 'losing_influence';
                   state.pendingPlayerId = target.id;
                   delete action.nextPhase;
-                  addLog(state, 'Система', `Покушение успешно! ${target.name} теряет карту`);
-                  state.turnDeadline = now() + (60 * 1000);
+                  addLog(state, SYSTEM, { ru: `Покушение удалось! ${target.name} теряет карту`, en: `The assassination succeeds! ${target.name} loses a card` });
+                  state.turnDeadline = now() + TURN_MS;
               } else {
                   nextTurn(state);
               }
@@ -474,7 +548,7 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
           case 'exchange': {
               // Guard against an exhausted deck (should not happen, but never hang)
               if (state.deck.length < 2) {
-                  addLog(state, 'Система', 'В колоде недостаточно карт для обмена.');
+                  addLog(state, SYSTEM, { ru: 'В колоде не хватает карт для обмена.', en: 'Not enough cards in the deck to exchange.' });
                   nextTurn(state);
                   break;
               }
@@ -483,7 +557,7 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
               state.exchangeBuffer = [...currentHand, ...drawn];
               state.phase = 'resolving_exchange';
               state.pendingPlayerId = actor.id;
-              state.turnDeadline = now() + (60 * 1000);
+              state.turnDeadline = now() + TURN_MS;
               break;
           }
           default:
@@ -548,7 +622,7 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
         // began. Verified against the live database: the RPC returns false for
         // exactly that call.
       };
-      addLog(newState, 'Система', 'Игра началась! Всем удачи.');
+      addLog(newState, SYSTEM, { ru: 'Игра началась! Всем удачи.', en: 'The game has started. Good luck!' });
       return newState;
     });
   };
@@ -572,59 +646,15 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
          if (current.status === 'finished') return null;
 
          const newState: GameState = JSON.parse(JSON.stringify(current));
-         const wasHost = newState.players.find((p: Player) => p.id === userId)?.isHost;
-         const leaverIdx = newState.players.findIndex((p: Player) => p.id === userId);
-         if (leaverIdx === -1) return null;
-         const wasCurrentTurn = leaverIdx === newState.turnIndex;
-
-         newState.players = newState.players.filter((p: Player) => p.id !== userId);
-
-         if (newState.players.length === 0) return null;
-
-         if (wasHost) {
-            newState.players[0].isHost = true;
-            addLog(newState, 'Система', `Хост вышел. Новый хост: ${newState.players[0].name}`);
-         }
+         const leaver = newState.players.find((p: Player) => p.id === userId);
+         if (!leaver || newState.players.length === 1) return null;
 
          if (newState.status === 'playing') {
-             addLog(newState, 'Система', 'Игрок покинул матч');
-
-             // Re-base the turn index after removing the player from the array
-             if (leaverIdx !== -1 && leaverIdx < newState.turnIndex) {
-                 newState.turnIndex--;
-             }
-             if (newState.turnIndex >= newState.players.length) {
-                 newState.turnIndex = 0;
-             }
-
-             const alivePlayers = newState.players.filter((p: Player) => !p.isDead);
-             if (alivePlayers.length === 1) {
-                 newState.status = 'finished';
-                 newState.winner = alivePlayers[0].name;
-                 newState.winnerId = alivePlayers[0].id;
-                 addLog(newState, '🏆', `Победитель: ${newState.winner}!`);
-             } else {
-                 // If the leaver was involved in the current action (acting, targeted,
-                 // blocking, or pending a card loss) — reset the phase to a fresh turn
-                 const action = newState.currentAction;
-                 const wasInvolved = wasCurrentTurn ||
-                     newState.pendingPlayerId === userId ||
-                     action?.player === userId ||
-                     action?.target === userId ||
-                     action?.blockedBy === userId;
-
-                 if (wasInvolved) {
-                     while (newState.players[newState.turnIndex].isDead) {
-                         newState.turnIndex = (newState.turnIndex + 1) % newState.players.length;
-                     }
-                     newState.phase = 'choosing_action';
-                     newState.currentAction = null;
-                     newState.pendingPlayerId = undefined;
-                     newState.exchangeBuffer = undefined;
-                     newState.passedPlayers = [];
-                     newState.turnDeadline = now() + TURN_MS;
-                 }
-             }
+             addLog(newState, SYSTEM, { ru: `${leaver.name} покинул матч`, en: `${leaver.name} left the match` });
+             dropPlayer(newState, userId);
+         } else {
+             newState.players = newState.players.filter((p: Player) => p.id !== userId);
+             passHost(newState, leaver);
          }
          return newState;
      });

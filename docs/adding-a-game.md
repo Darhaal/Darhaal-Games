@@ -86,6 +86,9 @@ sitemap entry, hreflang pair, OG image and JSON-LD are all generated.
 see: that the route file exists, that both rulebooks are non-empty, that the
 public content exists and agrees with the registry, that option defaults are
 actually selectable, and that the starting state seats the host with a sane cap.
+`tests/game-screens.test.ts` checks the screen is built from the shared parts.
+To test the game's hook itself, seat players on the in-memory room in
+`tests/support/` the way `tests/coup-flow.test.ts` does.
 
 ```bash
 npx tsc --noEmit && npm run lint && npm test && npm run build

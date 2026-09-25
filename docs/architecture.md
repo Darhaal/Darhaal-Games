@@ -64,6 +64,12 @@ callbacks), and optimistic CAS writes with automatic re-sync on conflict. Game
 hooks contain only game logic on top. Pure, testable game rules live in
 [`src/lib/gameLogic/`](../src/lib/gameLogic/) (see `tests/`).
 
+The hooks themselves are tested too: [`tests/support/fakeSupabase.ts`](../tests/support/fakeSupabase.ts)
+stands in for the room row, the compare-and-swap RPC and the realtime feed, so
+the real hooks run several players at once against one row — see
+`tests/lobby-sync.test.ts`, `tests/coup-flow.test.ts` and
+`tests/flager-flow.test.ts`.
+
 ### Game registry
 [`src/games/registry.ts`](../src/games/registry.ts) is the single source of truth
 for which games exist and what they are like — ids, names, player counts, genre,

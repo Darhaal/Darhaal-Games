@@ -151,17 +151,23 @@ export function useLobbySync<T extends { version?: number; status?: string; last
 
       if (!lobbyId) return;
 
+      // Silent: this loop decides when the player hears about it, so a
+      // conflict is reported once and a resolved one not at all.
       const res = await writeGameState(
           lobbyId,
           next as unknown as Record<string, unknown> & { version?: number; status?: string },
-          { hostId: optsRef.current.getHostId?.(next), silent: !!recompute }
+          { hostId: optsRef.current.getHostId?.(next), silent: true }
       );
 
       if (res.ok) return;
 
-      // A hard failure is not a race — retrying cannot help, and writeGameState
-      // has already surfaced it.
-      if (!res.conflict) return;
+      // A hard failure is not a race — retrying cannot help. The move is
+      // already on this player's screen, so take it back and say so.
+      if (!res.conflict) {
+          await fetchLobbyState();
+          notifyConflict();
+          return;
+      }
 
       // Someone wrote first. Pull their state; retry only if we can rebuild on it.
       const fresh = await fetchLobbyState();

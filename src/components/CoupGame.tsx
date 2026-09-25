@@ -8,12 +8,18 @@ import {
 } from 'lucide-react';
 import { DICTIONARY } from '@/constants/coup';
 import { Lang, GameState } from '@/types/coup';
-import { GameCard, ActionBtn, GuideModal, LogPanel } from './CoupComponents';
+import { GameCard as RoleCard, ActionBtn, GuideModal, logText, logUser } from './CoupComponents';
 import GameHeader from './GameHeader';
-import RematchButton from './RematchButton';
+import { requireGame } from '@/games/registry';
 import GameRulesModal from './GameRulesModal';
 import { GAME_RULES } from '@/constants/rules';
 import { useEscape } from '@/hooks/useEscape';
+import { defaultAvatar } from '@/constants/app';
+import GameLayout from './game/GameLayout';
+import GameCard from './game/GameCard';
+import TurnCard from './game/TurnCard';
+import ResultDialog from './game/ResultDialog';
+import { BUTTON_PRIMARY, BUTTON_SECONDARY, DIALOG_OVERLAY, DIALOG_PANEL, GAME_PAGE, LABEL } from './game/ui';
 import { playSfx } from '@/lib/sound';
 
 interface CoupGameProps {
@@ -37,6 +43,8 @@ export default function CoupGame({
   const [activeModal, setActiveModal] = useState<'rules' | 'guide' | null>(null);
   const [selectedExchangeIndices, setSelectedExchangeIndices] = useState<number[]>([]);
   const [timeLeft, setTimeLeft] = useState(60);
+  // The result can be put aside to look at the table, and brought back.
+  const [resultHidden, setResultHidden] = useState(false);
 
   // "Passed" is keyed to the specific phase/action: when the phase changes the key
   // changes too, so the flag resets automatically (no setState in an effect)
@@ -49,6 +57,12 @@ export default function CoupGame({
 
   const t = DICTIONARY[lang].ui;
   const actionsT = DICTIONARY[lang].actions;
+  /** The action's name in the reader's language, not its code ("STEAL!"). */
+  const actionName = (type?: string) => {
+    if (!type) return '';
+    const key = (type === 'foreign_aid' ? 'aid' : type) as keyof typeof actionsT;
+    return actionsT[key] ?? type;
+  };
 
   const phase = gameState.phase;
   const isActor = gameState.currentAction?.player === userId;
@@ -167,20 +181,31 @@ export default function CoupGame({
       !isExchanging &&
       (!isActor || phase === 'waiting_for_block_challenges');
 
+  const iWon = gameState.winnerId === userId;
+  const winnerPlayer = players.find((p) => p.id === gameState.winnerId);
+  const isFinished = !!gameState.winner;
+
+  // What the Turn card says, phase by phase.
+  const turnHint = isFinished
+    ? undefined
+    : isLosing ? t.loseHint
+    : isExchanging ? t.exchangeHint
+    : isReactionPhase
+      ? `${actionName(gameState.currentAction?.type)} — ${t.waitingAnswers}`
+      : isMyTurn ? t.turnHint : t.thinking;
+
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-[#1A1F26] flex flex-col font-sans overflow-hidden relative">
-      <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-50 mix-blend-overlay pointer-events-none" />
+    <div className={GAME_PAGE}>
       {activeModal === 'guide' && <GuideModal onClose={() => setActiveModal(null)} lang={lang} />}
 
       <GameRulesModal
         isOpen={activeModal === 'rules'}
         onClose={() => setActiveModal(null)}
         rules={GAME_RULES[lang].coup}
-        themeColor="text-orange-600"
       />
 
       <GameHeader
-        title="Coup"
+        title={requireGame('coup').name[lang]}
         icon={ScrollText}
         timeLeft={timeLeft}
         showTime={gameState.status === 'playing'}
@@ -188,158 +213,226 @@ export default function CoupGame({
         onShowRules={() => setActiveModal('rules')}
         onShowGuide={() => setActiveModal('guide')}
         lang={lang}
-        accentColor="text-orange-600"
       />
 
-      <LogPanel logs={gameState.logs} lang={lang} />
-
-      <main className="flex-1 relative z-10 p-4 pb-60 flex flex-col max-w-6xl mx-auto w-full h-full overflow-y-auto custom-scrollbar">
-        <div className="flex flex-wrap justify-center gap-4 pt-4">
-          {players.map(p => {
-            if (p.id === userId) return null;
-            const isCurr = gameState.turnIndex === players.findIndex(pl => pl.id === p.id);
-            return (
-              <div
-                  key={p.id}
-                  onClick={() => targetMode && !p.isDead && handleTarget(p.id)}
-                  className={`
-                      relative flex flex-col items-center p-3 bg-white border rounded-2xl transition-all
-                      ${isCurr ? 'ring-4 ring-[#9e1316] scale-105 z-20' : 'opacity-90'}
-                      ${targetMode && !p.isDead ? 'cursor-pointer animate-pulse ring-4 ring-blue-400 hover:scale-110' : ''}
-                      ${p.isDead ? 'grayscale opacity-50 cursor-not-allowed' : ''}
-                  `}
-              >
-                <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-white shadow-sm mb-2"><Image src={p.avatarUrl} alt="" width={48} height={48} className="w-full h-full object-cover" /></div>
-                <div className="text-xs font-bold mb-1 truncate max-w-[80px]">{p.name}</div>
-                <div className="flex gap-1 mb-2">{p.cards.map((c, i) => <div key={i} className={`w-3 h-5 rounded-sm border ${c.revealed ? 'bg-red-200' : 'bg-[#1A1F26]'}`} />)}</div>
-                <div className="flex items-center gap-1 text-2xs font-bold text-yellow-600 bg-yellow-50 px-2 rounded-full"><Coins className="w-3 h-3" /> {p.coins}</div>
-              </div>
-            );
-          })}
-        </div>
-
-        {shouldShowReactionPanel && (
-            <div className="fixed top-20 sm:top-auto sm:bottom-64 left-0 right-0 z-[60] flex justify-center px-4 pointer-events-none">
-                <div className="bg-white/95 backdrop-blur-xl border border-[#9e1316] p-4 rounded-2xl shadow-2xl flex flex-col sm:flex-row items-center gap-4 pointer-events-auto animate-in slide-in-from-top-10 sm:slide-in-from-bottom-10 fade-in">
-                    <div className="text-xs font-bold uppercase text-[#1A1F26] text-center">
-                        {isActor && phase === 'waiting_for_block_challenges'
-                            ? "Ваше действие заблокировано!"
-                            : (gameState.currentAction?.player === userId ? t.waitingForResponse : `${gameState.currentAction?.type.toUpperCase()}!`)}
-                    </div>
-                    <div className="flex gap-2 pointer-events-auto">
-                        {showChallengeBtn && <button onClick={challenge} className="bg-red-100 text-red-700 px-4 py-2 rounded-lg font-bold text-xs hover:bg-red-200 flex gap-2"><AlertOctagon className="w-4 h-4"/> {t.challenge}</button>}
-                        {showBlockBtn && <button onClick={block} className="bg-purple-100 text-purple-700 px-4 py-2 rounded-lg font-bold text-xs hover:bg-purple-200 flex gap-2"><Shield className="w-4 h-4"/> {t.block}</button>}
-                        {showPassBtn && <button onClick={handlePass} className="bg-emerald-100 text-emerald-700 px-4 py-2 rounded-lg font-bold text-xs hover:bg-emerald-200 flex gap-2"><ThumbsUp className="w-4 h-4"/> {t.pass}</button>}
-                    </div>
-                </div>
+      <GameLayout
+        boardWidth={720}
+        board={
+          <div className="space-y-4">
+            {/* THE TABLE — everyone else, and the targets when an action asks for one */}
+            <div className={`${LABEL} flex items-center justify-between`}>
+              <span>{t.table}</span>
+              {targetMode && <span className="text-[#9e1316] normal-case tracking-normal font-bold text-xs">{t.pickTarget}</span>}
             </div>
-        )}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {players.map((p, index) => {
+                if (p.id === userId) return null;
+                const isCurr = !isFinished && gameState.turnIndex === index;
+                const targetable = !!targetMode && !p.isDead;
+                return (
+                  <button
+                    type="button"
+                    key={p.id}
+                    disabled={!targetable}
+                    onClick={() => targetable && handleTarget(p.id)}
+                    className={`relative text-left bg-white rounded-2xl border p-3 transition-all ${
+                      targetable
+                        ? 'border-[#9e1316]/40 shadow-md hover:shadow-lg hover:-translate-y-0.5 cursor-pointer'
+                        : isCurr ? 'border-[#E6E1DC] shadow-sm bg-[#F8FAFC]' : 'border-[#E6E1DC] shadow-sm'
+                    } ${p.isDead ? 'opacity-50' : ''}`}
+                  >
+                    {isCurr && <span aria-hidden className="absolute left-1 top-3 bottom-3 w-1 rounded-full bg-[#1A1F26]" />}
+                    <div className="flex items-center gap-3 pl-1.5">
+                      <Image
+                        src={p.avatarUrl || defaultAvatar(p.id)}
+                        alt=""
+                        width={36}
+                        height={36}
+                        className={`w-9 h-9 rounded-full object-cover bg-[#F8FAFC] shrink-0 ${p.isDead ? 'grayscale' : ''}`}
+                      />
+                      <div className="min-w-0">
+                        <div className={`text-sm font-bold truncate ${p.isDead ? 'line-through text-[#B5B3AD]' : ''}`}>{p.name}</div>
+                        <div className="flex items-center gap-2 mt-1">
+                          {/* Influence: a card back for each still hidden, red once shown. */}
+                          <span className="flex gap-1">
+                            {p.cards.map((c, i) => (
+                              <span key={i} className={`w-2.5 h-3.5 rounded-[2px] ${c.revealed ? 'bg-red-200' : 'bg-[#1A1F26]'}`} />
+                            ))}
+                          </span>
+                          <span className="flex items-center gap-1 text-2xs font-bold text-amber-600 tabular-nums">
+                            <Coins className="w-3 h-3" /> {p.coins}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
 
-        {me && (
-          <div className="fixed bottom-0 left-0 right-0 p-2 sm:p-4 z-50">
-            <div className="max-w-4xl mx-auto bg-white/95 backdrop-blur-xl border border-[#E6E1DC] rounded-[32px] p-4 sm:p-6 shadow-2xl relative">
-              {isMyTurn && !isLosing && !isExchanging && <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-[#9e1316] text-white px-4 py-1.5 rounded-full text-xs font-black uppercase shadow-lg animate-bounce z-20">{t.yourTurn}</div>}
-              {isLosing && <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-red-600 text-white px-6 py-2 rounded-full text-xs font-black uppercase shadow-lg animate-pulse z-30">{t.loseInfluence}</div>}
-              {isExchanging && <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-emerald-600 text-white px-6 py-2 rounded-full text-xs font-black uppercase shadow-lg z-30">{t.exchange}</div>}
-
-              <div className="flex flex-col md:flex-row items-center justify-between gap-6 sm:gap-8">
-                <div className="flex justify-center gap-3 sm:gap-4 relative shrink-0 mb-4 sm:mb-0 z-0">
-                  {me.cards.map((card, i) => <GameCard key={i} role={card.role} revealed={card.revealed} isMe={true} lang={lang} disabled={me.isDead} isLosing={isLosing && !card.revealed} onClick={() => resolveLoss(i)} />)}
+            {/* ANSWER — challenge, block or let it pass */}
+            {shouldShowReactionPanel && (
+              <GameCard label={t.responseLabel} className="animate-in fade-in slide-in-from-bottom-2">
+                <div className="text-sm font-black text-[#1A1F26] mb-3">
+                  {isActor && phase === 'waiting_for_block_challenges'
+                    ? t.actionBlocked
+                    : (gameState.currentAction?.player === userId ? t.waitingForResponse : actionName(gameState.currentAction?.type))}
                 </div>
-
-                <div className="flex-1 w-full max-w-lg z-10 relative">
-                  <div className="flex items-center gap-3 mb-4 justify-center md:justify-start bg-[#F8FAFC] p-2 px-4 rounded-xl border border-[#E6E1DC] w-fit mx-auto md:mx-0"><Coins className="w-4 h-4 text-yellow-600" /><div className="text-2xl font-black text-[#1A1F26]">{me.coins}</div></div>
-
-                  {!me.isDead && isMyTurn && phase === 'choosing_action' && (
-                    <>
-                      {targetMode ? (
-                        <div className="text-center p-4 bg-gray-50 rounded-2xl border border-dashed border-gray-300">
-                          <div className="text-sm font-bold mb-3 uppercase animate-pulse text-[#9e1316]">{t.targetSelect}: {targetMode}</div>
-                          <button onClick={() => setTargetMode(null)} className="px-6 py-2 bg-white border border-gray-300 rounded-full text-xs font-bold hover:bg-gray-100 shadow-sm">{t.cancel}</button>
-                        </div>
-                      ) : (
-                        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                          <ActionBtn label={actionsT.income} onClick={() => handleAction('income')} color="bg-gray-50 border-gray-200" />
-                          <ActionBtn label={actionsT.aid} onClick={() => handleAction('foreign_aid')} color="bg-gray-50 border-gray-200" />
-                          <ActionBtn label={actionsT.tax} onClick={() => handleAction('tax')} color="bg-purple-50 border-purple-200" icon={Crown} />
-                          <ActionBtn label={actionsT.steal} onClick={() => handleAction('steal')} color="bg-blue-50 border-blue-200" icon={Swords} />
-                          <ActionBtn label={actionsT.exchange} onClick={() => handleAction('exchange')} color="bg-green-50 border-green-200" icon={RefreshCw} />
-                          <ActionBtn label={actionsT.assassinate} onClick={() => handleAction('assassinate')} disabled={me.coins < 3} color="bg-gray-800 border-black text-white" icon={Skull} />
-                          <button onClick={() => handleAction('coup')} disabled={me.coins < 7} className="col-span-3 sm:col-span-2 p-3 bg-[#9e1316] text-white font-bold uppercase rounded-xl border-b-4 border-[#7a0f11] shadow-lg hover:shadow-xl active:translate-y-[1px] active:border-b-0 transition-all disabled:opacity-50 flex items-center justify-center gap-2">
-                            <AlertTriangle className="w-4 h-4" /> {actionsT.coup} (-7)
-                          </button>
-                        </div>
-                      )}
-                    </>
+                <div className="flex flex-wrap gap-2">
+                  {showChallengeBtn && (
+                    <button onClick={challenge} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-50 text-red-600 border border-red-100 font-bold uppercase text-xs hover:bg-red-100 transition-colors">
+                      <AlertOctagon className="w-4 h-4" /> {t.challenge}
+                    </button>
+                  )}
+                  {showBlockBtn && (
+                    <button onClick={block} className={`flex items-center gap-2 px-4 py-2.5 ${BUTTON_SECONDARY}`}>
+                      <Shield className="w-4 h-4" /> {t.block}
+                    </button>
+                  )}
+                  {showPassBtn && (
+                    <button onClick={handlePass} className={`flex items-center gap-2 px-4 py-2.5 ${BUTTON_SECONDARY}`}>
+                      <ThumbsUp className="w-4 h-4" /> {t.pass}
+                    </button>
                   )}
                 </div>
-              </div>
-            </div>
+              </GameCard>
+            )}
           </div>
-        )}
+        }
+        side={
+          <>
+            <TurnCard
+              lang={lang}
+              who={currentPlayer ? { name: currentPlayer.name, isMe: isMyTurn, avatarUrl: currentPlayer.avatarUrl || defaultAvatar(currentPlayer.id) } : null}
+              hint={turnHint}
+              secondsLeft={gameState.status === 'playing' ? timeLeft : undefined}
+              turnSeconds={isReactionPhase ? 30 : 60}
+              result={isFinished ? {
+                won: iWon,
+                title: iWon ? t.youWin : t.winner,
+                detail: gameState.winner ?? undefined,
+                hidden: resultHidden,
+                onShow: () => setResultHidden(false)
+              } : undefined}
+            />
 
-        {/* EXCHANGE MODAL */}
-        {isExchanging && gameState.exchangeBuffer && (
-             <div className="fixed inset-0 z-[150] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-                 <div className="bg-white rounded-[32px] p-6 w-full max-w-2xl flex flex-col items-center shadow-2xl animate-in zoom-in-95 border-4 border-[#059669]">
-                     <h2 className="text-xl font-black uppercase mb-6 flex items-center gap-2 text-[#059669]"><RefreshCw className="w-6 h-6"/> {t.exchange}</h2>
-                     <div className="flex flex-wrap justify-center gap-2 sm:gap-4 mb-8">
-                         {gameState.exchangeBuffer.map((role, i) => (
-                             <div key={i} className={`relative transition-all duration-300 ${selectedExchangeIndices.includes(i) ? 'ring-4 ring-[#059669] rounded-2xl transform scale-105 z-10 shadow-xl' : 'opacity-80 hover:opacity-100'}`}>
-                                <GameCard
-                                   role={role}
-                                   revealed={false}
-                                   isMe={true}
-                                   lang={lang}
-                                   onClick={() => handleExchangeToggle(i)}
-                                />
-                                {selectedExchangeIndices.includes(i) && (
-                                    <div className="absolute -top-2 -right-2 bg-[#059669] text-white rounded-full p-1 shadow-lg">
-                                        <CheckCircle className="w-4 h-4" />
-                                    </div>
-                                )}
-                             </div>
-                         ))}
-                     </div>
-                     <button
-                        onClick={() => resolveExchange(selectedExchangeIndices)}
-                        disabled={selectedExchangeIndices.length !== (me?.cards.filter(c => !c.revealed).length)}
-                        className="w-full max-w-xs py-4 bg-[#059669] text-white rounded-xl font-black uppercase disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#047857] transition-colors shadow-lg"
-                     >
-                        {t.confirm} ({selectedExchangeIndices.length}/{me?.cards.filter(c => !c.revealed).length})
-                     </button>
-                 </div>
-             </div>
-        )}
-      </main>
+            <GameCard label={t.logs}>
+              <div className="max-h-72 overflow-y-auto custom-scrollbar -mx-1 px-1 space-y-2">
+                {gameState.logs.length === 0 && (
+                  <div className="text-xs text-[#8A9099] font-medium">{t.noLogs}</div>
+                )}
+                {gameState.logs.map((log, i) => (
+                  <div key={i} className="text-xs leading-snug">
+                    <div className="flex justify-between gap-2">
+                      <span className="font-bold text-[#1A1F26] truncate">{logUser(log.user, lang)}</span>
+                      <span className="text-3xs text-[#B5B3AD] tabular-nums shrink-0">{log.time}</span>
+                    </div>
+                    <div className="text-[#8A9099]">{logText(log.action, lang)}</div>
+                  </div>
+                ))}
+              </div>
+            </GameCard>
+          </>
+        }
+      />
 
-      {/* Winner Overlay */}
-      {gameState.winner && (
-        <div className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white p-10 rounded-[32px] text-center animate-in zoom-in duration-300 border-4 border-[#9e1316] shadow-2xl max-w-sm w-full relative overflow-hidden">
-            <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-20" />
-            <div className="relative z-10">
-                <Crown className="w-24 h-24 text-yellow-500 mx-auto mb-6 animate-bounce drop-shadow-md" />
-                <h2 className="text-xs font-black uppercase tracking-[0.2em] text-gray-400 mb-2">{t.winner}</h2>
-                <p className="text-3xl font-black text-[#1A1F26] mb-8">{gameState.winner}</p>
-                <div className="flex flex-col gap-3">
-                  <RematchButton
-                    gameId="coup"
-                    parentState={gameState}
-                    lang={lang}
-                    className="w-full py-4 border border-[#E6E1DC] text-[#1A1F26] rounded-xl font-black uppercase tracking-widest text-xs hover:bg-[#F8FAFC] transition-colors"
-                  />
-                  <button
-                      onClick={leaveGame}
-                      className="w-full py-4 bg-[#1A1F26] text-white rounded-xl font-black uppercase tracking-widest hover:bg-[#9e1316] transition-colors shadow-lg"
-                  >
-                      {t.leave}
-                  </button>
+      {/* Room under the hand, which stays pinned to the bottom edge. */}
+      {me && <div aria-hidden className="h-[26rem] md:h-64" />}
+
+      {/* YOUR HAND — pinned to the bottom, the one place Coup's actions live */}
+      {me && !isFinished && (
+        <div className="fixed bottom-0 left-0 right-0 p-2 sm:p-4 z-40">
+          <div className="max-w-4xl mx-auto bg-white border border-[#E6E1DC] rounded-[24px] p-4 sm:p-5 shadow-2xl">
+            {(isLosing || isExchanging) && (
+              <div className={`mb-3 text-xs font-black uppercase tracking-widest text-center ${isLosing ? 'text-red-600' : 'text-emerald-700'}`}>
+                {isLosing ? t.loseInfluence : t.exchange}
+              </div>
+            )}
+
+            <div className="flex flex-col md:flex-row items-center justify-between gap-5">
+              <div className="flex justify-center gap-3 sm:gap-4 shrink-0">
+                {me.cards.map((card, i) => (
+                  <RoleCard key={i} role={card.role} revealed={card.revealed} isMe={true} lang={lang} disabled={me.isDead} isLosing={isLosing && !card.revealed} onClick={() => resolveLoss(i)} />
+                ))}
+              </div>
+
+              <div className="flex-1 w-full max-w-lg">
+                <div className="flex items-center gap-2 mb-3 justify-center md:justify-start">
+                  <span className={LABEL}>{t.coins}</span>
+                  <span className="flex items-center gap-1.5 bg-[#F8FAFC] px-2.5 py-1 rounded-lg border border-[#E6E1DC]">
+                    <Coins className="w-4 h-4 text-amber-600" />
+                    <span className="text-lg font-black tabular-nums">{me.coins}</span>
+                  </span>
                 </div>
+
+                {!me.isDead && isMyTurn && phase === 'choosing_action' && (
+                  targetMode ? (
+                    <div className="text-center p-4 bg-[#F8FAFC] rounded-xl border border-dashed border-[#E6E1DC]">
+                      <div className="text-sm font-bold mb-3 text-[#9e1316]">{actionName(targetMode)} — {t.pickTarget}</div>
+                      <button onClick={() => setTargetMode(null)} className={`px-5 py-2 ${BUTTON_SECONDARY}`}>{t.cancel}</button>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                      <ActionBtn label={actionsT.income} onClick={() => handleAction('income')} color="bg-gray-50 border-gray-200" />
+                      <ActionBtn label={actionsT.aid} onClick={() => handleAction('foreign_aid')} color="bg-gray-50 border-gray-200" />
+                      <ActionBtn label={actionsT.tax} onClick={() => handleAction('tax')} color="bg-purple-50 border-purple-200" icon={Crown} />
+                      <ActionBtn label={actionsT.steal} onClick={() => handleAction('steal')} color="bg-blue-50 border-blue-200" icon={Swords} />
+                      <ActionBtn label={actionsT.exchange} onClick={() => handleAction('exchange')} color="bg-green-50 border-green-200" icon={RefreshCw} />
+                      <ActionBtn label={actionsT.assassinate} onClick={() => handleAction('assassinate')} disabled={me.coins < 3} color="bg-gray-800 border-black text-white" icon={Skull} />
+                      <button onClick={() => handleAction('coup')} disabled={me.coins < 7} className={`col-span-3 sm:col-span-2 p-3 flex items-center justify-center gap-2 ${BUTTON_PRIMARY} !bg-[#9e1316] hover:!bg-[#1A1F26]`}>
+                        <AlertTriangle className="w-4 h-4" /> {actionsT.coup}
+                      </button>
+                    </div>
+                  )
+                )}
+              </div>
             </div>
           </div>
         </div>
       )}
+
+      {/* EXCHANGE — keep as many as you have lives, the rest go back */}
+      {isExchanging && gameState.exchangeBuffer && (
+        <div role="dialog" aria-modal="true" aria-label={t.exchange} className={DIALOG_OVERLAY}>
+          <div className={`${DIALOG_PANEL} max-w-2xl flex flex-col items-center`}>
+            <div className={`${LABEL} mb-1`}>{t.exchange}</div>
+            <p className="text-sm font-medium text-[#8A9099] mb-6 text-center">{t.exchangeHint}</p>
+            <div className="flex flex-wrap justify-center gap-2 sm:gap-4 mb-8">
+              {gameState.exchangeBuffer.map((role, i) => (
+                <div key={i} className={`relative transition-all duration-300 ${selectedExchangeIndices.includes(i) ? 'ring-4 ring-[#1A1F26] rounded-2xl scale-105 z-10 shadow-xl' : 'opacity-80 hover:opacity-100'}`}>
+                  <RoleCard role={role} revealed={false} isMe={true} lang={lang} onClick={() => handleExchangeToggle(i)} />
+                  {selectedExchangeIndices.includes(i) && (
+                    <div className="absolute -top-2 -right-2 bg-[#1A1F26] text-white rounded-full p-1 shadow-lg">
+                      <CheckCircle className="w-4 h-4" />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={() => resolveExchange(selectedExchangeIndices)}
+              disabled={selectedExchangeIndices.length !== (me?.cards.filter(c => !c.revealed).length)}
+              className={`w-full max-w-xs py-3.5 ${BUTTON_PRIMARY}`}
+            >
+              {t.confirm} ({selectedExchangeIndices.length}/{me?.cards.filter(c => !c.revealed).length})
+            </button>
+          </div>
+        </div>
+      )}
+
+      <ResultDialog
+        lang={lang}
+        open={isFinished && !resultHidden}
+        onHide={() => setResultHidden(true)}
+        won={iWon}
+        title={iWon ? t.youWin : t.winner}
+        winners={winnerPlayer
+          ? [{ id: winnerPlayer.id, name: winnerPlayer.name, avatarUrl: winnerPlayer.avatarUrl || defaultAvatar(winnerPlayer.id) }]
+          : gameState.winner ? [{ id: 'winner', name: gameState.winner }] : []}
+        gameId="coup"
+        parentState={gameState}
+        onMenu={leaveGame}
+      />
     </div>
   );
 }

@@ -4,24 +4,28 @@ import Image from 'next/image';
 import React, { useState, useEffect, useRef, memo } from 'react';
 import {
   Bomb, Flag, Trophy,
-  ZoomIn, ZoomOut, Loader2, Eye,
+  ZoomIn, ZoomOut, Loader2,
   MousePointer2, Zap, Skull, UserX
 } from 'lucide-react';
 import { MinesweeperState, MinesweeperPlayer, Cell } from '@/types/minesweeper';
 import GameHeader from './GameHeader';
-import RematchButton from './RematchButton';
+import GameNotificationToast from './GameNotificationToast';
+import { requireGame } from '@/games/registry';
 import GameRulesModal from './GameRulesModal';
 import { GAME_RULES } from '@/constants/rules';
+import ResultDialog from './game/ResultDialog';
+import { BUTTON_PRIMARY } from './game/ui';
 import { playSfx } from '@/lib/sound';
-import { useEscape } from '@/hooks/useEscape';
 import { useGameKeys } from '@/hooks/useGameKeys';
 import { directionOf, isSpace, isZoomIn, isZoomOut, isZoomReset } from '@/lib/keys';
 
 // --- THEME & STYLES ---
+// Closed tiles are the grid grey, raised; opened ones are white — the same
+// white-on-grey every board uses.
 const COLORS = {
-  hidden: "bg-slate-200 border-b-4 border-r-4 border-slate-300 hover:brightness-95 active:border-b-0 active:border-r-0 active:border-t-2 active:border-l-2 active:bg-slate-300",
-  open: "bg-[#E6E1DC] border-[0.5px] border-slate-300 shadow-inner",
-  flagged: "bg-slate-200 border-b-4 border-r-4 border-slate-300",
+  hidden: "bg-[#E6E1DC] border-b-4 border-r-4 border-[#CFC8BA] hover:brightness-95 active:border-b-0 active:border-r-0 active:border-t-2 active:border-l-2",
+  open: "bg-white",
+  flagged: "bg-[#E6E1DC] border-b-4 border-r-4 border-[#CFC8BA]",
   mine: "bg-[#9e1316] text-white border-none shadow-inner",
   numbers: [
     "",
@@ -54,7 +58,12 @@ const UI_TEXT = {
     alive: 'В ИГРЕ',
     left: 'ВЫШЕЛ',
     viewBoard: 'СМОТРЕТЬ КАРТУ',
-    showResults: 'ИТОГИ'
+    showResults: 'Итоги',
+    matchClock: 'матч',
+    youWin: 'Победа',
+    winnerLabel: 'Победитель',
+    nobody: 'Поле никто не прошёл',
+    minesLeft: 'мин осталось'
   },
   en: {
     title: 'MINESWEEPER',
@@ -79,7 +88,12 @@ const UI_TEXT = {
     alive: 'ALIVE',
     left: 'LEFT',
     viewBoard: 'VIEW BOARD',
-    showResults: 'RESULTS'
+    showResults: 'Results',
+    matchClock: 'match',
+    youWin: 'You win',
+    winnerLabel: 'Winner',
+    nobody: 'Nobody cleared the field',
+    minesLeft: 'mines left'
   }
 };
 
@@ -132,7 +146,7 @@ const CellComponent = memo(({
       onPointerDown={onPointerDown}
       onPointerUp={onPointerUp}
       onPointerLeave={onPointerLeave}
-      className={`${styleClass} w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center cursor-pointer transition-none rounded-sm sm:rounded-md select-none relative`}
+      className={`${styleClass} w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center cursor-pointer transition-none select-none relative`}
     >
       {content}
     </div>
@@ -143,15 +157,19 @@ CellComponent.displayName = 'Cell';
 // --- BOARD VIEW ---
 interface BoardViewProps {
   player: MinesweeperPlayer;
+  /** Status words for the chip in the board's header, in the reader's language. */
+  statusText: { won: string; dead: string; left: string };
   isMe: boolean;
   onReveal: (x: number, y: number) => void;
   onFlag: (x: number, y: number) => void;
   onChord: (x: number, y: number) => void;
   scale?: number;
   isTouchModeFlag?: boolean;
+  /** «(Вы)» / "(You)" — the board knows who it belongs to, not the language. */
+  youLabel?: string;
 }
 
-const BoardView = ({ player, isMe, onReveal, onFlag, onChord, scale = 1, isTouchModeFlag }: BoardViewProps) => {
+const BoardView = ({ player, statusText, isMe, onReveal, onFlag, onChord, scale = 1, isTouchModeFlag, youLabel }: BoardViewProps) => {
   const [zoom, setZoom] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
@@ -343,30 +361,36 @@ const BoardView = ({ player, isMe, onReveal, onFlag, onChord, scale = 1, isTouch
       return () => el.removeEventListener('wheel', onWheel);
   }, []);
 
-  const borderColor = player.status === 'won' ? 'border-emerald-500 shadow-emerald-500/20' : (player.status === 'lost' || player.status === 'left') ? 'border-red-500 shadow-red-500/20' : 'border-[#E6E1DC] shadow-[#1A1F26]/5';
-  const overlayOpacity = (player.status === 'left') ? 'grayscale opacity-75' : '';
+  const statusChip =
+    player.status === 'won' ? { text: statusText.won, cls: 'bg-emerald-50 text-emerald-700 border-emerald-100', Icon: Trophy }
+    : player.status === 'lost' ? { text: statusText.dead, cls: 'bg-red-50 text-red-600 border-red-100', Icon: Skull }
+    : player.status === 'left' ? { text: statusText.left, cls: 'bg-[#F1F5F9] text-[#8A9099] border-[#E6E1DC]', Icon: UserX }
+    : null;
 
   return (
-    <div className={`relative flex flex-col h-full bg-white rounded-[32px] border-4 overflow-hidden shadow-xl transition-all ${borderColor} ${overlayOpacity}`}>
-        <div className="shrink-0 p-3 border-b border-[#F1F5F9] flex justify-between items-center bg-white/90 backdrop-blur-md z-20">
-            <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-gray-100 border border-gray-200 overflow-hidden relative">
-                    <Image src={player.avatarUrl} alt="" width={40} height={40} className="w-full h-full object-cover" />
-                    {player.status === 'won' && <div className="absolute inset-0 bg-emerald-500/80 flex items-center justify-center animate-in zoom-in"><Trophy className="w-5 h-5 text-white" /></div>}
-                    {player.status === 'lost' && <div className="absolute inset-0 bg-red-500/80 flex items-center justify-center animate-in zoom-in"><Skull className="w-5 h-5 text-white" /></div>}
-                    {player.status === 'left' && <div className="absolute inset-0 bg-gray-500/80 flex items-center justify-center animate-in zoom-in"><UserX className="w-5 h-5 text-white" /></div>}
-                </div>
-                <div className="flex flex-col">
-                    <span className="text-xs font-black uppercase text-[#1A1F26] truncate max-w-[100px]">{player.name} {isMe && '(Вы)'}</span>
-                    <span className="flex items-center gap-1 text-2xs font-bold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded w-fit">
+    <div className={`relative flex flex-col h-full bg-white rounded-2xl border border-[#E6E1DC] overflow-hidden shadow-sm ${player.status === 'left' ? 'grayscale opacity-75' : ''}`}>
+        <div className="shrink-0 p-3 border-b border-[#F1F5F9] flex justify-between items-center gap-3 bg-white z-20">
+            <div className="flex items-center gap-3 min-w-0">
+                <Image src={player.avatarUrl} alt="" width={36} height={36} className="w-9 h-9 rounded-full object-cover bg-[#F8FAFC] shrink-0" />
+                <div className="flex flex-col min-w-0">
+                    <span className="text-sm font-bold text-[#1A1F26] truncate">
+                        {player.name}
+                        {isMe && <span className="ml-1.5 text-3xs font-bold uppercase tracking-wider text-[#8A9099]">{youLabel}</span>}
+                    </span>
+                    <span className="flex items-center gap-1 text-2xs font-bold text-[#8A9099] tabular-nums">
                         <Flag className="w-3 h-3 text-[#9e1316]" /> {player.minesLeft}
                     </span>
                 </div>
+                {statusChip && (
+                    <span className={`flex items-center gap-1 px-2 py-1 rounded-lg border text-2xs font-black uppercase tracking-wider shrink-0 ${statusChip.cls}`}>
+                        <statusChip.Icon className="w-3 h-3" /> {statusChip.text}
+                    </span>
+                )}
             </div>
             {isMe && (
-                <div className="flex gap-1 bg-gray-100 p-1 rounded-xl">
-                    <button onClick={() => setZoom(z => Math.min(4, z + 0.5))} className="p-1.5 hover:bg-white rounded-lg transition-all shadow-sm"><ZoomIn className="w-4 h-4 text-gray-600"/></button>
-                    <button onClick={() => setZoom(z => Math.max(0.5, z - 0.5))} className="p-1.5 hover:bg-white rounded-lg transition-all shadow-sm"><ZoomOut className="w-4 h-4 text-gray-600"/></button>
+                <div className="flex gap-1 shrink-0">
+                    <button onClick={() => setZoom(z => Math.min(4, z + 0.5))} className="p-2 bg-white border border-[#E6E1DC] rounded-lg hover:border-[#9e1316]/30 transition-all" aria-label="zoom in"><ZoomIn className="w-4 h-4 text-[#8A9099]"/></button>
+                    <button onClick={() => setZoom(z => Math.max(0.5, z - 0.5))} className="p-2 bg-white border border-[#E6E1DC] rounded-lg hover:border-[#9e1316]/30 transition-all" aria-label="zoom out"><ZoomOut className="w-4 h-4 text-[#8A9099]"/></button>
                 </div>
             )}
         </div>
@@ -390,7 +414,7 @@ const BoardView = ({ player, isMe, onReveal, onFlag, onChord, scale = 1, isTouch
                     marginTop: `-${(player.board.length * 32) / 2}px`
                 }}
             >
-                <div className="inline-grid gap-[2px] bg-slate-300 p-[2px] rounded shadow-2xl"
+                <div className="inline-grid gap-[2px] bg-[#D6D0C4] p-[2px] shadow-sm"
                      style={{ gridTemplateColumns: `repeat(${player.board[0]?.length || 10}, min-content)` }}>
                     {player.board.map((row: Cell[], y: number) => row.map((cell: Cell, x: number) => (
                         <CellComponent
@@ -407,14 +431,6 @@ const BoardView = ({ player, isMe, onReveal, onFlag, onChord, scale = 1, isTouch
             </div>
         </div>
 
-        {player.status !== 'playing' && (
-            <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-30">
-                {player.status === 'left' && <div className="bg-black/40 backdrop-blur-[1px] absolute inset-0" />}
-                {player.status === 'won' && <div className="bg-emerald-500 text-white px-4 py-2 rounded-2xl font-black uppercase tracking-widest shadow-xl animate-bounce flex items-center gap-2 z-40 transform -rotate-6 border-4 border-white"><Trophy className="w-6 h-6" /> WON</div>}
-                {player.status === 'lost' && <div className="bg-red-600 text-white px-4 py-2 rounded-2xl font-black uppercase tracking-widest shadow-xl animate-in zoom-in flex items-center gap-2 z-40 transform rotate-6 border-4 border-white"><Skull className="w-6 h-6" /> DEAD</div>}
-                {player.status === 'left' && <div className="bg-gray-700 text-white px-4 py-2 rounded-2xl font-black uppercase tracking-widest shadow-xl animate-pulse flex items-center gap-2 z-40 border-4 border-white"><UserX className="w-6 h-6" /> LEFT</div>}
-            </div>
-        )}
     </div>
   );
 };
@@ -434,8 +450,6 @@ export default function MinesweeperGame({ gameState, userId, revealCell, toggleF
   // Derived state: show results when the match is finished and not dismissed
   const showResults = gameState.status === 'finished' && resultsDismissedFor !== gameState.startTime;
 
-  // Escape dismisses the results overlay (back to viewing the board)
-  useEscape(showResults, () => setResultsDismissedFor(gameState.startTime));
 
   // Own game outcome sound
   useEffect(() => {
@@ -475,11 +489,15 @@ export default function MinesweeperGame({ gameState, userId, revealCell, toggleF
       return Math.min(100, Math.round((opened / totalSafe) * 100));
   };
 
+  const iWon = gameState.winnerId === userId;
+  const winnerPlayer = gameState.winnerId ? gameState.players[gameState.winnerId] : undefined;
+  const resultTitle = iWon ? t.youWin : gameState.winner ? t.winnerLabel : t.nobody;
+  const statusText = { won: t.won, dead: t.dead, left: t.left };
+
   if (!me) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin text-[#9e1316]" /></div>;
 
   return (
-    <div className="h-screen bg-[#F8FAFC] flex flex-col font-sans overflow-hidden">
-        <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-30 mix-blend-overlay pointer-events-none" />
+    <div className="h-screen bg-[#F8FAFC] text-[#1A1F26] flex flex-col font-sans overflow-hidden">
 
         <GameRulesModal
             isOpen={showRules}
@@ -489,15 +507,18 @@ export default function MinesweeperGame({ gameState, userId, revealCell, toggleF
         />
 
         <GameHeader
-            title="Minesweeper"
+            title={requireGame('minesweeper').name[lang]}
             icon={Bomb}
             timeLeft={timeLeft}
             showTime={true}
+            timeCaption={t.matchClock}
             onLeave={leaveGame}
             onShowRules={() => setShowRules(true)}
             lang={lang}
             accentColor="text-red-600"
        />
+
+        <GameNotificationToast notifications={gameState.notifications || []} lang={lang} />
 
         {/* LOBBY CONTROLS */}
         <div className="flex justify-center pb-4 z-20 relative px-4 gap-4 mt-4">
@@ -512,7 +533,7 @@ export default function MinesweeperGame({ gameState, userId, revealCell, toggleF
                 </div>
             )}
             {gameState.status === 'finished' && !showResults && (
-                <button onClick={() => setResultsDismissedFor(null)} className="bg-emerald-600 text-white px-6 py-3 rounded-2xl font-bold uppercase text-xs shadow-lg animate-in zoom-in hover:bg-emerald-700">
+                <button onClick={() => setResultsDismissedFor(null)} className={`px-5 py-2.5 ${BUTTON_PRIMARY} animate-in zoom-in`}>
                     {t.showResults}
                 </button>
             )}
@@ -535,88 +556,52 @@ export default function MinesweeperGame({ gameState, userId, revealCell, toggleF
                   onFlag={toggleFlag}
                   onChord={chordCell}
                   isTouchModeFlag={isTouchModeFlag}
+                  youLabel={t.you}
+                  statusText={statusText}
                />
             </div>
             {opponents.map(p => (
                 <div key={p.id} className="relative opacity-90 hover:opacity-100 transition-opacity">
-                    <BoardView player={p} isMe={false} onReveal={()=>{}} onFlag={()=>{}} onChord={()=>{}} scale={players.length > 2 ? 0.8 : 1} />
+                    <BoardView player={p} statusText={statusText} isMe={false} onReveal={()=>{}} onFlag={()=>{}} onChord={()=>{}} scale={players.length > 2 ? 0.8 : 1} />
                 </div>
             ))}
         </main>
 
-        {showResults && (
-            <div className="fixed inset-0 z-50 bg-[#1A1F26]/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300">
-                <div className="bg-white rounded-[40px] overflow-hidden shadow-2xl max-w-2xl w-full border border-[#E6E1DC] flex flex-col max-h-[85vh] animate-in zoom-in-95">
-                    <div className="bg-[#1A1F26] p-8 text-white text-center relative shrink-0">
-                        <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-20" />
-                        <h2 className="text-4xl font-black uppercase tracking-widest text-white mb-2 relative z-10">
-                            {gameState.winner ? t.victory : t.defeat}
-                        </h2>
-                        {gameState.winner && <div className="text-[#FBBF24] font-bold flex justify-center gap-2 items-center text-sm uppercase tracking-wider relative z-10"><Trophy className="w-4 h-4"/> {gameState.winner}</div>}
-
-                        <button onClick={() => setResultsDismissedFor(gameState.startTime)} className="absolute top-6 right-6 p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors z-20" title={t.viewBoard}>
-                            <Eye className="w-5 h-5 text-white" />
-                        </button>
+        <ResultDialog
+            lang={lang}
+            open={showResults}
+            onHide={() => setResultsDismissedFor(gameState.startTime)}
+            won={iWon}
+            title={resultTitle}
+            winners={winnerPlayer ? [{ id: winnerPlayer.id, name: winnerPlayer.name, avatarUrl: winnerPlayer.avatarUrl }] : []}
+            gameId="minesweeper"
+            parentState={gameState}
+            onMenu={leaveGame}
+            wide
+        >
+            <div className="divide-y divide-[#F1F5F9] border-y border-[#F1F5F9]">
+                {getSortedPlayers().map((p) => (
+                    <div key={p.id} className="flex items-center gap-3 py-3">
+                        <Image src={p.avatarUrl} alt="" width={32} height={32} className="w-8 h-8 rounded-full object-cover bg-[#F8FAFC] shrink-0" />
+                        <div className="min-w-0 flex-1">
+                            <div className="text-sm font-bold truncate">{p.name}</div>
+                            <div className="text-2xs font-bold uppercase tracking-wider text-[#8A9099]">
+                                {p.status === 'won' ? t.won : p.status === 'lost' ? t.dead : p.status === 'left' ? t.left : t.alive}
+                            </div>
+                        </div>
+                        <div className="font-mono text-sm font-bold tabular-nums w-12 text-right">
+                            {p.score ? `${Math.floor(p.score / 60)}:${(p.score % 60).toString().padStart(2, '0')}` : '—'}
+                        </div>
+                        <div className="flex items-center gap-2 w-24 justify-end">
+                            <div className="w-12 h-1.5 bg-[#F1F5F9] rounded-full overflow-hidden">
+                                <div className={`h-full rounded-full ${p.status === 'lost' ? 'bg-red-500' : 'bg-[#1A1F26]'}`} style={{ width: `${getProgress(p)}%` }} />
+                            </div>
+                            <span className="text-xs font-black tabular-nums">{getProgress(p)}%</span>
+                        </div>
                     </div>
-
-                    <div className="p-8 bg-[#F8FAFC] overflow-y-auto custom-scrollbar">
-                        <table className="w-full text-left border-collapse">
-                            <thead>
-                                <tr className="text-2xs font-black text-[#8A9099] uppercase tracking-widest border-b border-[#E6E1DC]">
-                                    <th className="pb-4 pl-4">{t.player}</th>
-                                    <th className="pb-4 text-center">{t.status}</th>
-                                    <th className="pb-4 text-center">{t.timeStat}</th>
-                                    <th className="pb-4 text-right pr-4">{t.progress}</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-[#E6E1DC]">
-                                {getSortedPlayers().map((p, idx) => (
-                                    <tr key={p.id} className={`group transition-colors hover:bg-white ${p.id === userId ? 'bg-white' : ''}`}>
-                                        <td className="py-4 pl-4 font-bold text-[#1A1F26] flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden border border-gray-100"><Image src={p.avatarUrl} alt="" width={40} height={40} className="w-full h-full object-cover"/></div>
-                                            <div>
-                                                <div className="text-sm">{p.name}</div>
-                                                {idx === 0 && gameState.winner && <div className="text-3xs text-[#FBBF24] font-black uppercase flex items-center gap-1"><Trophy className="w-3 h-3"/> Winner</div>}
-                                            </div>
-                                        </td>
-                                        <td className="py-4 text-center">
-                                            {p.status === 'won' && <span className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-lg text-2xs font-black uppercase tracking-wider">{t.won}</span>}
-                                            {p.status === 'lost' && <span className="bg-red-100 text-red-700 px-3 py-1 rounded-lg text-2xs font-black uppercase tracking-wider">{t.dead}</span>}
-                                            {p.status === 'left' && <span className="bg-gray-200 text-gray-700 px-3 py-1 rounded-lg text-2xs font-black uppercase tracking-wider">{t.left}</span>}
-                                            {p.status === 'playing' && <span className="bg-gray-100 text-gray-600 px-3 py-1 rounded-lg text-2xs font-black uppercase tracking-wider">{t.alive}</span>}
-                                        </td>
-                                        <td className="py-4 text-center font-mono text-sm font-bold text-[#1A1F26]">
-                                            {p.score ? `${Math.floor(p.score/60)}:${(p.score%60).toString().padStart(2,'0')}` : '—'}
-                                        </td>
-                                        <td className="py-4 text-right pr-4">
-                                            <div className="flex items-center justify-end gap-3">
-                                                <span className="font-black text-sm text-[#1A1F26]">{getProgress(p)}%</span>
-                                                <div className="w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                                                    <div className={`h-full rounded-full ${p.status === 'lost' ? 'bg-red-500' : 'bg-[#1A1F26]'}`} style={{ width: `${getProgress(p)}%` }} />
-                                                </div>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div className="p-6 bg-white border-t border-[#E6E1DC] flex flex-col items-center gap-3 shrink-0">
-                        <RematchButton
-                          gameId="minesweeper"
-                          parentState={gameState}
-                          lang={lang}
-                          className="w-full max-w-sm py-4 border border-[#E6E1DC] text-[#1A1F26] rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-[#F8FAFC] transition-colors"
-                        />
-                        {/* leaveGame (handleLeave) awaits the DB write and navigates by itself */}
-                        <button onClick={leaveGame} className="w-full max-w-sm py-4 bg-[#1A1F26] text-white rounded-2xl font-black uppercase tracking-widest hover:bg-[#9e1316] transition-colors shadow-xl shadow-[#1A1F26]/10">
-                            {t.leave}
-                        </button>
-                    </div>
-                </div>
+                ))}
             </div>
-        )}
+        </ResultDialog>
     </div>
   );
 }

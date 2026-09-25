@@ -171,6 +171,7 @@ export const GAME_RULES: Record<Locale, Record<GameId, GameRulesData>> = {
             'Штраф за попытку: -50 очков за каждую неверную догадку.',
             'Штраф за время: -10 очков за каждую прошедшую секунду.',
             'Лимит: 10 попыток на раунд.',
+            'Между раундами — минута, чтобы посмотреть ответ; потом следующий раунд начнётся сам, даже если кто-то не нажал «Далее».',
             'Цель: Угадать максимально быстро и с минимальным количеством попыток, чтобы сохранить как можно больше очков.'
           ],
           type: 'list'
@@ -558,6 +559,7 @@ export const GAME_RULES: Record<Locale, Record<GameId, GameRulesData>> = {
             'Guess Penalty: -50 points per attempt.',
             'Time Penalty: -10 points per second.',
             'Limit: 10 guesses per round.',
+            'Between rounds you get a minute to look at the answer; then the next round starts on its own, even if someone has not pressed "Next".',
             'Goal: Solve fast with few guesses to keep a high score.'
           ],
           type: 'list'

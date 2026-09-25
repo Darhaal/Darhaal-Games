@@ -1,17 +1,21 @@
 'use client';
 
-import Image from 'next/image';
 import React, { useState, useEffect, memo } from 'react';
-import {
-    RotateCw, Trash2, Check, Shuffle,
-    Anchor, Trophy, Crosshair, Map, Shield, BarChart3, User, AlertCircle
-} from 'lucide-react';
+import { RotateCw, Trash2, Check, Shuffle, Anchor, Crosshair, Shield } from 'lucide-react';
 import { Ship, ShipType, FLEET_CONFIG, Orientation, Coordinate, CellStatus, BattleshipState } from '@/types/battleship';
 import { checkPlacement } from '@/lib/gameLogic/battleship';
 import GameHeader from './GameHeader';
-import RematchButton from './RematchButton';
+import GameNotificationToast from './GameNotificationToast';
+import { requireGame } from '@/games/registry';
 import GameRulesModal from './GameRulesModal';
 import { GAME_RULES } from '@/constants/rules';
+import GameLayout from './game/GameLayout';
+import GameCard from './game/GameCard';
+import TurnCard from './game/TurnCard';
+import PlayersCard from './game/PlayersCard';
+import ResultDialog from './game/ResultDialog';
+import { BUTTON_DANGER_QUIET, BUTTON_PRIMARY, BUTTON_SECONDARY, GAME_PAGE, LABEL } from './game/ui';
+import { pluralEn, pluralRu } from '@/lib/plural';
 import { playSfx } from '@/lib/sound';
 import { useGameKeys } from '@/hooks/useGameKeys';
 import { isRotate } from '@/lib/keys';
@@ -21,66 +25,56 @@ const CELL_SIZE_S = "w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6";
 
 const DICTIONARY = {
     ru: {
-        deployment: 'Развертывание',
-        yourTurn: 'ВАШ ХОД',
-        enemyTurn: 'ХОД ПРОТИВНИКА',
         fleet: 'Верфь',
         auto: 'Авто',
-        ready: 'ГОТОВ',
-        placing: 'РАССТАНОВКА...',
-        waiting: 'Ожидание...',
-        victory: 'ПОБЕДА',
-        defeat: 'ПОРАЖЕНИЕ',
+        ready: 'Готов',
+        waiting: 'Ожидание…',
+        readyStatus: 'готов к бою',
+        placingStatus: 'расставляет флот…',
+        waitingOpponent: 'ждём соперника…',
+        victory: 'Победа',
+        defeat: 'Поражение',
         winMsg: 'Вражеский флот уничтожен',
-        loseMsg: 'Наш флот пошел ко дну',
+        loseMsg: 'Наш флот пошёл ко дну',
         surrenderMsg: 'Противник покинул бой',
-        menu: 'В Меню',
         zoneEnemy: 'Радар',
-        zoneMe: 'Мой Флот',
-        shipsAlive: 'Состояние Флота',
+        zoneMe: 'Мой флот',
         enemy: 'Противник',
-        dragHint: 'Перетащите корабли. R или пробел — поворот.',
-        rotate: 'Повернуть',
         clear: 'Сброс',
-        horizontal: 'ГОРИЗОНТАЛЬНО',
-        vertical: 'ВЕРТИКАЛЬНО',
-        stats: 'Статистика',
-        shots: 'Выстр.',
-        accuracy: 'Точн.',
-        hits: 'Попад.',
-        waitingOpponent: 'Ожидание соперника...',
-        instructions: 'Нажмите на корабль, затем на клетку'
+        horizontal: 'Горизонтально',
+        vertical: 'Вертикально',
+        stats: 'Состояние флота',
+        fireHint: 'Стреляйте по радару. Попали — стреляете ещё раз',
+        thinking: 'выбирает цель',
+        setupHint: 'Выберите корабль и нажмите на клетку, или перетащите его на поле. R или пробел — повернуть.',
+        afloat: (n: number) => `${n} ${pluralRu(n, ['корабль', 'корабля', 'кораблей'])} на плаву`,
+        ships: { battleship: 'Линкор', cruiser: 'Крейсер', destroyer: 'Эсминец', submarine: 'Подлодка' } as Record<ShipType, string>
     },
     en: {
-        deployment: 'Deployment',
-        yourTurn: 'YOUR TURN',
-        enemyTurn: 'ENEMY TURN',
         fleet: 'Shipyard',
         auto: 'Auto',
-        ready: 'READY',
-        placing: 'PLACING...',
-        waiting: 'Waiting...',
-        victory: 'VICTORY',
-        defeat: 'DEFEAT',
-        winMsg: 'Enemy fleet destroyed',
+        ready: 'Ready',
+        waiting: 'Waiting…',
+        readyStatus: 'ready for battle',
+        placingStatus: 'placing the fleet…',
+        waitingOpponent: 'waiting for an opponent…',
+        victory: 'Victory',
+        defeat: 'Defeat',
+        winMsg: 'The enemy fleet is destroyed',
         loseMsg: 'Our fleet has sunk',
-        surrenderMsg: 'Opponent surrendered',
-        menu: 'Menu',
+        surrenderMsg: 'The opponent left the battle',
         zoneEnemy: 'Radar',
-        zoneMe: 'My Fleet',
-        shipsAlive: 'Fleet Status',
+        zoneMe: 'My fleet',
         enemy: 'Enemy',
-        dragHint: 'Drag ships. R or Space to rotate.',
-        rotate: 'Rotate',
         clear: 'Reset',
-        horizontal: 'HORIZONTAL',
-        vertical: 'VERTICAL',
-        stats: 'Stats',
-        shots: 'Shots',
-        accuracy: 'Acc.',
-        hits: 'Hits',
-        waitingOpponent: 'Waiting for opponent...',
-        instructions: 'Tap ship, then tap grid'
+        horizontal: 'Horizontal',
+        vertical: 'Vertical',
+        stats: 'Fleet status',
+        fireHint: 'Fire at the radar. A hit and you fire again',
+        thinking: 'is choosing a target',
+        setupHint: 'Pick a ship and tap a square, or drag it onto the board. R or Space turns it.',
+        afloat: (n: number) => `${n} ${pluralEn(n, 'ship', 'ships')} afloat`,
+        ships: { battleship: 'Battleship', cruiser: 'Cruiser', destroyer: 'Destroyer', submarine: 'Submarine' } as Record<ShipType, string>
     }
 };
 
@@ -114,8 +108,8 @@ const GridCell = memo(({
     const isSmall = size === 'small';
     let content = null;
 
-    let bgClass = "bg-[#F5F5F0]";
-    let borderClass = isSmall ? "border-[0.5px] border-[#E6E1DC]" : "border border-[#E6E1DC]";
+    let bgClass = "bg-white";
+    let borderClass = "";
 
     if (status === 'miss') {
         content = <div className={`${isSmall ? 'w-1.5 h-1.5' : 'w-2 h-2'} rounded-full bg-[#8A9099]/40`} />;
@@ -165,7 +159,7 @@ const GridCell = memo(({
 });
 GridCell.displayName = 'GridCell';
 
-const FleetStatusList = ({ ships, isEnemy = false }: { ships: Ship[], isEnemy?: boolean }) => {
+const FleetStatusList = ({ ships, isEnemy = false, names }: { ships: Ship[], isEnemy?: boolean, names: Record<ShipType, string> }) => {
     const groups = FLEET_CONFIG.map(config => {
         const typeShips = ships.filter(s => s.type === config.type);
         return { ...config, ships: typeShips };
@@ -177,7 +171,7 @@ const FleetStatusList = ({ ships, isEnemy = false }: { ships: Ship[], isEnemy?: 
                 <div key={g.type} className="flex items-center justify-between text-xs">
                     <div className="flex items-center gap-2">
                         <div className={`w-2 h-2 rounded-full ${isEnemy ? 'bg-[#9e1316]' : 'bg-[#1A1F26]'}`} />
-                        <span className="font-bold uppercase text-[#8A9099] w-16">{g.type.slice(0, 4)}</span>
+                        <span className="font-bold text-[#8A9099] w-20 truncate">{names[g.type]}</span>
                     </div>
 
                     <div className="flex gap-1">
@@ -240,6 +234,8 @@ export default function BattleshipGame({
     const [timeLeft, setTimeLeft] = useState(60);
     const [movingShipId, setMovingShipId] = useState<string | null>(null);
     const [showRules, setShowRules] = useState(false);
+    // The result can be put aside to look at the final board, and brought back.
+    const [resultHidden, setResultHidden] = useState(false);
 
     const t = DICTIONARY[lang] || DICTIONARY['ru'];
     const me = userId ? gameState.players[userId] : null;
@@ -370,50 +366,52 @@ export default function BattleshipGame({
         else return x === hoverPos.x && y >= hoverPos.y && y < hoverPos.y + config.size;
     };
 
-    if (phase === 'finished') {
-        const isWinner = gameState.winner === userId;
-        const enemyShipsSunk = opponent?.aliveShipsCount === 0;
-        const isSurrender = isWinner && !enemyShipsSunk;
+    const isFinished = phase === 'finished';
+    const iWon = gameState.winner === userId;
+    // A win with enemy ships still afloat means the other side left.
+    const byForfeit = iWon && opponent?.aliveShipsCount !== 0;
+    const resultTitle = iWon ? t.victory : t.defeat;
+    const resultNote = byForfeit ? t.surrenderMsg : iWon ? t.winMsg : t.loseMsg;
+    const turnHolder = isMyTurn ? me : opponent;
+    const winnerPlayer = iWon ? me : opponent;
 
-        return (
-            <div className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 font-sans animate-in fade-in">
-                <div className="bg-white p-10 rounded-[32px] text-center animate-in zoom-in duration-300 border-4 border-[#9e1316] shadow-2xl max-w-sm w-full relative overflow-hidden">
-                    <div className="relative z-10">
-                        {isWinner ? (
-                            <Trophy className="w-24 h-24 text-yellow-500 mx-auto mb-6 animate-bounce" />
-                        ) : (
-                            <AlertCircle className="w-24 h-24 text-gray-400 mx-auto mb-6" />
-                        )}
-                        <h2 className="text-xs font-black uppercase tracking-[0.2em] text-gray-400 mb-2">
-                            {isWinner ? t.victory : t.defeat}
-                        </h2>
-                        <p className="text-2xl font-black text-[#1A1F26] mb-8 leading-tight">
-                            {isSurrender ? t.surrenderMsg : (isWinner ? t.winMsg : t.loseMsg)}
-                        </p>
-                        <div className="flex flex-col gap-3">
-                          <RematchButton
-                            gameId="battleship"
-                            parentState={gameState}
-                            lang={lang}
-                            className="w-full py-4 border border-[#E6E1DC] text-[#1A1F26] rounded-xl font-black uppercase tracking-widest text-xs hover:bg-[#F8FAFC] transition-colors"
-                          />
-                          {/* leaveGame (handleLeave) awaits the DB write and navigates by itself */}
-                          <button onClick={leaveGame} className="w-full py-4 bg-[#1A1F26] text-white rounded-xl font-black uppercase tracking-widest hover:bg-[#9e1316] transition-colors">{t.menu}</button>
-                        </div>
-                    </div>
-                </div>
+    const statusLine = (ready?: boolean, present = true) => (
+        <span className={ready ? 'text-emerald-600' : ''}>
+            {!present ? t.waitingOpponent : ready ? t.readyStatus : t.placingStatus}
+        </span>
+    );
+
+    /** The grid, in the board style every game shares: white squares on grey. */
+    const gridClass = 'grid grid-cols-10 gap-px bg-[#E6E1DC] p-px w-fit mx-auto';
+
+    const radar = (
+        <div>
+            <div className={`${LABEL} mb-3 flex items-center justify-center gap-2`}>
+                <Crosshair className="w-3.5 h-3.5" /> {t.zoneEnemy}
             </div>
-        );
-    }
+            <div className={`${gridClass} ${isMyTurn && !isFinished ? 'cursor-crosshair' : ''}`}>
+                {Array.from({ length: 100 }).map((_, i) => {
+                    const x = i % 10, y = Math.floor(i / 10);
+                    const { status } = getOpponentCellContent(x, y);
+                    return (
+                        <GridCell
+                            key={i}
+                            status={status}
+                            onClick={isMyTurn && !isFinished && status === 'empty' ? () => fireShot(x, y) : undefined}
+                        />
+                    );
+                })}
+            </div>
+        </div>
+    );
+
+    const shipName = (type: ShipType) => t.ships[type];
 
     return (
-        // Bottom padding is room for the chat button: on a phone "ready" is
-        // the last thing on the page and would otherwise stop underneath it.
-        <div className="min-h-screen bg-[#F8FAFC] text-[#1A1F26] flex flex-col font-sans overflow-hidden relative pb-24">
-            <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-50 mix-blend-overlay pointer-events-none" />
-
+        <div className={GAME_PAGE}>
+            <GameNotificationToast notifications={gameState.notifications || []} lang={lang} />
             <GameHeader
-                title="Battleship"
+                title={requireGame('battleship').name[lang]}
                 icon={Anchor}
                 timeLeft={timeLeft}
                 showTime={phase === 'playing'}
@@ -428,113 +426,172 @@ export default function BattleshipGame({
                 rules={GAME_RULES[lang as 'ru' | 'en'].battleship}
             />
 
-            <main className="flex-1 flex flex-col items-center justify-center p-4 z-10 gap-6 overflow-y-auto custom-scrollbar w-full">
-                {phase === 'setup' && (
-                    <div className="flex flex-col w-full max-w-5xl gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        <div className="flex justify-between items-center bg-white p-4 rounded-[24px] border border-[#E6E1DC] shadow-sm w-full">
-                            <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-full bg-[#F5F5F0] overflow-hidden border-2 border-white shadow-md">{me?.avatarUrl ? <Image src={me.avatarUrl} alt="" width={48} height={48} className="w-full h-full object-cover" /> : <User className="w-6 h-6 m-auto mt-2 text-gray-400"/>}</div>
-                                <div><div className="font-black text-sm uppercase">{me?.name || 'You'}</div><div className={`text-2xs font-bold uppercase px-2 py-0.5 rounded-md inline-block mt-1 ${me?.isReady ? 'bg-emerald-100 text-emerald-700' : 'bg-yellow-100 text-yellow-700'}`}>{me?.isReady ? t.ready : t.placing}</div></div>
+            {phase === 'setup' && (
+                <GameLayout
+                    board={
+                        <div>
+                            <div className={`${LABEL} mb-3 flex items-center justify-center gap-2`}>
+                                <Shield className="w-3.5 h-3.5" /> {t.zoneMe}
                             </div>
-                            <div className="flex items-center gap-4 text-right">
-                                <div><div className="font-black text-sm uppercase">{opponent?.name || t.enemy}</div><div className={`text-2xs font-bold uppercase px-2 py-0.5 rounded-md inline-block mt-1 ${opponent?.isReady ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>{opponent?.isReady ? t.ready : (!opponent ? t.waiting : t.placing)}</div></div>
-                                <div className="w-12 h-12 rounded-full bg-[#F5F5F0] overflow-hidden border-2 border-white shadow-md opacity-80">{opponent?.avatarUrl ? <Image src={opponent.avatarUrl} alt="" width={48} height={48} className="w-full h-full object-cover" /> : <User className="w-6 h-6 m-auto mt-2 text-gray-400"/>}</div>
+                            <div className={`${gridClass} cursor-crosshair`} onMouseLeave={() => setHoverPos(null)}>
+                                {Array.from({ length: 100 }).map((_, i) => {
+                                    const x = i % 10, y = Math.floor(i / 10);
+                                    const { shipPart, ship } = getMyCellContent(x, y);
+                                    const isHovered = isPhantomCell(x, y);
+                                    const isValid = isHovered ? isPlacementValid : false;
+
+                                    return <GridCell key={i} status={'empty'} shipPart={shipPart} onClick={() => handleCellClick(x, y)} onMouseEnter={() => setHoverPos({x, y})} onDrop={(e) => handleDrop(e, x, y)} onDragOver={(e) => {e.preventDefault(); setHoverPos({x, y})}} onDragStart={(e) => ship && handleDragStartBoard(e, ship)} onContextMenu={(e) => {e.preventDefault(); setOrientation(prev => prev === 'horizontal' ? 'vertical' : 'horizontal')}} isHovered={isHovered} hoverValid={isValid} />;
+                                })}
                             </div>
                         </div>
-                        <div className="flex flex-col lg:flex-row gap-8 items-start w-full">
-                            <div className="bg-white p-6 rounded-[32px] shadow-xl border border-[#E6E1DC] relative mx-auto lg:mx-0 group w-full lg:w-auto">
-                                <div className="grid grid-cols-10 gap-px bg-[#E6E1DC] border-4 border-[#1A1F26] overflow-hidden rounded-xl cursor-crosshair shadow-inner" onMouseLeave={() => setHoverPos(null)}>
-                                    {Array.from({ length: 100 }).map((_, i) => {
-                                        const x = i % 10, y = Math.floor(i / 10);
-                                        const { shipPart, ship } = getMyCellContent(x, y);
-                                        const isHovered = isPhantomCell(x, y);
-                                        const isValid = isHovered ? isPlacementValid : false;
-
-                                        return <GridCell key={i} status={'empty'} shipPart={shipPart} onClick={() => handleCellClick(x, y)} onMouseEnter={() => setHoverPos({x, y})} onDrop={(e) => handleDrop(e, x, y)} onDragOver={(e) => {e.preventDefault(); setHoverPos({x, y})}} onDragStart={(e) => ship && handleDragStartBoard(e, ship)} onContextMenu={(e) => {e.preventDefault(); setOrientation(prev => prev === 'horizontal' ? 'vertical' : 'horizontal')}} isHovered={isHovered} hoverValid={isValid} />;
+                    }
+                    side={
+                        <>
+                            <GameCard label={t.fleet}>
+                                <div className="space-y-2">
+                                    {FLEET_CONFIG.map(ship => {
+                                        const placedCount = myShips.filter((s: Ship) => s.type === ship.type).length;
+                                        const isFull = placedCount >= ship.count;
+                                        const isSelected = selectedType === ship.type;
+                                        return (
+                                            <button
+                                                key={ship.type}
+                                                type="button"
+                                                draggable={!isFull}
+                                                onDragStart={(e) => handleDragStartMenu(e, ship.type)}
+                                                onClick={() => !isFull && setSelectedType(ship.type)}
+                                                disabled={isFull}
+                                                className={`w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl border transition-all ${
+                                                    isSelected
+                                                        ? 'bg-[#1A1F26] text-white border-[#1A1F26]'
+                                                        : isFull
+                                                            ? 'bg-[#F8FAFC] border-transparent text-[#B5B3AD] cursor-default'
+                                                            : 'bg-white border-[#E6E1DC] hover:border-[#9e1316]/30 hover:shadow-sm cursor-pointer'
+                                                }`}
+                                            >
+                                                <span className="flex items-center gap-3 min-w-0">
+                                                    {/* The ship drawn at its length, one square per deck. */}
+                                                    <span className="flex gap-[2px] shrink-0">
+                                                        {Array.from({ length: ship.size }).map((_, i) => (
+                                                            <span key={i} className={`w-2.5 h-2.5 ${isSelected ? 'bg-white' : isFull ? 'bg-[#DAD7D1]' : 'bg-[#1A1F26]'}`} />
+                                                        ))}
+                                                    </span>
+                                                    <span className="text-sm font-bold truncate">{shipName(ship.type)}</span>
+                                                </span>
+                                                <span className="text-xs font-black tabular-nums shrink-0">{placedCount}/{ship.count}</span>
+                                            </button>
+                                        );
                                     })}
                                 </div>
-                                <div className="flex justify-between items-center mt-6 bg-[#F8FAFC] p-2 rounded-2xl border border-[#E6E1DC]">
-                                    <button onClick={() => setOrientation(o => o === 'horizontal' ? 'vertical' : 'horizontal')} className="flex items-center gap-2 text-xs font-bold uppercase text-[#1A1F26] px-4 py-2 rounded-xl transition-all hover:bg-white border border-transparent hover:border-[#E6E1DC]">
-                                        <RotateCw className={`w-4 h-4 transition-transform duration-300 ${orientation === 'vertical' ? 'rotate-90' : ''}`} /> {t[orientation] || t.rotate}
+
+                                <div className="flex gap-2 mt-3">
+                                    <button onClick={() => setOrientation(o => o === 'horizontal' ? 'vertical' : 'horizontal')} className={`flex-1 flex items-center justify-center gap-2 py-2.5 ${BUTTON_SECONDARY}`}>
+                                        <RotateCw className={`w-4 h-4 transition-transform duration-300 ${orientation === 'vertical' ? 'rotate-90' : ''}`} /> {t[orientation]}
                                     </button>
-                                    <button onClick={clearShips} className="text-[#8A9099] hover:text-red-500 p-2 rounded-xl"><Trash2 className="w-4 h-4"/> {t.clear}</button>
+                                    <button onClick={clearShips} className={`flex items-center justify-center gap-2 px-3.5 py-2.5 ${BUTTON_DANGER_QUIET}`}>
+                                        <Trash2 className="w-4 h-4" /> {t.clear}
+                                    </button>
                                 </div>
-                            </div>
-                            <div className="flex-1 w-full space-y-6">
-                                <div className="bg-white p-6 rounded-[32px] shadow-sm border border-[#E6E1DC]">
-                                    <h3 className="text-xs font-black uppercase mb-6 text-[#8A9099] flex items-center gap-2 tracking-widest pl-2"><Map className="w-4 h-4 text-[#1A1F26]"/> {t.fleet}</h3>
-                                    <div className="grid grid-cols-4 lg:grid-cols-1 gap-3">
-                                        {FLEET_CONFIG.map(ship => {
-                                            const placedCount = myShips.filter((s: Ship) => s.type === ship.type).length;
-                                            const isFull = placedCount >= ship.count;
-                                            const isSelected = selectedType === ship.type;
-                                            return (
-                                                <div key={ship.type} draggable={!isFull} onDragStart={(e) => handleDragStartMenu(e, ship.type)} onClick={() => !isFull && setSelectedType(ship.type)} className={`w-full flex items-center justify-between p-3 rounded-2xl border-2 transition-all duration-200 cursor-pointer ${isFull ? 'bg-[#F8FAFC] border-transparent opacity-40 grayscale cursor-default' : ''} ${isSelected ? 'bg-[#1A1F26] text-white border-[#1A1F26] shadow-lg scale-[1.02]' : 'bg-white border-[#F5F5F0] hover:border-[#E6E1DC]'}`}>
-                                                    <div className="flex items-center gap-4"><div className="w-8 h-8 rounded-full bg-[#F5F5F0] flex items-center justify-center text-2xs font-black text-[#8A9099]">{ship.size}x</div><span className="hidden lg:inline text-2xs font-bold uppercase tracking-wider">{ship.type}</span></div><span className="text-xs font-black">{placedCount}/{ship.count}</span>
-                                                </div>
-                                            );
-                                        })}
+
+                                <p className="mt-3 text-xs font-medium text-[#8A9099] leading-snug">{t.setupHint}</p>
+
+                                <div className="flex gap-2 mt-4 pt-4 border-t border-[#F1F5F9]">
+                                    <button onClick={autoPlaceShips} className={`flex-1 flex items-center justify-center gap-2 py-3 ${BUTTON_SECONDARY}`}>
+                                        <Shuffle className="w-4 h-4" /> {t.auto}
+                                    </button>
+                                    <button onClick={submitShips} disabled={myShips.length < 10 || me?.isReady} className={`flex-[2] flex items-center justify-center gap-2 py-3 ${BUTTON_PRIMARY}`}>
+                                        {me?.isReady ? t.waiting : t.ready} <Check className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            </GameCard>
+
+                            <PlayersCard
+                                lang={lang}
+                                rows={[
+                                    ...(me ? [{ id: me.id, name: me.name, avatarUrl: me.avatarUrl, isHost: me.isHost, isMe: true, stat: statusLine(me.isReady) }] : []),
+                                    ...(opponent ? [{ id: opponent.id, name: opponent.name, avatarUrl: opponent.avatarUrl, isHost: opponent.isHost, stat: statusLine(opponent.isReady) }] : [])
+                                ]}
+                            />
+                        </>
+                    }
+                />
+            )}
+
+            {(phase === 'playing' || isFinished) && (
+                <GameLayout
+                    boardWidth={440}
+                    board={radar}
+                    side={
+                        <>
+                            <TurnCard
+                                lang={lang}
+                                who={turnHolder ? { name: turnHolder.name, isMe: isMyTurn, avatarUrl: turnHolder.avatarUrl } : null}
+                                hint={isMyTurn ? t.fireHint : t.thinking}
+                                secondsLeft={phase === 'playing' ? timeLeft : undefined}
+                                turnSeconds={60}
+                                result={isFinished ? {
+                                    won: iWon,
+                                    title: resultTitle,
+                                    detail: resultNote,
+                                    hidden: resultHidden,
+                                    onShow: () => setResultHidden(false)
+                                } : undefined}
+                            />
+
+                            <GameCard label={t.zoneMe}>
+                                <div className={gridClass}>
+                                    {Array.from({ length: 100 }).map((_, i) => {
+                                        const x = i % 10, y = Math.floor(i / 10);
+                                        const { status, shipPart } = getMyCellContent(x, y);
+                                        return <GridCell key={i} status={status} shipPart={shipPart} size="small" />;
+                                    })}
+                                </div>
+                            </GameCard>
+
+                            <PlayersCard
+                                lang={lang}
+                                rows={[me, opponent].filter((p): p is NonNullable<typeof p> => !!p).map((p) => ({
+                                    id: p.id,
+                                    name: p.name,
+                                    avatarUrl: p.avatarUrl,
+                                    isHost: p.isHost,
+                                    isMe: p.id === userId,
+                                    active: !isFinished && gameState.turn === p.id,
+                                    won: isFinished && gameState.winner === p.id,
+                                    stat: <span className="tabular-nums">{t.afloat(p.aliveShipsCount ?? 0)}</span>
+                                }))}
+                            />
+
+                            <GameCard label={t.stats}>
+                                <div className="space-y-4">
+                                    <div>
+                                        <div className="text-3xs font-bold uppercase tracking-wider text-[#8A9099] mb-2">{t.zoneMe}</div>
+                                        <FleetStatusList ships={myShips} names={t.ships} />
                                     </div>
-                                    <p className="text-2xs text-center text-gray-400 mt-4 uppercase font-bold hidden lg:block">{t.instructions}</p>
-                                </div>
-                                <div className="flex gap-4">
-                                    <button onClick={autoPlaceShips} className="flex-1 py-4 bg-white border-2 border-[#E6E1DC] text-[#1A1F26] rounded-2xl font-bold text-xs uppercase hover:bg-[#F8FAFC] flex items-center justify-center gap-2"><Shuffle className="w-4 h-4" /> {t.auto}</button>
-                                    <button onClick={submitShips} disabled={myShips.length < 10 || me?.isReady} className="flex-[2] py-4 bg-[#1A1F26] text-white rounded-2xl font-black text-xs uppercase hover:bg-[#9e1316] disabled:opacity-50 transition-all shadow-lg flex items-center justify-center gap-2 tracking-widest">{me?.isReady ? t.waiting : t.ready} <Check className="w-4 h-4" /></button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
-                {phase === 'playing' && (
-                    <div className="flex flex-col w-full max-w-6xl gap-6 animate-in fade-in">
-                        <div className="flex flex-col md:flex-row justify-between items-center bg-white p-4 rounded-[32px] border border-[#E6E1DC] shadow-sm w-full gap-4">
-                            <div className="flex items-center gap-4 w-full md:w-1/3">
-                                <div className="relative"><div className="w-14 h-14 rounded-full border-2 border-white shadow-md overflow-hidden bg-[#F5F5F0]">{me?.avatarUrl ? <Image src={me.avatarUrl} alt="" width={56} height={56} className="w-full h-full object-cover" /> : <User className="w-6 h-6 m-auto mt-2 text-gray-400"/>}</div>{isMyTurn && <div className="absolute bottom-0 right-0 w-4 h-4 bg-emerald-500 border-2 border-white rounded-full animate-pulse shadow-sm"></div>}</div>
-                                <div className="flex flex-col"><span className="font-black text-[#1A1F26] text-sm uppercase tracking-tight">{me?.name || 'You'}</span><div className="flex items-center gap-2 text-xs font-bold text-[#8A9099] bg-[#F5F5F0] px-2 py-0.5 rounded-lg mt-1"><Shield className="w-3 h-3 text-emerald-600" /><span>{me?.aliveShipsCount}/10</span></div></div>
-                            </div>
-                            <div className="flex flex-col items-center justify-center w-full md:w-1/3 order-first md:order-none"><div className={`text-2xs font-black uppercase tracking-[0.2em] px-6 py-2 rounded-full border shadow-sm transition-all duration-300 ${isMyTurn ? 'bg-[#9e1316] text-white border-[#9e1316] scale-105' : 'bg-white text-[#8A9099] border-[#E6E1DC]'}`}>{isMyTurn ? t.yourTurn : t.enemyTurn}</div></div>
-                            <div className="flex items-center gap-4 w-full md:w-1/3 justify-end">
-                                <div className="flex flex-col items-end"><span className="font-black text-[#1A1F26] text-sm uppercase tracking-tight">{opponent?.name || t.enemy}</span><div className="flex items-center gap-2 text-xs font-bold text-[#8A9099] bg-[#F5F5F0] px-2 py-0.5 rounded-lg mt-1"><span>{opponent?.aliveShipsCount}/10</span><Crosshair className="w-3 h-3 text-[#9e1316]" /></div></div>
-                                <div className="relative"><div className="w-14 h-14 rounded-full border-2 border-white shadow-md overflow-hidden bg-[#F5F5F0]">{opponent?.avatarUrl ? <Image src={opponent.avatarUrl} alt="" width={56} height={56} className="w-full h-full object-cover" /> : <User className="w-8 h-8 text-gray-400 m-auto mt-2" />}</div>{!isMyTurn && <div className="absolute bottom-0 right-0 w-4 h-4 bg-[#9e1316] border-2 border-white rounded-full animate-pulse shadow-sm"></div>}</div>
-                            </div>
-                        </div>
-                        <div className="flex flex-col lg:flex-row gap-8 items-start justify-center w-full">
-                            <div className="flex-1 w-full max-w-lg mx-auto lg:order-2">
-                                <div className={`bg-white p-6 rounded-[40px] shadow-2xl border-4 transition-all duration-500 relative ${isMyTurn ? 'border-[#9e1316] shadow-[#9e1316]/20 z-10' : 'border-[#E6E1DC] opacity-95'}`}>
-                                    <div className="absolute top-8 left-8 text-2xs font-bold text-[#8A9099] uppercase tracking-widest flex items-center gap-2"><Crosshair className="w-4 h-4"/> {t.zoneEnemy}</div>
-                                    <div className="mt-8 grid grid-cols-10 gap-px bg-[#E6E1DC] border-2 border-[#1A1F26] rounded-xl overflow-hidden cursor-crosshair">
-                                        {Array.from({ length: 100 }).map((_, i) => {
-                                            const x = i % 10, y = Math.floor(i / 10);
-                                            const { status } = getOpponentCellContent(x, y);
-                                            return <GridCell key={i} status={status} onClick={() => isMyTurn && status === 'empty' && fireShot(x, y)} />;
-                                        })}
+                                    <div className="h-px bg-[#F1F5F9]" />
+                                    <div>
+                                        <div className="text-3xs font-bold uppercase tracking-wider text-[#8A9099] mb-2">{t.enemy}</div>
+                                        <FleetStatusList ships={opponent?.ships || []} isEnemy={true} names={t.ships} />
                                     </div>
                                 </div>
-                            </div>
-                            <div className="flex flex-col gap-6 lg:order-1 w-full max-w-xs mx-auto lg:mx-0">
-                                <div className="bg-white p-5 rounded-[32px] shadow-lg border border-[#E6E1DC] opacity-90 hover:opacity-100 transition-opacity relative group">
-                                    <div className="absolute top-5 left-5 text-2xs font-bold text-[#8A9099] uppercase tracking-widest flex items-center gap-2"><Shield className="w-3 h-3"/> {t.zoneMe}</div>
-                                    <div className="mt-8 grid grid-cols-10 gap-px bg-[#E6E1DC] border border-[#E6E1DC] w-fit mx-auto rounded overflow-hidden">
-                                        {Array.from({ length: 100 }).map((_, i) => {
-                                            const x = i % 10, y = Math.floor(i / 10);
-                                            const { status, shipPart } = getMyCellContent(x, y);
-                                            return <GridCell key={i} status={status} shipPart={shipPart} size="small" />;
-                                        })}
-                                    </div>
-                                </div>
-                                <div className="bg-white border border-[#E6E1DC] p-6 rounded-[32px] shadow-sm flex flex-col gap-4 relative overflow-hidden">
-                                    <div className="flex items-center gap-2 text-xs font-black uppercase text-[#1A1F26] tracking-widest mb-2 relative z-10"><BarChart3 className="w-4 h-4 text-[#9e1316]" /> {t.stats}</div>
-                                    <div className="space-y-4">
-                                        <div className="space-y-1"><div className="text-3xs font-bold uppercase text-[#8A9099] mb-2">{t.zoneMe}</div><FleetStatusList ships={myShips} isEnemy={false} /></div>
-                                        <div className="h-px bg-[#F5F5F0] w-full" />
-                                        <div className="space-y-1"><div className="text-3xs font-bold uppercase text-[#8A9099] mb-2">{t.enemy}</div><FleetStatusList ships={opponent?.ships || []} isEnemy={true} /></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
-            </main>
+                            </GameCard>
+                        </>
+                    }
+                />
+            )}
+
+            <ResultDialog
+                lang={lang}
+                open={isFinished && !resultHidden}
+                onHide={() => setResultHidden(true)}
+                won={iWon}
+                title={resultTitle}
+                note={resultNote}
+                winners={winnerPlayer ? [{ id: winnerPlayer.id, name: winnerPlayer.name, avatarUrl: winnerPlayer.avatarUrl }] : []}
+                gameId="battleship"
+                parentState={gameState}
+                onMenu={leaveGame}
+            />
         </div>
     );
 }

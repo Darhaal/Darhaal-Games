@@ -45,6 +45,9 @@ export interface ReversiState {
    */
   passes: number;
 
+  /** Board index of the last disc placed, marked so it can be found. Optional: older rooms lack it. */
+  lastMove?: number;
+
   /** Ids on the top count. Two when the match ends level. */
   winnerIds: string[];
 

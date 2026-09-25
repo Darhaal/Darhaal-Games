@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useMemo, useRef, useState, useEffect, useCallback } from 'react';
-import Image from 'next/image';
-import { BrickWall, Crown, Eye, Flag, Trophy } from 'lucide-react';
+import { BrickWall, Eye, Flag, Trophy } from 'lucide-react';
 import type { Cell, Wall, WallOrientation, WallRushPlayer, WallRushState } from '@/types/wallrush';
 import {
   GOAL_FOR_MODE, canPlaceWall, centreCell, legalMoves, moveInDirection, sameCell, seatsForMode, teamOf
@@ -14,11 +13,18 @@ import PlayerToken from './PlayerToken';
 import { useEscape } from '@/hooks/useEscape';
 import { SEAT_COLORS, TEAM_COLORS, UNOWNED } from '@/games/palette';
 import GameHeader from './GameHeader';
-import RematchButton from './RematchButton';
+import { requireGame } from '@/games/registry';
 import GameNotificationToast from './GameNotificationToast';
 import GameRulesModal from './GameRulesModal';
+import GameLayout from './game/GameLayout';
+import GameCard from './game/GameCard';
+import TurnCard from './game/TurnCard';
+import PlayersCard from './game/PlayersCard';
+import ResultDialog from './game/ResultDialog';
+import {
+  BUTTON_DANGER_QUIET, BUTTON_SECONDARY, DIALOG_OVERLAY, DIALOG_PANEL, GAME_PAGE, softTone
+} from './game/ui';
 import { GAME_RULES } from '@/constants/rules';
-import { defaultAvatar } from '@/constants/app';
 import { playSfx } from '@/lib/sound';
 
 interface WallRushGameProps {
@@ -93,10 +99,6 @@ const UI_TEXT = {
   }
 };
 
-/** The design system's card and label (docs/design-system.md). */
-const CARD = 'bg-white rounded-2xl border border-[#E6E1DC] shadow-sm';
-const LABEL = 'text-2xs font-black uppercase tracking-widest text-[#8A9099]';
-
 /** Walls take the colour of whoever placed them; pieces their seat colour. */
 const colorFor = (state: WallRushState, seat: number) =>
   (state.settings.mode === 'teams' ? TEAM_COLORS : SEAT_COLORS)[seat % 4];
@@ -117,8 +119,6 @@ const GROOVE_OF_WALL_PCT = (GUTTER_FR / (2 + GUTTER_FR)) * 100;
 const GRID_BG = '#E6E1DC';
 const CELL_BG = '#FFFFFF';
 
-/** A seat colour mixed toward white: how walls and finish lines wear it. */
-const softTone = (color: string) => `color-mix(in srgb, ${color} 68%, white)`;
 
 /**
  * A wall: a plain bar in its owner's colour, filling whatever box it is given.
@@ -479,20 +479,13 @@ export default function WallRushGame({
   const teams = gameState.settings.mode === 'teams';
   const winners = gameState.players.filter((p) => gameState.winnerIds.includes(p.id));
   const iWon = gameState.winnerIds.includes(userId);
-  const showResult = isFinished && !resultHidden;
-
-  // The turn clock as a bar: the header carries the digits, this shows at a
-  // glance how much of the turn is gone, in the colour of whoever is on it.
-  const turnDuration = gameState.settings.turnDuration || 30;
-  const turnShare = Math.max(0, Math.min(1, timeLeft / turnDuration));
-  const turnColor = turnPlayer ? colorFor(gameState, turnPlayer.seat) : '#8A9099';
-  const hurry = gameState.status === 'playing' && timeLeft <= 5;
+  const resultTitle = iWon ? t.youWin : teams ? t.teamWins : t.winner;
+  const tokenOf = (p: WallRushPlayer) => ({ color: colorFor(gameState, p.seat), seat: p.seat });
 
   useEscape(pendingResign, () => setPendingResign(false));
-  useEscape(showResult, () => setResultHidden(true));
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] font-sans text-[#1A1F26] flex flex-col">
+    <div className={GAME_PAGE}>
       <GameNotificationToast notifications={gameState.notifications || []} lang={lang} />
 
       <GameRulesModal
@@ -503,7 +496,7 @@ export default function WallRushGame({
       />
 
       <GameHeader
-        title="Wall Rush"
+        title={requireGame('wallrush').name[lang]}
         icon={BrickWall}
         timeLeft={timeLeft}
         showTime={gameState.status === 'playing'}
@@ -513,222 +506,129 @@ export default function WallRushGame({
         accentColor="text-[#1A1F26]"
       />
 
-      {/* Bottom padding is room for the chat button on a phone. */}
-      <main className="flex-1 w-full max-w-6xl mx-auto px-4 pt-6 md:pt-8 pb-24 grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem] items-start">
-        <section className="flex justify-center min-w-0">
-          <div className="w-full max-w-[min(92vw,600px)]">
-            {/* The board: white squares on a grey grid, square at the
-                corners, with an outer line as wide as the gaps inside. The
-                pointer maths reads the grid itself, not that line. */}
+      <GameLayout
+        board={
+          // White squares on a grey grid, square at the corners, with an
+          // outer line as wide as the gaps inside. The pointer maths reads
+          // the grid itself, not that line.
+          <div className="relative" style={{ padding: `${edgePct}%`, backgroundColor: GRID_BG }}>
+            {!racingToCentre && gameState.status !== 'waiting' && orderedPlayers.map(finishLine)}
             <div
-              className="relative"
-              style={{ padding: `${edgePct}%`, backgroundColor: GRID_BG }}
+              ref={boardRef}
+              className="grid"
+              style={{ gridTemplateColumns: track, gridTemplateRows: track }}
             >
-              {!racingToCentre && gameState.status !== 'waiting' && orderedPlayers.map(finishLine)}
-              <div
-                ref={boardRef}
-                className="grid"
-                style={{ gridTemplateColumns: track, gridTemplateRows: track }}
-              >
-                {board}
-              </div>
+              {board}
             </div>
           </div>
-        </section>
+        }
+        side={
+          <>
+            <TurnCard
+              lang={lang}
+              who={turnPlayer ? { name: turnPlayer.name, isMe: turnPlayer.id === userId, ...tokenOf(turnPlayer) } : null}
+              hint={isMyTurn ? t.moveHint : turnPlayer ? t.thinking : undefined}
+              secondsLeft={gameState.status === 'playing' ? timeLeft : undefined}
+              turnSeconds={gameState.settings.turnDuration || 30}
+              result={isFinished ? {
+                won: iWon,
+                title: resultTitle,
+                detail: winners.map((w) => w.name).join(' + '),
+                hidden: resultHidden,
+                onShow: () => setResultHidden(false)
+              } : undefined}
+            />
 
-        <aside className="w-full max-w-[min(92vw,600px)] lg:max-w-none mx-auto space-y-4">
-          {/* TURN — whose move it is, and how much of it is left */}
-          <div className={`${CARD} p-4`}>
-            <div className={`${LABEL} mb-3`}>{isFinished ? t.matchOver : t.turnLabel}</div>
-
-            <div className="flex items-center gap-3">
-              {!isFinished && turnPlayer && (
-                <PlayerToken
-                  className="w-9 h-9"
-                  color={turnColor}
-                  seat={turnPlayer.seat}
-                  mine={turnPlayer.id === userId}
-                />
-              )}
-              {isFinished && (
-                <span
-                  className={`w-9 h-9 rounded-xl border flex items-center justify-center shrink-0 ${
-                    iWon ? 'bg-amber-50 text-amber-500 border-amber-100' : 'bg-[#F8FAFC] text-[#1A1F26] border-[#E6E1DC]'
-                  }`}
-                >
-                  <Trophy className="w-4 h-4" />
-                </span>
-              )}
-
-              <div className="min-w-0 flex-1">
-                <div className="text-lg font-black leading-tight truncate">
-                  {isFinished
-                    ? (iWon ? t.youWin : teams ? t.teamWins : t.winner)
-                    : isMyTurn ? t.yourTurn : turnPlayer?.name ?? ''}
+            {/* WALLS — the tray, and the way out */}
+            {iResigned ? (
+              // Out of the race, still at the table: the board keeps
+              // updating, only the controls go.
+              <GameCard>
+                <div className="flex items-center gap-3">
+                  <span className="w-10 h-10 rounded-xl bg-[#F8FAFC] border border-[#E6E1DC] flex items-center justify-center text-[#8A9099] shrink-0">
+                    <Eye className="w-5 h-5" />
+                  </span>
+                  <p className="text-sm font-bold text-[#8A9099] leading-snug">{t.watching}</p>
                 </div>
-                <div className="text-xs font-medium text-[#8A9099] mt-0.5 leading-snug">
-                  {isFinished
-                    ? winners.map((w) => w.name).join(' + ')
-                    : isMyTurn ? t.moveHint : turnPlayer ? t.thinking : ''}
-                </div>
-              </div>
-
-              {isFinished && resultHidden && (
-                <button
-                  onClick={() => setResultHidden(false)}
-                  className="px-3 py-2 bg-[#1A1F26] text-white rounded-lg font-bold text-2xs uppercase tracking-wide hover:bg-[#9e1316] transition-colors shrink-0"
-                >
-                  {t.showResult}
-                </button>
-              )}
-            </div>
-
-            {gameState.status === 'playing' && (
-              <div className="mt-4 h-1.5 rounded-full bg-[#F1F5F9] overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-[width] duration-1000 ease-linear"
-                  style={{ width: `${turnShare * 100}%`, backgroundColor: hurry ? '#9e1316' : softTone(turnColor) }}
-                />
-              </div>
-            )}
-          </div>
-
-          {/* WALLS — the tray, and the way out */}
-          {iResigned ? (
-            // Out of the race, still at the table: the board keeps updating,
-            // only the controls go.
-            <div className={`${CARD} p-4 flex items-center gap-3`}>
-              <span className="w-10 h-10 rounded-xl bg-[#F8FAFC] border border-[#E6E1DC] flex items-center justify-center text-[#8A9099] shrink-0">
-                <Eye className="w-5 h-5" />
-              </span>
-              <p className="text-sm font-bold text-[#8A9099] leading-snug">{t.watching}</p>
-            </div>
-          ) : me && !isFinished && (
-            <div className={`${CARD} p-4`}>
-              <div className="flex items-center justify-between mb-3">
-                <span className={LABEL}>{t.wallsLabel}</span>
-                <span
-                  className={`text-xs font-bold px-2 py-0.5 rounded tabular-nums ${
-                    me.wallsLeft > 0 ? 'text-white bg-[#1A1F26]' : 'text-[#8A9099] bg-[#F1F5F9]'
-                  }`}
-                >
-                  {me.wallsLeft}
-                </span>
-              </div>
-
-              <div className="flex gap-3">
-                {trayPiece('h')}
-                {trayPiece('v')}
-              </div>
-
-              <p className="mt-3 text-xs font-medium text-[#8A9099] leading-snug">
-                {me.wallsLeft === 0
-                  ? t.noWalls
-                  : dragging ? t.dropHint : canBuild ? t.dragHowTo : t.wallsOnYourTurn}
-              </p>
-
-              {canResign && (
-                <div className="mt-4 pt-4 border-t border-[#F1F5F9] flex justify-end">
-                  <button
-                    onClick={() => setPendingResign(true)}
-                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white text-2xs font-bold uppercase tracking-widest text-[#8A9099] border border-[#E6E1DC] hover:border-red-200 hover:bg-red-50 hover:text-red-500 transition-colors"
-                  >
-                    <Flag className="w-3.5 h-3.5" />
-                    {t.resign}
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* PLAYERS — each with the same piece they have on the board, so
-              the list doubles as the legend */}
-          <div className={`${CARD} p-4`}>
-            <div className={`${LABEL} mb-3`}>{t.playersLabel}</div>
-
-            <div className="space-y-1.5">
-              {orderedPlayers.map((p) => {
-                const active = !isFinished && p.id === gameState.turnPlayerId;
-                const color = colorFor(gameState, p.seat);
-                const out = resignedIds.has(p.id);
-                const won = isFinished && gameState.winnerIds.includes(p.id);
-
-                return (
-                  <div
-                    key={p.id}
-                    className={`relative flex items-center gap-3 py-2.5 pl-3.5 pr-3 rounded-xl border transition-colors ${
-                      active ? 'bg-[#F8FAFC] border-[#E6E1DC]' : 'border-transparent'
+              </GameCard>
+            ) : me && !isFinished && (
+              <GameCard
+                label={t.wallsLabel}
+                aside={
+                  <span
+                    className={`text-xs font-bold px-2 py-0.5 rounded tabular-nums ${
+                      me.wallsLeft > 0 ? 'text-white bg-[#1A1F26]' : 'text-[#8A9099] bg-[#F1F5F9]'
                     }`}
                   >
-                    {active && (
-                      <span
-                        aria-hidden
-                        className="absolute left-1 top-3 bottom-3 w-1 rounded-full"
-                        style={{ backgroundColor: color }}
-                      />
-                    )}
+                    {me.wallsLeft}
+                  </span>
+                }
+              >
+                <div className="flex gap-3">
+                  {trayPiece('h')}
+                  {trayPiece('v')}
+                </div>
 
-                    <span className="relative w-9 h-9 shrink-0">
-                      <Image
-                        src={p.avatarUrl || defaultAvatar(p.id)}
-                        alt=""
-                        width={36}
-                        height={36}
-                        className={`w-full h-full object-cover rounded-full bg-[#F8FAFC] ${out ? 'grayscale opacity-60' : ''}`}
-                      />
-                      <span className="absolute -bottom-1 -right-1 rounded-full bg-white p-[2px]">
-                        <PlayerToken className="w-4 h-4" color={color} seat={p.seat} />
-                      </span>
-                    </span>
+                <p className="mt-3 text-xs font-medium text-[#8A9099] leading-snug">
+                  {me.wallsLeft === 0
+                    ? t.noWalls
+                    : dragging ? t.dropHint : canBuild ? t.dragHowTo : t.wallsOnYourTurn}
+                </p>
 
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5">
-                        <span className={`text-sm font-bold truncate ${out ? 'text-[#B5B3AD] line-through' : ''}`}>
-                          {p.name}
-                        </span>
-                        {p.id === userId && (
-                          <span className="text-3xs font-bold uppercase tracking-wider text-[#8A9099] shrink-0">{t.you}</span>
-                        )}
-                        {p.isHost && <Crown className="w-3 h-3 text-amber-500 fill-current shrink-0" />}
-                        {won && <Trophy className="w-3.5 h-3.5 text-amber-500 shrink-0" />}
-                      </div>
-
-                      <div className="flex items-center gap-2 mt-1 h-3">
-                        {out ? (
-                          <span className="text-2xs font-bold uppercase tracking-wider text-[#B5B3AD]">{t.resigned}</span>
-                        ) : (
-                          <>
-                            {/* Walls as pips: read every turn, and faster than a number. */}
-                            <span className="flex items-center gap-[3px]">
-                              {Array.from({ length: p.wallsLeft }).map((_, i) => (
-                                <span key={i} className="w-[3px] h-2.5 rounded-full" style={{ backgroundColor: softTone(color) }} />
-                              ))}
-                            </span>
-                            <span className="text-2xs font-bold text-[#8A9099] tabular-nums">
-                              {p.wallsLeft === 0 ? t.noWalls : p.wallsLeft}
-                            </span>
-                          </>
-                        )}
-                        {teams && (
-                          <span className="ml-auto text-3xs font-bold text-[#8A9099] uppercase tracking-wider">
-                            {teamOf(p.seat) === 0 ? t.teamA : t.teamB}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {(p.score || 0) > 0 && (
-                      <span className="flex items-center gap-0.5 text-2xs font-bold text-[#8A9099] shrink-0 tabular-nums">
-                        <Trophy className="w-3 h-3" />{p.score}
-                      </span>
-                    )}
+                {canResign && (
+                  <div className="mt-4 pt-4 border-t border-[#F1F5F9] flex justify-end">
+                    <button onClick={() => setPendingResign(true)} className={`flex items-center gap-1.5 px-3.5 py-2 ${BUTTON_DANGER_QUIET}`}>
+                      <Flag className="w-3.5 h-3.5" />
+                      {t.resign}
+                    </button>
                   </div>
-                );
+                )}
+              </GameCard>
+            )}
+
+            <PlayersCard
+              lang={lang}
+              rows={orderedPlayers.map((p) => {
+                const out = resignedIds.has(p.id);
+                return {
+                  id: p.id,
+                  name: p.name,
+                  avatarUrl: p.avatarUrl,
+                  isHost: p.isHost,
+                  isMe: p.id === userId,
+                  token: tokenOf(p),
+                  active: !isFinished && p.id === gameState.turnPlayerId,
+                  out,
+                  won: isFinished && gameState.winnerIds.includes(p.id),
+                  stat: (
+                    <>
+                      {out ? (
+                        <span className="uppercase tracking-wider text-[#B5B3AD]">{t.resigned}</span>
+                      ) : (
+                        <>
+                          {/* Walls as pips: read every turn, and faster than a number. */}
+                          <span className="flex items-center gap-[3px]">
+                            {Array.from({ length: p.wallsLeft }).map((_, i) => (
+                              <span key={i} className="w-[3px] h-2.5 rounded-full" style={{ backgroundColor: softTone(tokenOf(p).color) }} />
+                            ))}
+                          </span>
+                          <span className="tabular-nums">{p.wallsLeft === 0 ? t.noWalls : p.wallsLeft}</span>
+                        </>
+                      )}
+                      {teams && (
+                        <span className="ml-auto text-3xs uppercase tracking-wider">
+                          {teamOf(p.seat) === 0 ? t.teamA : t.teamB}
+                        </span>
+                      )}
+                    </>
+                  ),
+                  aside: (p.score || 0) > 0 ? <span className="flex items-center gap-0.5"><Trophy className="w-3 h-3" />{p.score}</span> : undefined
+                };
               })}
-            </div>
-          </div>
-        </aside>
-      </main>
+            />
+          </>
+        }
+      />
 
       {/* RESIGN — in the app's own dialog, not the browser's */}
       {pendingResign && (
@@ -736,13 +636,10 @@ export default function WallRushGame({
           role="dialog"
           aria-modal="true"
           aria-label={t.resignTitle}
-          className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-[#1A1F26]/50 backdrop-blur-sm animate-in fade-in duration-200"
+          className={DIALOG_OVERLAY}
           onClick={() => setPendingResign(false)}
         >
-          <div
-            className="bg-white p-7 rounded-[24px] w-full max-w-sm text-center shadow-2xl border border-[#E6E1DC] animate-in zoom-in-95"
-            onClick={(e) => e.stopPropagation()}
-          >
+          <div className={`${DIALOG_PANEL} max-w-sm text-center`} onClick={(e) => e.stopPropagation()}>
             <div className="w-14 h-14 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-red-100">
               <Flag className="w-6 h-6" />
             </div>
@@ -752,10 +649,7 @@ export default function WallRushGame({
               {stillRacing <= 2 && !teams ? t.resignDescDuel : t.resignDesc}
             </p>
             <div className="flex gap-3">
-              <button
-                onClick={() => setPendingResign(false)}
-                className="flex-1 py-3 bg-white text-[#1A1F26] border border-[#E6E1DC] rounded-xl font-bold uppercase text-xs hover:border-[#9e1316]/30 hover:shadow-sm transition-all"
-              >
+              <button onClick={() => setPendingResign(false)} className={`flex-1 py-3 ${BUTTON_SECONDARY}`}>
                 {t.cancel}
               </button>
               <button
@@ -769,62 +663,17 @@ export default function WallRushGame({
         </div>
       )}
 
-      {/* RESULT — can be put aside to look at the final position */}
-      {showResult && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label={t.matchOver}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1A1F26]/50 backdrop-blur-sm animate-in fade-in duration-200"
-        >
-          <div className="bg-white rounded-[24px] w-full max-w-sm border border-[#E6E1DC] shadow-2xl p-7 text-center animate-in zoom-in-95">
-            <div
-              className={`w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 border ${
-                iWon ? 'bg-amber-50 text-amber-500 border-amber-100' : 'bg-[#F8FAFC] text-[#1A1F26] border-[#E6E1DC]'
-              }`}
-            >
-              <Trophy className="w-7 h-7" />
-            </div>
-
-            <div className={`${LABEL} mb-1`}>{t.matchOver}</div>
-            <h3 className="text-2xl font-black mb-4">
-              {iWon ? t.youWin : teams ? t.teamWins : t.winner}
-            </h3>
-
-            <div className="flex flex-wrap justify-center gap-2 mb-6">
-              {winners.map((w) => (
-                <span key={w.id} className="flex items-center gap-2 bg-[#F8FAFC] border border-[#E6E1DC] rounded-xl px-3 py-2">
-                  <PlayerToken className="w-5 h-5" color={colorFor(gameState, w.seat)} seat={w.seat} />
-                  <span className="text-sm font-bold">{w.name}</span>
-                </span>
-              ))}
-            </div>
-
-            <div className="flex gap-3">
-              <button
-                onClick={leaveGame}
-                className="flex-1 py-3 bg-white border border-[#E6E1DC] rounded-xl font-bold uppercase text-xs text-[#1A1F26] hover:border-[#9e1316]/30 hover:shadow-sm transition-all"
-              >
-                {t.toMenu}
-              </button>
-              {/* Whoever presses second joins the room the first one opened. */}
-              <RematchButton
-                gameId="wallrush"
-                parentState={gameState}
-                lang={lang}
-                className="flex-1 py-3 bg-[#1A1F26] text-white rounded-xl font-black uppercase text-xs hover:bg-[#9e1316] transition-colors"
-              />
-            </div>
-
-            <button
-              onClick={() => setResultHidden(true)}
-              className="mt-4 text-2xs font-bold uppercase tracking-widest text-[#8A9099] hover:text-[#9e1316] transition-colors"
-            >
-              {t.viewBoard}
-            </button>
-          </div>
-        </div>
-      )}
+      <ResultDialog
+        lang={lang}
+        open={isFinished && !resultHidden}
+        onHide={() => setResultHidden(true)}
+        won={iWon}
+        title={resultTitle}
+        winners={winners.map((w) => ({ id: w.id, name: w.name, token: tokenOf(w) }))}
+        gameId="wallrush"
+        parentState={gameState}
+        onMenu={leaveGame}
+      />
     </div>
   );
 }

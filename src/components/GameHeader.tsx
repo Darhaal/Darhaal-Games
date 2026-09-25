@@ -2,12 +2,18 @@
 
 import React from 'react';
 import { LogOut, HelpCircle, Book } from 'lucide-react';
+import { HURRY_SECONDS } from './game/ui';
 
 interface GameHeaderProps {
   title: string;
   icon: React.ElementType;
   timeLeft?: number;
   showTime?: boolean;
+  /**
+   * What the clock counts when it is not the current turn — «раунд»,
+   * «матч». A turn clock needs none: the Turn card beside it says so.
+   */
+  timeCaption?: string;
   onLeave: () => void;
   onShowRules?: () => void;
   onShowGuide?: () => void;
@@ -20,6 +26,7 @@ export default function GameHeader({
   icon: Icon,
   timeLeft,
   showTime = true,
+  timeCaption,
   onLeave,
   onShowRules,
   onShowGuide,
@@ -65,9 +72,12 @@ export default function GameHeader({
         {/* Center: Timer */}
         {showTime && timeLeft !== undefined && (
           <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 hidden md:flex flex-col items-center pointer-events-none">
-            <div className={`text-3xl font-black tabular-nums tracking-tight leading-none ${timeLeft < 10 ? 'text-[#9e1316] animate-pulse' : 'text-[#1A1F26]'}`}>
+            <div className={`text-3xl font-black tabular-nums tracking-tight leading-none ${timeLeft < HURRY_SECONDS ? 'text-[#9e1316] animate-pulse' : 'text-[#1A1F26]'}`}>
                {formatTime(timeLeft)}
             </div>
+            {timeCaption && (
+              <div className="mt-1 text-3xs font-black uppercase tracking-widest text-[#8A9099]">{timeCaption}</div>
+            )}
           </div>
         )}
 
@@ -75,7 +85,10 @@ export default function GameHeader({
         <div className="flex items-center gap-1 md:gap-2 shrink-0">
           {/* Mobile Timer */}
           {showTime && timeLeft !== undefined && (
-             <div className={`md:hidden font-mono font-black text-lg mr-2 ${timeLeft < 10 ? 'text-[#9e1316] animate-pulse' : 'text-[#1A1F26]'}`}>
+             <div
+               title={timeCaption}
+               className={`md:hidden font-mono font-black text-lg mr-2 ${timeLeft < HURRY_SECONDS ? 'text-[#9e1316] animate-pulse' : 'text-[#1A1F26]'}`}
+             >
                 {formatTime(timeLeft)}
              </div>
           )}

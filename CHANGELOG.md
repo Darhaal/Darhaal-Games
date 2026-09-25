@@ -7,6 +7,64 @@ releasing.
 Format: [Semantic Versioning](https://semver.org/). Types: **major** = platform
 milestone, **minor** = new game mode / feature, **patch** = fixes & improvements.
 
+## [2.10.0] — 2026-09-25 (minor) — **One Table for Every Game**
+
+> Every game screen in the same hand, an interface that reads in English from
+> the first visit, and the rules that hold when a player walks out — now under
+> test.
+
+### Changed
+- **Every game screen is built from the same parts** (`src/components/game/`):
+  the page layout, a Turn card (a Status card in games without turns), a
+  Players card that doubles as the legend, and one result dialog that can be
+  put aside to look at the final board. Coup keeps its hand pinned to the
+  bottom and Minesweeper its full-height boards; everything else is shared.
+  `docs/design-system.md` has the rules and `docs/design-audit.md` the
+  before-and-after.
+- Header titles come from the game registry in the reader's language.
+- One hurry threshold (10 s) for the clock and the turn bar; round and match
+  clocks are labelled.
+- Minesweeper: warm grey closed tiles, square cells, localised status chips.
+- Battleship: Russian ship names, full words instead of `BATT / CRUI`, the
+  shared grid; Reversi: white-on-grey board, last disc ringed.
+- New accounts start in English until a language is chosen in settings.
+
+### Added
+- **Notices in Minesweeper and Battleship**, the same toast as the other
+  games: who hit a mine and who left; whose fleet is ready and whose clock ran
+  out. Coup keeps its history card.
+- **Flager: a minute between rounds.** The dialog counts it down, then the
+  next round starts on its own, so a player who closed their tab cannot hold
+  it back. Written into the rules.
+- **Tests for the game hooks.** The real hooks now run several players at once
+  against an in-memory copy of the room (`tests/support/`): Coup's phases,
+  Flager's rounds, the write path's retries and the notices — 638 tests, up
+  from 564.
+
+### Fixed
+- **A Flager room froze between rounds** when the last player not yet ready
+  left.
+- **Coup: leaving mid-action** handed the player who acted a second turn, or
+  undid a claim they had already proved. Now the table carries on by the
+  leaver's part: a target's action is dropped and the turn passes, a blocker's
+  block falls, a lost challenge still decides the outcome, and if everyone
+  left has passed the action resolves at once. The idle kick follows the same
+  rules, the history names who left, and an exchange cut short returns its
+  cards to the deck.
+- **A move that failed to save** was dropped without a word and stayed on
+  screen; it is taken back and reported. The "did not apply" notice was in
+  Russian for players who had not picked a language.
+- Reversi and the Spyfall vote never trimmed their notices.
+- Coup's history was written in Russian only; entries now carry both
+  languages. The answer panel showed an action's code ("STEAL!").
+- «(Вы)» hard-coded in Minesweeper and Spyfall; WON / DEAD / LEFT stickers in
+  every language.
+- Minesweeper told every player «Победа» when anybody won.
+- Spyfall location art was letterboxed with grey bands.
+- Flager showed continents in English (EUROPE, NORTH AMERICA) in the Russian
+  interface.
+- Battleship's result replaced the whole screen.
+
 ## [2.9.0] — 2026-09-24 (minor) — **Wall Rush, Redrawn**
 
 > The game screen in the same hand as the menus, and that hand written down.

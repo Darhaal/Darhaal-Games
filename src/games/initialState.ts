@@ -109,6 +109,7 @@ const FACTORIES: { [K in GameId]: (args: FactoryArgs) => GameStateByType[K] } = 
       lastActionTime: now,
       version: 1,
       winner: null,
+      notifications: [],
       gameType: 'minesweeper',
       settings: {
         maxPlayers,
@@ -162,7 +163,7 @@ const FACTORIES: { [K in GameId]: (args: FactoryArgs) => GameStateByType[K] } = 
       phase: 'setup',
       status: 'waiting',
       winner: null,
-      logs: [],
+      notifications: [],
       lastActionTime: now,
       version: 1,
       gameType: 'battleship',
@@ -308,6 +309,7 @@ const REMATCH: { [K in GameId]: (parent: GameStateByType[K]) => GameStateByType[
     startTime: 0,
     winner: null,
     winnerId: undefined,
+    notifications: [],
     lastActionTime: Date.now(),
     version: 1
   }),
@@ -331,7 +333,7 @@ const REMATCH: { [K in GameId]: (parent: GameStateByType[K]) => GameStateByType[
     phase: 'setup',
     status: 'waiting',
     winner: null,
-    logs: [],
+    notifications: [],
     lastActionTime: Date.now(),
     turnDeadline: undefined,
     version: 1
@@ -376,6 +378,7 @@ const REMATCH: { [K in GameId]: (parent: GameStateByType[K]) => GameStateByType[
     players: [],
     status: 'waiting',
     board: startingBoard(p.size || REVERSI_SIZE),
+    lastMove: undefined,
     turnPlayerId: null,
     turnDeadline: undefined,
     passes: 0,

@@ -65,7 +65,7 @@ function FlagerContent() {
   const {
     gameState, roomMeta, loading, lobbyDeleted,
     initGame, startGame, makeGuess, leaveGame, readyNextRound, handleTimeout,
-    forceRoundEnd
+    forceRoundEnd, forceNextRound
   } = useFlagerGame(lobbyId, userId);
 
   // An old link to this room follows "play again" into its successor.
@@ -158,6 +158,7 @@ function FlagerContent() {
         makeGuess={makeGuess}
         handleTimeout={handleTimeout}
         forceRoundEnd={forceRoundEnd}
+        forceNextRound={forceNextRound}
         readyNextRound={readyNextRound}
         leaveGame={handleLeave}
         lang={lang}

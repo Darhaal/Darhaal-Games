@@ -4,6 +4,7 @@ import { SPYFALL_PACKS } from '@/data/spyfall/locations';
 import { updatePlayerStats } from '@/lib/playerStats';
 import { useLobbySync } from '@/hooks/core/useLobbySync';
 import { roundAwards } from '@/lib/gameLogic/spyfall';
+import { pushNotice, leftTheGame } from '@/lib/notifications';
 
 // Module-level helper: sidesteps the react-compiler purity heuristic
 // (Date.now inside event handlers is a legitimate use)
@@ -35,7 +36,7 @@ function rejectNomination(next: SpyfallState, message: { ru: string; en: string 
   // so voting does not eat into the round timer
   next.startTime += Math.max(0, Date.now() - startedAt);
   next.nomination = null;
-  next.notifications.push({ id: Date.now(), message, type: 'info' });
+  pushNotice(next, message, 'info');
   return next;
 }
 
@@ -267,15 +268,7 @@ export function useSpyfallGame(lobbyId: string | null, userId: string | undefine
           return finishRound(next, 'locals', 'spy_left');
         }
 
-        next.notifications.push({
-          id: now(),
-          message: {
-            ru: `${leaving.name} покинул игру`,
-            en: `${leaving.name} left the game`
-          },
-          type: 'leave'
-        });
-        if (next.notifications.length > 3) next.notifications.shift();
+        pushNotice(next, leftTheGame(leaving.name), 'leave');
 
         if (next.players.length < MIN_PLAYERS) {
           // Too few left to carry on: a technical win for the spy.

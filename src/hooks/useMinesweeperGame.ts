@@ -3,6 +3,7 @@ import { requireGame, roomCapacity } from '@/games/registry';
 import { updatePlayerStats } from '@/lib/playerStats';
 import { useLobbySync } from '@/hooks/core/useLobbySync';
 import { generateEmptyBoard, placeMines, openCellIterative, chordCell as chordCellLogic } from '@/lib/gameLogic/minesweeper';
+import { pushNotice, leftTheGame } from '@/lib/notifications';
 
 const GAME = requireGame('minesweeper');
 
@@ -109,6 +110,12 @@ export function useMinesweeperGame(lobbyId: string | null, userId: string | unde
       }
   };
 
+  /** Tells the others, in a shared match, that somebody is out. */
+  const hitAMine = (state: MinesweeperState, player: MinesweeperPlayer) => {
+      if (Object.keys(state.players).length < 2) return;
+      pushNotice(state, { ru: `${player.name} подорвался на мине`, en: `${player.name} hit a mine` }, 'alert');
+  };
+
   /**
    * Seat the player. Retryable on purpose: an invite link posted in a group
    * chat gets opened by everyone at once, and the old read-then-write form
@@ -186,6 +193,7 @@ export function useMinesweeperGame(lobbyId: string | null, userId: string | unde
       if (cell.isMine) {
           cell.isOpen = true;
           player.status = 'lost';
+          hitAMine(newState, player);
           // Reveal all mines
           player.board.forEach((r) => r.forEach((c) => { if (c.isMine) c.isOpen = true; }));
       } else {
@@ -231,6 +239,7 @@ export function useMinesweeperGame(lobbyId: string | null, userId: string | unde
 
       if (hitMine) {
           player.status = 'lost';
+          hitAMine(newState, player);
           player.board.forEach((r) => r.forEach((c) => { if (c.isMine) c.isOpen = true; }));
       }
       handleGameEndCheck(newState, player);
@@ -312,6 +321,7 @@ export function useMinesweeperGame(lobbyId: string | null, userId: string | unde
          } else {
              // Mid-match the record stays so the scoreboard keeps the name.
              next.players[userId].status = 'left';
+             pushNotice(next, leftTheGame(next.players[userId].name), 'leave');
          }
 
          const remainingActive = Object.values(next.players).filter((p) => p.status !== 'left');

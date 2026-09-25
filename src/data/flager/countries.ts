@@ -9,6 +9,20 @@ export type CountryData = {
   aliases?: string[]; // Search aliases
 };
 
+/** Continent names in both languages; `continent` itself is stored in English. */
+export const CONTINENT_NAMES: Record<string, { ru: string; en: string }> = {
+  Africa: { ru: 'Африка', en: 'Africa' },
+  Antarctica: { ru: 'Антарктида', en: 'Antarctica' },
+  Asia: { ru: 'Азия', en: 'Asia' },
+  Europe: { ru: 'Европа', en: 'Europe' },
+  'North America': { ru: 'Северная Америка', en: 'North America' },
+  Oceania: { ru: 'Океания', en: 'Oceania' },
+  'South America': { ru: 'Южная Америка', en: 'South America' }
+};
+
+export const continentName = (continent: string | undefined, lang: 'ru' | 'en'): string =>
+  continent ? CONTINENT_NAMES[continent]?.[lang] ?? continent : '';
+
 const getFlagUrl = (code: string) => `https://flagcdn.com/w640/${code.toLowerCase()}.png`;
 
 export const COUNTRIES: Record<string, CountryData> = {

@@ -1,62 +1,75 @@
 # Backlog
 
-State after **v2.3.1**. This is the real list, including the things that are
-open on purpose — see [docs/security.md](docs/security.md) for the reasoning
-behind the accepted risks.
+State after **v2.10.0**. This is the real list, including the things that
+are open on purpose — see [docs/security.md](docs/security.md) for the
+reasoning behind the accepted risks.
 
 ## Open
 
-### Worth doing next
-
-- **Server-side move validation.** The client computes `game_state` and writes
-  it; the database checks the version, not the legality of the move, so a
-  crafted client can cheat. Accepted while the platform is played among friends
-  — the first thing to build if it ever opens to strangers or gains a
-  leaderboard. See finding 7 in the security analysis.
-- **Extend tests to the state machines.** Coverage is good on pure game logic
-  and on the SEO layer, but Coup phase transitions and Flager rounds are only
-  exercised by playing. Needs either a Supabase mock or further extraction of
-  pure reducers.
-- **E2E smoke for multiplayer.** Two browser contexts, one match, assert both
-  see the same state. Playwright would do it; nothing exists yet.
-- **The retry path has no unit test.** Conflict-and-retry was verified against
-  the live database (twelve simultaneous writes, none lost) but not in CI —
-  `useLobbySync` is a hook and needs a renderer or a mocked client.
-  [`tests/sync-invariants.test.ts`](tests/sync-invariants.test.ts) covers the
-  rules *around* it (no hook assigns `version`, every write is retryable) but
-  not the retry loop itself.
-
-### Smaller
-
-- **Coup edge case.** Challenge/block chains where a player with a pending card
-  loss leaves mid-resolution. Guards are in place; wants live verification with
-  real players rather than reasoning.
+- **Browser E2E for multiplayer.** The hooks are now played by several players
+  at once against an in-memory copy of the room row
+  ([`tests/support/fakeSupabase.ts`](tests/support/fakeSupabase.ts)), which
+  covers the state machines and the race handling. What that cannot catch is
+  the page itself: realtime delivery, rendering, two real browsers. Playwright
+  with two contexts would; it needs a Supabase project of its own, so that a
+  test run does not write guest accounts and rooms into production.
 - **Spyfall custom locations.** Bigger than it looks. `useCustomLocations` and
   `customLocations` are declared on the state and written by the initialiser,
   but **read nowhere** — they are a stub, not a half-built feature. A round
   takes its locations from the chosen pack, hands out `location.roles`, and
   shows everyone `locationList` as pack ids; a custom location is a bare string
-  with no id and no roles. So this needs a free-text list control on the create
-  screen *and* changes to the round logic, the state shape and the board that
-  displays the list.
+  with no id, no roles and no art. So this needs a free-text list control on
+  the create screen *and* changes to the round logic, the state shape and the
+  board that displays the list — and a decision on what a custom location's
+  players are told instead of a role.
+
+### Accepted
+
+Decided, not forgotten. The platform is played among friends.
+
+- **Server-side move validation.** The client computes `game_state` and writes
+  it; the database checks the version, not the legality of the move, so a
+  crafted client can cheat. Out of scope by decision — cheating is not a
+  problem at a table of friends. The first thing to build if the platform ever
+  opens to strangers or gains a leaderboard. See finding 7 in the security
+  analysis.
 - **Profile enumeration.** `profiles` is readable by anyone, so usernames can be
-  harvested. Needed by the sign-up "name taken" check; would require moving that
-  check behind an RPC.
+  harvested. Needed by the sign-up "name taken" check; closing it would move
+  that check behind an RPC. Accepted for the same reason.
 - **`lobbies.host_id` has no delete cascade,** deliberately — cascading it would
   destroy rooms other people are still playing in. The trade-off is that an
   account hosting a lobby cannot be deleted until that lobby is gone.
 
 ### Held back by upstream
 
+Rechecked 2026-09-25.
+
 - **ESLint 10.** `eslint-plugin-react`, pulled in by `eslint-config-next`, still
-  calls `context.getFilename()`, removed in 10 — linting crashes outright.
-- **TypeScript 7.** `typescript-eslint` refuses TS 7.0 by design; support is
-  tracked for >= 7.1. Worth revisiting, since `tsc`, the tests and the build all
-  pass under it already.
+  calls `context.getFilename()`, removed in 10 — linting crashes outright. The
+  plugin is still at 7.37.5, unchanged since April 2025.
+- **TypeScript 7.** `typescript-eslint` 8.70 accepts TypeScript below 6.1 only.
+  Worth revisiting, since `tsc`, the tests and the build all pass under 7
+  already.
 
 ## Done
 
 Kept short — the [changelog](CHANGELOG.md) has the full history.
+
+**The state machines are tested (2.10.0).** Coup's phases, Flager's
+rounds and the write path's retry loop were only exercised by playing. The
+hooks now run unchanged against an in-memory stand-in for the room row and its
+compare-and-swap, several players at once: 59 cases across
+[`coup-flow`](tests/coup-flow.test.ts), [`flager-flow`](tests/flager-flow.test.ts)
+and [`lobby-sync`](tests/lobby-sync.test.ts). They found what reasoning had
+not: a Flager room froze between rounds when the one player not yet ready
+left; a hard write failure was swallowed without a word and left the move on
+screen; and in Coup a player leaving mid-action handed the actor a second turn
+or undid a claim they had already proved.
+
+**Coup's leave-mid-resolution edge case (2.10.0)** — the one that
+"wanted live verification" — is now a set of tests, and leaving and the idle
+kick share one `dropPlayer` that carries the table on by the leaver's part in
+the action.
 
 **A lobby nobody has open times out (2.3.1).** The auto-kick is run by the host
 and never kicks itself, so a host who closed their tab left the room frozen —

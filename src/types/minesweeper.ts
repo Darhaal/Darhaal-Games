@@ -1,3 +1,5 @@
+import type { GameNotification } from './notification';
+
 export type MinesweeperStatus = 'waiting' | 'playing' | 'finished';
 
 export type CellStatus = 'hidden' | 'open' | 'flagged' | 'exploded';
@@ -36,6 +38,9 @@ export interface MinesweeperState {
   version: number;
   winner: string | null;   // Winner display name (for UI)
   winnerId?: string | null; // Winner id (reliable identification)
+
+  /** Who hit a mine, who left — shown as a toast. */
+  notifications?: GameNotification[];
 
   gameType: 'minesweeper';
   settings: {

@@ -1,18 +1,21 @@
 'use client';
 
 import React, { useMemo, useState, useEffect } from 'react';
-import Image from 'next/image';
-import { CircleDot, Crown } from 'lucide-react';
+import { CircleDot } from 'lucide-react';
 import type { ReversiPlayer, ReversiState } from '@/types/reversi';
 import { legalMoves, tally } from '@/lib/gameLogic/reversi';
 import { SEAT_COLORS } from '@/games/palette';
-import PlayerToken, { PlayerLegend } from './PlayerToken';
-import RematchButton from './RematchButton';
+import PlayerToken from './PlayerToken';
 import GameHeader from './GameHeader';
+import { requireGame } from '@/games/registry';
 import GameNotificationToast from './GameNotificationToast';
 import GameRulesModal from './GameRulesModal';
 import { GAME_RULES } from '@/constants/rules';
-import { defaultAvatar } from '@/constants/app';
+import GameLayout from './game/GameLayout';
+import TurnCard from './game/TurnCard';
+import PlayersCard from './game/PlayersCard';
+import ResultDialog from './game/ResultDialog';
+import { GAME_PAGE } from './game/ui';
 import { playSfx } from '@/lib/sound';
 import { pluralEn, pluralRu } from '@/lib/plural';
 
@@ -27,23 +30,19 @@ interface ReversiGameProps {
 
 const UI_TEXT = {
   ru: {
-    yourTurn: 'Ваш ход',
-    waitingFor: 'Ходит',
     youWin: 'Победа',
     draw: 'Ничья',
     winner: 'Победитель',
-    toMenu: 'В меню',
+    thinking: 'обдумывает ход',
     discs: (n: number) => pluralRu(n, ['фишка', 'фишки', 'фишек']),
     hint: 'Нажмите на подсвеченную клетку',
     passed: 'Ход пропущен — ставить некуда'
   },
   en: {
-    yourTurn: 'Your turn',
-    waitingFor: 'Now playing',
     youWin: 'You win',
     draw: 'Draw',
     winner: 'Winner',
-    toMenu: 'Main menu',
+    thinking: 'is thinking',
     discs: (n: number) => pluralEn(n, 'disc', 'discs'),
     hint: 'Tap a highlighted square',
     passed: 'Turn passed — nowhere to play'
@@ -56,6 +55,8 @@ export default function ReversiGame({
   const t = UI_TEXT[lang];
   const [showRules, setShowRules] = useState(false);
   const [timeLeft, setTimeLeft] = useState(gameState.settings.turnDuration);
+  // The result can be put aside to look at the final board, and brought back.
+  const [resultHidden, setResultHidden] = useState(false);
 
   const size = gameState.size;
   const me = gameState.players.find((p) => p.id === userId);
@@ -102,37 +103,43 @@ export default function ReversiGame({
 
   const counts = tally(gameState.board);
   const winners = gameState.players.filter((p) => gameState.winnerIds.includes(p.id));
+  const iWon = gameState.winnerIds.includes(userId);
+  const resultTitle = winners.length > 1 ? t.draw : iWon ? t.youWin : t.winner;
+  const tokenOf = (p: ReversiPlayer) => ({ color: SEAT_COLORS[p.seat % 4], seat: p.seat });
+
+  // Grid and outer line as in every board: white squares on the site's grey.
+  const GAP = '2.5%';
 
   return (
-    <div className="min-h-screen bg-white font-sans text-[#1A1F26] flex flex-col">
+    <div className={GAME_PAGE}>
       <GameNotificationToast notifications={gameState.notifications || []} lang={lang} />
 
       <GameRulesModal
         isOpen={showRules}
         onClose={() => setShowRules(false)}
         rules={GAME_RULES[lang].reversi}
-        themeColor="text-[#334155]"
+        themeColor="text-[#1A1F26]"
       />
 
       <GameHeader
-        title="Reversi"
+        title={requireGame('reversi').name[lang]}
         icon={CircleDot}
         timeLeft={timeLeft}
         showTime={gameState.status === 'playing'}
         onLeave={leaveGame}
         onShowRules={() => setShowRules(true)}
         lang={lang}
-        accentColor="text-[#334155]"
       />
 
-      <main className="flex-1 w-full max-w-5xl mx-auto px-4 py-6 flex flex-col lg:flex-row gap-8">
-        <section className="flex-1 flex flex-col items-center min-w-0">
+      <GameLayout
+        board={
           <div
-            className="w-full max-w-[min(92vw,520px)] grid gap-[2px] p-[2px] bg-[#D9D6CE] rounded-lg aspect-square"
-            style={{ gridTemplateColumns: `repeat(${size}, minmax(0, 1fr))` }}
+            className="w-full grid aspect-square bg-[#E6E1DC]"
+            style={{ gridTemplateColumns: `repeat(${size}, minmax(0, 1fr))`, gap: `calc(${GAP} / ${size})`, padding: `calc(${GAP} / ${size})` }}
           >
             {gameState.board.map((seat, index) => {
               const playable = myMoves.has(index);
+              const isLast = gameState.lastMove === index;
 
               return (
                 <button
@@ -140,23 +147,29 @@ export default function ReversiGame({
                   type="button"
                   disabled={!playable}
                   onClick={() => playable && placeDisc(index)}
-                  className={`relative aspect-square bg-[#EFEDE7] transition-colors ${
-                    playable ? 'cursor-pointer hover:bg-[#E4E1D8]' : ''
+                  style={playable ? { backgroundColor: `color-mix(in srgb, ${myColor} 14%, white)` } : undefined}
+                  className={`relative aspect-square bg-white transition-[filter] ${
+                    playable ? 'cursor-pointer hover:brightness-95' : ''
                   }`}
                   aria-label={`${(index % size) + 1},${Math.floor(index / size) + 1}`}
                 >
                   {seat != null && (
                     <PlayerToken
-                      className="absolute inset-[10%]"
+                      className="absolute inset-[12%]"
                       color={SEAT_COLORS[seat % 4]}
                       seat={seat}
                     />
                   )}
 
+                  {/* The disc just placed, ringed so it can be found. */}
+                  {isLast && seat != null && (
+                    <span aria-hidden className="absolute inset-[6%] rounded-full border-2 border-[#1A1F26]" />
+                  )}
+
                   {/* Where you may play, in your own colour. */}
                   {playable && seat == null && (
                     <span
-                      className="absolute inset-0 m-auto w-[26%] h-[26%] rounded-full opacity-60"
+                      className="absolute inset-0 m-auto w-[30%] h-[30%] rounded-full opacity-70"
                       style={{ backgroundColor: myColor }}
                     />
                   )}
@@ -164,100 +177,58 @@ export default function ReversiGame({
               );
             })}
           </div>
+        }
+        side={
+          <>
+            <TurnCard
+              lang={lang}
+              who={turnPlayer ? { name: turnPlayer.name, isMe: turnPlayer.id === userId, ...tokenOf(turnPlayer) } : null}
+              hint={isMyTurn ? (myMoves.size > 0 ? t.hint : t.passed) : turnPlayer ? t.thinking : undefined}
+              secondsLeft={gameState.status === 'playing' ? timeLeft : undefined}
+              turnSeconds={gameState.settings.turnDuration}
+              result={isFinished ? {
+                won: iWon,
+                title: resultTitle,
+                detail: winners.map((w) => `${w.name} — ${counts[w.seat] || 0}`).join(' · '),
+                hidden: resultHidden,
+                onShow: () => setResultHidden(false)
+              } : undefined}
+            />
 
-          <PlayerLegend
-            className="mt-5"
-            players={orderedPlayers}
-            currentUserId={userId}
-            colorOf={(seat) => SEAT_COLORS[seat % 4]}
-          />
-
-          <p className="mt-3 text-sm font-medium text-[#8A9099]">
-            {isMyTurn
-              ? myMoves.size > 0 ? t.hint : t.passed
-              : turnPlayer ? `${t.waitingFor}: ${turnPlayer.name}` : ''}
-          </p>
-        </section>
-
-        <aside className="w-full lg:w-64 shrink-0 space-y-4">
-          <div className="text-base font-bold text-center lg:text-left">
-            {isFinished
-              ? t.winner
-              : isMyTurn
-                ? <span style={{ color: myColor }}>{t.yourTurn}</span>
-                : <span className="text-[#8A9099]">{turnPlayer ? `${t.waitingFor}: ${turnPlayer.name}` : ''}</span>}
-          </div>
-
-          <div className="space-y-1">
-            {orderedPlayers.map((p: ReversiPlayer) => {
-              const active = p.id === gameState.turnPlayerId;
-              const color = SEAT_COLORS[p.seat % 4];
-
-              return (
-                <div
-                  key={p.id}
-                  className={`flex items-center gap-3 py-2.5 px-3 rounded-xl transition-colors ${
-                    active ? 'bg-[#F4F3F0]' : ''
-                  }`}
-                >
-                  <span className="relative w-8 h-8 shrink-0">
-                    <Image
-                      src={p.avatarUrl || defaultAvatar(p.id)}
-                      alt=""
-                      width={32}
-                      height={32}
-                      className="w-full h-full object-cover rounded-full"
-                    />
-                    <PlayerToken
-                      className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 ring-2 ring-white"
-                      color={color}
-                      seat={p.seat}
-                    />
+            <PlayersCard
+              lang={lang}
+              rows={orderedPlayers.map((p) => ({
+                id: p.id,
+                name: p.name,
+                avatarUrl: p.avatarUrl,
+                isHost: p.isHost,
+                isMe: p.id === userId,
+                token: tokenOf(p),
+                active: !isFinished && p.id === gameState.turnPlayerId,
+                won: isFinished && gameState.winnerIds.includes(p.id),
+                stat: (
+                  <span className="tabular-nums">
+                    {counts[p.seat] || 0} <span className="font-medium">{t.discs(counts[p.seat] || 0)}</span>
                   </span>
+                )
+              }))}
+            />
+          </>
+        }
+      />
 
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-sm font-bold truncate">{p.name}</span>
-                      {p.isHost && <Crown className="w-3 h-3 text-amber-500 fill-current shrink-0" />}
-                    </div>
-                    <div className="text-xs font-bold text-[#8A9099] mt-0.5">
-                      {counts[p.seat] || 0} <span className="font-medium">{t.discs(counts[p.seat] || 0)}</span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </aside>
-      </main>
-
-      {isFinished && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-white/70 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white rounded-3xl w-full max-w-xs border border-[#E6E1DC] shadow-xl p-6 text-center animate-in zoom-in-95">
-            <h3 className="text-lg font-black uppercase tracking-wide mb-1">
-              {winners.length > 1 ? t.draw : gameState.winnerIds.includes(userId) ? t.youWin : t.winner}
-            </h3>
-            <p className="text-sm font-medium text-[#8A9099] mb-6">
-              {winners.map((w) => `${w.name} — ${counts[w.seat] || 0}`).join(' · ')}
-            </p>
-
-            <div className="flex gap-2">
-              <button
-                onClick={leaveGame}
-                className="flex-1 py-3 border border-[#E6E1DC] rounded-xl font-bold uppercase text-xs hover:bg-[#F8FAFC] transition-colors"
-              >
-                {t.toMenu}
-              </button>
-              <RematchButton
-                gameId="reversi"
-                parentState={gameState}
-                lang={lang}
-                className="flex-1 py-3 bg-[#1A1F26] text-white rounded-xl font-bold uppercase text-xs hover:opacity-90 transition-opacity"
-              />
-            </div>
-          </div>
-        </div>
-      )}
+      <ResultDialog
+        lang={lang}
+        open={isFinished && !resultHidden}
+        onHide={() => setResultHidden(true)}
+        won={iWon}
+        title={resultTitle}
+        note={winners.map((w) => `${w.name} — ${counts[w.seat] || 0} ${t.discs(counts[w.seat] || 0)}`).join(' · ')}
+        winners={winners.map((w) => ({ id: w.id, name: w.name, token: tokenOf(w) }))}
+        gameId="reversi"
+        parentState={gameState}
+        onMenu={leaveGame}
+      />
     </div>
   );
 }

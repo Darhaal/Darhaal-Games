@@ -1,14 +1,23 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import {
-  Crown, Shield, History,
+  Crown, Shield,
   Book, Swords, Skull, X
 } from 'lucide-react';
 import { LucideIcon } from 'lucide-react';
 import { ROLE_CONFIG, DICTIONARY } from '@/constants/coup';
 import { useEscape } from '@/hooks/useEscape';
-import { Role, Lang, GameLog } from '@/types/coup';
+import { Role, Lang, GameLog, SYSTEM } from '@/types/coup';
+
+/**
+ * A history entry in the reader's language. Entries are written with both;
+ * older rooms stored one Russian string, which is shown as it was.
+ */
+export const logUser = (user: string, lang: Lang) =>
+  user === SYSTEM || user === 'Система' ? (lang === 'ru' ? 'Система' : 'System') : user;
+export const logText = (action: GameLog['action'], lang: Lang) =>
+  typeof action === 'string' ? action : action[lang];
 
 // --- GAME CARD ---
 interface GameCardProps {
@@ -144,36 +153,5 @@ export const GuideModal = ({ onClose, lang }: { onClose: () => void, lang: Lang 
         </div>
       </div>
     </div>
-  );
-};
-
-export const LogPanel = ({ logs, lang }: { logs: GameLog[], lang: Lang }) => {
-  const [isOpen, setIsOpen] = useState(false);
-
-  return (
-    <>
-      <button onClick={() => setIsOpen(!isOpen)} className="md:hidden fixed top-20 left-4 z-40 bg-white p-2 rounded-full shadow-lg border border-[#E6E1DC]">
-        <History className="w-5 h-5 text-[#8A9099]" />
-      </button>
-
-      <div className={`fixed md:absolute top-24 left-4 z-30 w-72 max-h-64 bg-white/95 backdrop-blur-md rounded-2xl border border-[#E6E1DC] shadow-xl flex flex-col overflow-hidden transition-all duration-300 transform ${isOpen ? 'translate-x-0 opacity-100' : '-translate-x-full opacity-0 md:translate-x-0 md:opacity-100'}`}>
-         <div className="px-4 py-3 border-b border-[#E6E1DC] bg-gray-50/50 flex justify-between items-center">
-           <div className="text-2xs font-black uppercase text-[#8A9099] flex items-center gap-2 tracking-wider"><History className="w-3 h-3" /> {DICTIONARY[lang].ui.logs}</div>
-           <button onClick={() => setIsOpen(false)} className="md:hidden"><X className="w-4 h-4 text-gray-400" /></button>
-         </div>
-         <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
-            {logs.length === 0 && <div className="h-20 flex items-center justify-center text-xs text-gray-400 font-medium italic">{lang === 'ru' ? 'Игра началась' : 'Game Started'}</div>}
-            {logs.map((log, i) => (
-              <div key={i} className="text-xs px-3 py-2 rounded-xl hover:bg-gray-50 flex flex-col gap-1 border border-transparent hover:border-gray-100 transition-colors">
-                 <div className="flex justify-between items-center">
-                   <span className="font-bold text-[#1A1F26] truncate max-w-[120px]">{log.user}</span>
-                   <span className="text-3xs text-gray-400">{log.time}</span>
-                 </div>
-                 <span className="text-gray-600 leading-snug">{log.action}</span>
-              </div>
-            ))}
-         </div>
-      </div>
-    </>
   );
 };

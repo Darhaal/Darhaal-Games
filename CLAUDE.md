@@ -21,4 +21,14 @@ The short version:
   never `window.confirm` or `alert`.
 - Game boards are the exception: square, white cells on a `#E6E1DC` grid,
   seat colours from `src/games/palette.ts`, softened on large surfaces.
+- Game screens are built from `src/components/game/` (design-system.md →
+  Game screens): `GameLayout` (board left, cards right), `TurnCard` (or a
+  Status card), `PlayersCard`, `ResultDialog`, and the classes in `ui.ts`.
+  One clock, in the header. A new game uses these;
+  `tests/game-screens.test.ts` fails one that does not.
+
+## Releases
+
+- Do not cut a version per change. Add work to `## [Unreleased]` in
+  CHANGELOG.md and release only when asked; polish and fixes are patch bumps.
 - Every string in Russian and English; code and comments in English.

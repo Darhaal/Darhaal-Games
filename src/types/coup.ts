@@ -37,9 +37,20 @@ export interface PendingAction {
   nextPhase?: GamePhase | ActionResolution;
 }
 
+/** Text written once into shared state and read in either language. */
+export interface LocalizedText {
+  ru: string;
+  en: string;
+}
+
+/** `GameLog.user` for entries the game itself writes, shown as «Система» / "System". */
+export const SYSTEM = '__system__';
+
 export interface GameLog {
+  /** A player's name, `SYSTEM`, or an emoji. Rooms written before entries were bilingual say «Система». */
   user: string;
-  action: string;
+  /** Both languages; a plain Russian string in rooms written before that. */
+  action: LocalizedText | string;
   time: string;
 }
 

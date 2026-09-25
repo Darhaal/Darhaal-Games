@@ -4,7 +4,8 @@ import { requireGame, roomCapacity } from '@/games/registry';
 import { COUNTRY_CODES } from '@/data/flager/countries';
 import { updatePlayerStats } from '@/lib/playerStats';
 import { useLobbySync } from '@/hooks/core/useLobbySync';
-import { calcFlagerPoints } from '@/lib/gameLogic/flager';
+import { calcFlagerPoints, FLAGER_BETWEEN_ROUNDS_SECONDS } from '@/lib/gameLogic/flager';
+import { pushNotice, leftTheGame } from '@/lib/notifications';
 
 // DEFENSIVE: players must be an array (broken shapes have been seen in the DB)
 const normalizeFlager = (state: FlagerState): FlagerState => {
@@ -149,7 +150,28 @@ export function useFlagerGame(lobbyId: string | null, userId: string | undefined
                });
           });
           newState.status = 'round_end';
+          newState.roundEndedAt = Date.now();
       }
+  };
+
+  /** Starts the next round — or ends the match — once every player is ready. */
+  const advanceIfAllReady = (state: FlagerState) => {
+      if (!state.players.every(p => p.isReadyForNextRound)) return;
+
+      if (state.currentRoundIndex >= state.targetChain.length - 1) {
+          state.status = 'finished';
+          return;
+      }
+      state.status = 'playing';
+      state.currentRoundIndex++;
+      state.roundStartTime = Date.now() + START_DELAY;
+      state.roundEndedAt = undefined;
+      state.players.forEach(p => {
+          p.guesses = [];
+          p.hasFinishedRound = false;
+          p.roundScore = 0;
+          p.isReadyForNextRound = false;
+      });
   };
 
   // Both players answer at the same moment constantly, and each only touches
@@ -244,25 +266,29 @@ export function useFlagerGame(lobbyId: string | null, userId: string | undefined
     if (pIndex === -1) return null;
     if (newState.players[pIndex].isReadyForNextRound) return null; // already ready
     newState.players[pIndex].isReadyForNextRound = true;
-
-    const allReady = newState.players.every(p => p.isReadyForNextRound);
-    if (allReady) {
-        if (newState.currentRoundIndex >= newState.targetChain.length - 1) {
-            newState.status = 'finished';
-        } else {
-            newState.status = 'playing';
-            newState.currentRoundIndex++;
-            newState.roundStartTime = Date.now() + START_DELAY;
-            newState.players.forEach(p => {
-                p.guesses = [];
-                p.hasFinishedRound = false;
-                p.roundScore = 0;
-                p.isReadyForNextRound = false;
-            });
-        }
-    }
+    advanceIfAllReady(newState);
 
     return newState;
+    });
+  };
+
+  /**
+   * Backstop for a player who vanished between rounds: "next" is a button, so
+   * a closed tab held the next round back for good. Once the between-rounds
+   * minute is up, whoever is still here starts it for everybody.
+   */
+  const forceNextRound = async () => {
+    await updateState((current) => {
+      if (current.status !== 'round_end' || !Array.isArray(current.players)) return null;
+      // Rooms that closed a round before this existed have no timestamp;
+      // their players can still press "next".
+      if (!current.roundEndedAt) return null;
+      if (Date.now() - current.roundEndedAt < FLAGER_BETWEEN_ROUNDS_SECONDS * 1000) return null;
+
+      const newState: FlagerState = JSON.parse(JSON.stringify(current));
+      newState.players.forEach(p => { p.isReadyForNextRound = true; });
+      advanceIfAllReady(newState);
+      return newState;
     });
   };
 
@@ -294,16 +320,7 @@ export function useFlagerGame(lobbyId: string | null, userId: string | undefined
 
          const wasHost = leavingPlayer.isHost;
 
-         if (!newState.notifications) newState.notifications = [];
-         newState.notifications.push({
-             id: Date.now(),
-             type: 'leave',
-             message: {
-                 ru: `${leavingPlayer.name} покинул игру`,
-                 en: `${leavingPlayer.name} left the game`
-             }
-         });
-         if (newState.notifications.length > 3) newState.notifications.shift();
+         pushNotice(newState, leftTheGame(leavingPlayer.name), 'leave');
 
          newState.players = newState.players.filter((p: FlagerPlayerState) => p.id !== userId);
          if (newState.players.length === 0) return null;
@@ -317,6 +334,9 @@ export function useFlagerGame(lobbyId: string | null, userId: string | undefined
              const target = newState.targetChain[newState.currentRoundIndex];
              if (target) checkRoundEnd(newState, target.toLowerCase());
          }
+         // Likewise between rounds: if everyone left was ready, the round
+         // they were all waiting on starts now.
+         if (newState.status === 'round_end') advanceIfAllReady(newState);
 
          return newState;
      });
@@ -378,7 +398,7 @@ export function useFlagerGame(lobbyId: string | null, userId: string | undefined
 
   return {
       gameState, roomMeta, loading, lobbyDeleted,
-      initGame, startGame, makeGuess, handleTimeout, readyNextRound, leaveGame,
+      initGame, startGame, makeGuess, handleTimeout, readyNextRound, leaveGame, forceNextRound,
       forceRoundEnd
   };
 }

@@ -12,3 +12,9 @@ export const calcFlagerPoints = (attemptsUsed: number, timeTakenSeconds: number)
   const timePenalty = Math.floor(timeTakenSeconds * FLAGER_TIME_PENALTY);
   return Math.max(FLAGER_MIN_SCORE, FLAGER_BASE_SCORE - guessPenalty - timePenalty);
 };
+
+/**
+ * How long the between-rounds screen waits on players who never press
+ * "next" — a closed tab would otherwise hold the next round back for good.
+ */
+export const FLAGER_BETWEEN_ROUNDS_SECONDS = 60;

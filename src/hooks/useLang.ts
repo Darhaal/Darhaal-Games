@@ -19,11 +19,15 @@ const subscribe = (cb: () => void) => {
 /**
  * UI language synced with localStorage.
  *
+ * English until the player picks a language in the settings: someone who
+ * does not read Russian has to be able to find that setting in the first
+ * place, while a Russian speaker can read "Settings" well enough to switch.
+ *
  * useSyncExternalStore instead of useState+useEffect: no setState inside effects
  * (cascading re-renders), no hydration issues (server snapshot = default),
  * plus instant sync across tabs and components.
  */
-export function useLang(defaultLang: Lang = 'ru') {
+export function useLang(defaultLang: Lang = 'en') {
   const lang = useSyncExternalStore<Lang>(
     subscribe,
     () => {

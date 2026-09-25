@@ -5,6 +5,7 @@ import { useLobbySync } from '@/hooks/core/useLobbySync';
 import { requireGame, roomCapacity } from '@/games/registry';
 import { randomOf } from '@/lib/turnOrder';
 import { emptyBoard, drawEdge, isBoardFull, leaders, boxTally } from '@/lib/gameLogic/dots';
+import { pushNotice, leftTheGame } from '@/lib/notifications';
 
 const GAME = requireGame('dots');
 
@@ -179,16 +180,7 @@ export function useDotsGame(lobbyId: string | null, userId: string | undefined) 
       if (next.players.length === 0) return null;
       if (leaving.isHost) next.players[0].isHost = true;
 
-      if (!next.notifications) next.notifications = [];
-      next.notifications.push({
-        id: now(),
-        message: {
-          ru: `${leaving.name} покинул игру`,
-          en: `${leaving.name} left the game`
-        },
-        type: 'leave'
-      });
-      if (next.notifications.length > 3) next.notifications.shift();
+      pushNotice(next, leftTheGame(leaving.name), 'leave');
 
       if (next.status === 'playing') {
         // Boxes they already closed stay theirs on the board, but with one

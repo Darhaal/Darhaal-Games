@@ -39,6 +39,8 @@ export interface FlagerState {
   currentRoundIndex: number;
 
   roundStartTime: number; // Round start timestamp for the timer
+  /** When the round closed; the next one starts on its own a minute later. */
+  roundEndedAt?: number;
   lastActionTime: number;
   version: number;
 

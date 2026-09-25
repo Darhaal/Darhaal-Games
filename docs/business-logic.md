@@ -66,7 +66,9 @@ updater re-checks legality against the fresh state so a retry cannot apply an
 action twice.
 
 Both rules are enforced by [`tests/sync-invariants.test.ts`](../tests/sync-invariants.test.ts),
-which scans the hook sources.
+which scans the hook sources. The retry loop itself — a lost race rebuilt on
+the winner's state, a finished state given one try, a hard failure taken back
+and reported — is played out in [`tests/lobby-sync.test.ts`](../tests/lobby-sync.test.ts).
 
 ## Lobby lifecycle
 
@@ -123,9 +125,18 @@ resolving_exchange ─(cards picked)─► nextTurn
 - **AFK protection**: 60s turn / 30s reaction deadlines; on expiry `skipTurn()`
   removes the offending player (choose/lose/exchange phases) or force-resolves the
   reaction phase. Any client whose local timer hits 0 may fire it.
+- **A player leaving or removed** goes through one `dropPlayer`, which carries
+  the table on according to their part in the action on it: their own turn
+  passes to the next player; an action aimed at them is dropped and the turn
+  passes; a block they made falls and the action goes ahead; a challenge they
+  lost still decides the outcome, as if they had given up the card; if they
+  only had a chance to answer and everyone else has passed, the action
+  resolves at once. Cards drawn for an unfinished exchange go back to the deck.
 - **Win**: last player with an unrevealed card; also triggered when others leave.
-- **Stats**: on `finished`, each client records win/loss for itself
-  (`durationSeconds` is a hardcoded 900).
+- **Stats**: on `finished`, each client records win/loss for itself with the
+  real match length.
+- **Tests**: `tests/coup-flow.test.ts` plays every phase above through the hook,
+  several players against one in-memory row.
 
 ### ⚓ Battleship (`useBattleshipGame`)
 `players` is a **Record<userId, PlayerBoard>** (exactly 2). Phases:
@@ -135,11 +146,12 @@ resolving_exchange ─(cards picked)─► nextTurn
   written to the DB on "Ready" (`submitShips`). Placement validation: 10×10 board,
   no touching (1-cell danger zone), fleet = 1×4, 2×3, 3×2, 4×1. Auto-placement
   retries up to 200 board attempts.
-- **Both ready → playing**: first player in the object gets the first turn, 60s
-  `turnDeadline`.
+- **Both ready → playing**: a coin toss decides who shoots first, 60s
+  `turnDeadline`. The first to be ready is announced to the other.
 - **Shots**: hit → shoot again; miss → turn passes. A killed ship auto-marks its
   1-cell perimeter as misses. Win when `aliveShipsCount === 0`.
-- **Timeout**: the *current* player's own client passes the turn on expiry.
+- **Timeout**: any client passes the turn once the deadline is past, and says
+  whose clock ran out.
 - **Leaving mid-match** = surrender: remaining player wins.
 
 ### 🚩 Flager (`useFlagerGame`)
@@ -153,8 +165,11 @@ resolving_exchange ─(cards picked)─► nextTurn
 - **Scoring**: `points = max(10, 1000 − (attempts−1)×50 − seconds×10)`.
 - **Round end**: when every player `hasFinishedRound` (guessed, out of attempts,
   or personal timeout), results are appended to `history`, status → `round_end`;
-  next round starts when **all** players press "Next".
-- **Finish**: after the last round; the podium ranks by total score.
+  next round starts when **all** players press "Next" — or on its own a minute
+  after the round closed (`roundEndedAt`), so a closed tab cannot hold it back.
+  A player who leaves between rounds no longer strands those already ready.
+- **Finish**: after the last round; the result dialog ranks by total score.
+- **Tests**: `tests/flager-flow.test.ts`.
 - **Stats**: split into solo/multiplayer, with flags guessed as the extra
   counter.
 
@@ -171,6 +186,7 @@ board** with the same settings (versus race). Statuses: `waiting → playing →
 - **Loss**: mine hit or personal timeout → player status `lost`; match ends when
   no one is left playing.
 - **Leaving** mid-game marks the player `left` (board stays visible, grayed).
+- **Notices**: in a shared match the others are told who hit a mine and who left.
 - **Stats**: win/loss with `mode` (single vs multi by player count) and
   `extraCount` = correctly flagged mines.
 
@@ -188,8 +204,8 @@ board** with the same settings (versus race). Statuses: `waiting → playing →
   (`innocent_killed`). Any "no" returns to playing.
 - **Spy guess**: the spy may at any time name the location — correct → spy wins
   (`guessed_loc`), wrong → locals win (`spy_failed_guess`).
-- **Timer**: round duration (3–15 min); on expiry the spy wins (`time`). Note:
-  the timer keeps running during voting.
+- **Timer**: round duration (3–15 min); on expiry the spy wins (`time`). A vote
+  pauses it: a rejected vote shifts the round start by the time it took.
 - **Leaving**: spy leaving → locals win (`spy_left`); a civilian leaving below 3
   players → technical spy win.
 - **Scoring across rounds** (persists via "New Round"): spy win +5 to spy;
@@ -217,7 +233,7 @@ board** with the same settings (versus race). Statuses: `waiting → playing →
   resolved to email via `profiles`.
 - **Guest**: `signInAnonymously` + random avatar; progress not persisted.
 - **Google OAuth**: standard redirect flow.
-- **Password reset**: only from Settings (logged-in) via `resetPasswordForEmail`
-  → `/reset-password`. There is no "forgot password" link on the login form (TODO).
+- **Password reset**: "Forgot password?" on the login form, or from Settings
+  when logged in, via `resetPasswordForEmail` → `/reset-password`.
 - Route guards: every protected page redirects unauthenticated users to
   `/?returnUrl=<path>`; `AuthForm` honors `returnUrl` after login.

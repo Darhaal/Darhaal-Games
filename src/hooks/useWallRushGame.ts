@@ -11,6 +11,7 @@ import {
 import {
   advanceTurn, finish, finishIfUncontested, resignPlayer, seated
 } from '@/lib/gameLogic/wallrushFlow';
+import { pushNotice, leftTheGame } from '@/lib/notifications';
 
 const GAME = requireGame('wallrush');
 
@@ -250,16 +251,7 @@ export function useWallRushGame(lobbyId: string | null, userId: string | undefin
       if (next.players.length === 0) return null;
       if (leaving.isHost) next.players[0].isHost = true;
 
-      if (!next.notifications) next.notifications = [];
-      next.notifications.push({
-        id: now(),
-        message: {
-          ru: `${leaving.name} покинул игру`,
-          en: `${leaving.name} left the game`
-        },
-        type: 'leave'
-      });
-      if (next.notifications.length > 3) next.notifications.shift();
+      pushNotice(next, leftTheGame(leaving.name), 'leave');
 
       if (next.status === 'playing') {
         const over = finishIfUncontested(next);

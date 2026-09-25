@@ -1,4 +1,4 @@
-export const APP_VERSION = '2.9.0';
+export const APP_VERSION = '2.10.0';
 
 export type VersionType = 'major' | 'minor' | 'patch' | 'init';
 
@@ -11,6 +11,19 @@ export interface VersionLog {
 }
 
 export const VERSION_HISTORY: VersionLog[] = [
+  /* ===================== 2.10.x ===================== */
+
+  {
+    ver: '2.10.0',
+    date: '25 SEP 2026',
+    type: 'minor',
+    title: { ru: 'Один стол для всех игр', en: 'One Table for Every Game' },
+    desc: {
+      ru: 'Все восемь игр теперь устроены одинаково: доска слева, справа карточки — чей ход и сколько осталось, ваши действия, игроки. Итоги открываются в одном окне, которое можно убрать и посмотреть финальную доску. Новые игроки видят сайт на английском, пока не выберут язык, и английская версия больше нигде не показывает русский. В «Сапёре» и «Морском бое» появились уведомления: кто подорвался, кто вышел, кто расставил флот, у кого вышло время. Во «Флагере» между раундами есть минута, потом следующий раунд начинается сам. Исправлено: комната «Флагера» зависала между раундами, если кто-то уходил; в «Перевороте» уход игрока посреди действия давал лишний ход или отменял уже доказанное действие; ход, который не удалось сохранить, оставался на экране.',
+      en: 'All eight games are now laid out the same way: the board on the left, and on the right cards for whose turn it is and how long is left, your moves, and the players. Results open in one dialog that can be put aside to look at the final board. New players see the site in English until they pick a language, and the English version no longer shows Russian anywhere. Minesweeper and Battleship now have notices: who hit a mine, who left, whose fleet is ready, whose clock ran out. Flager gives you a minute between rounds, then the next one starts on its own. Fixed: a Flager room froze between rounds when someone left; in Coup a player leaving mid-action handed out an extra turn or undid a claim already proved; a move that failed to save stayed on screen.'
+    }
+  },
+
   /* ===================== 2.9.x ===================== */
 
   {

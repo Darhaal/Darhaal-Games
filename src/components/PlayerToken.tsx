@@ -7,8 +7,8 @@ import React from 'react';
  *
  * The shape is not decoration. On a four-player board colour alone is hard to
  * track, and for anyone who cannot separate red from green it carries nothing
- * at all — so every seat gets a mark, and the legend repeats it beside the
- * name. The order here must match `src/games/palette.ts`.
+ * at all — so every seat gets a mark, and the Players card repeats it beside
+ * the name. The order here must match `src/games/palette.ts`.
  */
 const SEAT_MARKS = [
   'rounded-full',        // circle
@@ -46,28 +46,5 @@ export default function PlayerToken({
         style={markStyle(seat)}
       />
     </span>
-  );
-}
-
-/** Colour ball plus nickname, so the board and the names map onto each other. */
-export function PlayerLegend({
-  players, currentUserId, colorOf, className = ''
-}: {
-  players: Array<{ id: string; name: string; seat: number }>;
-  currentUserId?: string;
-  colorOf: (seat: number) => string;
-  className?: string;
-}) {
-  return (
-    <div className={`flex flex-wrap items-center justify-center gap-x-5 gap-y-2 ${className}`}>
-      {players.map((p) => (
-        <span key={p.id} className="flex items-center gap-2">
-          <PlayerToken className="w-4 h-4" color={colorOf(p.seat)} seat={p.seat} />
-          <span className={`text-sm ${p.id === currentUserId ? 'font-black' : 'font-medium text-[#8A9099]'}`}>
-            {p.name}
-          </span>
-        </span>
-      ))}
-    </div>
   );
 }
