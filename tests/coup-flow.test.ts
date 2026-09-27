@@ -2,12 +2,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('@/lib/supabase', () => import('./support/fakeSupabase'));
-vi.mock('@/lib/playerStats', () => ({ updatePlayerStats: vi.fn() }));
+vi.mock('@/lib/matchRecords', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/matchRecords')>()),
+  recordMatch: vi.fn(async () => true)
+}));
 
 import { db } from './support/fakeSupabase';
 import { seat, play } from './support/players';
 import { useCoupGame } from '@/hooks/useCoupGame';
-import { updatePlayerStats } from '@/lib/playerStats';
+import { recordMatch } from '@/lib/matchRecords';
 import { buildDeck } from '@/lib/gameLogic/coup';
 import type { GameState, Player, Role } from '@/types/coup';
 
@@ -73,7 +76,7 @@ async function sit(...players: Player[]) {
 
 beforeEach(() => {
   db.reset();
-  vi.mocked(updatePlayerStats).mockClear();
+  vi.mocked(recordMatch).mockClear();
 });
 
 describe('Coup — plain actions', () => {
@@ -155,10 +158,26 @@ describe('Coup — plain actions', () => {
     await play(() => ha.current.performAction('coup', 'b'));
     await play(() => hb.current.resolveLoss(1));
 
-    const calls = vi.mocked(updatePlayerStats).mock.calls;
-    expect(calls).toHaveLength(2);
-    expect(calls.find(([id]) => id === 'a')?.[1]).toMatchObject({ gameType: 'coup', result: 'win' });
-    expect(calls.find(([id]) => id === 'b')?.[1]).toMatchObject({ gameType: 'coup', result: 'loss' });
+    // One record per seat, both under the same match key.
+    const records = vi.mocked(recordMatch).mock.calls.map(([r]) => r);
+    expect(records).toHaveLength(2);
+    expect(records.map((r) => r.result).sort()).toEqual(['loss', 'win']);
+    expect(new Set(records.map((r) => r.key)).size).toBe(1);
+    expect(records.find((r) => r.result === 'win')?.details).toMatchObject({ cardsLost: 0 });
+    expect(records.find((r) => r.result === 'loss')?.details).toMatchObject({ cardsLost: 2 });
+  });
+
+  it('a player who walks out of a match records a loss', async () => {
+    db.seed(LOBBY, table([
+      seatAt(['duke', 'contessa'], 'a'), seatAt(['captain', 'assassin'], 'b'), seatAt(['ambassador', 'duke'], 'c')
+    ]));
+    const [, , c] = await sit(...stored().players);
+
+    await play(() => c.current.leaveGame());
+
+    expect(vi.mocked(recordMatch).mock.calls.map(([r]) => r)).toEqual([
+      expect.objectContaining({ game: 'coup', result: 'loss', details: expect.objectContaining({ left: true }) })
+    ]);
   });
 });
 
@@ -504,5 +523,85 @@ describe('Coup — leaving mid-match', () => {
 
     expect(db.stats.writes).toBe(0);
     expect(stored().players).toHaveLength(2);
+  });
+});
+
+describe('Coup — what the statistics count', () => {
+  const tally = (id: string) => who(id).tally ?? { challengesWon: 0, bluffs: 0, coups: 0 };
+
+  it('a claim that goes through without the card is a bluff', async () => {
+    db.seed(LOBBY, table([seatAt(['captain', 'contessa'], 'a'), seatAt(['captain', 'assassin'], 'b')]));
+    const [a, b] = await sit(...stored().players);
+
+    await play(() => a.current.performAction('tax'));
+    await play(() => b.current.pass());
+
+    expect(tally('a').bluffs).toBe(1);
+  });
+
+  it('a claim backed by the card is not', async () => {
+    db.seed(LOBBY, table([seatAt(['duke', 'contessa'], 'a'), seatAt(['captain', 'assassin'], 'b')]));
+    const [a, b] = await sit(...stored().players);
+
+    await play(() => a.current.performAction('tax'));
+    await play(() => b.current.pass());
+
+    expect(tally('a').bluffs).toBe(0);
+  });
+
+  it('a claim proved under challenge is not a bluff, whatever card replaces the one shown', async () => {
+    db.seed(LOBBY, table([seatAt(['duke', 'contessa'], 'a'), seatAt(['captain', 'assassin'], 'b')]));
+    const [a, b] = await sit(...stored().players);
+
+    await play(() => a.current.performAction('tax'));
+    await play(() => b.current.challenge());
+    await play(() => b.current.resolveLoss(0));
+
+    expect(tally('a').bluffs).toBe(0);
+    expect(tally('b').challengesWon).toBe(0);
+  });
+
+  it('a challenge that catches a bluff is counted for the challenger', async () => {
+    db.seed(LOBBY, table([seatAt(['captain', 'contessa'], 'a'), seatAt(['captain', 'assassin'], 'b')]));
+    const [a, b] = await sit(...stored().players);
+
+    await play(() => a.current.performAction('tax'));
+    await play(() => b.current.challenge());
+
+    expect(tally('b').challengesWon).toBe(1);
+  });
+
+  it('a block that stands without the card is a bluff by the blocker', async () => {
+    db.seed(LOBBY, table([seatAt(['captain', 'contessa'], 'a'), seatAt(['duke', 'assassin'], 'b')]));
+    const [a, b] = await sit(...stored().players);
+
+    await play(() => a.current.performAction('steal', 'b'));
+    await play(() => b.current.pass());
+    await play(() => b.current.block());
+    await play(() => a.current.pass());
+
+    expect(tally('b').bluffs).toBe(1);
+  });
+
+  it('a coup is counted', async () => {
+    db.seed(LOBBY, table([seatAt(['duke', 'contessa'], 'a', 7), seatAt(['captain', 'assassin'], 'b')]));
+    const [a] = await sit(...stored().players);
+
+    await play(() => a.current.performAction('coup', 'b'));
+
+    expect(tally('a').coups).toBe(1);
+  });
+
+  it('the record carries the counts', async () => {
+    const b = seatAt(['captain', 'assassin'], 'b');
+    b.cards[0].revealed = true;
+    db.seed(LOBBY, table([seatAt(['duke', 'contessa'], 'a', 7), b]));
+    const [ha, hb] = await sit(...stored().players);
+
+    await play(() => ha.current.performAction('coup', 'b'));
+    await play(() => hb.current.resolveLoss(1));
+
+    const win = vi.mocked(recordMatch).mock.calls.map(([r]) => r).find((r) => r.result === 'win');
+    expect(win?.details).toMatchObject({ cardsLost: 0, coins: 0, coups: 1, bluffs: 0, challengesWon: 0 });
   });
 });

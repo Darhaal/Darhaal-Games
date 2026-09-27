@@ -47,7 +47,7 @@ export const PRIVACY_CONTENT: Record<Locale, PolicyCopy> = {
           'Комната и партия. Пока комната существует, в ней хранится её состояние: кто за столом, ход игры, счёт. Никнейм и аватарка видны другим игрокам в той же комнате — в этом и смысл.',
           'Чат. Сообщения в чате комнаты видят только те, кто в ней сидит, — у остальных, даже со ссылкой, доступа к ним нет на уровне базы данных. Сообщение подписывается вашим никнеймом из комнаты и удаляется вместе с комнатой, по тем же срокам, что ниже. В аналитику текст сообщений не попадает.',
           'Завершённые комнаты удаляются автоматически через сутки, брошенное лобби — через десять минут после того, как его закрыл последний игрок, прерванный матч — через семь дней.',
-          'Статистика. Если вы вошли в аккаунт, результаты партий записываются в профиль: сколько сыграно, выиграно и сколько это заняло. Из этого складываются страницы прогресса и достижений.',
+          'Статистика. Если вы вошли в аккаунт, каждая сыгранная партия записывается в профиль: какая игра, выиграна ли, сколько длилась, когда была, и немного о её ходе (например, сколько кораблей потеряно или флагов угадано). Из этого складываются история матчей, достижения и уровень на странице прогресса. Эти записи видите только вы.',
           'Гостевые аккаунты. Гостевой вход создаёт временную учётную запись без почты и пароля. Если ею не пользоваться 30 дней, она удаляется вместе со статистикой.'
         ]
       },
@@ -115,7 +115,7 @@ export const PRIVACY_CONTENT: Record<Locale, PolicyCopy> = {
           'The room and the match. For as long as a room exists it holds its state: who is at the table, the position, the score. Your nickname and avatar are visible to the other players in that room, which is the point of them.',
           'Chat. A room’s chat can be read only by the people seated in it — anyone else, even holding the link, is refused at the database level. A message is signed with your nickname from the room and is deleted along with the room, on the schedule below. The text of messages is never sent to analytics.',
           'Finished rooms are deleted automatically after a day, an abandoned lobby ten minutes after the last player closed it, and an interrupted match after seven days.',
-          'Statistics. If you are signed in, results are recorded against your profile: matches played, won, and how long they took. The progress and achievements pages are built from these.',
+          'Statistics. If you are signed in, every match you finish is recorded against your profile: which game, whether you won, how long it took, when, and a little about how it went (ships lost, flags named). Your match history, achievements and level on the progress page are built from these. Only you can see them.',
           'Guest accounts. Guest sign-in creates a temporary account with no email and no password. Left unused for 30 days, it is deleted along with its statistics.'
         ]
       },

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { BattleshipState, Ship } from '@/types/battleship';
-import { updatePlayerStats } from '@/lib/playerStats';
+import { recordMatch, matchKey, matchSeconds } from '@/lib/matchRecords';
 import { randomOf } from '@/lib/turnOrder';
 import { useLobbySync } from '@/hooks/core/useLobbySync';
 import { getKey, isValidCoord, getShipCoords, checkPlacement, shuffleFleet } from '@/lib/gameLogic/battleship';
@@ -173,6 +173,8 @@ export function useBattleshipGame(
     }
 
     myBoard.shots[key] = hit ? (killed ? 'killed' : 'hit') : 'miss';
+    // Counted here: the misses marked around a sunk ship were never fired.
+    myBoard.shotsFired = (myBoard.shotsFired || 0) + 1;
 
     if (killed) {
       opponentBoard.aliveShipsCount--;
@@ -240,6 +242,9 @@ export function useBattleshipGame(
      const snapshot = gameStateRef.current;
      if (!snapshot || snapshot.status === 'finished') return;
 
+     // Walking out of a battle in progress is losing it.
+     if (snapshot.phase === 'playing') await record(snapshot, 'loss', true);
+
      const others = Object.keys(snapshot.players || {}).filter((id) => id !== user.id);
      if (others.length === 0) {
          await deleteLobby();
@@ -272,22 +277,34 @@ export function useBattleshipGame(
      });
   };
 
-  // TRACK GAME END TO RECORD STATISTICS
-  useEffect(() => {
-      if (gameState?.status === 'finished' && user?.id && !lobbyDeleted) {
-          const isWinner = gameState.winner === user.id;
-          // Actual match duration; 600s fallback for legacy states
-          const duration = gameState.startTime
-              ? Math.max(1, Math.round((Date.now() - gameState.startTime) / 1000))
-              : 600;
+  /**
+   * Records this player's match. Keyed by the match, so the finish, a reload
+   * of the results and a leave racing the finish all count it once. A match
+   * counts from the first shot: `startTime` is set when both fleets are in,
+   * so one abandoned during placement is nobody's win or loss.
+   */
+  const record = (state: BattleshipState, result: 'win' | 'loss', left = false) => {
+      const me = user ? state.players[user.id] : undefined;
+      if (!lobbyId || !me || !state.startTime) return Promise.resolve(false);
+      const shipsLost = me.ships.filter((ship) => ship.hits >= ship.size).length;
+      return recordMatch({
+          game: 'battleship',
+          key: matchKey(lobbyId, state.startTime),
+          result,
+          durationSeconds: matchSeconds(state.startTime, left ? Date.now() : state.lastActionTime, 600),
+          details: {
+              shipsLost,
+              ...(typeof me.shotsFired === 'number' ? { shots: me.shotsFired } : {}),
+              ...(left ? { left: true } : {})
+          }
+      });
+  };
 
-          updatePlayerStats(user.id, {
-              gameType: 'battleship',
-              result: isWinner ? 'win' : 'loss',
-              durationSeconds: duration
-          });
-      }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- fire once when the match finishes; adding gameState.players would re-record stats
+  // The finished match, recorded once for this player (see `record`).
+  useEffect(() => {
+      if (gameState?.status !== 'finished' || !user?.id || lobbyDeleted) return;
+      record(gameState, gameState.winner === user.id ? 'win' : 'loss');
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- once per finished match; the key makes a repeat harmless
   }, [gameState?.status, gameState?.winner, user?.id, lobbyDeleted]);
 
   return {

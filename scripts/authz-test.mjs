@@ -108,8 +108,52 @@ if (!lobby) process.exit(1);
   pass('leave_lobby lets the host close the room', data === true && !gone, error?.message ?? `returned ${data}`);
 }
 
+// --- match history: one row per match, written only through record_match ---
+{
+  const record = (who, key, result = 'win') => who.rpc('record_match', {
+    p_game: 'dots', p_match_key: key, p_result: result, p_mode: 'multi',
+    p_duration_seconds: 120, p_score: 7, p_details: { boxesTotal: 25 }
+  });
+  const key = `authz-test:${Date.now()}`;
+
+  const first = await record(A, key);
+  pass('record_match records a new match', first.data === true, first.error?.message ?? `returned ${first.data}`);
+
+  const again = await record(A, key, 'loss');
+  const { data: rows } = await A.from('match_results').select('result').eq('match_key', key);
+  pass('the same match recorded twice counts once', again.data === false && rows?.length === 1 && rows[0].result === 'win',
+    again.error?.message ?? `returned ${again.data}, ${rows?.length} row(s)`);
+
+  const { data: peek } = await B.from('match_results').select('id').eq('user_id', aId);
+  pass('B cannot read A\'s match history', (peek ?? []).length === 0, `${(peek ?? []).length} row(s) visible`);
+
+  const { error: direct } = await B.from('match_results').insert({
+    user_id: aId, game: 'dots', match_key: 'forged', result: 'win', duration_seconds: 1
+  });
+  pass('nobody inserts into match_results directly', !!direct, direct?.code ?? 'INSERT SUCCEEDED');
+
+  const bad = await record(B, `authz-test:bad:${Date.now()}`, 'draw');
+  pass('record_match rejects a result it does not know', !!bad.error, bad.error?.code ?? 'ACCEPTED');
+}
+
+// --- achievements: stored through unlock_achievements, new ones reported once ---
+{
+  const first = await A.rpc('unlock_achievements', { p_ids: ['dots.wins:bronze', 'matches:bronze'] });
+  const again = await A.rpc('unlock_achievements', { p_ids: ['dots.wins:bronze', 'wins:bronze'] });
+  pass('unlock_achievements returns only what is new',
+    JSON.stringify([...(first.data ?? [])].sort()) === '["dots.wins:bronze","matches:bronze"]' &&
+    JSON.stringify(again.data) === '["wins:bronze"]',
+    first.error?.message ?? again.error?.message ?? `${JSON.stringify(first.data)} then ${JSON.stringify(again.data)}`);
+
+  const { data: peek } = await B.from('achievement_unlocks').select('achievement_id').eq('user_id', aId);
+  pass('B cannot read A\'s achievements', (peek ?? []).length === 0, `${(peek ?? []).length} row(s) visible`);
+
+  const { error: direct } = await B.from('achievement_unlocks').insert({ user_id: aId, achievement_id: 'forged' });
+  pass('nobody inserts into achievement_unlocks directly', !!direct, direct?.code ?? 'INSERT SUCCEEDED');
+}
+
 // --- clean up: remove both throwaway guests ---
-// profiles and player_stats follow via ON DELETE CASCADE.
+// profiles, player_stats, match_results and achievement_unlocks follow via ON DELETE CASCADE.
 const admin = createClient(URL, env.SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false }
 });

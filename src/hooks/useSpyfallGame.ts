@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { SpyfallState } from '@/types/spyfall';
 import { SPYFALL_PACKS } from '@/data/spyfall/locations';
-import { updatePlayerStats } from '@/lib/playerStats';
+import { recordMatch, matchKey, matchSeconds } from '@/lib/matchRecords';
 import { useLobbySync } from '@/hooks/core/useLobbySync';
 import { roundAwards } from '@/lib/gameLogic/spyfall';
 import { pushNotice, leftTheGame } from '@/lib/notifications';
@@ -241,6 +241,12 @@ export function useSpyfallGame(lobbyId: string | null, userId: string | undefine
     // the page navigates us out.
     if (gameStateRef.current?.status === 'finished') return;
 
+    // Walking out of a round in progress is losing it.
+    const snapshot = gameStateRef.current;
+    if (snapshot && (snapshot.status === 'playing' || snapshot.status === 'voting')) {
+      await record(snapshot, 'loss', true);
+    }
+
     // Last one out switches off the lights. Checked against the local snapshot
     // because the RPC itself re-checks server-side and refuses while anyone
     // else is still in the room.
@@ -328,26 +334,45 @@ export function useSpyfallGame(lobbyId: string | null, userId: string | undefine
     });
   };
 
-  // Record statistics when the round finishes:
-  // a local wins when locals win, the spy wins when the spy side wins
-  useEffect(() => {
-      if (gameState?.status === 'finished' && userId && !lobbyDeleted && gameState.winner) {
-          const me = gameState.players.find(p => p.id === userId);
-          if (me) {
-              const isWinner = (gameState.winner === 'spy' && me.isSpy) ||
-                               (gameState.winner === 'locals' && !me.isSpy);
-              const duration = gameState.startTime
-                  ? Math.max(1, Math.round((now() - gameState.startTime) / 1000))
-                  : (gameState.settings.roundDuration || 480);
-
-              updatePlayerStats(userId, {
-                  gameType: 'spyfall',
-                  result: isWinner ? 'win' : 'loss',
-                  durationSeconds: duration
-              });
+  /**
+   * Records this player's round — each round is a match, keyed by the moment
+   * it started, so the finish, a reload and a leave count it once.
+   *
+   * Spyfall does not touch `lastActionTime`, so the length is taken up to now
+   * and capped at the round's own duration: the round cannot have run longer
+   * (a vote pauses the clock by moving `startTime` on).
+   */
+  const record = (state: SpyfallState, result: 'win' | 'loss', left = false) => {
+      const me = state.players.find(p => p.id === userId);
+      if (!lobbyId || !me || !state.startTime) return Promise.resolve(false);
+      const roundSeconds = state.settings.roundDuration || 480;
+      const accused = state.nomination?.authorId === me.id;
+      const caughtSpy = state.winReason === 'spy_caught' && accused;
+      const wrongAccusation = state.winReason === 'innocent_killed' && accused;
+      return recordMatch({
+          game: 'spyfall',
+          key: matchKey(lobbyId, state.startTime),
+          result,
+          durationSeconds: Math.min(matchSeconds(state.startTime, now(), roundSeconds), roundSeconds),
+          details: {
+              spy: me.isSpy,
+              ...(state.winReason ? { reason: state.winReason } : {}),
+              ...(caughtSpy ? { caughtSpy: true } : {}),
+              ...(wrongAccusation ? { wrongAccusation: true } : {}),
+              ...(left ? { left: true } : {})
           }
-      }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- fire once when the match finishes; adding gameState.players would re-record stats
+      });
+  };
+
+  // The finished round, recorded once for this player (see `record`): a local
+  // wins with the locals, the spy with the spy.
+  useEffect(() => {
+      if (gameState?.status !== 'finished' || !userId || lobbyDeleted || !gameState.winner) return;
+      const me = gameState.players.find(p => p.id === userId);
+      if (!me) return;
+      const won = (gameState.winner === 'spy') === me.isSpy;
+      record(gameState, won ? 'win' : 'loss');
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- once per finished round; the key makes a repeat harmless
   }, [gameState?.status, gameState?.winner, userId, lobbyDeleted]);
 
   return {

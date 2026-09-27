@@ -57,6 +57,8 @@ export interface WallRushPlayer {
   wallsLeft: number;
   /** Carried across rematches in the same room. */
   score: number;
+  /** Pawn moves this match — for the statistics. */
+  moves?: number;
 }
 
 export interface WallRushState {

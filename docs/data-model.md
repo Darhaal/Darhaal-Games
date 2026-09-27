@@ -35,30 +35,51 @@ subscription in `/play` for the list.
 Expected to be created by a DB trigger on signup (the client only ever
 `select`s/`update`s it, never inserts).
 
+### `match_results` (2.11)
+One row per player per finished match. Written only through `record_match`;
+readable by its owner.
+
+| Column | Type | Usage |
+|--------|------|-------|
+| `id` | bigint identity (PK) | |
+| `user_id` | uuid → `auth.users` (cascade) | always `auth.uid()` of the caller |
+| `game` | text | registry id |
+| `match_key` | text | the match; `unique (user_id, match_key)` makes a repeat a no-op |
+| `result` | text | `win` / `loss` |
+| `mode` | text | `single` / `multi` |
+| `duration_seconds` | int | 0–86400 |
+| `score` | int, null | boxes, discs, Flager points |
+| `details` | jsonb | what the game's achievements read — see business-logic.md |
+| `played_at` | timestamptz | |
+
+`record_match(p_game, p_match_key, p_result, p_mode, p_duration_seconds, p_score, p_details)`
+→ `true` when the match was new.
+
+### `achievement_unlocks` (2.11)
+`(user_id, achievement_id)` primary key, `unlocked_at`. The achievements
+themselves are defined in `src/achievements/definitions.ts`; this only dates
+them. Written through `unlock_achievements(p_ids text[])`, which returns the
+ids that were new.
+
 ### `player_stats`
 | Column | Type | Usage |
 |--------|------|-------|
 | `user_id` | uuid (PK) | |
 | `total_games` | int | |
-| `details` | jsonb | Per-game stats, two shapes below |
+| `details` | jsonb | Per-game totals from before 2.11 |
 | `updated_at` | timestamptz | |
 
-`details` shapes:
+**A read-only baseline since 2.11**: nothing in the app writes it, and
+clients no longer hold `UPDATE`. One flat record per game —
 
 ```jsonc
-// Flat (battleship, coup, legacy minesweeper/flager)
-{ "battleship": { "wins": 3, "lost": 1, "time": 45 } }
-
-// Mode-split (minesweeper, flager — migrated on the fly)
-{ "minesweeper": {
-    "single": { "wins": 2, "lost": 5, "time": 90, "extra": 37 },
-    "multi":  { "wins": 1, "lost": 0, "time": 12, "extra": 11 }
-} }
+{ "battleship": { "wins": 3, "lost": 1, "time": 45, "extra": 0 } }
 ```
-`time` is minutes; `extra` = mines correctly flagged / flags guessed.
 
-Row must pre-exist (signup trigger); `updatePlayerStats` silently skips users
-without a row (e.g. guests).
+— `time` in minutes as it was recorded. Before the cleanup it held two shapes
+(flat, and `{single, multi}` for games with a solo mode), for one player both
+at once, and a game that no longer exists; see
+`supabase/migrations/20260925000001_stats_baseline.sql`.
 
 ## Storage
 

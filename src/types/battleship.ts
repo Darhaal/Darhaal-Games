@@ -29,6 +29,8 @@ export interface PlayerBoard {
   isReady: boolean;
   isHost: boolean;
   aliveShipsCount: number;
+  /** Shots this player has fired this match — for the statistics. */
+  shotsFired?: number;
 }
 
 export interface BattleshipState {

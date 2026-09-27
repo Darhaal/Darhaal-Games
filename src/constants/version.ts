@@ -1,4 +1,4 @@
-export const APP_VERSION = '2.10.0';
+export const APP_VERSION = '2.11.0';
 
 export type VersionType = 'major' | 'minor' | 'patch' | 'init';
 
@@ -11,6 +11,19 @@ export interface VersionLog {
 }
 
 export const VERSION_HISTORY: VersionLog[] = [
+  /* ===================== 2.11.x ===================== */
+
+  {
+    ver: '2.11.0',
+    date: '26 SEP 2026',
+    type: 'minor',
+    title: { ru: 'Каждый матч на счету', en: 'Every Match Counts' },
+    desc: {
+      ru: 'Появились достижения — 63 штуки: за матчи, победы, часы в играх, серии и дни подряд, и свои в каждой игре, от разминирования без единого флажка до трёх удачных блефов в «Перевороте». За игры и достижения начисляется опыт, у игрока есть уровень. Каждый законченный матч попадает в историю, из неё считаются рекорды: самая быстрая победа, лучший счёт. Страница «Прогресс» переделана: уровень, итоги, достижения, игры и история. Статистика теперь считается честно: матч больше не засчитывается повторно при перезагрузке, уход из матча — поражение, в «Сапёре» результат получают все участники, а «Флагер» в одиночку больше не засчитывает каждую игру как победу. Во «Флагер» можно играть до 20 человек.',
+      en: 'Achievements are here — 63 of them: for matches, wins, hours played, streaks and days in a row, and each game’s own, from clearing a board without a single flag to three bluffs in one game of Coup. Matches and achievements earn experience, and every player has a level. Every finished match goes into a history, which keeps records such as the fastest win and the best score. The Progress page is rebuilt: level, totals, achievements, games and history. Statistics now count honestly: a match is no longer counted again on a reload, walking out of a match is a loss, every Minesweeper player gets a result, and solo Flager no longer counts every game as a win. Flager takes up to 20 players.'
+    }
+  },
+
   /* ===================== 2.10.x ===================== */
 
   {

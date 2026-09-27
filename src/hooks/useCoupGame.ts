@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { GameState, Player, Role } from '@/types/coup';
 import { DICTIONARY } from '@/constants/coup';
 import { SYSTEM, type LocalizedText } from '@/types/coup';
-import { updatePlayerStats } from '@/lib/playerStats';
+import { recordMatch, matchKey, matchSeconds } from '@/lib/matchRecords';
 import { useLobbySync } from '@/hooks/core/useLobbySync';
 import { requireGame, roomCapacity } from '@/games/registry';
 import { randomIndex } from '@/lib/turnOrder';
@@ -39,6 +39,17 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
     state.logs.unshift({ user, action, time });
     state.logs = state.logs.slice(0, 50);
   };
+
+  /** Adds to a player's statistics for the match. */
+  const bump = (player: Player | undefined, key: keyof NonNullable<Player['tally']>) => {
+    if (!player) return;
+    player.tally = { challengesWon: 0, bluffs: 0, coups: 0, ...player.tally };
+    player.tally[key]++;
+  };
+
+  /** Whether `player` holds, face down, a card that backs the claim. */
+  const holds = (player: Player | undefined, actionType: string, isBlock: boolean) =>
+    !!player && player.cards.some(c => !c.revealed && getRequiredRoles(actionType, isBlock).includes(c.role));
 
   const roleName = (role: Role): LocalizedText => ({
     ru: DICTIONARY.ru.roles[role]?.name || role,
@@ -115,6 +126,7 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
                   applyActionEffect(newState);
               }
           } else if (newState.phase === 'waiting_for_block_challenges') {
+              blockStands(newState);
               addLog(newState, SYSTEM, { ru: 'Время вышло. Блок принят.', en: 'Time is up. The block stands.' });
               nextTurn(newState);
           }
@@ -147,6 +159,7 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
     if (actionType === 'coup') {
       if (player.coins < 7) return null;
       player.coins -= 7;
+      bump(player, 'coups');
     } else if (actionType === 'assassinate') {
       if (player.coins < 3) return null;
       player.coins -= 3;
@@ -215,6 +228,13 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
     return (state.passedPlayers?.length ?? 0) >= activePlayersCount - 1;
   };
 
+  /** A block nobody challenged: a bluff if the blocker had no card for it. */
+  const blockStands = (state: GameState) => {
+    const action = state.currentAction;
+    const blocker = state.players.find(p => p.id === action?.blockedBy);
+    if (action && blocker && !holds(blocker, action.type, true)) bump(blocker, 'bluffs');
+  };
+
   /** Moves a response phase on as if nobody objected. */
   const settleUnanswered = (state: GameState) => {
     const action = state.currentAction;
@@ -230,6 +250,7 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
     } else if (state.phase === 'waiting_for_blocks') {
          applyActionEffect(state);
     } else if (state.phase === 'waiting_for_block_challenges') {
+         blockStands(state);
          addLog(state, SYSTEM, { ru: 'Блок принят. Действие отменено.', en: 'Block accepted. The action is cancelled.' });
          nextTurn(state);
     }
@@ -274,9 +295,11 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
       newState.pendingPlayerId = challenger.id;
 
       newState.currentAction.nextPhase = isBlockChallenge ? 'blocked_end' : 'continue_action';
+      if (!isBlockChallenge) newState.currentAction.proven = true;
 
     } else {
       addLog(newState, accused.name, { ru: 'Блефовал — нужной карты нет!', en: 'Was bluffing — no such card!' });
+      bump(challenger, 'challengesWon');
       newState.phase = 'losing_influence';
       newState.pendingPlayerId = accused.id;
 
@@ -507,6 +530,13 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
       if (!action) return;
       const actor = state.players.find(p => p.id === action.player);
       const target = state.players.find(p => p.id === action.target);
+      // A claim that takes effect without the card behind it is a bluff that
+      // worked. Not after a challenge the actor won: the card shown was
+      // swapped for a random one, so what they hold now proves nothing.
+      if (actor && ['tax', 'steal', 'assassinate', 'exchange'].includes(action.type) &&
+          !action.proven && !holds(actor, action.type, false)) {
+          bump(actor, 'bluffs');
+      }
       if (!actor) {
           // The actor left the game — do not hang in the phase, advance the turn
           addLog(state, SYSTEM, { ru: 'Автор действия вышел. Действие отменено.', en: 'The player acting has left. The action is cancelled.' });
@@ -636,6 +666,9 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
      const snapshot = gameStateRef.current;
      if (!snapshot || snapshot.status === 'finished') return;
 
+     // Walking out of a match in progress is losing it.
+     if (snapshot.status === 'playing') await record(snapshot, 'loss', true);
+
      const others = (snapshot.players || []).filter((p: Player) => p.id !== userId);
      if (others.length === 0) {
          await deleteLobby();
@@ -660,27 +693,39 @@ export function useCoupGame(lobbyId: string | null, userId: string | undefined) 
      });
   };
 
-  // TRACK GAME END TO RECORD STATISTICS
-  useEffect(() => {
-      if (gameState?.status === 'finished' && userId && !lobbyDeleted) {
-          const me = gameState.players.find(p => p.id === userId);
-          // The winner is identified by id (robust to duplicate names);
-          // falls back to "I am alive" for legacy states without winnerId
-          const isWinner = gameState.winnerId ? gameState.winnerId === userId : (me && !me.isDead);
-
-          if (me) {
-              // Actual match duration; 900s fallback for legacy states
-              const duration = gameState.startTime
-                  ? Math.max(1, Math.round((now() - gameState.startTime) / 1000))
-                  : 900;
-              updatePlayerStats(userId, {
-                  gameType: 'coup',
-                  result: isWinner ? 'win' : 'loss',
-                  durationSeconds: duration
-              });
+  /**
+   * Records this player's match. Keyed by the match, so the finish, a reload
+   * of the results and a leave racing the finish all count it once.
+   */
+  const record = (state: GameState, result: 'win' | 'loss', left = false) => {
+      const me = state.players.find(p => p.id === userId);
+      if (!lobbyId || !me || !state.startTime) return Promise.resolve(false);
+      return recordMatch({
+          game: 'coup',
+          key: matchKey(lobbyId, state.startTime),
+          result,
+          durationSeconds: matchSeconds(state.startTime, left ? now() : state.lastActionTime, 900),
+          details: {
+              cardsLost: me.cards.filter(c => c.revealed).length,
+              coins: me.coins,
+              challengesWon: me.tally?.challengesWon ?? 0,
+              bluffs: me.tally?.bluffs ?? 0,
+              coups: me.tally?.coups ?? 0,
+              ...(left ? { left: true } : {})
           }
-      }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- fire once when the match finishes; adding gameState.players would re-record stats
+      });
+  };
+
+  // The finished match, recorded once for this player (see `record`).
+  useEffect(() => {
+      if (gameState?.status !== 'finished' || !userId || lobbyDeleted) return;
+      const me = gameState.players.find(p => p.id === userId);
+      if (!me) return;
+      // By id, robust to two players with one name; rooms from before winnerId
+      // fall back to "still alive".
+      const won = gameState.winnerId ? gameState.winnerId === userId : !me.isDead;
+      record(gameState, won ? 'win' : 'loss');
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- once per finished match; the key makes a repeat harmless
   }, [gameState?.status, userId, lobbyDeleted]);
 
   return { gameState, roomMeta, loading, lobbyDeleted, initGame, performAction, startGame, leaveGame, pass, challenge, block, resolveLoss, resolveExchange, skipTurn };

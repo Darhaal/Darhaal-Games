@@ -321,11 +321,11 @@ export const GAMES_CONTENT: GameContent[] = [
         ...localeFacts('flager', 'ru'),
         metaTitle: 'Флагер — викторина «угадай флаг»',
         metaDescription:
-          'Географическая викторина на флаги с механикой Pixel Match: флаг проявляется постепенно, чем раньше ответишь — тем больше очков. Соло и до 4 игроков.',
+          'Географическая викторина на флаги с механикой Pixel Match: флаг проявляется постепенно, чем раньше ответишь — тем больше очков. Соло и до 20 игроков.',
         intro: [
           'Флагер — викторина на знание флагов стран мира. Флаг не показывают целиком: он проявляется пиксель за пикселем, и чем раньше вы его узнаете, тем больше очков получите за раунд.',
           'Механика Pixel Match превращает обычный тест в гонку интуиции. Опытный игрок ловит страну по паре характерных цветовых пятен, новичок дожидается узнаваемого силуэта — и оба остаются в игре.',
-          'Играть можно в одиночку, тренируя географию, или компанией до четырёх человек: все получают одну и ту же цепочку флагов, а очки суммируются по раундам.'
+          'Играть можно в одиночку, тренируя географию, или компанией до двадцати человек: все получают одну и ту же цепочку флагов, а очки суммируются по раундам.'
         ],
         howToPlay: [
           'Выберите количество раундов и длительность каждого из них.',
@@ -339,7 +339,7 @@ export const GAMES_CONTENT: GameContent[] = [
           'Более двухсот стран и территорий',
           'Механика постепенного проявления Pixel Match',
           'Автодополнение с управлением с клавиатуры',
-          'Соло-тренировка и мультиплеер до четырёх игроков',
+          'Соло-тренировка и мультиплеер до двадцати игроков',
           'Настраиваемое число раундов и таймер',
           'История ответов и точность в статистике'
         ],
@@ -378,11 +378,11 @@ export const GAMES_CONTENT: GameContent[] = [
         ...localeFacts('flager', 'en'),
         metaTitle: 'Flager — guess the country flag quiz online',
         metaDescription:
-          'A flag quiz with a Pixel Match twist: the flag resolves gradually and answering earlier scores higher. Play solo or with up to four players.',
+          'A flag quiz with a Pixel Match twist: the flag resolves gradually and answering earlier scores higher. Play solo or with up to twenty players.',
         intro: [
           'Flager is a quiz about the flags of the world. The flag is never shown outright — it resolves pixel by pixel, and the sooner you recognise it, the more points the round is worth.',
           'The Pixel Match mechanic turns a plain test into a race of intuition. Experienced players catch a country from a couple of characteristic colour patches, newcomers wait for a recognisable shape, and both stay in the game.',
-          'Play solo to drill your geography, or with up to four people: everyone gets the same chain of flags and points accumulate across rounds.'
+          'Play solo to drill your geography, or with up to twenty people: everyone gets the same chain of flags and points accumulate across rounds.'
         ],
         howToPlay: [
           'Choose how many rounds to play and how long each one lasts.',
@@ -396,7 +396,7 @@ export const GAMES_CONTENT: GameContent[] = [
           'Over two hundred countries and territories',
           'Gradual Pixel Match reveal',
           'Autocomplete with full keyboard control',
-          'Solo practice and multiplayer for up to four',
+          'Solo practice and multiplayer for up to twenty',
           'Configurable round count and timer',
           'Answer history and accuracy tracking'
         ],
@@ -1151,7 +1151,7 @@ export const HOME_CONTENT: Record<Locale, HomeCopy> = {
       },
       {
         q: 'Сколько человек можно позвать?',
-        a: 'Зависит от игры: Морской бой и Реверси рассчитаны на двоих; Сапёр, Флагер, Стены и «Точки и квадраты» — до четырёх; Переворот — до шести; Шпион — до двенадцати.'
+        a: 'Зависит от игры: Морской бой и Реверси рассчитаны на двоих; Сапёр, Стены и «Точки и квадраты» — до четырёх; Переворот — до шести; Шпион — до двенадцати; Флагер — до двадцати.'
       },
       {
         q: 'Это бесплатно?',
@@ -1201,7 +1201,7 @@ export const HOME_CONTENT: Record<Locale, HomeCopy> = {
       },
       {
         q: 'How many people can join?',
-        a: 'It depends on the game: Battleship and Reversi are for two; Minesweeper, Flager, Wall Rush and Dots & Boxes take up to four; Coup up to six; and Spyfall up to twelve.'
+        a: 'It depends on the game: Battleship and Reversi are for two; Minesweeper, Wall Rush and Dots & Boxes take up to four; Coup up to six; Spyfall up to twelve; and Flager up to twenty.'
       },
       {
         q: 'Is it free?',

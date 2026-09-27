@@ -86,7 +86,12 @@ sitemap entry, hreflang pair, OG image and JSON-LD are all generated.
 see: that the route file exists, that both rulebooks are non-empty, that the
 public content exists and agrees with the registry, that option defaults are
 actually selectable, and that the starting state seats the host with a sane cap.
-`tests/game-screens.test.ts` checks the screen is built from the shared parts.
+`tests/game-screens.test.ts` checks the screen is built from the shared parts,
+and `tests/match-records.test.ts` that the hook records its matches through
+`recordMatch` — keyed by the match, and a loss for walking out. The game also
+needs its achievements: a title for its ladder of wins and at least one feat in
+`src/achievements/definitions.ts`, both keyed by `GameId`, so the type check
+names what is missing.
 To test the game's hook itself, seat players on the in-memory room in
 `tests/support/` the way `tests/coup-flow.test.ts` does.
 
@@ -96,18 +101,21 @@ npx tsc --noEmit && npm run lint && npm test && npm run build
 
 ## What you do not have to touch
 
-The create screen, the lobby list, the achievements grid, `UniversalLobby`,
-`playerStats.ts`, `sitemap.ts` and the OG image generator all read the registry.
+The create screen, the lobby list, the progress page, `UniversalLobby`,
+`sitemap.ts` and the OG image generator all read the registry.
 If you find yourself editing one of them to add a game, that is a sign the fact
 belongs in the registry instead.
 
 ## Statistics
 
-Set `hasSoloMode: true` when a match can be played alone — `playerStats.ts` then
-splits that game's record into solo and multiplayer, and the achievements grid
-renders two cards. Set `extraStat` when the game counts something of its own
-beyond wins, losses and time (Minesweeper counts mines found, Flager counts
-flags guessed); it appears as a fourth figure on the card.
+Record each match from the hook with `recordMatch` (see Flager or Dots): the
+key is the match, the result is this player's, and walking out of a match in
+progress records a loss. Put what the game's feats need to know into
+`details`, and a per-match number (points, boxes) into `score`.
+
+Set `hasSoloMode: true` when a match can be played alone — the progress page
+then splits the game's record into solo and together. Set `bestScore` when the
+game records a `score`; it labels the personal record on the game's card.
 
 ## Before you write any of it
 

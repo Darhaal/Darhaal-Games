@@ -45,10 +45,13 @@ export default function PlayersCard({
   label?: string;
 }) {
   const t = T[lang];
+  // A big table (Flager takes twenty) scrolls inside the card rather than
+  // stretching the page far below the board.
+  const long = rows.length > 8;
 
   return (
-    <GameCard label={label ?? t.players}>
-      <div className="space-y-1.5">
+    <GameCard label={label ?? `${t.players}${long ? ` · ${rows.length}` : ''}`}>
+      <div className={`space-y-1.5 ${long ? 'max-h-[30rem] overflow-y-auto -mr-2 pr-2' : ''}`}>
         {rows.map((p) => (
           <div
             key={p.id}

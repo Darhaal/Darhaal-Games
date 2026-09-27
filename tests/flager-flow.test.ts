@@ -2,7 +2,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('@/lib/supabase', () => import('./support/fakeSupabase'));
-vi.mock('@/lib/playerStats', () => ({ updatePlayerStats: vi.fn() }));
+vi.mock('@/lib/matchRecords', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/matchRecords')>()),
+  recordMatch: vi.fn(async () => true)
+}));
 
 import { db } from './support/fakeSupabase';
 import { seat, play } from './support/players';

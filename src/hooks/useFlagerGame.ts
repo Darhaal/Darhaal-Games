@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { FlagerState, FlagerPlayerState } from '@/types/flager';
 import { requireGame, roomCapacity } from '@/games/registry';
 import { COUNTRY_CODES } from '@/data/flager/countries';
-import { updatePlayerStats } from '@/lib/playerStats';
+import { recordMatch, matchKey } from '@/lib/matchRecords';
 import { useLobbySync } from '@/hooks/core/useLobbySync';
 import { calcFlagerPoints, FLAGER_BETWEEN_ROUNDS_SECONDS } from '@/lib/gameLogic/flager';
 import { pushNotice, leftTheGame } from '@/lib/notifications';
@@ -117,6 +117,7 @@ export function useFlagerGame(lobbyId: string | null, userId: string | undefined
       targetChain: flags,
       currentRoundIndex: 0,
       roundStartTime: Date.now() + START_DELAY,
+      playedSeconds: 0,
       players: currentGs.players.map(p => ({
           ...p,
           guesses: [],
@@ -146,11 +147,18 @@ export function useFlagerGame(lobbyId: string | null, userId: string | undefined
                    flagCode: targetFlag,
                    isCorrect: wasCorrect,
                    attempts: p.guesses ? p.guesses.length : 0,
-                   points: p.roundScore
+                   points: p.roundScore,
+                   ...(wasCorrect && typeof p.roundSeconds === 'number' ? { seconds: p.roundSeconds } : {})
                });
+               delete p.roundSeconds;
           });
           newState.status = 'round_end';
           newState.roundEndedAt = Date.now();
+          // Time actually spent guessing, capped at the round: a round closed
+          // late on someone's behalf did not last longer for anyone.
+          const roundSeconds = Math.round((Date.now() - newState.roundStartTime) / 1000);
+          newState.playedSeconds = (newState.playedSeconds || 0) +
+              Math.max(0, Math.min(roundSeconds, newState.settings.roundDuration || 60));
       }
   };
 
@@ -211,6 +219,7 @@ export function useFlagerGame(lobbyId: string | null, userId: string | undefined
 
           pState.score = (pState.score || 0) + points;
           pState.roundScore = points;
+          pState.roundSeconds = Math.round(timeTaken);
           pState.hasFinishedRound = true;
       } else if (attemptsUsed >= 10) {
           pState.hasFinishedRound = true;
@@ -301,6 +310,9 @@ export function useFlagerGame(lobbyId: string | null, userId: string | undefined
      const snapshot = gameStateRef.current;
      if (!snapshot || snapshot.status === 'finished') return;
 
+     // Walking out of a match in progress is losing it.
+     if (snapshot.status === 'playing' || snapshot.status === 'round_end') await record(snapshot, true);
+
      // Last one out switches off the lights. The RPC re-checks server-side and
      // refuses while anyone else is still in the room.
      const others = (snapshot.players || []).filter((p) => p.id !== userId);
@@ -371,29 +383,51 @@ export function useFlagerGame(lobbyId: string | null, userId: string | undefined
     });
   };
 
-  useEffect(() => {
-      if (gameState?.status === 'finished' && userId && !lobbyDeleted) {
-          if (gameState.players && Array.isArray(gameState.players)) {
-              const me = gameState.players.find(p => p.id === userId);
-              if (me) {
-                  const sorted = [...gameState.players].sort((a, b) => b.score - a.score);
-                  const isWinner = sorted[0].id === userId;
-                  const duration = (gameState.targetChain.length * (gameState.settings.roundDuration || 60));
-                  // Mode and flags-guessed count — parity with Minesweeper statistics
-                  const mode = gameState.players.length > 1 ? 'multi' as const : 'single' as const;
-                  const flagsGuessed = (me.history || []).filter(h => h.isCorrect).length;
-
-                  updatePlayerStats(userId, {
-                      gameType: 'flager',
-                      result: isWinner ? 'win' : 'loss',
-                      durationSeconds: duration,
-                      mode: mode,
-                      extraCount: flagsGuessed
-                  });
-              }
+  /**
+   * Records this player's match. Keyed by the match — its chain of flags,
+   * which no two matches share — so a reload or a leave counts it once.
+   *
+   * Played together, the top score wins (a tie wins for everyone on it).
+   * Played alone there is no one to beat, and every solo match used to count
+   * as a win; now it is a win when more than half the flags were named.
+   * The length is time spent guessing, not rounds × the round's limit.
+   */
+  const record = (state: FlagerState, left = false) => {
+      const me = state.players.find(p => p.id === userId);
+      if (!lobbyId || !me || state.targetChain.length === 0) return Promise.resolve(false);
+      const history = me.history || [];
+      const guessed = history.filter(h => h.isCorrect).length;
+      const rounds = state.targetChain.length;
+      const solo = state.players.length === 1;
+      const top = Math.max(...state.players.map(p => p.score || 0));
+      const won = !left && (solo ? guessed * 2 > rounds : (me.score || 0) >= top);
+      const times = history.filter(h => h.isCorrect && typeof h.seconds === 'number').map(h => h.seconds!);
+      const fastest = times.length ? Math.min(...times) : null;
+      return recordMatch({
+          game: 'flager',
+          key: matchKey(lobbyId, state.targetChain.join('-')),
+          result: won ? 'win' : 'loss',
+          mode: solo ? 'single' : 'multi',
+          durationSeconds: state.playedSeconds ?? rounds * (state.settings.roundDuration || 60),
+          score: me.score || 0,
+          details: {
+              rounds,
+              guessed,
+              firstTry: history.filter(h => h.isCorrect && h.attempts === 1).length,
+              // Named on the last of the ten guesses.
+              lastChance: history.filter(h => h.isCorrect && h.attempts >= 10).length,
+              players: state.players.length,
+              ...(fastest !== null ? { fastest } : {}),
+              ...(left ? { left: true } : {})
           }
-      }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- fire once when the match finishes; adding gameState.players would re-record stats
+      });
+  };
+
+  // The finished match, recorded once for this player (see `record`).
+  useEffect(() => {
+      if (gameState?.status !== 'finished' || !userId || lobbyDeleted || !Array.isArray(gameState.players)) return;
+      record(gameState);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- once per finished match; the key makes a repeat harmless
   }, [gameState?.status, userId, lobbyDeleted]);
 
   return {

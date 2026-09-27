@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import type { DotsPlayer, DotsState, Edge } from '@/types/dots';
-import { updatePlayerStats } from '@/lib/playerStats';
+import { recordMatch, matchKey, matchSeconds } from '@/lib/matchRecords';
 import { useLobbySync } from '@/hooks/core/useLobbySync';
 import { requireGame, roomCapacity } from '@/games/registry';
 import { randomOf } from '@/lib/turnOrder';
@@ -127,6 +127,13 @@ export function useDotsGame(lobbyId: string | null, userId: string | undefined) 
 
       const next = result.state;
       next.lastEdge = edge;
+      // A run of boxes in one turn, for the statistics: it grows while the
+      // player keeps closing boxes and ends when the turn passes.
+      const mover = next.players.find((p) => p.id === userId);
+      if (mover) {
+        mover.chain = result.claimed > 0 ? (mover.chain || 0) + result.claimed : 0;
+        mover.bestChain = Math.max(mover.bestChain || 0, mover.chain);
+      }
       if (result.claimed === 0) advanceTurn(next);
       else next.turnDeadline = now() + next.settings.turnDuration * 1000;
 
@@ -153,6 +160,29 @@ export function useDotsGame(lobbyId: string | null, userId: string | undefined) 
     });
   };
 
+  /**
+   * Records this player's match. Keyed by the match, so the finish, a reload
+   * of the results and a leave racing the finish all count it once.
+   */
+  const record = (state: DotsState, result: 'win' | 'loss', left = false) => {
+    const me = state.players.find((p) => p.id === userId);
+    if (!lobbyId || !me || !state.startTime) return Promise.resolve(false);
+    return recordMatch({
+      game: 'dots',
+      key: matchKey(lobbyId, state.startTime),
+      result,
+      durationSeconds: matchSeconds(state.startTime, left ? now() : state.lastActionTime, 300),
+      score: boxTally(state)[me.id] || 0,
+      details: {
+        boxesTotal: state.size * state.size,
+        size: state.size,
+        bestChain: me.bestChain || 0,
+        ...(state.winnerIds.length > 1 && state.winnerIds.includes(me.id) ? { draw: true } : {}),
+        ...(left ? { left: true } : {})
+      }
+    });
+  };
+
   const leaveGame = async () => {
     if (!lobbyId || !userId) return;
 
@@ -160,6 +190,9 @@ export function useDotsGame(lobbyId: string | null, userId: string | undefined) 
     // the results the other players are still looking at.
     const snapshot = gameStateRef.current;
     if (!snapshot || snapshot.status === 'finished') return;
+
+    // Walking out of a match in progress is losing it.
+    if (snapshot.status === 'playing') await record(snapshot, 'loss', true);
 
     const others = (snapshot.players || []).filter((p) => p.id !== userId);
     if (others.length === 0) {
@@ -207,23 +240,11 @@ export function useDotsGame(lobbyId: string | null, userId: string | undefined) 
     });
   };
 
+  // The finished match, recorded once for this player (see `record`).
   useEffect(() => {
-    if (gameState?.status === 'finished' && userId && !lobbyDeleted && gameState.winnerIds.length > 0) {
-      const me = gameState.players.find((p) => p.id === userId);
-      if (me) {
-        const duration = gameState.startTime
-          ? Math.max(1, Math.round((now() - gameState.startTime) / 1000))
-          : 300;
-
-        updatePlayerStats(userId, {
-          gameType: 'dots',
-          result: gameState.winnerIds.includes(userId) ? 'win' : 'loss',
-          durationSeconds: duration,
-          extraCount: boxTally(gameState)[userId] || 0
-        });
-      }
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- fire once when the match finishes; adding gameState.players would re-record stats
+    if (gameState?.status !== 'finished' || !userId || lobbyDeleted || gameState.winnerIds.length === 0) return;
+    record(gameState, gameState.winnerIds.includes(userId) ? 'win' : 'loss');
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- once per finished match; the key makes a repeat harmless
   }, [gameState?.status, userId, lobbyDeleted]);
 
   return {

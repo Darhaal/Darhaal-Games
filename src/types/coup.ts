@@ -25,6 +25,16 @@ export interface Player {
   isDead: boolean;
   isHost: boolean;
   isReady: boolean;
+  /** What this player pulled off this match — for the statistics. */
+  tally?: CoupTally;
+}
+
+export interface CoupTally {
+  /** Challenges that caught someone without the card they claimed. */
+  challengesWon: number;
+  /** Claims and blocks that went through without the card behind them. */
+  bluffs: number;
+  coups: number;
 }
 
 export type ActionResolution = 'blocked_end' | 'continue_action' | 'action_cancelled';
@@ -35,6 +45,8 @@ export interface PendingAction {
   target?: string;
   blockedBy?: string;
   nextPhase?: GamePhase | ActionResolution;
+  /** The claim survived a challenge — the card shown was replaced, so what the actor holds now proves nothing. */
+  proven?: boolean;
 }
 
 /** Text written once into shared state and read in either language. */

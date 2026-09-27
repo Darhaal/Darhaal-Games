@@ -37,9 +37,10 @@ src/
 │   │                     #   useFlagerGame, useMinesweeperGame, useSpyfallGame,
 │   │                     #   usePresenceHeartbeat, useLang)
 │   └── core/             # useLobbySync — shared sync layer for all games
-├── lib/                  # supabase.ts, gameStateSync.ts (CAS writes), playerStats.ts,
+├── lib/                  # supabase.ts, gameStateSync.ts (CAS writes), matchRecords.ts,
 │   │                     #   toast.ts, sound.ts, errors.ts
 │   └── gameLogic/        # Pure game logic (covered by unit tests)
+├── achievements/         # Progress, achievements and levels — pure, from match history
 ├── games/                # The game registry — see docs/adding-a-game.md
 │                         #   registry.ts (server-safe facts), icons.ts,
 │                         #   options.ts (create-screen controls as data),

@@ -1,6 +1,6 @@
 # Backlog
 
-State after **v2.10.0**. This is the real list, including the things that
+State after **v2.11.0**. This is the real list, including the things that
 are open on purpose — see [docs/security.md](docs/security.md) for the
 reasoning behind the accepted risks.
 
@@ -54,6 +54,15 @@ Rechecked 2026-09-25.
 ## Done
 
 Kept short — the [changelog](CHANGELOG.md) has the full history.
+
+**Statistics that count each match once (2.11.0).** Totals were a JSON blob
+rewritten from the browser after every match, and the live data showed what
+that cost: a reload of the results counted the match again, a walk-out gave
+the stayer a win and the leaver nothing, Minesweeper missed everyone still
+sweeping when someone won, and solo Flager counted every game as a win. Each
+match is now one row per player under a key the database will not accept
+twice; totals, streaks, records, 63 achievements and a level are computed from
+that history plus the old totals kept as a frozen baseline.
 
 **The state machines are tested (2.10.0).** Coup's phases, Flager's
 rounds and the write path's retry loop were only exercised by playing. The

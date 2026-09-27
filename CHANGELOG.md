@@ -7,6 +7,59 @@ releasing.
 Format: [Semantic Versioning](https://semver.org/). Types: **major** = platform
 milestone, **minor** = new game mode / feature, **patch** = fixes & improvements.
 
+## [2.11.0] — 2026-09-26 (minor) — **Every Match Counts**
+
+> Every finished match kept once, counted honestly, and turned into
+> achievements, a level and a history.
+
+### Added
+- **Achievements.** 63 of them, 93 steps in all.
+  - *Ladders* climb bronze, silver, gold: matches played, wins, hours at the
+    table, winning streaks, days in a row, trying every game, winning at every
+    game, and a ladder of wins for each game.
+  - *Feats* are one thing done once — four for anyone (a match after
+    midnight, ten in a day, a win after five losses, a half-hour match) and
+    four to seven for each game: a Minesweeper board cleared without a single
+    flag, every flag of a match named on the first guess, a flag in three
+    seconds, a fleet sunk in 40 shots, three bluffs in a winning Coup, the spy
+    lasting the whole round, a Wall Rush won in the fewest moves, five boxes
+    in one turn, all four corners in Reversi — and a few for the unlucky:
+    a mine with one cell to go, an innocent convicted on your word.
+- The games now keep what the feats need: shots fired, pawn moves, boxes
+  closed in one turn, bluffs and challenges won, how fast each flag was named.
+
+### Changed
+- **Flager takes up to 20 players** (was 4): everyone answers the same flag at
+  once, so a whole class can play. A long list of players scrolls inside its
+  card instead of stretching the page.
+- **A level.** Experience for every match, more for a win and for time played,
+  and a lump for each achievement step; the progress page shows the level and
+  how far it is to the next.
+- **Match history.** Every match you finish is kept: the game, the result, how
+  long it took, when. The progress page lists it, and builds streaks and
+  personal records from it — fastest win, best score, solo against together.
+- **"Achievement unlocked"** appears at the end of the match that earned it.
+- **The progress page, redone** in the site's style: level and totals on top,
+  then Achievements (by group, with the next step and how far off it is),
+  Games and History. `/achievements?tab=history` opens a tab directly.
+
+### Fixed
+- **A finished match was counted again on every reload** of its results, and
+  with a longer time each time. Each match is now one row with its own key,
+  and the database ignores a second write of it.
+- **Walking out of a match did not count as a loss** — the player who stayed
+  got the win, the one who left got nothing (Battleship showed 11 wins against
+  8 losses between two sides).
+- **Minesweeper recorded nothing for players still on their board** when
+  someone else won; and it recorded from inside a write that can be retried.
+- **Flager alone counted every match as a win,** and its time as rounds ×
+  the round limit (about 30 hours too many across all players). A solo match
+  is now a win with more than half the flags; time is time spent guessing.
+- Match times are kept in seconds, not rounded up to a minute each.
+- Two matches finishing at once could lose one of them.
+- The old totals are kept as a baseline: one player's ten hidden Flager
+  matches restored, a removed game's leftovers dropped.
+
 ## [2.10.0] — 2026-09-25 (minor) — **One Table for Every Game**
 
 > Every game screen in the same hand, an interface that reads in English from

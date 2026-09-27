@@ -26,6 +26,9 @@ export interface DotsPlayer {
   seat: number;
   /** Boxes closed in this match. */
   score: number;
+  /** Boxes closed so far in the current turn, and the most in any one turn — for the statistics. */
+  chain?: number;
+  bestChain?: number;
 }
 
 export interface DotsState {

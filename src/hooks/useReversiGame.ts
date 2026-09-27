@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import type { ReversiPlayer, ReversiState } from '@/types/reversi';
-import { updatePlayerStats } from '@/lib/playerStats';
+import { recordMatch, matchKey, matchSeconds } from '@/lib/matchRecords';
 import { useLobbySync } from '@/hooks/core/useLobbySync';
 import { requireGame, roomCapacity } from '@/games/registry';
 import { shuffled } from '@/lib/turnOrder';
@@ -10,6 +10,20 @@ import {
 import { pushNotice, leftTheGame } from '@/lib/notifications';
 
 const GAME = requireGame('reversi');
+
+/** What the statistics keep about the final position, from one seat's side. */
+function reversiDetails(state: ReversiState, seat: number) {
+  const counts = tally(state.board);
+  const mine = counts[seat] || 0;
+  const others = Object.entries(counts).filter(([s]) => Number(s) !== seat).map(([, n]) => n);
+  const n = state.size;
+  const corners = [0, n - 1, n * (n - 1), n * n - 1].filter((i) => state.board[i] === seat).length;
+  return {
+    corners,
+    opponentDiscs: others.reduce((a, b) => a + b, 0),
+    margin: mine - Math.max(0, ...others)
+  };
+}
 
 // Module-level helper: sidesteps the react-compiler purity heuristic
 // (Date.now inside event handlers is a legitimate use)
@@ -169,6 +183,23 @@ export function useReversiGame(lobbyId: string | null, userId: string | undefine
     });
   };
 
+  /**
+   * Records this player's match. Keyed by the match, so the finish, a reload
+   * of the results and a leave racing the finish all count it once.
+   */
+  const record = (state: ReversiState, result: 'win' | 'loss', left = false) => {
+    const me = state.players.find((p) => p.id === userId);
+    if (!lobbyId || !me || !state.startTime) return Promise.resolve(false);
+    return recordMatch({
+      game: 'reversi',
+      key: matchKey(lobbyId, state.startTime),
+      result,
+      durationSeconds: matchSeconds(state.startTime, left ? now() : state.lastActionTime, 600),
+      score: tally(state.board)[me.seat] || 0,
+      details: { ...reversiDetails(state, me.seat), ...(left ? { left: true } : {}) }
+    });
+  };
+
   const leaveGame = async () => {
     if (!lobbyId || !userId) return;
 
@@ -176,6 +207,9 @@ export function useReversiGame(lobbyId: string | null, userId: string | undefine
     // the results the other player is still looking at.
     const snapshot = gameStateRef.current;
     if (!snapshot || snapshot.status === 'finished') return;
+
+    // Walking out of a match in progress is losing it.
+    if (snapshot.status === 'playing') await record(snapshot, 'loss', true);
 
     const others = (snapshot.players || []).filter((p) => p.id !== userId);
     if (others.length === 0) {
@@ -209,23 +243,11 @@ export function useReversiGame(lobbyId: string | null, userId: string | undefine
     });
   };
 
+  // The finished match, recorded once for this player (see `record`).
   useEffect(() => {
-    if (gameState?.status === 'finished' && userId && !lobbyDeleted && gameState.winnerIds.length > 0) {
-      const me = gameState.players.find((p) => p.id === userId);
-      if (me) {
-        const duration = gameState.startTime
-          ? Math.max(1, Math.round((now() - gameState.startTime) / 1000))
-          : 600;
-
-        updatePlayerStats(userId, {
-          gameType: 'reversi',
-          result: gameState.winnerIds.includes(userId) ? 'win' : 'loss',
-          durationSeconds: duration,
-          extraCount: tally(gameState.board)[me.seat] || 0
-        });
-      }
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- fire once when the match finishes; adding gameState.players would re-record stats
+    if (gameState?.status !== 'finished' || !userId || lobbyDeleted || gameState.winnerIds.length === 0) return;
+    record(gameState, gameState.winnerIds.includes(userId) ? 'win' : 'loss');
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- once per finished match; the key makes a repeat harmless
   }, [gameState?.status, userId, lobbyDeleted]);
 
   return {

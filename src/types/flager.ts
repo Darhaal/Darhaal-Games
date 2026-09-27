@@ -5,6 +5,8 @@ export interface RoundResult {
   isCorrect: boolean;
   attempts: number;
   points: number;
+  /** Seconds into the round when the flag was named. */
+  seconds?: number;
 }
 
 import type { GameNotification } from './notification';
@@ -29,6 +31,8 @@ export interface FlagerPlayerState {
 
   // Between-round synchronization
   isReadyForNextRound: boolean;
+  /** Seconds into the round of this round's right answer, until it is written into history. */
+  roundSeconds?: number;
 }
 
 export interface FlagerState {
@@ -41,6 +45,8 @@ export interface FlagerState {
   roundStartTime: number; // Round start timestamp for the timer
   /** When the round closed; the next one starts on its own a minute later. */
   roundEndedAt?: number;
+  /** Seconds spent guessing across the rounds so far — the match's length for the statistics. */
+  playedSeconds?: number;
   lastActionTime: number;
   version: number;
 

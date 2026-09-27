@@ -47,16 +47,15 @@ export interface GameDefinition {
   /** Tailwind classes for the small game chip in the lobby list. */
   tint: string;
   /**
-   * Whether a match can be played alone. Statistics are split into
-   * solo/multiplayer for these and kept flat for the rest — see
-   * `src/lib/playerStats.ts`.
+   * Whether a match can be played alone. The progress page splits these
+   * games' matches into solo and together.
    */
   hasSoloMode: boolean;
   /**
-   * Label for the game's own counter on the statistics card, when it keeps
-   * one beyond wins/losses/time.
+   * What the game's per-match `score` counts, for the personal record on the
+   * progress page — only for games that record one (`src/lib/matchRecords.ts`).
    */
-  extraStat?: Record<Locale, string>;
+  bestScore?: Record<Locale, string>;
   /**
    * Key of a `choice` option that fixes the headcount, for games where the
    * mode decides it rather than the host. The create screen then hides the
@@ -93,8 +92,7 @@ export const GAMES: readonly GameDefinition[] = [
     genre: { ru: 'Головоломка', en: 'Puzzle' },
     accent: '#dc2626',
     tint: 'bg-red-50 text-red-600',
-    hasSoloMode: true,
-    extraStat: { ru: 'Мин найдено', en: 'Mines found' }
+    hasSoloMode: true
   },
   {
     id: 'flager',
@@ -103,13 +101,14 @@ export const GAMES: readonly GameDefinition[] = [
       ru: 'Географическая викторина. Угадай флаг по пикселям.',
       en: 'Geography quiz. Guess the flag pixel by pixel.'
     },
-    players: { min: 1, max: 4 },
+    // Everyone answers the same flag at once, so a whole class can play.
+    players: { min: 1, max: 20 },
     playtimeMinutes: 10,
     genre: { ru: 'Викторина', en: 'Quiz' },
     accent: '#0891b2',
     tint: 'bg-blue-50 text-blue-600',
     hasSoloMode: true,
-    extraStat: { ru: 'Флагов угадано', en: 'Flags guessed' }
+    bestScore: { ru: 'Лучший счёт', en: 'Best score' }
   },
   {
     id: 'battleship',
@@ -166,7 +165,8 @@ export const GAMES: readonly GameDefinition[] = [
     genre: { ru: 'Абстрактная стратегия', en: 'Abstract strategy' },
     accent: '#0d9488',
     tint: 'bg-teal-50 text-teal-600',
-    hasSoloMode: false
+    hasSoloMode: false,
+    bestScore: { ru: 'Больше всего квадратов', en: 'Most boxes' }
   },
   {
     id: 'reversi',
@@ -180,7 +180,8 @@ export const GAMES: readonly GameDefinition[] = [
     genre: { ru: 'Абстрактная стратегия', en: 'Abstract strategy' },
     accent: '#334155',
     tint: 'bg-slate-100 text-slate-600',
-    hasSoloMode: false
+    hasSoloMode: false,
+    bestScore: { ru: 'Больше всего фишек', en: 'Most discs' }
   }
 ];
 

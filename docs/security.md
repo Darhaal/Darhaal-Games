@@ -226,6 +226,13 @@ rather than a technical one. Server-side move validation is not planned.
 Revisit only if the platform opens to strangers, adds ranked play, or a
 leaderboard makes a fabricated score worth something.
 
+The same holds for the match history added in 2.11: `record_match` takes the
+result the client reports. What the database does guarantee is that a row
+belongs to its caller (`auth.uid()`, never a parameter), that a match counts
+once (`unique (user_id, match_key)`), and that the values are in range. Nobody
+can read or write another player's history or achievements — checked from
+outside by `scripts/authz-test.mjs`.
+
 ## 8–10. Lower severity
 
 - **Profile enumeration.** `profiles` `SELECT` policy is `true` for `public`, so
@@ -249,8 +256,11 @@ leaderboard makes a fabricated score worth something.
 
 ## What is in good shape
 
-- RLS is enabled and correctly scoped on `player_stats` (owner-only reads,
-  owner-only updates) — verified from outside: anon receives zero rows.
+- RLS is enabled and correctly scoped on `player_stats` (owner-only reads;
+  since 2.11 a read-only baseline with no client `UPDATE`), `match_results`
+  and `achievement_unlocks` (owner-only reads, writes only through
+  `record_match` / `unlock_achievements`) — verified from outside: another
+  guest receives zero rows and a direct insert is refused with 42501.
 - The three v2 RPCs exist, are correctly `SECURITY DEFINER` with pinned
   `search_path`, and are granted only to `anon`/`authenticated`.
 - Password checking genuinely happens server-side in `join_lobby_check`; the

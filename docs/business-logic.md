@@ -212,17 +212,50 @@ board** with the same settings (versus race). Statuses: `waiting → playing →
   locals win +1 to each civilian, +1 bonus to a successful nomination author.
 - **Stats**: recorded on every finished round (win for the side you were on).
 
-## Statistics (`lib/playerStats.ts`)
+## Statistics and achievements (2.11)
 
-`updatePlayerStats(userId, {gameType, result, durationSeconds, mode?, extraCount?})`:
+**Recording.** Every finished match is one row per player in `match_results`,
+written by `recordMatch()` (`src/lib/matchRecords.ts`) through the
+`record_match` RPC. The row's key is the match — `<lobbyId>:<start time>`, or
+Flager's chain of flags — and the database ignores a second write of the same
+key, so a reload of the results, or a leave racing the finish, counts once.
 
-- Reads `player_stats` by `user_id` (a row must already exist — created by a
-  DB-side signup trigger; guests without a row are skipped).
-- For **minesweeper/flager with `mode`**: keeps `details[game].single|multi`
-  buckets `{wins, lost, time, extra}` and migrates the legacy flat format on the fly.
-- Otherwise: flat `details[game] = {wins, lost, time}`.
-- `time` is stored in minutes (min 1 per game); `total_games` increments.
-- The achievements page aggregates single+multi and tolerates both formats.
+| Game | Win | Recorded when | Details kept |
+|------|-----|---------------|--------------|
+| Coup | last one standing | finish, or leaving (loss) | `cardsLost`, `coins`, `bluffs`, `challengesWon`, `coups` (from `Player.tally`) |
+| Battleship | fleet left afloat | finish, or leaving mid-battle (loss); a room abandoned during placement is nobody's match | `shipsLost`, `shots` (`PlayerBoard.shotsFired`) |
+| Spyfall | your side (each round is a match) | finish, or leaving (loss) | `spy`, `reason`, `caughtSpy`, `wrongAccusation` |
+| Minesweeper | clearing the board first | the moment your own result is settled: win, mine, time-out, someone else winning (loss), or leaving (loss) | `size`, `mines`, `flags`, `safeLeft`, `byFlags` |
+| Flager | top score, ties included; **alone**: more than half the flags | finish, or leaving (loss) | `rounds`, `guessed`, `firstTry`, `lastChance`, `fastest`, `players`; score = points |
+| Wall Rush | reaching your goal | finish, or leaving (loss) | `mode`, `wallsUsed`, `wallsTotal`, `moves`, `shortest` |
+| Dots & Boxes | most boxes | finish, or leaving (loss) | `boxesTotal`, `size`, `bestChain`, `draw`; score = boxes |
+| Reversi | most discs | finish, or leaving (loss) | `corners`, `opponentDiscs`, `margin`; score = discs |
+
+A Coup *bluff* is an action that takes effect, or a block that stands, when
+its author holds no card behind it — not after a challenge they won, since the
+card shown is swapped for a random one.
+
+A match's length runs from its start to its last write (`lastActionTime`),
+not to whenever the result is opened; Flager's is the time actually spent
+guessing (`playedSeconds`), Spyfall's is capped at the round.
+
+**Baseline.** `player_stats` holds the totals recorded before 2.11 — wins,
+losses and minutes per game — cleaned up and frozen by
+`20260925000001_stats_baseline.sql`. Totals add it to the history; streaks,
+records and the history list come from `match_results` alone.
+
+**Progress** (`src/achievements/`) is computed, not stored: `buildProgress`
+(totals, per-game records, streaks), `evaluate` (every achievement's tier and
+next step), `experience` / `levelOf` (the level). Achievements are *ladders*
+(bronze / silver / gold steps of a count) or *feats* (one thing, one tier);
+per-game ones are keyed by `GameId`. `achievement_unlocks` only remembers when
+each step was first reached — `unlock_achievements` returns the new ones, which
+`AchievementToaster` shows after a match. Tested in `tests/achievements.test.ts`
+and `tests/match-records.test.ts`; the RPCs in `scripts/authz-test.mjs`.
+
+**Experience:** 10 per match, 15 more per win, 1 per minute (at most 30 a
+match), and 50 / 150 / 400 per bronze / silver / gold step. Level *n* needs
+`50·n·(n−1)` in total: 100 for level 2, 300 for 3, 1000 for 5, 4500 for 10.
 
 ## Authentication flows (`AuthForm`, `Settings`, `reset-password`)
 
@@ -231,7 +264,8 @@ board** with the same settings (versus race). Statuses: `waiting → playing →
   email confirmation redirect → current origin.
 - **Sign in**: the single input accepts username *or* email; usernames are
   resolved to email via `profiles`.
-- **Guest**: `signInAnonymously` + random avatar; progress not persisted.
+- **Guest**: `signInAnonymously` + random avatar; progress is kept like anyone's, and
+  removed with the account after 30 days without a match.
 - **Google OAuth**: standard redirect flow.
 - **Password reset**: "Forgot password?" on the login form, or from Settings
   when logged in, via `resetPasswordForEmail` → `/reset-password`.

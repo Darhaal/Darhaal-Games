@@ -1,11 +1,32 @@
+import { useEffect } from 'react';
 import { MinesweeperState, MinesweeperPlayer } from '@/types/minesweeper';
 import { requireGame, roomCapacity } from '@/games/registry';
-import { updatePlayerStats } from '@/lib/playerStats';
+import { recordMatch, matchKey, matchSeconds } from '@/lib/matchRecords';
 import { useLobbySync } from '@/hooks/core/useLobbySync';
 import { generateEmptyBoard, placeMines, openCellIterative, chordCell as chordCellLogic } from '@/lib/gameLogic/minesweeper';
 import { pushNotice, leftTheGame } from '@/lib/notifications';
 
 const GAME = requireGame('minesweeper');
+
+/** What the statistics keep about a player's board when their result is settled. */
+function boardDetails(state: MinesweeperState, player: MinesweeperPlayer) {
+  let flags = 0;
+  let safeLeft = 0;
+  for (const row of player.board) {
+    for (const cell of row) {
+      if (cell.isFlagged) flags++;
+      if (!cell.isMine && !cell.isOpen) safeLeft++;
+    }
+  }
+  return {
+    size: state.settings.width,
+    mines: state.settings.minesCount,
+    flags,
+    safeLeft,
+    // Won by marking every mine rather than by opening every safe cell.
+    byFlags: player.status === 'won' && safeLeft > 0
+  };
+}
 
 /**
  * How far past the time limit any remaining player may close the match out on
@@ -72,41 +93,21 @@ export function useMinesweeperGame(lobbyId: string | null, userId: string | unde
       // IMPORTANT: all callers (revealCell/toggleFlag/chordCell/handleTimeout) invoke this
       // check only for a player who was 'playing' before the action. A 'lost' status here
       // therefore means the loss happened just now and must be processed.
-      const playerCount = Object.keys(newState.players).length;
-      const mode = playerCount > 1 ? 'multi' : 'single';
-
+      //
+      // Results are recorded by the effect below, not here: this runs inside a
+      // retryable updater, which may run more than once.
       if (isWin && player.status === 'playing') {
           player.status = 'won';
           player.score = currentTime;
           newState.status = 'finished';
           newState.winner = player.name;
           newState.winnerId = player.id;
-
-          if (userId && player.id === userId) {
-              updatePlayerStats(userId, {
-                  gameType: 'minesweeper',
-                  result: 'win',
-                  durationSeconds: currentTime,
-                  mode: mode,
-                  extraCount: correctlyFlagged
-              });
-          }
       }
 
       if (player.status === 'lost') {
           player.score = currentTime;
           const active = Object.values(newState.players).filter(p => p.status === 'playing');
           if (active.length === 0) newState.status = 'finished';
-
-          if (userId && player.id === userId) {
-              updatePlayerStats(userId, {
-                  gameType: 'minesweeper',
-                  result: 'loss',
-                  durationSeconds: currentTime,
-                  mode: mode,
-                  extraCount: correctlyFlagged
-              });
-          }
       }
   };
 
@@ -293,6 +294,38 @@ export function useMinesweeperGame(lobbyId: string | null, userId: string | unde
     });
   };
 
+  /**
+   * Records this player's match. Keyed by the match, so recording it again —
+   * the effect firing on a reload, a leave racing the finish — counts once.
+   * A player's own time is kept on their board (`score`) the moment they win
+   * or lose; one still sweeping when someone else wins is timed to the end.
+   */
+  const record = (state: MinesweeperState, result: 'win' | 'loss', left = false) => {
+      const me = userId ? state.players[userId] : undefined;
+      if (!lobbyId || !me || !state.startTime) return Promise.resolve(false);
+      const limit = state.settings.timeLimit || 600;
+      return recordMatch({
+          game: 'minesweeper',
+          key: matchKey(lobbyId, state.startTime),
+          result,
+          mode: Object.keys(state.players).length > 1 ? 'multi' : 'single',
+          durationSeconds: me.score > 0 ? me.score : matchSeconds(state.startTime, left ? Date.now() : state.lastActionTime, limit),
+          details: { ...boardDetails(state, me), ...(left ? { left: true } : {}) }
+      });
+  };
+
+  // Every player's result, as soon as it is settled: their own win or loss,
+  // or a loss when someone else clears the board first. Only the winner and
+  // those who exploded used to be counted.
+  const myStatus = userId ? gameState?.players?.[userId]?.status : undefined;
+  useEffect(() => {
+      if (!gameState || !userId || lobbyDeleted || gameState.status === 'waiting') return;
+      if (myStatus === 'won') record(gameState, 'win');
+      else if (myStatus === 'lost') record(gameState, 'loss');
+      else if (myStatus === 'playing' && gameState.status === 'finished') record(gameState, 'loss');
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- once per settled result; the key makes a repeat harmless
+  }, [gameState?.status, myStatus, userId, lobbyDeleted]);
+
   const leaveGame = async () => {
      if (!lobbyId || !userId) return;
 
@@ -301,6 +334,11 @@ export function useMinesweeperGame(lobbyId: string | null, userId: string | unde
      // the page navigates us out.
      const snapshot = gameStateRef.current;
      if (!snapshot || snapshot.status === 'finished') return;
+
+     // Walking away from a board still in play is losing it.
+     if (snapshot.status === 'playing' && snapshot.players[userId]?.status === 'playing') {
+         await record(snapshot, 'loss', true);
+     }
 
      const othersLeft = Object.values(snapshot.players)
          .some((p) => p.id !== userId && p.status !== 'left');
