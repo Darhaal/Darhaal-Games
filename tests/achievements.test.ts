@@ -63,6 +63,39 @@ describe('buildProgress', () => {
     expect(p.streak).toEqual({ current: 2, best: 3 });
   });
 
+  it('rates only matches against other players', () => {
+    const p = buildProgress(null, [
+      row('flager', 'win', { mode: 'single' }), row('flager', 'win', { mode: 'single' }),
+      row('flager', 'win'), row('flager', 'loss')
+    ]);
+
+    expect(p.games.flager.rated).toEqual({ matches: 2, wins: 1 });
+    expect(p.rated).toEqual({ matches: 2, wins: 1 });
+    // Still counted as matches and wins played.
+    expect(p.games.flager).toMatchObject({ matches: 4, wins: 3 });
+  });
+
+  it('the old totals count towards the rate only for games without a solo mode', () => {
+    const p = buildProgress({
+      dots: { wins: 3, lost: 1, time: 10 },
+      flager: { wins: 150, lost: 7, time: 900 }
+    }, []);
+
+    expect(p.games.dots.rated).toEqual({ matches: 4, wins: 3 });
+    // Flager's baseline folded solo and together into one line: it cannot be rated.
+    expect(p.games.flager.rated).toEqual({ matches: 0, wins: 0 });
+    expect(p.rated).toEqual({ matches: 4, wins: 3 });
+  });
+
+  it('a solo match neither extends nor breaks a streak', () => {
+    const p = buildProgress(null, [
+      row('dots', 'win'), row('flager', 'loss', { mode: 'single' }), row('dots', 'win'),
+      row('minesweeper', 'win', { mode: 'single' }), row('dots', 'win')
+    ]);
+
+    expect(p.streak).toEqual({ current: 3, best: 3 });
+  });
+
   it('keeps each game’s fastest win and best score from the history', () => {
     const p = buildProgress(null, [
       row('minesweeper', 'win', { durationSeconds: 240 }),

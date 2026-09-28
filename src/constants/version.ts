@@ -1,4 +1,4 @@
-export const APP_VERSION = '2.11.0';
+export const APP_VERSION = '2.11.1';
 
 export type VersionType = 'major' | 'minor' | 'patch' | 'init';
 
@@ -12,6 +12,16 @@ export interface VersionLog {
 
 export const VERSION_HISTORY: VersionLog[] = [
   /* ===================== 2.11.x ===================== */
+
+  {
+    ver: '2.11.1',
+    date: '28 SEP 2026',
+    type: 'patch',
+    desc: {
+      ru: 'Процент побед теперь считается только по матчам с соперниками: одиночный «Сапёр» и «Флагер» его больше не завышают и не рвут серию побед. Сами соло-матчи по-прежнему идут в число сыгранных и в достижения.',
+      en: 'The win rate now counts only matches against other players: solo Minesweeper and Flager no longer inflate it or break a winning streak. Solo matches still count as matches played and towards achievements.'
+    }
+  },
 
   {
     ver: '2.11.0',

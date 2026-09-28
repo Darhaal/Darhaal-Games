@@ -7,6 +7,16 @@ releasing.
 Format: [Semantic Versioning](https://semver.org/). Types: **major** = platform
 milestone, **minor** = new game mode / feature, **patch** = fixes & improvements.
 
+## [2.11.1] — 2026-09-28 (patch)
+
+### Changed
+- **Win rate counts only matches against other players.** A solo game beats
+  nobody, so solo Minesweeper and Flager no longer lift (or sink) it, and they
+  neither extend nor break a winning streak. They still count as matches and
+  wins played. The old Minesweeper and Flager totals mixed solo and together
+  in one line, so they stay out of the rate; a game played only alone shows
+  "solo only" instead of a percentage.
+
 ## [2.11.0] — 2026-09-26 (minor) — **Every Match Counts**
 
 > Every finished match kept once, counted honestly, and turned into

@@ -253,6 +253,11 @@ each step was first reached — `unlock_achievements` returns the new ones, whic
 `AchievementToaster` shows after a match. Tested in `tests/achievements.test.ts`
 and `tests/match-records.test.ts`; the RPCs in `scripts/authz-test.mjs`.
 
+**Win rate and streaks** count only matches against other players (`rated`):
+history rows with `mode: 'multi'`, plus the baseline of games without a solo
+mode. The baseline of Minesweeper and Flager folded solo and together into one
+line, so it stays out. Solo matches still count as matches and wins played.
+
 **Experience:** 10 per match, 15 more per win, 1 per minute (at most 30 a
 match), and 50 / 150 / 400 per bronze / silver / gold step. Level *n* needs
 `50·n·(n−1)` in total: 100 for level 2, 300 for 3, 1000 for 5, 4500 for 10.

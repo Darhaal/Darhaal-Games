@@ -46,6 +46,8 @@ export interface GameProgress {
   bestScore: number | null;
   /** Split by mode, from history — for games with a solo mode. */
   modes: Record<MatchMode, { matches: number; wins: number }>;
+  /** Matches against other players — what the win rate is taken from. */
+  rated: { matches: number; wins: number };
   lastPlayedAt: string | null;
 }
 
@@ -57,7 +59,10 @@ export interface Progress {
   games: Record<GameId, GameProgress>;
   /** Newest first. */
   history: MatchRow[];
+  /** Winning streaks against other players; solo matches neither add nor break them. */
   streak: { current: number; best: number };
+  /** Matches against other players, across every game — for the win rate. */
+  rated: { matches: number; wins: number };
   /** Games with at least one match. */
   gamesPlayed: number;
   /** Matches in the baseline, i.e. before history. */
@@ -72,6 +77,7 @@ const emptyGame = (): GameProgress => ({
   fastestWin: null,
   bestScore: null,
   modes: { single: { matches: 0, wins: 0 }, multi: { matches: 0, wins: 0 } },
+  rated: { matches: 0, wins: 0 },
   lastPlayedAt: null
 });
 
@@ -92,6 +98,14 @@ export function buildProgress(baseline: Baseline | null | undefined, rows: reado
     g.matches += wins + lost;
     g.seconds += count(b.time) * 60;
     baselineMatches += wins + lost;
+    // A win rate is a record against other people. Games with a solo mode
+    // kept solo and together apart until 2.11, and the baseline folded them
+    // into one line, so their old totals cannot say which were which and stay
+    // out of it; every other game is played against someone by definition.
+    if (!game.hasSoloMode) {
+      g.rated.matches += wins + lost;
+      g.rated.wins += wins;
+    }
   }
 
   const history = [...rows].sort((a, b) => b.playedAt.localeCompare(a.playedAt));
@@ -102,6 +116,10 @@ export function buildProgress(baseline: Baseline | null | undefined, rows: reado
     g.matches++;
     g.seconds += count(row.durationSeconds);
     g.modes[row.mode === 'single' ? 'single' : 'multi'].matches++;
+    if (row.mode !== 'single') {
+      g.rated.matches++;
+      if (row.result === 'win') g.rated.wins++;
+    }
     if (row.result === 'win') {
       g.wins++;
       g.modes[row.mode === 'single' ? 'single' : 'multi'].wins++;
@@ -115,10 +133,12 @@ export function buildProgress(baseline: Baseline | null | undefined, rows: reado
     if (!g.lastPlayedAt) g.lastPlayedAt = row.playedAt;
   }
 
-  // Streaks read the history oldest first.
+  // Streaks read the history oldest first, and only matches against others:
+  // a solo game is not a win over anyone, and losing one breaks nothing.
   let current = 0;
   let best = 0;
   for (let i = history.length - 1; i >= 0; i--) {
+    if (history[i].mode === 'single') continue;
     current = history[i].result === 'win' ? current + 1 : 0;
     best = Math.max(best, current);
   }
@@ -132,6 +152,10 @@ export function buildProgress(baseline: Baseline | null | undefined, rows: reado
     games,
     history,
     streak: { current, best },
+    rated: {
+      matches: all.reduce((n, g) => n + g.rated.matches, 0),
+      wins: all.reduce((n, g) => n + g.rated.wins, 0)
+    },
     gamesPlayed: all.filter((g) => g.matches > 0).length,
     baselineMatches
   };

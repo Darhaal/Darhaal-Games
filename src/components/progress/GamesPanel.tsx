@@ -35,9 +35,14 @@ export default function GamesPanel({ progress, lang, t }: {
       {games.map((game) => {
         const g = progress.games[game.id];
         const Icon = GAME_ICONS[game.id];
-        const rate = winRate(g.wins, g.matches);
+        // Against other players only; a game played only alone has no rate.
+        const rated = g.rated.matches > 0;
+        const rate = winRate(g.rated.wins, g.rated.matches);
         const empty = g.matches === 0;
         const showModes = game.hasSoloMode && g.modes.single.matches > 0;
+        // No rate: either every recorded match was solo, or all there is are the
+        // old totals, which do not say which matches had rivals.
+        const unratedCaption = g.modes.single.matches > 0 ? t.soloOnly : t.unrated;
 
         return (
           <div key={game.id} className={`bg-white p-5 rounded-2xl border border-[#E6E1DC] shadow-sm ${empty ? 'opacity-60' : ''}`}>
@@ -49,14 +54,14 @@ export default function GamesPanel({ progress, lang, t }: {
                 <div className="min-w-0">
                   <div className="text-base font-black text-[#1A1F26] truncate">{game.name[lang]}</div>
                   <div className="text-xs font-medium text-[#8A9099]">
-                    {empty ? t.noMatches : g.lastPlayedAt ? `${t.lastPlayed}: ${formatDate(g.lastPlayedAt, lang)}` : `${g.matches}`}
+                    {empty ? t.noMatches : g.lastPlayedAt ? `${t.lastPlayed}: ${formatDate(g.lastPlayedAt, lang)}` : t.beforeHistory}
                   </div>
                 </div>
               </div>
               {!empty && (
                 <div className="text-right shrink-0">
-                  <div className="text-xl font-black text-[#1A1F26] tabular-nums leading-none">{rate}%</div>
-                  <div className="text-3xs font-bold uppercase tracking-wider text-[#8A9099] mt-1">{t.winRate}</div>
+                  <div className="text-xl font-black text-[#1A1F26] tabular-nums leading-none">{rated ? `${rate}%` : '—'}</div>
+                  <div className="text-3xs font-bold uppercase tracking-wider text-[#8A9099] mt-1">{rated ? t.winRate : unratedCaption}</div>
                 </div>
               )}
             </div>
@@ -64,7 +69,7 @@ export default function GamesPanel({ progress, lang, t }: {
             {!empty && (
               <>
                 <div className="h-1.5 w-full bg-[#F1F5F9] rounded-full overflow-hidden mb-4">
-                  <div className="h-full bg-[#1A1F26] rounded-full" style={{ width: `${rate}%` }} />
+                  {rated && <div className="h-full bg-[#1A1F26] rounded-full" style={{ width: `${rate}%` }} />}
                 </div>
 
                 <div className="grid grid-cols-3 gap-3">
@@ -80,7 +85,9 @@ export default function GamesPanel({ progress, lang, t }: {
                     {showModes && (
                       <>
                         <Figure label={t.solo} value={`${g.modes.single.wins}/${g.modes.single.matches}`} />
-                        <Figure label={t.together} value={`${g.modes.multi.wins}/${g.modes.multi.matches}`} />
+                        {g.modes.multi.matches > 0 && (
+                          <Figure label={t.together} value={`${g.modes.multi.wins}/${g.modes.multi.matches}`} />
+                        )}
                       </>
                     )}
                   </div>

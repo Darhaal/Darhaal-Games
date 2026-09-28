@@ -122,7 +122,13 @@ export default function ProgressView({ user, loaded, lang, initialTab = 'achieve
       {/* Totals */}
       <section className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         <Stat icon={Gamepad2} label={t.matches} value={progress.matches} note={`${t.losses}: ${progress.losses}`} />
-        <Stat icon={Trophy} label={t.wins} value={progress.wins} note={`${winRate(progress.wins, progress.matches)}% ${t.winRate}`} />
+        {/* The rate is against other players only — a solo game beats nobody. */}
+        <Stat
+          icon={Trophy}
+          label={t.wins}
+          value={progress.wins}
+          note={progress.rated.matches > 0 ? t.vsOthers(winRate(progress.rated.wins, progress.rated.matches)) : t.soloOnly}
+        />
         <Stat icon={Clock} label={t.time} value={formatDuration(progress.seconds, lang)} />
         <Stat icon={Flame} label={t.streak} value={progress.streak.best} note={t.streakNow(progress.streak.current)} />
       </section>

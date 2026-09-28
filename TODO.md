@@ -1,6 +1,6 @@
 # Backlog
 
-State after **v2.11.0**. This is the real list, including the things that
+State after **v2.11.1**. This is the real list, including the things that
 are open on purpose — see [docs/security.md](docs/security.md) for the
 reasoning behind the accepted risks.
 
