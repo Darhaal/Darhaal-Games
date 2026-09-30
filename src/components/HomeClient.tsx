@@ -22,7 +22,7 @@ import type { User as AuthUser } from '@supabase/supabase-js';
 import AuthForm from '@/components/AuthForm';
 import Settings from '@/components/Settings';
 import WelcomeSetup, { needsWelcomeSetup } from '@/components/WelcomeSetup';
-import { APP_VERSION, VERSION_HISTORY, VersionType } from '@/constants/version';
+import { APP_VERSION, VERSION_HISTORY, VersionType, formatReleaseDate } from '@/constants/version';
 import { useLang } from '@/hooks/useLang';
 import { COPYRIGHT } from '@/constants/app';
 import type { UiUser } from '@/types/user';
@@ -77,6 +77,8 @@ function HomeContent({ landing }: { landing: React.ReactNode }) {
       },
       footer: COPYRIGHT,
       changelog: 'Хронология',
+      fixed: 'Исправлено',
+      fullChangelog: 'Вся история изменений',
       catalogue: 'Все игры и правила',
       latest: 'Последнее'
     },
@@ -91,6 +93,8 @@ function HomeContent({ landing }: { landing: React.ReactNode }) {
       },
       footer: COPYRIGHT,
       changelog: 'Timeline',
+      fixed: 'Fixed',
+      fullChangelog: 'Full changelog',
       catalogue: 'All games and rules',
       latest: 'Latest'
     }
@@ -416,14 +420,36 @@ function HomeContent({ landing }: { landing: React.ReactNode }) {
                            <div className={`absolute -left-[5px] top-1.5 w-2 h-2 rounded-full ${getVerColor(log.type)} ring-4 ring-white shadow-sm`} />
                            <div className="flex justify-between items-center mb-1">
                                <span className="text-3xs font-black text-gray-900 bg-gray-50 px-1.5 py-0.5 rounded">{log.ver}</span>
-                               <span className="text-3xs font-bold text-gray-400 uppercase tracking-wide">{log.date}</span>
+                               <span className="text-3xs font-bold text-gray-400 uppercase tracking-wide">{formatReleaseDate(log.date, lang, 'short')}</span>
                            </div>
-                           <div className="text-2xs text-gray-500 leading-snug font-medium">
-                               {log.desc?.[lang]}
-                           </div>
+                           {log.desc && (
+                             <div className="text-2xs text-gray-500 leading-snug font-medium">
+                                 {log.desc[lang]}
+                             </div>
+                           )}
+                           {log.fixes && (
+                             <div className="mt-1.5">
+                               <div className="text-3xs font-black uppercase tracking-widest text-gray-400">{t.fixed}</div>
+                               <ul className="mt-1 space-y-0.5">
+                                 {log.fixes[lang].map((fix) => (
+                                   <li key={fix} className="text-2xs text-gray-500 leading-snug font-medium pl-2.5 relative">
+                                     <span aria-hidden className="absolute left-0 top-1.5 w-1 h-1 rounded-full bg-[#9e1316]/60" />
+                                     {fix}
+                                   </li>
+                                 ))}
+                               </ul>
+                             </div>
+                           )}
                         </div>
                     ))}
                  </div>
+                 {/* The game keeps 2.0 on; every version since the launch is on its own page. */}
+                 <Link
+                   href={lang === 'ru' ? '/changelog' : '/en/changelog'}
+                   className="flex items-center justify-between px-4 py-3 border-t border-gray-100 text-2xs font-black uppercase tracking-widest text-gray-900 hover:text-[#9e1316] transition-colors"
+                 >
+                   {t.fullChangelog} <span aria-hidden>→</span>
+                 </Link>
              </div>
         </div>
 

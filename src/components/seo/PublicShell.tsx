@@ -22,7 +22,8 @@ const T = {
     switch: 'English',
     tagline: 'Играйте с друзьями прямо в браузере',
     rights: 'Все права защищены.',
-    privacy: 'Конфиденциальность'
+    privacy: 'Конфиденциальность',
+    changelog: 'История изменений'
   },
   en: {
     nav: 'Games',
@@ -30,7 +31,8 @@ const T = {
     switch: 'Русский',
     tagline: 'Play with friends right in your browser',
     rights: 'All rights reserved.',
-    privacy: 'Privacy'
+    privacy: 'Privacy',
+    changelog: 'Changelog'
   }
 } as const;
 
@@ -92,6 +94,12 @@ export default function PublicShell({
             {COPYRIGHT}
           </div>
           <div className="flex items-center gap-4">
+            <Link
+              href={localizedPath(locale, '/changelog')}
+              className="text-2xs font-bold uppercase tracking-wider text-gray-500 hover:text-[#9e1316] transition-colors"
+            >
+              {t.changelog}
+            </Link>
             <Link
               href={localizedPath(locale, '/privacy')}
               className="text-2xs font-bold uppercase tracking-wider text-gray-500 hover:text-[#9e1316] transition-colors"

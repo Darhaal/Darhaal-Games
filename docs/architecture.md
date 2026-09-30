@@ -46,7 +46,8 @@ src/
 │                         #   options.ts (create-screen controls as data),
 │                         #   initialState.ts (starting game_state per game)
 ├── content/              # games.ts — public SEO copy, built on the registry
-├── constants/            # coup.ts, rules.ts, version.ts
+├── constants/            # coup.ts, rules.ts, version.ts (2.x, shown in the game),
+│                         #   versionLegacy.ts (1.x, /changelog only)
 ├── data/                 # Static game data (flags, spyfall locations & packs)
 └── types/                # TypeScript types per game
 ```

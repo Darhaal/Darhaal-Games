@@ -39,7 +39,7 @@ probably the most interesting.
 
 - **Live demo:** https://games.okhten.com
 - **Tech stack:** Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS 4 · Supabase
-- **Current version:** `2.1.0` (see [`src/constants/version.ts`](../src/constants/version.ts))
+- **Current version:** see [`src/constants/version.ts`](../src/constants/version.ts); every version with its date is at [/changelog](https://games.okhten.com/changelog)
 
 ## TL;DR
 

@@ -1,6 +1,6 @@
 # Darhaal Games
 
-![Version](https://img.shields.io/badge/version-2.12.1-blue.svg) ![License](https://img.shields.io/badge/license-View%20%26%20Study%20Only-red.svg) ![Tests](https://img.shields.io/badge/tests-836-brightgreen.svg)
+![Version](https://img.shields.io/badge/version-2.12.2-blue.svg) ![License](https://img.shields.io/badge/license-View%20%26%20Study%20Only-red.svg) ![Tests](https://img.shields.io/badge/tests-922-brightgreen.svg)
 
 Nine board, logic and word games you can play with friends in a browser. One person
 creates a room, shares the link, everyone else joins — no install, no account
@@ -120,7 +120,7 @@ not forgotten.
 | Hosting | Vercel |
 
 No state-management library: the shared sync hook and React state cover it.
-Zero `any`, zero `@ts-ignore`, zero dependency vulnerabilities, 836 tests.
+Zero `any`, zero `@ts-ignore`, zero dependency vulnerabilities, 922 tests.
 
 ---
 

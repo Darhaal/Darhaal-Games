@@ -1,21 +1,76 @@
-export const APP_VERSION = '2.12.1';
+export const APP_VERSION = '2.12.2';
 
 export type VersionType = 'major' | 'minor' | 'patch' | 'init';
 
+type Text = { ru: string; en: string };
+
 export interface VersionLog {
   ver: string;
+  /** Release day, YYYY-MM-DD. */
   date: string;
   type: VersionType;
-  title?: { ru: string; en: string };
-  desc: { ru: string; en: string };
+  title?: Text;
+  /** What the version brought. A patch that only fixes things leaves it out. */
+  desc?: Text;
+  /** What it fixed, one bug per line, the same lines in both languages. */
+  fixes?: { ru: string[]; en: string[] };
 }
 
+const MONTHS = {
+  ru: {
+    short: ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'],
+    long: ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря']
+  },
+  en: {
+    short: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+    long: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+  }
+} as const;
+
+/**
+ * A release day for reading: "30 сентября 2026", "30 Sep 2026". Spelled out
+ * from the parts rather than through `Date`, which would read the ISO day as
+ * UTC midnight and show the day before to anyone west of it — and rather
+ * than `Intl`, whose Russian month forms differ between Node and browsers,
+ * so the server and the page would disagree.
+ */
+export function formatReleaseDate(iso: string, lang: 'ru' | 'en', style: 'short' | 'long' = 'long'): string {
+  const [year, month, day] = iso.split('-').map(Number);
+  return `${day} ${MONTHS[lang][style][month - 1]} ${year}`;
+}
+
+/** A span of release days, saying the month and year once where they repeat: "26–28 сен 2026". */
+export function formatReleaseRange(from: string, to: string, lang: 'ru' | 'en'): string {
+  if (from === to) return formatReleaseDate(from, lang);
+  const [y1, m1, d1] = from.split('-').map(Number);
+  const [y2, m2, d2] = to.split('-').map(Number);
+  const month = (m: number) => MONTHS[lang].short[m - 1];
+  if (y1 === y2 && m1 === m2) return `${d1}–${d2} ${month(m2)} ${y2}`;
+  if (y1 === y2) return `${d1} ${month(m1)} — ${d2} ${month(m2)} ${y2}`;
+  return `${formatReleaseDate(from, lang, 'short')} — ${formatReleaseDate(to, lang, 'short')}`;
+}
+
+/**
+ * Versions from 2.0 on, newest first — the history the game itself shows.
+ * The 1.x line lives in `versionLegacy.ts` and only the changelog page
+ * (/changelog) loads it, so the app's bundle does not carry it.
+ */
 export const VERSION_HISTORY: VersionLog[] = [
   /* ===================== 2.12.x ===================== */
 
   {
+    ver: '2.12.2',
+    date: '2026-09-30',
+    type: 'patch',
+    desc: {
+      ru: 'История изменений переехала на свою страницу: все версии с датами, от запуска в январе 2026 года, — что появилось и что исправлено. В игре остаются версии начиная с 2.0 и ссылка на полную историю. Описания версий переписаны: исправления теперь идут отдельным списком.',
+      en: 'The changelog has a page of its own: every version with its date, from the launch in January 2026 — what came and what was fixed. The game keeps the versions from 2.0 on and a link to the full history. The version notes are rewritten, with fixes in a list of their own.'
+    }
+  },
+
+  {
     ver: '2.12.1',
-    date: '30 SEP 2026',
+    date: '2026-09-30',
     type: 'patch',
     desc: {
       ru: 'В Wikiler по умолчанию теперь скрыто 90% слов, а не все: несколько разбросанных слов открыты с самого начала, чтобы первым догадкам было за что зацепиться. Слов из названия среди них не бывает. Хост по-прежнему может выбрать от 50 до 100% в дополнительных настройках.',
@@ -25,7 +80,7 @@ export const VERSION_HISTORY: VersionLog[] = [
 
   {
     ver: '2.12.0',
-    date: '30 SEP 2026',
+    date: '2026-09-30',
     type: 'minor',
     title: { ru: 'Слово за словом', en: 'Word by Word' },
     desc: {
@@ -38,7 +93,7 @@ export const VERSION_HISTORY: VersionLog[] = [
 
   {
     ver: '2.11.1',
-    date: '28 SEP 2026',
+    date: '2026-09-28',
     type: 'patch',
     desc: {
       ru: 'Процент побед теперь считается только по матчам с соперниками: одиночный «Сапёр» и «Флагер» его больше не завышают и не рвут серию побед. Сами соло-матчи по-прежнему идут в число сыгранных и в достижения.',
@@ -48,12 +103,30 @@ export const VERSION_HISTORY: VersionLog[] = [
 
   {
     ver: '2.11.0',
-    date: '26 SEP 2026',
+    date: '2026-09-26',
     type: 'minor',
     title: { ru: 'Каждый матч на счету', en: 'Every Match Counts' },
     desc: {
-      ru: 'Появились достижения — 63 штуки: за матчи, победы, часы в играх, серии и дни подряд, и свои в каждой игре, от разминирования без единого флажка до трёх удачных блефов в «Перевороте». За игры и достижения начисляется опыт, у игрока есть уровень. Каждый законченный матч попадает в историю, из неё считаются рекорды: самая быстрая победа, лучший счёт. Страница «Прогресс» переделана: уровень, итоги, достижения, игры и история. Статистика теперь считается честно: матч больше не засчитывается повторно при перезагрузке, уход из матча — поражение, в «Сапёре» результат получают все участники, а «Флагер» в одиночку больше не засчитывает каждую игру как победу. Во «Флагер» можно играть до 20 человек.',
-      en: 'Achievements are here — 63 of them: for matches, wins, hours played, streaks and days in a row, and each game’s own, from clearing a board without a single flag to three bluffs in one game of Coup. Matches and achievements earn experience, and every player has a level. Every finished match goes into a history, which keeps records such as the fastest win and the best score. The Progress page is rebuilt: level, totals, achievements, games and history. Statistics now count honestly: a match is no longer counted again on a reload, walking out of a match is a loss, every Minesweeper player gets a result, and solo Flager no longer counts every game as a win. Flager takes up to 20 players.'
+      ru: 'Появились достижения — 63 штуки: за матчи, победы, часы в играх, серии и дни подряд, и свои в каждой игре, от разминирования без единого флажка до трёх удачных блефов в «Перевороте». За игры и достижения начисляется опыт, у игрока есть уровень. Каждый законченный матч попадает в историю, из неё считаются рекорды: самая быстрая победа, лучший счёт. Страница «Прогресс» переделана: уровень, итоги, достижения, игры и история. Во «Флагер» можно играть до 20 человек.',
+      en: 'Achievements are here — 63 of them: for matches, wins, hours played, streaks and days in a row, and each game’s own, from clearing a board without a single flag to three bluffs in one game of Coup. Matches and achievements earn experience, and every player has a level. Every finished match goes into a history, which keeps records such as the fastest win and the best score. The Progress page is rebuilt: level, totals, achievements, games and history. Flager takes up to 20 players.'
+    },
+    fixes: {
+      ru: [
+        'Законченный матч засчитывался заново при каждой перезагрузке итогов — и каждый раз с большим временем.',
+        'Уход из матча не считался поражением: оставшийся получал победу, ушедший — ничего.',
+        '«Сапёр» не записывал результат тем, кто ещё открывал своё поле, когда кто-то победил.',
+        '«Флагер» в одиночку засчитывал каждую игру как победу, а время считал как раунды × лимит раунда.',
+        'Время матча округлялось вверх до минуты — теперь хранится в секундах.',
+        'Из двух матчей, закончившихся одновременно, один мог потеряться.'
+      ],
+      en: [
+        'A finished match was counted again on every reload of its results — with a longer time each time.',
+        'Walking out of a match did not count as a loss: the player who stayed got the win, the one who left got nothing.',
+        'Minesweeper recorded nothing for players still on their board when someone else won.',
+        'Solo Flager counted every match as a win, and its time as rounds × the round limit.',
+        'Match times were rounded up to a minute; they are kept in seconds now.',
+        'Two matches finishing at once could lose one of them.'
+      ]
     }
   },
 
@@ -61,12 +134,32 @@ export const VERSION_HISTORY: VersionLog[] = [
 
   {
     ver: '2.10.0',
-    date: '25 SEP 2026',
+    date: '2026-09-25',
     type: 'minor',
     title: { ru: 'Один стол для всех игр', en: 'One Table for Every Game' },
     desc: {
-      ru: 'Все восемь игр теперь устроены одинаково: доска слева, справа карточки — чей ход и сколько осталось, ваши действия, игроки. Итоги открываются в одном окне, которое можно убрать и посмотреть финальную доску. Новые игроки видят сайт на английском, пока не выберут язык, и английская версия больше нигде не показывает русский. В «Сапёре» и «Морском бое» появились уведомления: кто подорвался, кто вышел, кто расставил флот, у кого вышло время. Во «Флагере» между раундами есть минута, потом следующий раунд начинается сам. Исправлено: комната «Флагера» зависала между раундами, если кто-то уходил; в «Перевороте» уход игрока посреди действия давал лишний ход или отменял уже доказанное действие; ход, который не удалось сохранить, оставался на экране.',
-      en: 'All eight games are now laid out the same way: the board on the left, and on the right cards for whose turn it is and how long is left, your moves, and the players. Results open in one dialog that can be put aside to look at the final board. New players see the site in English until they pick a language, and the English version no longer shows Russian anywhere. Minesweeper and Battleship now have notices: who hit a mine, who left, whose fleet is ready, whose clock ran out. Flager gives you a minute between rounds, then the next one starts on its own. Fixed: a Flager room froze between rounds when someone left; in Coup a player leaving mid-action handed out an extra turn or undid a claim already proved; a move that failed to save stayed on screen.'
+      ru: 'Все восемь игр теперь устроены одинаково: доска слева, справа карточки — чей ход и сколько осталось, ваши действия, игроки. Итоги открываются в одном окне, которое можно убрать и посмотреть финальную доску. Новые игроки видят сайт на английском, пока не выберут язык. В «Сапёре» и «Морском бое» появились уведомления: кто подорвался, кто вышел, кто расставил флот, у кого вышло время. Во «Флагере» между раундами есть минута, потом следующий раунд начинается сам.',
+      en: 'All eight games are now laid out the same way: the board on the left, and on the right cards for whose turn it is and how long is left, your moves, and the players. Results open in one dialog that can be put aside to look at the final board. New players see the site in English until they pick a language. Minesweeper and Battleship now have notices: who hit a mine, who left, whose fleet is ready, whose clock ran out. Flager gives you a minute between rounds, then the next one starts on its own.'
+    },
+    fixes: {
+      ru: [
+        'Комната «Флагера» зависала между раундами, если уходил последний, кто ещё не нажал «Далее».',
+        '«Переворот»: уход игрока посреди действия давал лишний ход или отменял уже доказанное действие.',
+        'Ход, который не удалось сохранить, молча оставался на экране — теперь он откатывается с сообщением.',
+        'История «Переворота» писалась только по-русски, а «(Вы)» и надписи о победе и выбывании не переводились.',
+        '«Флагер» показывал континенты по-английски в русском интерфейсе.',
+        '«Сапёр» сообщал «Победа» всем игрокам, когда выигрывал кто-то один.',
+        'Картинки локаций «Шпиона» обрезались серыми полосами, а итоги «Морского боя» закрывали весь экран.'
+      ],
+      en: [
+        'A Flager room froze between rounds when the last player not yet ready left.',
+        'Coup: a player leaving mid-action handed out an extra turn or undid a claim already proved.',
+        'A move that failed to save stayed on screen without a word; it is now taken back and reported.',
+        'Coup’s history was written in Russian only, and “(You)” and the won and out stickers were not translated.',
+        'Flager showed continents in English in the Russian interface.',
+        'Minesweeper told every player “Victory” when any one of them won.',
+        'Spyfall location art was letterboxed with grey bands, and Battleship’s result covered the whole screen.'
+      ]
     }
   },
 
@@ -74,7 +167,7 @@ export const VERSION_HISTORY: VersionLog[] = [
 
   {
     ver: '2.9.0',
-    date: '24 SEP 2026',
+    date: '2026-09-24',
     type: 'minor',
     title: { ru: 'Wall Rush начисто', en: 'Wall Rush, Redrawn' },
     desc: {
@@ -87,12 +180,28 @@ export const VERSION_HISTORY: VersionLog[] = [
 
   {
     ver: '2.8.0',
-    date: '24 SEP 2026',
+    date: '2026-09-24',
     type: 'minor',
     title: { ru: 'Клавиши, которые работают', en: 'Keys That Work' },
     desc: {
-      ru: 'Поле Wall Rush стало цельной доской: квадратные плитки, стены заполняют желобок целиком и аккуратно смыкаются — в линию, углом и буквой Т, — а линии финиша перенесены в рамку. В «Сапёре» заработал пробел: флаг или аккорд по клетке под курсором; колесо мыши масштабирует поле, стрелки двигают его. В Wall Rush пешкой можно ходить стрелками, а стену в руке поворачивать клавишей R или пробелом. Набор текста в чате больше не нажимает игровые клавиши. Все сочетания описаны в правилах каждой игры.',
-      en: 'The Wall Rush board is now one piece: square tiles, walls that fill their groove and meet cleanly — in line, at a corner and in a T — and finish lines moved into the rim. Space now works in Minesweeper: a flag or a chord on the cell under the pointer; the mouse wheel zooms the board and the arrows move it. In Wall Rush the arrows move your pawn and R or Space turns the wall in your hand. Typing in the chat no longer presses game keys. Every shortcut is in each game’s rules.'
+      ru: 'Поле Wall Rush стало цельной доской: квадратные плитки, стены заполняют желобок целиком и аккуратно смыкаются — в линию, углом и буквой Т, — а линии финиша перенесены в рамку. В «Сапёре» пробел ставит флаг или открывает соседей числа, колесо мыши масштабирует поле, стрелки двигают его. В Wall Rush пешкой можно ходить стрелками, а стену в руке поворачивать клавишей R или пробелом. Все сочетания описаны в правилах каждой игры.',
+      en: 'The Wall Rush board is now one piece: square tiles, walls that fill their groove and meet cleanly — in line, at a corner and in a T — and finish lines moved into the rim. In Minesweeper Space flags a cell or chords a number, the mouse wheel zooms the board and the arrows move it. In Wall Rush the arrows move your pawn and R or Space turns the wall in your hand. Every shortcut is in each game’s rules.'
+    },
+    fixes: {
+      ru: [
+        'Пробел в «Сапёре» ничего не делал.',
+        'Набор текста в чате нажимал игровые клавиши: «wasd» двигали поле «Сапёра», пробел поворачивал корабль.',
+        'Ctrl + колесо масштабировало всю страницу вместе с полем «Сапёра».',
+        'Стены Wall Rush висели в желобках и вылезали за край поля.',
+        'WASD не работали в русской раскладке.'
+      ],
+      en: [
+        'Space did nothing in Minesweeper.',
+        'Typing in the chat pressed game keys: “wasd” panned the Minesweeper board and a space turned a ship.',
+        'Ctrl + wheel zoomed the whole page along with the Minesweeper board.',
+        'Wall Rush walls floated in their grooves and hung off the board.',
+        'WASD did not work on a Russian keyboard layout.'
+      ]
     }
   },
 
@@ -100,12 +209,16 @@ export const VERSION_HISTORY: VersionLog[] = [
 
   {
     ver: '2.7.0',
-    date: '24 SEP 2026',
+    date: '2026-09-24',
     type: 'minor',
     title: { ru: 'Разговор за столом', en: 'Talk at the Table' },
     desc: {
-      ru: 'В каждой комнате всех восьми игр появился чат с тридцатью смайликами — в лобби, во время партии и на итогах. Его видят только те, кто сидит в комнате, и он удаляется вместе с ней. «Сыграть ещё» теперь помнит счёт серии: в лобби новой комнаты видно, кто сколько взял. В «Шпионе» победа шпиона стоит 5 очков, мирного — 1. В Wall Rush можно сдаться и остаться досматривать, а стены выложены кирпичом и смыкаются без зазоров.',
-      en: 'Every room in all eight games now has a chat with thirty emoji — in the lobby, during the match and on the results. Only the people seated in the room can read it, and it is deleted with the room. "Play again" now remembers the score of the series: the new room’s lobby shows who has taken how many. In Spyfall a spy’s win is worth 5 points and a local’s 1. In Wall Rush you can resign and stay to watch, and the walls are laid as brickwork that meets without gaps.'
+      ru: 'В каждой комнате всех восьми игр появился чат с тридцатью смайликами — в лобби, во время партии и на итогах. Его видят только те, кто сидит в комнате, и он удаляется вместе с ней. «Сыграть ещё» теперь помнит счёт серии: в лобби новой комнаты видно, кто сколько взял. В «Шпионе» победа шпиона стоит 5 очков, мирного — 1. В Wall Rush можно сдаться и остаться досматривать.',
+      en: 'Every room in all eight games now has a chat with thirty emoji — in the lobby, during the match and on the results. Only the people seated in the room can read it, and it is deleted with the room. "Play again" now remembers the score of the series: the new room’s lobby shows who has taken how many. In Spyfall a spy’s win is worth 5 points and a local’s 1. In Wall Rush you can resign and stay to watch.'
+    },
+    fixes: {
+      ru: ['Две стены Wall Rush в линию оставляли зазор, и сплошная преграда выглядела разорванной.'],
+      en: ['Two Wall Rush walls in line left a gap, so a continuous barrier looked broken.']
     }
   },
 
@@ -113,17 +226,21 @@ export const VERSION_HISTORY: VersionLog[] = [
 
   {
     ver: '2.6.2',
-    date: '22 SEP 2026',
+    date: '2026-09-22',
     type: 'patch',
     desc: {
-      ru: 'Исправлен подсчёт визитов в статистике: все события одного человека попадали в один бесконечный визит, поэтому повторные заходы никогда не считались. Добавлено событие закрытия комнаты.',
-      en: 'Fixed visit counting in the statistics: every event from one person landed in a single endless visit, so return visits were never counted. Added an event for a room being closed.'
+      ru: 'В статистике посещений появилось событие закрытия комнаты.',
+      en: 'Visit statistics gain an event for a room being closed.'
+    },
+    fixes: {
+      ru: ['Все события одного человека попадали в один бесконечный визит, поэтому повторные заходы не считались.'],
+      en: ['Every event from one person landed in a single endless visit, so return visits were never counted.']
     }
   },
 
   {
     ver: '2.6.1',
-    date: '22 SEP 2026',
+    date: '2026-09-22',
     type: 'patch',
     desc: {
       ru: 'Теперь можно проверить, что сбор статистики действительно настроен и что Google принимает то, что мы отправляем, — раньше об этом нельзя было узнать снаружи никак.',
@@ -133,7 +250,7 @@ export const VERSION_HISTORY: VersionLog[] = [
 
   {
     ver: '2.6.0',
-    date: '22 SEP 2026',
+    date: '2026-09-22',
     type: 'minor',
     title: { ru: 'Аналитика без посредника', en: 'Analytics Without a Middleman' },
     desc: {
@@ -146,7 +263,7 @@ export const VERSION_HISTORY: VersionLog[] = [
 
   {
     ver: '2.5.3',
-    date: '22 SEP 2026',
+    date: '2026-09-22',
     type: 'patch',
     desc: {
       ru: 'Сбор статистики отключён. Он передавал в Google адрес страницы вместе с идентификатором комнаты, а ссылка на приватную комнату — это и есть доступ к ней. Четыре попытки это обойти не сработали, поэтому сбор выключен до тех пор, пока безопасность не будет доказана.',
@@ -156,27 +273,27 @@ export const VERSION_HISTORY: VersionLog[] = [
 
   {
     ver: '2.5.2',
-    date: '22 SEP 2026',
+    date: '2026-09-22',
     type: 'patch',
-    desc: {
-      ru: 'Адрес комнаты наконец перестал уходить в аналитику. Две предыдущие попытки не работали, и обе проверялись неполно — часть запросов уходила мимо перехвата. Теперь проверено сквозняком на настоящей комнате.',
-      en: 'The room address has finally stopped reaching analytics. The two previous attempts did not work, and both were checked incompletely — some requests were leaving by a route the check could not see. Verified end to end on a real room.'
+    fixes: {
+      ru: ['Адрес комнаты всё ещё уходил в аналитику: две прошлые попытки не работали, потому что проверялись не все запросы. Теперь проверено от начала до конца на настоящей комнате.'],
+      en: ['The room address was still reaching analytics: the two previous attempts did not work because not every request was checked. Now verified end to end on a real room.']
     }
   },
 
   {
     ver: '2.5.1',
-    date: '22 SEP 2026',
+    date: '2026-09-22',
     type: 'patch',
-    desc: {
-      ru: 'Адрес комнаты всё-таки уходил в аналитику: способ его подменить, описанный в документации Google, молча не работает. Заменён на тот, который проверен и работает.',
-      en: 'The room address was still reaching analytics: the documented way to override it silently does nothing. Replaced with the one that was measured and works.'
+    fixes: {
+      ru: ['Адрес комнаты всё ещё уходил в аналитику: способ его подменить из документации Google молча не работает. Заменён на проверенный.'],
+      en: ['The room address was still reaching analytics: the documented way to override it silently does nothing. Replaced with one that was measured and works.']
     }
   },
 
   {
     ver: '2.5.0',
-    date: '22 SEP 2026',
+    date: '2026-09-22',
     type: 'minor',
     title: { ru: 'Стены втроём', en: 'Wall Rush for Three' },
     desc: {
@@ -189,17 +306,17 @@ export const VERSION_HISTORY: VersionLog[] = [
 
   {
     ver: '2.4.1',
-    date: '22 SEP 2026',
+    date: '2026-09-22',
     type: 'patch',
-    desc: {
-      ru: 'Исправлено: в аналитику всё-таки уходил полный адрес страницы вместе с идентификатором комнаты. Вырезание работало, но Google подставлял адрес сам, помимо него. Теперь очищенный адрес прикрепляется к каждому событию.',
-      en: 'Fixed: the full page address, room identifier and all, was still reaching analytics. The stripping worked, but Google filled the address in by itself alongside it. The cleaned address is now attached to every event.'
+    fixes: {
+      ru: ['В аналитику уходил полный адрес страницы вместе с идентификатором комнаты: Google подставлял его сам, в обход очистки. Теперь очищенный адрес прикрепляется к каждому событию.'],
+      en: ['The full page address, room identifier and all, still reached analytics: Google filled it in by itself, around the stripping. The cleaned address is now attached to every event.']
     }
   },
 
   {
     ver: '2.4.0',
-    date: '22 SEP 2026',
+    date: '2026-09-22',
     type: 'minor',
     title: { ru: 'Аналитика и приватность', en: 'Analytics and Privacy' },
     desc: {
@@ -212,7 +329,7 @@ export const VERSION_HISTORY: VersionLog[] = [
 
   {
     ver: '2.3.3',
-    date: '22 SEP 2026',
+    date: '2026-09-22',
     type: 'patch',
     desc: {
       ru: 'Мелкий текст по всему сайту стал крупнее на больших экранах: подписи, счётчики и пояснения, которые были рассчитаны на ноутбук и превращались в точки на большом мониторе. На телефоне и планшете размеры прежние — там компактность на месте.',
@@ -222,7 +339,7 @@ export const VERSION_HISTORY: VersionLog[] = [
 
   {
     ver: '2.3.2',
-    date: '22 SEP 2026',
+    date: '2026-09-22',
     type: 'patch',
     desc: {
       ru: 'Первый ход больше не достаётся хозяину комнаты по умолчанию — он разыгрывается: в Морском бою, Перевороте, Стенах, Точках и Реверси. В «Точках и квадратах» последняя проведённая линия нарисована толще, закрытые квадраты закрашены заметнее, текст крупнее. Кнопка правил теперь подписана, а не просто знак вопроса.',
@@ -232,22 +349,52 @@ export const VERSION_HISTORY: VersionLog[] = [
 
   {
     ver: '2.3.1',
-    date: '21 SEP 2026',
+    date: '2026-09-21',
     type: 'patch',
     desc: {
-      ru: 'Комната, в которой никого не осталось, больше не висит в списке: если хост ушёл, комнату принимает кто-то из оставшихся, а пустое лобби закрывается само. Полные комнаты не показываются в списке — зайти в них всё равно нельзя. Ссылка на завершённую комнату ведёт в новую, если там нажали «Ещё раз», и счёт «Шпиона» больше не обнуляется между партиями.',
-      en: 'A room with nobody left in it no longer sits in the list: if the host goes, one of the remaining players takes it over, and an empty lobby closes itself. Full rooms are hidden — there is no way into them anyway. A link to a finished room now follows "play again" into its successor, and the Spyfall score survives between games.'
+      ru: 'Если хост ушёл, комнату принимает кто-то из оставшихся, а лобби, которое никто не открывал десять минут, закрывается само. Полные комнаты не показываются в списке — зайти в них всё равно нельзя. Ссылка на завершённую комнату ведёт в новую, если там нажали «Ещё раз». Гостевые аккаунты, которыми не пользовались 30 дней, удаляются.',
+      en: 'If the host goes, one of the remaining players takes the room over, and a lobby nobody has had open for ten minutes closes itself. Full rooms are hidden — there is no way into them anyway. A link to a finished room now follows "play again" into its successor. Guest accounts unused for 30 days are removed.'
+    },
+    fixes: {
+      ru: [
+        'Комната, из которой ушёл хост, зависала: убрать отключившихся и начать игру было некому.',
+        'Счёт «Шпиона» обнулялся при «Ещё раз».',
+        'Список комнат показывал лимит игроков как есть, например «2/99», и такая комната никогда не считалась полной.',
+        'При регистрации аватар по-прежнему запрашивался у стороннего сервиса вместе с идентификатором пользователя.'
+      ],
+      en: [
+        'A room whose host had gone froze: nobody could clear the missing players or start the game.',
+        'The Spyfall score reset on "play again".',
+        'The room list showed a player cap as written, such as "2/99", and such a room never read as full.',
+        'Signing up still fetched the avatar from a third party along with the user’s identifier.'
+      ]
     }
   },
 
   {
     ver: '2.3.0',
-    date: '21 SEP 2026',
+    date: '2026-09-21',
     type: 'minor',
     title: { ru: 'Три новые игры', en: 'Three New Games' },
     desc: {
-      ru: 'Стены, Точки и квадраты и Реверси — игр стало восемь. «Ещё раз» теперь открывает новую комнату с настройками родительской, во всех играх сразу. Переворот, который вообще не запускался, починен; отключившийся игрок больше не морозит комнату, а одновременные действия не съедают ход.',
-      en: 'Wall Rush, Dots & Boxes and Reversi bring the line-up to eight. "Play again" now opens a fresh room that inherits the old one’s settings, in every game. Coup, which could never start at all, is fixed; a player who disconnects no longer freezes the room, and simultaneous actions no longer cost a move.'
+      ru: 'Стены, Точки и квадраты и Реверси — игр стало восемь. «Ещё раз» теперь открывает новую комнату с настройками родительской, во всех играх сразу.',
+      en: 'Wall Rush, Dots & Boxes and Reversi bring the line-up to eight. "Play again" now opens a fresh room that inherits the old one’s settings, in every game.'
+    },
+    fixes: {
+      ru: [
+        '«Переворот» вообще не запускался, если в комнате был второй игрок.',
+        'Одновременные действия съедали ход: голоса в «Шпионе», пасы и блоки в «Перевороте», «готов» во «Флагере», вход по ссылке.',
+        'Отключившийся игрок замораживал комнату в «Шпионе», «Перевороте», «Морском бое», «Флагере» и «Сапёре».',
+        'Главная страница обещала пять игр, хотя их было восемь.',
+        'Числа по-русски склонялись неверно — теперь «1 квадрат», «2 квадрата», «5 квадратов».'
+      ],
+      en: [
+        'Coup could not start at all once a second player was in the room.',
+        'Simultaneous actions cost a move: Spyfall votes, Coup passes and blocks, Flager “ready” taps, joins through a link.',
+        'A player who disconnected froze the room in Spyfall, Coup, Battleship, Flager and Minesweeper.',
+        'The homepage promised five games while there were eight.',
+        'Russian counts took the wrong forms; now “1 квадрат”, “2 квадрата”, “5 квадратов”.'
+      ]
     }
   },
 
@@ -255,12 +402,22 @@ export const VERSION_HISTORY: VersionLog[] = [
 
   {
     ver: '2.2.0',
-    date: '2 SEP 2026',
+    date: '2026-09-02',
     type: 'minor',
     title: { ru: 'Большой Шпион', en: 'Spyfall Expanded' },
     desc: {
       ru: 'Шпион вырос с 30 локаций до 330: пятнадцать наборов по 22 локации, у каждой по 20 ролей. Новые наборы — природа, история, фантастика, спорт и еда. У карточек локаций появилось оформление, которое рисуется на месте и ничего не загружает.',
       en: 'Spyfall grew from 30 locations to 330: fifteen packs of 22, with 20 roles each. New packs for nature, history, sci-fi, sports and food. Location cards now have artwork that is drawn on the spot and downloads nothing.'
+    },
+    fixes: {
+      ru: [
+        'Картинки локаций «Шпиона» не загружались с самого появления наборов.',
+        'Аватары запрашивались у стороннего сервиса вместе с идентификатором пользователя — теперь их рисует сам сайт.'
+      ],
+      en: [
+        'Spyfall location images had never loaded since the packs were written.',
+        'Avatars were fetched from a third party along with the user’s identifier; the site now draws them itself.'
+      ]
     }
   },
 
@@ -268,7 +425,7 @@ export const VERSION_HISTORY: VersionLog[] = [
 
   {
     ver: '2.1.0',
-    date: '20 AUG 2026',
+    date: '2026-08-20',
     type: 'minor',
     title: { ru: 'Новый дом', en: 'New Home' },
     desc: {
@@ -281,7 +438,7 @@ export const VERSION_HISTORY: VersionLog[] = [
 
   {
     ver: '2.0.4',
-    date: '5 AUG 2026',
+    date: '2026-08-05',
     type: 'patch',
     desc: {
       ru: 'Стабильность при слабой сети: возвращение в комнату без потери места, понятные уведомления о разрыве связи.',
@@ -291,17 +448,21 @@ export const VERSION_HISTORY: VersionLog[] = [
 
   {
     ver: '2.0.3',
-    date: '27 JUL 2026',
+    date: '2026-07-27',
     type: 'patch',
     desc: {
-      ru: 'Мобильная версия: увеличены области нажатия, исправлена вёрстка на узких экранах, выверены жесты в Сапёре и Морском бою.',
-      en: 'Mobile: larger tap targets, fixed layout on narrow screens, and refined gestures in Minesweeper and Battleship.'
+      ru: 'Мобильная версия: увеличены области нажатия, выверены жесты в Сапёре и Морском бою.',
+      en: 'Mobile: larger tap targets and refined gestures in Minesweeper and Battleship.'
+    },
+    fixes: {
+      ru: ['Вёрстка ломалась на узких экранах.'],
+      en: ['The layout broke on narrow screens.']
     }
   },
 
   {
     ver: '2.0.2',
-    date: '18 JUL 2026',
+    date: '2026-07-18',
     type: 'patch',
     desc: {
       ru: 'Ускорена загрузка списка комнат и страницы статистики, снижен объём трафика при синхронизации матчей.',
@@ -311,7 +472,7 @@ export const VERSION_HISTORY: VersionLog[] = [
 
   {
     ver: '2.0.1',
-    date: '11 JUL 2026',
+    date: '2026-07-11',
     type: 'patch',
     desc: {
       ru: 'Полировка: аккуратное подтверждение удаления аватара вместо системного окна, мелкие улучшения интерфейса.',
@@ -321,540 +482,34 @@ export const VERSION_HISTORY: VersionLog[] = [
 
   {
     ver: '2.0.0',
-    date: '9 JUL 2026',
+    date: '2026-07-09',
     type: 'major',
     title: { ru: 'Платформа 2.0', en: 'Platform 2.0' },
     desc: {
-      ru: 'Крупное обновление платформы: усилена безопасность (серверная проверка паролей, защита от гонок записи), честная статистика во всех играх, вход по ссылке, восстановление пароля, звук, всплывающие уведомления, управление с клавиатуры (Esc/Enter/стрелки), аккорд в Сапёре и множество исправлений.',
-      en: 'A major platform update: hardened security (server-side password checks, write-race protection), honest statistics in every game, join-by-link, password recovery, sound, toast notifications, keyboard controls (Esc/Enter/arrows), Minesweeper chord, and a large batch of fixes.'
-    }
-  },
-
-  /* ===================== 1.9.x ===================== */
-
-  {
-    ver: '1.9.3',
-    date: '22 JUN 2026',
-    type: 'patch',
-    desc: {
-      ru: 'Правки текстов правил и подсказок, исправлены опечатки в русской локализации.',
-      en: 'Rule and hint copy fixes, with typos corrected in the Russian localization.'
-    }
-  },
-
-  {
-    ver: '1.9.2',
-    date: '10 JUN 2026',
-    type: 'patch',
-    desc: {
-      ru: 'Исправлено закрытие окна правил на мобильных, улучшена вёрстка длинных описаний.',
-      en: 'Fixed closing the rules dialog on mobile and improved the layout of long descriptions.'
-    }
-  },
-
-  {
-    ver: '1.9.1',
-    date: '1 JUN 2026',
-    type: 'patch',
-    desc: {
-      ru: 'Правила открываются прямо из лобби, добавлены краткие подсказки для новичков.',
-      en: 'Rules open straight from the lobby, with short hints added for newcomers.'
-    }
-  },
-
-  {
-    ver: '1.9.0',
-    date: '14 MAY 2026',
-    type: 'minor',
-    title: { ru: 'Правила', en: 'Rules' },
-    desc: {
-      ru: 'Встроенные правила во всех играх: единое окно с целью партии, порядком хода и условиями победы на русском и английском.',
-      en: 'Built-in rules for every game: a single dialog covering the goal, turn order and win conditions in Russian and English.'
-    }
-  },
-
-  /* ===================== 1.8.x ===================== */
-
-  {
-    ver: '1.8.4',
-    date: '6 MAY 2026',
-    type: 'patch',
-    desc: {
-      ru: 'Сбалансированы редкие локации, убраны повторы внутри паков.',
-      en: 'Rare locations rebalanced and duplicate entries removed from the packs.'
-    }
-  },
-
-  {
-    ver: '1.8.3',
-    date: '28 APR 2026',
-    type: 'patch',
-    desc: {
-      ru: 'Исправлен выбор пака при повторном старте раунда.',
-      en: 'Fixed pack selection when a round is restarted.'
-    }
-  },
-
-  {
-    ver: '1.8.2',
-    date: '20 APR 2026',
-    type: 'patch',
-    desc: {
-      ru: 'Улучшена читаемость карточек ролей, обновлены иконки локаций.',
-      en: 'Improved role card readability and refreshed the location icons.'
-    }
-  },
-
-  {
-    ver: '1.8.1',
-    date: '13 APR 2026',
-    type: 'patch',
-    desc: {
-      ru: 'Мелкие багфиксы «Шпиона» и стабильность голосования.',
-      en: 'Minor Spy Mode fixes and voting stability.'
-    }
-  },
-
-  {
-    ver: '1.8.0',
-    date: '8 APR 2026',
-    type: 'minor',
-    title: { ru: 'Тематические паки', en: 'Theme Packs' },
-    desc: {
-      ru: 'Новые наборы локаций для «Шпиона»: школа, университет, офис, хоррор, игры, США, СССР и расширенные общие паки.',
-      en: 'New location sets for Spy Mode: school, university, office, horror, gaming, USA, USSR and extended general packs.'
-    }
-  },
-
-  /* ===================== 1.7.x ===================== */
-
-  {
-    ver: '1.7.5',
-    date: '31 MAR 2026',
-    type: 'patch',
-    desc: {
-      ru: 'Исправлены редкие случаи, когда комната оставалась в списке после выхода всех игроков.',
-      en: 'Fixed rare cases where a room stayed in the list after every player had left.'
-    }
-  },
-
-  {
-    ver: '1.7.4',
-    date: '25 MAR 2026',
-    type: 'patch',
-    desc: {
-      ru: 'Ускорено обновление списка комнат, исправлен счётчик игроков.',
-      en: 'Faster room list updates and a corrected player counter.'
-    }
-  },
-
-  {
-    ver: '1.7.3',
-    date: '20 MAR 2026',
-    type: 'patch',
-    desc: {
-      ru: 'Копирование кода комнаты работает во всех браузерах.',
-      en: 'Copying the room code now works in every browser.'
-    }
-  },
-
-  {
-    ver: '1.7.2',
-    date: '17 MAR 2026',
-    type: 'patch',
-    desc: {
-      ru: 'Исправлена передача прав хоста при выходе создателя комнаты.',
-      en: 'Fixed host transfer when the room creator leaves.'
-    }
-  },
-
-  {
-    ver: '1.7.1',
-    date: '14 MAR 2026',
-    type: 'patch',
-    desc: {
-      ru: 'Мелкие багфиксы приватных комнат и фильтров списка.',
-      en: 'Minor private room and list filter fixes.'
-    }
-  },
-
-  {
-    ver: '1.7.0',
-    date: '12 MAR 2026',
-    type: 'minor',
-    title: { ru: 'Лобби', en: 'Lobby' },
-    desc: {
-      ru: 'Переработанное лобби: приватные комнаты с паролем, короткие коды приглашения, фильтры по играм и автоматическое исключение отключившихся с окном на переподключение.',
-      en: 'A reworked lobby: private rooms with a password, short invite codes, per-game filters, and automatic removal of disconnected players with a reconnect grace period.'
-    }
-  },
-
-  /* ===================== 1.6.x ===================== */
-
-  {
-    ver: '1.6.4',
-    date: '6 MAR 2026',
-    type: 'patch',
-    desc: {
-      ru: 'Исправлен подсчёт средней длительности матчей.',
-      en: 'Fixed the average match duration calculation.'
-    }
-  },
-
-  {
-    ver: '1.6.3',
-    date: '1 MAR 2026',
-    type: 'patch',
-    desc: {
-      ru: 'Аватарки: ограничение размера файла и понятная ошибка при загрузке.',
-      en: 'Avatars: a file size limit and a clear error message on upload.'
-    }
-  },
-
-  {
-    ver: '1.6.2',
-    date: '25 FEB 2026',
-    type: 'patch',
-    desc: {
-      ru: 'Исправлено отображение статистики у новых игроков.',
-      en: 'Fixed statistics display for new players.'
-    }
-  },
-
-  {
-    ver: '1.6.1',
-    date: '22 FEB 2026',
-    type: 'patch',
-    desc: {
-      ru: 'Мелкие багфиксы профиля и настроек.',
-      en: 'Minor profile and settings fixes.'
-    }
-  },
-
-  {
-    ver: '1.6.0',
-    date: '20 FEB 2026',
-    type: 'minor',
-    title: { ru: 'Профиль', en: 'Profile' },
-    desc: {
-      ru: 'Личный профиль и достижения: страница статистики по каждой игре, загрузка своих аватарок и генерируемые аватары для новых аккаунтов.',
-      en: 'Personal profile and achievements: a per-game statistics page, custom avatar uploads, and generated avatars for new accounts.'
-    }
-  },
-
-  /* ===================== 1.5.x ===================== */
-
-  {
-    ver: '1.5.4',
-    date: '8 FEB 2026',
-    type: 'patch',
-    desc: {
-      ru: 'Исправлены ошибки, улучшена работа лобби, добавлены новые карточки и паки для режима «Шпион».',
-      en: 'Bug fixes, improved lobby performance, and additional cards and packs for Spy Mode.'
-    }
-  },
-
-  {
-    ver: '1.5.3',
-    date: '7 FEB 2026',
-    type: 'patch',
-    desc: {
-      ru: 'Переработаны настройки и система достижений, мелкие багфиксы и общее улучшение стабильности и производительности.',
-      en: 'Reworked settings and achievements system, minor bug fixes, and overall stability and performance improvements.'
-    }
-  },
-
-  {
-    ver: '1.5.2',
-    date: '6 FEB 2026',
-    type: 'patch',
-    desc: {
-      ru: 'Мелкие багфиксы, переработаны и упрощены правила игр, улучшена читаемость и дизайн.',
-      en: 'Minor bug fixes, reworked and simplified game rules, improved readability and design.'
-    }
-  },
-
-  {
-    ver: '1.5.1',
-    date: '6 FEB 2026',
-    type: 'patch',
-    desc: {
-      ru: 'Исправлены баги Spyfall, устранены редкие вылеты, улучшена стабильность матчей и синхронизация состояний.',
-      en: 'Fixed Spyfall bugs, resolved rare crashes, and improved match stability and state synchronization.'
-    }
-  },
-
-  {
-    ver: '1.5.0',
-    date: '5 FEB 2026',
-    type: 'minor',
-    title: { ru: 'Spy Mode', en: 'Spy Mode' },
-    desc: {
-      ru: 'Добавлен режим «Шпион», обновлён визуальный стиль интерфейса, улучшен первый опыт для новых игроков и исправлены ошибки.',
-      en: 'Added Spy Mode, refreshed the UI visual style, improved new player onboarding, and fixed bugs.'
-    }
-  },
-
-  /* ===================== 1.4.x ===================== */
-
-  {
-    ver: '1.4.5',
-    date: '3 FEB 2026',
-    type: 'patch',
-    desc: {
-      ru: 'Мелкие багфиксы, улучшена отзывчивость UI и обработка кликов.',
-      en: 'Minor bug fixes, improved UI responsiveness and click handling.'
-    }
-  },
-  {
-    ver: '1.4.4',
-    date: '3 FEB 2026',
-    type: 'patch',
-    desc: {
-      ru: 'Фиксы мультиплеера, стабильность лобби и таймеров.',
-      en: 'Multiplayer fixes, improved lobby and timer stability.'
-    }
-  },
-  {
-    ver: '1.4.3',
-    date: '3 FEB 2026',
-    type: 'patch',
-    desc: {
-      ru: 'Улучшения UX в Сапере, оптимизация анимаций.',
-      en: 'UX improvements for Minesweeper, animation optimizations.'
-    }
-  },
-  {
-    ver: '1.4.2',
-    date: '3 FEB 2026',
-    type: 'patch',
-    desc: {
-      ru: 'Исправлены ошибки генерации поля и логики флагов.',
-      en: 'Fixed board generation issues and flag logic.'
-    }
-  },
-  {
-    ver: '1.4.1',
-    date: '3 FEB 2026',
-    type: 'patch',
-    desc: {
-      ru: 'Оптимизация производительности и сетевого взаимодействия.',
-      en: 'Performance and networking optimizations.'
-    }
-  },
-  {
-    ver: '1.4.0',
-    date: '3 FEB 2026',
-    type: 'minor',
-    title: { ru: 'Minesweeper', en: 'Minesweeper' },
-    desc: {
-      ru: 'Добавлен Сапер: мультиплеер, флаги, масштабирование поля.',
-      en: 'Added Minesweeper: multiplayer, flags and board zoom.'
-    }
-  },
-
-  /* ===================== 1.3.x ===================== */
-
-  {
-    ver: '1.3.5',
-    date: '2 FEB 2026',
-    type: 'patch',
-    desc: {
-      ru: 'Фиксы локализации и корректности вопросов.',
-      en: 'Localization fixes and question correctness.'
-    }
-  },
-  {
-    ver: '1.3.4',
-    date: '2 FEB 2026',
-    type: 'patch',
-    desc: {
-      ru: 'Улучшения UI викторины и плавности анимаций.',
-      en: 'Quiz UI and animation smoothness improvements.'
-    }
-  },
-  {
-    ver: '1.3.3',
-    date: '2 FEB 2026',
-    type: 'patch',
-    desc: {
-      ru: 'Оптимизация Pixel Match и ускорение загрузки.',
-      en: 'Pixel Match optimizations and faster loading.'
-    }
-  },
-  {
-    ver: '1.3.2',
-    date: '1 FEB 2026',
-    type: 'patch',
-    desc: {
-      ru: 'Исправлены редкие ошибки подсчёта результатов.',
-      en: 'Fixed rare score calculation issues.'
-    }
-  },
-  {
-    ver: '1.3.1',
-    date: '1 FEB 2026',
-    type: 'patch',
-    desc: {
-      ru: 'Мелкие багфиксы и улучшения стабильности.',
-      en: 'Minor bug fixes and stability improvements.'
-    }
-  },
-  {
-    ver: '1.3.0',
-    date: '1 FEB 2026',
-    type: 'minor',
-    title: { ru: 'Flager', en: 'Flager' },
-    desc: {
-      ru: 'Добавлена викторина флагов с механикой Pixel Match.',
-      en: 'Added flag quiz with Pixel Match mechanic.'
-    }
-  },
-
-  /* ===================== 1.2.x ===================== */
-
-  {
-    ver: '1.2.5',
-    date: '31 JAN 2026',
-    type: 'patch',
-    desc: {
-      ru: 'Оптимизация Drag&Drop и сетевой синхронизации.',
-      en: 'Drag&Drop and network sync optimizations.'
-    }
-  },
-  {
-    ver: '1.2.4',
-    date: '31 JAN 2026',
-    type: 'patch',
-    desc: {
-      ru: 'Фиксы визуальных багов и улучшение отклика.',
-      en: 'Visual bug fixes and improved responsiveness.'
-    }
-  },
-  {
-    ver: '1.2.3',
-    date: '31 JAN 2026',
-    type: 'patch',
-    desc: {
-      ru: 'Исправлены ошибки размещения кораблей.',
-      en: 'Fixed ship placement issues.'
-    }
-  },
-  {
-    ver: '1.2.2',
-    date: '30 JAN 2026',
-    type: 'patch',
-    desc: {
-      ru: 'Стабилизация матчей и таймеров.',
-      en: 'Match and timer stabilization.'
-    }
-  },
-  {
-    ver: '1.2.1',
-    date: '30 JAN 2026',
-    type: 'patch',
-    desc: {
-      ru: 'Мелкие багфиксы и улучшения UI.',
-      en: 'Minor bug fixes and UI improvements.'
-    }
-  },
-  {
-    ver: '1.2.0',
-    date: '30 JAN 2026',
-    type: 'minor',
-    title: { ru: 'Battleship', en: 'Battleship' },
-    desc: {
-      ru: 'Добавлен Морской бой в реальном времени.',
-      en: 'Added real-time Battleship.'
-    }
-  },
-
-  /* ===================== 1.1.x ===================== */
-
-  {
-    ver: '1.1.5',
-    date: '29 JAN 2026',
-    type: 'patch',
-    desc: {
-      ru: 'Баланс ролей и исправление логики карт.',
-      en: 'Role balance and card logic fixes.'
-    }
-  },
-  {
-    ver: '1.1.4',
-    date: '29 JAN 2026',
-    type: 'patch',
-    desc: {
-      ru: 'Фиксы сетевых рассинхронов.',
-      en: 'Network desync fixes.'
-    }
-  },
-  {
-    ver: '1.1.3',
-    date: '29 JAN 2026',
-    type: 'patch',
-    desc: {
-      ru: 'Улучшения UI и стабильности матчей.',
-      en: 'UI and match stability improvements.'
-    }
-  },
-  {
-    ver: '1.1.2',
-    date: '28 JAN 2026',
-    type: 'patch',
-    desc: {
-      ru: 'Исправлены ошибки завершения раундов.',
-      en: 'Fixed round ending issues.'
-    }
-  },
-  {
-    ver: '1.1.1',
-    date: '28 JAN 2026',
-    type: 'patch',
-    desc: {
-      ru: 'Мелкие багфиксы и оптимизация.',
-      en: 'Minor bug fixes and optimizations.'
-    }
-  },
-  {
-    ver: '1.1.0',
-    date: '28 JAN 2026',
-    type: 'minor',
-    title: { ru: 'Coup', en: 'Coup' },
-    desc: {
-      ru: 'Добавлена карточная игра Coup.',
-      en: 'Added the card game Coup.'
-    }
-  },
-
-  /* ===================== 1.0.x ===================== */
-
-  {
-    ver: '1.0.2',
-    date: '27 JAN 2026',
-    type: 'patch',
-    desc: {
-      ru: 'Добавлены RU/EN локализации и настройки звука.',
-      en: 'Added RU/EN localization and audio settings.'
-    }
-  },
-  {
-    ver: '1.0.1',
-    date: '27 JAN 2026',
-    type: 'patch',
-    desc: {
-      ru: 'Фиксы авторизации и лобби.',
-      en: 'Authentication and lobby fixes.'
-    }
-  },
-  {
-    ver: '1.0.0',
-    date: '27 JAN 2026',
-    type: 'init',
-    title: { ru: 'Launch', en: 'Launch' },
-    desc: {
-      ru: 'Первый релиз платформы: аккаунты, профили и лобби.',
-      en: 'Initial platform release: accounts, profiles and lobbies.'
+      ru: 'Крупное обновление платформы: усилена безопасность (серверная проверка паролей, защита от гонок записи), честная статистика во всех играх, вход по ссылке, восстановление пароля, звук, всплывающие уведомления, управление с клавиатуры (Esc/Enter/стрелки) и аккорд в Сапёре.',
+      en: 'A major platform update: hardened security (server-side password checks, write-race protection), honest statistics in every game, join-by-link, password recovery, sound, toast notifications, keyboard controls (Esc/Enter/arrows) and the Minesweeper chord.'
+    },
+    fixes: {
+      ru: [
+        'Вход по email не работал.',
+        'Выход из лобби «Морского боя» до начала засчитывался как победа.',
+        '«Сапёр» не записывал поражения, а партия, где подорвались все, не заканчивалась.',
+        'Клики по клеткам «Сапёра» иногда терялись.',
+        'Выход игрока в «Перевороте» ломал порядок ходов.',
+        'Таймеры на экранах разных игроков спорили друг с другом, а в «Шпионе» таймер голосования накладывался на другой.',
+        'Коды комнат могли совпадать.',
+        'Панель настроек обрезалась на второстепенных страницах, а фоновая текстура не загружалась.'
+      ],
+      en: [
+        'Signing in by email did not work.',
+        'Leaving a Battleship lobby before the start counted as a win.',
+        'Minesweeper did not record losses, and a game where everyone hit a mine never finished.',
+        'Clicks on Minesweeper cells were sometimes lost.',
+        'A player leaving Coup corrupted the turn order.',
+        'Timers on different players’ screens raced each other, and Spyfall’s vote timer overlapped another.',
+        'Room codes could collide.',
+        'The settings panel was clipped on secondary pages, and the background texture failed to load.'
+      ]
     }
   }
 ];

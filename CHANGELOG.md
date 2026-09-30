@@ -7,6 +7,29 @@ releasing.
 Format: [Semantic Versioning](https://semver.org/). Types: **major** = platform
 milestone, **minor** = new game mode / feature, **patch** = fixes & improvements.
 
+## [2.12.2] — 2026-09-30 (patch)
+
+### Added
+- **A changelog page**, `/changelog` and `/en/changelog`: every version from
+  1.0.0 with its date, grouped by release line under its major, each with
+  what it brought and what it fixed, and a row of links to jump to a line.
+  Linked from the footer of the public pages and from the version timeline
+  in the app; in the sitemap with its hreflang pair.
+
+### Changed
+- **The game's version timeline shows 2.0 on**, and ends in a link to the
+  full history. The 1.x line moved to `src/constants/versionLegacy.ts`,
+  which only the changelog page loads, so the app's bundle no longer carries
+  it.
+- **The version notes are rewritten as a history**: what each version
+  brought, and its fixes in a list of their own (`fixes`), in both
+  languages. The 1.x notes are tidied — game names as the app spells them,
+  "Launch" in Russian too. Release days are ISO dates, spelled out per
+  language without a time zone to trip on.
+- `tests/version-history.test.ts` keeps it in order: newest first, every
+  version once, dates never going forward, both languages, the current
+  version matching `package.json` and this file.
+
 ## [2.12.1] — 2026-09-30 (patch)
 
 ### Changed

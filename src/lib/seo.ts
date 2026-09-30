@@ -14,6 +14,7 @@ import { APP_NAME, COMPANY_NAME, SITE_URL } from '@/constants/app';
 import type { GameContent, GameFaq, Locale } from '@/content/games';
 import { GAME_COUNT_COPY } from '@/content/gameCount';
 import { PRIVACY_CONTENT } from '@/content/privacy';
+import { CHANGELOG_COPY } from '@/content/changelog';
 
 /** Absolute URL for a site-relative path (`/games` → `https://…/games`). */
 export const absoluteUrl = (path = '/'): string =>
@@ -202,6 +203,30 @@ export const privacyMetadata = (locale: Locale): Metadata => {
     title: copy.metaTitle,
     description: copy.metaDescription,
     alternates: buildAlternates(locale, '/privacy'),
+    openGraph: {
+      type: 'article',
+      title: copy.metaTitle,
+      description: copy.metaDescription,
+      url,
+      locale: OG_LOCALE[locale]
+    },
+    twitter: {
+      card: 'summary',
+      title: copy.metaTitle,
+      description: copy.metaDescription
+    }
+  };
+};
+
+/** Metadata for the changelog — every version with its date, in the given locale. */
+export const changelogMetadata = (locale: Locale): Metadata => {
+  const copy = CHANGELOG_COPY[locale];
+  const url = absoluteUrl(localizedPath(locale, '/changelog'));
+
+  return {
+    title: copy.metaTitle,
+    description: copy.metaDescription,
+    alternates: buildAlternates(locale, '/changelog'),
     openGraph: {
       type: 'article',
       title: copy.metaTitle,

@@ -2,6 +2,7 @@ import type { MetadataRoute } from 'next';
 import { CONTENT_REVISION, GAMES_CONTENT } from '@/content/games';
 import { absoluteUrl, localizedPath } from '@/lib/seo';
 import { POLICY_UPDATED } from '@/content/privacy';
+import { VERSION_HISTORY } from '@/constants/version';
 
 /**
  * Only genuinely public, indexable URLs belong here — the app screens are
@@ -37,6 +38,15 @@ export default function sitemap(): MetadataRoute.Sitemap {
     alternates: { languages: withAlternates('/privacy') }
   }));
 
+  // Changes with every release, so it carries the latest one's day.
+  const changelog: MetadataRoute.Sitemap = (['ru', 'en'] as const).map((locale) => ({
+    url: absoluteUrl(localizedPath(locale, '/changelog')),
+    lastModified: VERSION_HISTORY[0].date,
+    changeFrequency: 'weekly',
+    priority: 0.4,
+    alternates: { languages: withAlternates('/changelog') }
+  }));
+
   const details: MetadataRoute.Sitemap = GAMES_CONTENT.flatMap((game) =>
     (['ru', 'en'] as const).map((locale) => ({
       url: absoluteUrl(localizedPath(locale, `/games/${game.slug}`)),
@@ -56,6 +66,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
     ...hub,
     ...details,
-    ...privacy
+    ...privacy,
+    ...changelog
   ];
 }
