@@ -1,4 +1,4 @@
-export const APP_VERSION = '2.12.0';
+export const APP_VERSION = '2.12.1';
 
 export type VersionType = 'major' | 'minor' | 'patch' | 'init';
 
@@ -14,13 +14,23 @@ export const VERSION_HISTORY: VersionLog[] = [
   /* ===================== 2.12.x ===================== */
 
   {
+    ver: '2.12.1',
+    date: '30 SEP 2026',
+    type: 'patch',
+    desc: {
+      ru: 'В Wikiler по умолчанию теперь скрыто 90% слов, а не все: несколько разбросанных слов открыты с самого начала, чтобы первым догадкам было за что зацепиться. Слов из названия среди них не бывает. Хост по-прежнему может выбрать от 50 до 100% в дополнительных настройках.',
+      en: 'Wikiler now hides 90% of the words by default rather than all of them: a few scattered words are open from the start, so the first guesses have something to go on — never a word of the title. The host can still pick anything from 50 to 100% in the advanced settings.'
+    }
+  },
+
+  {
     ver: '2.12.0',
     date: '30 SEP 2026',
     type: 'minor',
     title: { ru: 'Слово за словом', en: 'Word by Word' },
     desc: {
-      ru: 'Новая, девятая игра — Wikiler. Вам дают статью Википедии, в которой скрыты почти все слова и всё название. Пишите слова — они открываются везде, где встречаются, вместе с формами, — и угадайте, что это за статья: открыв название по словам или рискнув ввести его целиком. Очки тают со временем и с промахами. От 1 до 20 игроков на одной статье, 1–20 раундов по 1–15 минут, случайная статья или одна из 34 тем. Статья у всех одна, но каждый читает её на языке своего интерфейса — или все на языке хоста. После раунда видна вся статья с её карточкой из Википедии. Свои достижения и статистика — отдельно в одиночку и с людьми. На экране создания редкие настройки теперь свёрнуты в «Дополнительно».',
-      en: 'A new, ninth game — Wikiler. You get a Wikipedia article with nearly every word hidden and the whole title. Type words — each opens everywhere it occurs, with its forms — and name the article: by opening its title word by word or by risking the whole title. Points melt away with time and misses. 1 to 20 players on one article, 1–20 rounds of 1–15 minutes, a random article or one of 34 topics. Everyone gets the same article, each reading it in their own interface language — or all in the host’s. After a round the whole article opens with its Wikipedia card. Achievements of its own, and statistics kept apart for solo and together. On the create screen the rarely changed settings now fold into “Advanced settings”.'
+      ru: 'Новая, девятая игра — Wikiler. Вам дают статью Википедии, в которой скрыты значимые слова и всё название. Пишите слова — они открываются везде, где встречаются, вместе с формами, — и угадайте, что это за статья: открыв название по словам или рискнув ввести его целиком. Очки тают со временем и с промахами. От 1 до 20 игроков на одной статье, 1–20 раундов по 1–15 минут, случайная статья или одна из 34 тем. Статья у всех одна, но каждый читает её на языке своего интерфейса — или все на языке хоста. После раунда видна вся статья с её карточкой из Википедии. Свои достижения и статистика — отдельно в одиночку и с людьми. На экране создания редкие настройки теперь свёрнуты в «Дополнительно».',
+      en: 'A new, ninth game — Wikiler. You get a Wikipedia article with its meaningful words hidden and the whole title. Type words — each opens everywhere it occurs, with its forms — and name the article: by opening its title word by word or by risking the whole title. Points melt away with time and misses. 1 to 20 players on one article, 1–20 rounds of 1–15 minutes, a random article or one of 34 topics. Everyone gets the same article, each reading it in their own interface language — or all in the host’s. After a round the whole article opens with its Wikipedia card. Achievements of its own, and statistics kept apart for solo and together. On the create screen the rarely changed settings now fold into “Advanced settings”.'
     }
   },
 

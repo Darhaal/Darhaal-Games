@@ -7,29 +7,36 @@ releasing.
 Format: [Semantic Versioning](https://semver.org/). Types: **major** = platform
 milestone, **minor** = new game mode / feature, **patch** = fixes & improvements.
 
+## [2.12.1] — 2026-09-30 (patch)
+
+### Changed
+- **Wikiler hides 90% of the words by default, not all of them.** A few
+  scattered words are open from the start, so the first guesses have
+  something to go on; a word of the title is never among them. The host can
+  still set anything from 50 to 100% in the advanced settings.
+
 ## [2.12.0] — 2026-09-30 (minor) — **Word by Word**
 
 > The ninth game: name a Wikipedia article from the words you open in it —
 > each player reading it in their own language.
 
 ### Added
-- **Wikiler — a new game, the ninth.** A Wikipedia article with nearly every
-  meaningful word hidden (nine in ten by default) and the whole title; type a
-  word and it opens everywhere it occurs, with its grammatical forms, and you
-  see how many times. Name the article — by opening every word of its title,
-  or by risking the title outright. 1–20 players on the same article; 1–20
-  rounds of 1 to 15 min; 1000 points a round, less up to 500 for time, 25 for
-  a missed word (cheaper the more often a word occurs), 50 for a wrong title.
-  Unlimited or 1–50 attempts; 50–100% of words hidden; letter counts on the
-  hidden words or only on a tap; a random article from all of Wikipedia or
-  one of 34 topics in a grouped list (all people or ten kinds of them,
-  countries, cities, animals, physics…). Everyone gets the same article,
-  each reading it in their own interface language, Russian or English — the
-  language versions Wikipedia links together, not a translation — or, if the
-  host chooses, everyone in the host's. When the round ends for a player —
-  above all when they missed it — the whole article opens under its
-  Wikipedia card: picture, description, first lines. Rules and scoring are
-  in `docs/wikiler-spec.md`.
+- **Wikiler — a new game, the ninth.** A Wikipedia article with its meaningful
+  words hidden and the whole title; type a word and it opens everywhere it
+  occurs, with its grammatical forms, and you see how many times. Name the
+  article — by opening every word of its title, or by risking the title
+  outright. 1–20 players on the same article; 1–20 rounds of 1 to 15 min; 1000
+  points a round, less up to 500 for time, 25 for a missed word (cheaper the
+  more often a word occurs), 50 for a wrong title. Unlimited or 1–50 attempts;
+  50–100% of words hidden; letter counts on the hidden words or only on a tap;
+  a random article from all of Wikipedia or one of 34 topics in a grouped list
+  (all people or ten kinds of them, countries, cities, animals, physics…).
+  Everyone gets the same article, each reading it in their own interface
+  language, Russian or English — the language versions Wikipedia links
+  together, not a translation — or, if the host chooses, everyone in the
+  host's. When the round ends for a player — above all when they missed it —
+  the whole article opens under its Wikipedia card: picture, description,
+  first lines. Rules and scoring are in `docs/wikiler-spec.md`.
   - Articles come straight from Wikipedia to the player's browser, each
     language at a fixed revision so everyone reading it gets the same text —
     nothing passes through our servers. Credited under CC BY-SA 4.0 with
