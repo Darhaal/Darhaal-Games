@@ -10,14 +10,14 @@ import { showToast } from '@/lib/toast';
 import { COPYRIGHT, defaultAvatar, generateRoomCode } from '@/constants/app';
 import SettingsButton from '@/components/SettingsButton';
 import {
-  ArrowLeft, Users, Lock, Unlock,
+  ArrowLeft, Users, Lock, Unlock, ChevronDown, SlidersHorizontal,
   ArrowRight, Eye, EyeOff, Loader2, Type, UserPlus, Zap
 } from 'lucide-react';
 import { GAMES, playerRange, type GameDefinition } from '@/games/registry';
 import { GAME_ICONS } from '@/games/icons';
 import {
   GAME_OPTIONS, defaultOptionValues, num, playersFromOptions,
-  type GameOption, type OptionValues
+  type ChoiceOption, type GameOption, type OptionValues
 } from '@/games/options';
 import { createInitialState } from '@/games/initialState';
 import { track } from '@/lib/analytics';
@@ -38,6 +38,8 @@ const TRANSLATIONS = {
     enterName: 'Имя комнаты...',
     enterPass: '••••••',
     lobbySuffix: 'Лобби',
+    advanced: 'Дополнительно',
+    changed: (n: number) => `изменено: ${n}`,
     footer: COPYRIGHT
   },
   en: {
@@ -54,6 +56,8 @@ const TRANSLATIONS = {
     enterName: 'Room name...',
     enterPass: '••••••',
     lobbySuffix: 'Lobby',
+    advanced: 'Advanced settings',
+    changed: (n: number) => `${n} changed`,
     footer: COPYRIGHT
   }
 };
@@ -71,6 +75,18 @@ const RANGE_CLASS =
  * component declared during render is a new type on every pass, so React would
  * unmount and remount each control — which loses the drag on a slider.
  */
+/** Consecutive choices under the same heading, for `<optgroup>`s; ungrouped ones stand alone. */
+function groupChoices(choices: ChoiceOption['choices'], lang: 'ru' | 'en') {
+  const runs: Array<{ group: string | null; choices: ChoiceOption['choices'] }> = [];
+  for (const choice of choices) {
+    const group = choice.group?.[lang] ?? null;
+    const last = runs[runs.length - 1];
+    if (last && last.group === group) last.choices.push(choice);
+    else runs.push({ group, choices: [choice] });
+  }
+  return runs;
+}
+
 function OptionControl({
   option, values, lang, onChange
 }: {
@@ -115,6 +131,35 @@ function OptionControl({
 
   const selected = option.choices.find((c) => c.value === values[option.key]);
   const Icon = option.icon;
+
+  // A long list reads better as a dropdown than as a wall of buttons.
+  if (option.display === 'select') {
+    return (
+      <div className="space-y-3">
+        <label htmlFor={`option-${option.key}`} className={LABEL_CLASS}>
+          <Icon className="w-3.5 h-3.5 text-gray-400" /> {option.label[lang]}
+        </label>
+        <select
+          id={`option-${option.key}`}
+          value={String(values[option.key] ?? option.default)}
+          onChange={(e) => onChange(option.key, e.target.value)}
+          className="w-full bg-[#F8FAFC] border border-gray-200 focus:bg-white focus:border-[#1A1F26] rounded-xl py-3 px-4 font-bold text-[#1A1F26] outline-none transition-all text-sm cursor-pointer"
+        >
+          {groupChoices(option.choices, lang).map(({ group, choices }, i) => {
+            const items = choices.map((choice) => (
+              <option key={choice.value} value={choice.value}>
+                {choice.emoji ? `${choice.emoji}  ` : ''}{choice.label[lang]}
+              </option>
+            ));
+            return group ? <optgroup key={group} label={group}>{items}</optgroup> : <React.Fragment key={i}>{items}</React.Fragment>;
+          })}
+        </select>
+        {selected?.preview && (
+          <p className="text-2xs font-bold text-[#8A9099] px-1">{selected.preview[lang].join(' · ')}</p>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3">
@@ -183,6 +228,8 @@ export default function CreatePage() {
   const [maxPlayers, setMaxPlayers] = useState(6);
   /** Whatever the chosen game declares in GAME_OPTIONS, keyed by option key. */
   const [optionValues, setOptionValues] = useState<OptionValues>({});
+  /** The advanced options stay folded until the host asks for them. */
+  const [advancedOpen, setAdvancedOpen] = useState(false);
 
   useEffect(() => {
     const checkUser = async () => {
@@ -251,7 +298,9 @@ export default function CreatePage() {
         selectedGame.id,
         { id: user.id, name: userName, avatarUrl: userAvatar },
         maxPlayers,
-        optionValues
+        // The host's interface language rides along for games whose content
+        // follows it — Wikiler's articles come from that language's Wikipedia.
+        { ...optionValues, locale: lang }
       );
 
       // Insert with retry in case of a room-code collision (unique index on code)
@@ -324,6 +373,15 @@ export default function CreatePage() {
     </div>
   );
 
+  // The chosen game's options that apply now: the everyday ones in the form,
+  // the advanced ones folded at the bottom.
+  const visibleOptions = selectedGame
+    ? GAME_OPTIONS[selectedGame.id].filter((option) => option.showWhen?.(optionValues) ?? true)
+    : [];
+  const mainOptions = visibleOptions.filter((option) => !option.advanced);
+  const advancedOptions = visibleOptions.filter((option) => option.advanced);
+  const advancedChanged = advancedOptions.filter((option) => String(optionValues[option.key] ?? option.default) !== String(option.default)).length;
+
   const renderSettings = () => (
     <form onSubmit={handleCreate} className="w-full max-w-lg bg-white border border-[#E6E1DC] rounded-[40px] p-8 shadow-2xl shadow-[#1A1F26]/5 animate-in slide-in-from-right-8 duration-500 relative overflow-hidden mb-8">
        <div className="flex items-center gap-4 mb-8 relative z-10">
@@ -376,9 +434,9 @@ export default function CreatePage() {
           )}
 
           {/* Whatever this game declares in GAME_OPTIONS — no per-game JSX here. */}
-          {selectedGame && GAME_OPTIONS[selectedGame.id].length > 0 && (
+          {mainOptions.length > 0 && (
             <div className="space-y-6 pt-5 border-t border-[#F1F5F9] animate-in fade-in">
-              {GAME_OPTIONS[selectedGame.id].map(option => (
+              {mainOptions.map(option => (
                 <OptionControl
                   key={option.key}
                   option={option}
@@ -420,6 +478,43 @@ export default function CreatePage() {
                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                  </button>
                </div>
+            </div>
+          )}
+
+          {/* The fine-tuning most rooms leave alone, folded at the bottom. */}
+          {advancedOptions.length > 0 && (
+            <div className="space-y-6">
+              <button
+                type="button"
+                onClick={() => setAdvancedOpen((open) => !open)}
+                aria-expanded={advancedOpen}
+                aria-controls="advanced-options"
+                className="group w-full flex items-center justify-between p-3 bg-[#F8FAFC] rounded-xl border border-transparent hover:border-[#9e1316]/20 transition-all"
+              >
+                <span className="flex items-center gap-3">
+                  <span className={`p-1.5 rounded-lg transition-colors ${advancedOpen ? 'bg-[#1A1F26] text-white' : 'bg-gray-200 text-gray-500 group-hover:text-[#9e1316]'}`}>
+                    <SlidersHorizontal className="w-4 h-4" />
+                  </span>
+                  <span className="font-bold text-[#1A1F26] text-xs uppercase tracking-wide">{t.advanced}</span>
+                  {!advancedOpen && advancedChanged > 0 && (
+                    <span className="bg-white border border-[#E6E1DC] px-2 py-0.5 rounded-md text-2xs font-bold text-[#8A9099]">{t.changed(advancedChanged)}</span>
+                  )}
+                </span>
+                <ChevronDown className={`w-4 h-4 text-[#8A9099] group-hover:text-[#9e1316] transition-transform ${advancedOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {advancedOpen && (
+                <div id="advanced-options" className="space-y-6 animate-in fade-in slide-in-from-top-2">
+                  {advancedOptions.map(option => (
+                    <OptionControl
+                      key={option.key}
+                      option={option}
+                      values={optionValues}
+                      lang={lang}
+                      onChange={setOption}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

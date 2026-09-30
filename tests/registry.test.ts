@@ -208,6 +208,13 @@ describe('game registry', () => {
       });
     });
 
+    it('starts Wikiler with nine words in ten hidden, each reading their own language', () => {
+      const state = createInitialState('wikiler', host, 20, { ...defaultOptionValues('wikiler'), locale: 'en' });
+
+      expect(state.settings).toMatchObject({ hidden: 90, showLetters: true, articles: 'own', lang: 'en', rounds: 5, roundDuration: 180 });
+      expect(state.players[0].lang).toBe('en');
+    });
+
     it('always leaves room for the first click', () => {
       // The first reveal opens a 3x3 safe pocket, so a maximum-density board
       // still has to keep nine cells free or the opening move is impossible.

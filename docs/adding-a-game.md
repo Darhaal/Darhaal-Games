@@ -56,8 +56,12 @@ src/constants/rules.ts: Property 'fibbage' is missing …   (twice: ru and en)
 choice grids are data — `kind: 'slider'` with min/max/step/default, or
 `kind: 'choice'` with a list of packs. A slider can carry a `format` (Minesweeper
 shows `20 × 20`) and a `note`, a derived line recomputed as the sliders move
-(`Клеток: 400 · Всего мин: 60`). An empty array is fine: Coup and Battleship have
-no options. Only reach for bespoke JSX when a control genuinely cannot be
+(`Клеток: 400 · Всего мин: 60`). A long list of choices can be a dropdown
+(`display: 'select'`, with `group` headings); `showWhen` shows a control only when
+another setting calls for it; `advanced: true` folds a fine-tuning most rooms
+leave alone into "Advanced settings" at the bottom of the form — keep the open
+part to what every host sets (Wikiler: topic, rounds, time). An empty array is
+fine: Coup and Battleship have no options. Only reach for bespoke JSX when a control genuinely cannot be
 described this way.
 
 **4. Write the starting state** as a factory in `FACTORIES`. It is a pure

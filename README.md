@@ -1,8 +1,8 @@
 # Darhaal Games
 
-![Version](https://img.shields.io/badge/version-2.11.1-blue.svg) ![License](https://img.shields.io/badge/license-View%20%26%20Study%20Only-red.svg) ![Tests](https://img.shields.io/badge/tests-747-brightgreen.svg)
+![Version](https://img.shields.io/badge/version-2.12.0-blue.svg) ![License](https://img.shields.io/badge/license-View%20%26%20Study%20Only-red.svg) ![Tests](https://img.shields.io/badge/tests-836-brightgreen.svg)
 
-Eight board and logic games you can play with friends in a browser. One person
+Nine board, logic and word games you can play with friends in a browser. One person
 creates a room, shares the link, everyone else joins — no install, no account
 required.
 
@@ -66,6 +66,7 @@ build if any attack succeeds.
 | **Wall Rush** | 2–4 | Duel, three-way, 2v2 and free-for-all; path-finding keeps every wall legal; resign and stay to watch |
 | **Dots & Boxes** | 2–4 | Close a box and move again; the last line drawn is marked |
 | **Reversi** | 2 | Legal moves shown; a turn with none passes by itself |
+| **Wikiler** | 1–20 | Guess a Wikipedia article word by word; loaded straight from Wikipedia, grammatical forms open together |
 
 Rules, tactics and per-game notes: [`docs/games.md`](docs/games.md).
 
@@ -119,7 +120,7 @@ not forgotten.
 | Hosting | Vercel |
 
 No state-management library: the shared sync hook and React state cover it.
-Zero `any`, zero `@ts-ignore`, zero dependency vulnerabilities, 747 tests.
+Zero `any`, zero `@ts-ignore`, zero dependency vulnerabilities, 836 tests.
 
 ---
 

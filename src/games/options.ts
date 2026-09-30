@@ -1,7 +1,9 @@
-import { Bomb, Clock, Flag, Grid, Layers, Swords, type LucideIcon } from 'lucide-react';
+import { BookOpenText, Bomb, Clock, EyeOff, Flag, Grid, Hash, Languages, Layers, Swords, type LucideIcon } from 'lucide-react';
 import { SPYFALL_PACKS } from '@/data/spyfall/locations';
 import { BOARD_FOR_MODE, PLAYERS_FOR_MODE, WALLS_FOR_MODE } from '@/lib/gameLogic/wallrush';
 import { DEFAULT_SIZE, MIN_SIZE, MAX_SIZE, boxCount } from '@/lib/gameLogic/dots';
+import { WIKILER_TOPICS, TOPICS } from '@/data/wikiler/topics';
+import { HIDDEN_DEFAULT, HIDDEN_MAX, HIDDEN_MIN } from '@/lib/gameLogic/wikiler';
 import { GAMES, type GameId, type Locale } from './registry';
 
 /**
@@ -27,6 +29,14 @@ interface OptionBase {
   key: string;
   label: Record<Locale, string>;
   icon: LucideIcon;
+  /** Shown only when this holds — e.g. an attempt limit only in the limited mode. */
+  showWhen?: (values: OptionValues) => boolean;
+  /**
+   * A fine-tuning most rooms leave alone: it goes under "Advanced settings",
+   * folded away at the bottom of the create screen, so the screen shows what
+   * every host sets.
+   */
+  advanced?: boolean;
 }
 
 export interface SliderOption extends OptionBase {
@@ -57,8 +67,12 @@ export interface ChoiceOption extends OptionBase {
      * option in `playersFromOption`.
      */
     players?: number;
+    /** Heading the choice sits under, in a `select` display. */
+    group?: Record<Locale, string>;
   }>;
   previewLabel: Record<Locale, string>;
+  /** `select` for a long list: a dropdown instead of a grid of buttons. */
+  display?: 'grid' | 'select';
 }
 
 export type GameOption = SliderOption | ChoiceOption;
@@ -321,6 +335,154 @@ export const GAME_OPTIONS: Record<GameId, GameOption[]> = {
       step: 15,
       default: 45,
       unit: seconds
+    }
+  ],
+
+  // docs/wikiler-spec.md, sections 2–6.
+  wikiler: [
+    {
+      kind: 'choice',
+      key: 'topic',
+      label: { ru: 'Тема', en: 'Topic' },
+      icon: BookOpenText,
+      default: 'random',
+      display: 'select',
+      previewLabel: { ru: 'Откуда статьи', en: 'Where articles come from' },
+      choices: WIKILER_TOPICS.map((topic) => ({
+        value: topic,
+        emoji: TOPICS[topic].emoji,
+        label: TOPICS[topic].label,
+        group: TOPICS[topic].group,
+        preview: topic === 'random'
+          ? { ru: ['Любая статья Википедии, достаточно длинная и читаемая'], en: ['Any Wikipedia article that is long enough and read'] }
+          : { ru: ['Из статей первостепенной важности Википедии'], en: ['From Wikipedia’s vital articles'] }
+      }))
+    },
+    {
+      kind: 'slider',
+      key: 'rounds',
+      label: { ru: 'Раунды', en: 'Rounds' },
+      icon: Layers,
+      min: 1,
+      max: 20,
+      step: 1,
+      default: 5
+    },
+    {
+      kind: 'slider',
+      key: 'roundMinutes',
+      label: { ru: 'Время раунда', en: 'Round time' },
+      icon: Clock,
+      min: 1,
+      max: 15,
+      step: 1,
+      default: 3,
+      unit: minutes
+    },
+    {
+      kind: 'choice',
+      key: 'letters',
+      label: { ru: 'Число букв', en: 'Letter count' },
+      icon: Hash,
+      default: 'shown',
+      advanced: true,
+      previewLabel: { ru: 'На скрытых словах', en: 'On hidden words' },
+      choices: [
+        {
+          value: 'shown',
+          emoji: '🔢',
+          label: { ru: 'Видно', en: 'Shown' },
+          preview: { ru: ['На каждой плашке — сколько в слове букв'], en: ['Each block shows how many letters the word has'] }
+        },
+        {
+          value: 'hidden',
+          emoji: '▭',
+          label: { ru: 'По нажатию', en: 'On tap' },
+          preview: { ru: ['Только длина плашки; число — если нажать'], en: ['Only the block’s length; the number when tapped'] }
+        }
+      ]
+    },
+    {
+      kind: 'slider',
+      key: 'hidden',
+      label: { ru: 'Скрыто слов', en: 'Words hidden' },
+      icon: EyeOff,
+      advanced: true,
+      min: HIDDEN_MIN,
+      max: HIDDEN_MAX,
+      step: 5,
+      default: HIDDEN_DEFAULT,
+      unit: { ru: '%', en: '%' }
+    },
+    {
+      kind: 'choice',
+      key: 'mode',
+      label: { ru: 'Попытки', en: 'Attempts' },
+      icon: Swords,
+      default: 'unlimited',
+      advanced: true,
+      previewLabel: { ru: 'Как это играется', en: 'How it plays' },
+      choices: [
+        {
+          value: 'unlimited',
+          emoji: '♾️',
+          label: { ru: 'Без ограничений', en: 'Unlimited' },
+          preview: {
+            ru: ['Пробуйте сколько угодно — держат только очки и время'],
+            en: ['Guess as much as you like — only the score and the clock hold you back']
+          }
+        },
+        {
+          value: 'limited',
+          emoji: '🎯',
+          label: { ru: 'Ограниченные', en: 'Limited' },
+          preview: {
+            ru: ['Каждое слово и каждое название тратит попытку', 'Кончились — раунд не угадан'],
+            en: ['Every word and every title spends an attempt', 'Run out and the round is lost']
+          }
+        }
+      ]
+    },
+    {
+      kind: 'slider',
+      key: 'attempts',
+      label: { ru: 'Попыток на раунд', en: 'Attempts per round' },
+      icon: Swords,
+      min: 1,
+      max: 50,
+      step: 1,
+      default: 20,
+      advanced: true,
+      showWhen: (values) => values.mode === 'limited'
+    },
+    {
+      kind: 'choice',
+      key: 'articleLang',
+      label: { ru: 'Язык статей', en: 'Article language' },
+      icon: Languages,
+      default: 'own',
+      advanced: true,
+      previewLabel: { ru: 'Как это играется', en: 'How it plays' },
+      choices: [
+        {
+          value: 'own',
+          emoji: '🌐',
+          label: { ru: 'Свой у каждого', en: 'Each their own' },
+          preview: {
+            ru: ['Статья одна, но каждый читает её на языке своего интерфейса', 'Версии на разных языках написаны разными авторами и немного отличаются'],
+            en: ['One article, each reading it in their own interface language', 'The language versions are written by different people and differ a little']
+          }
+        },
+        {
+          value: 'host',
+          emoji: '📖',
+          label: { ru: 'Как у хоста', en: 'The host’s' },
+          preview: {
+            ru: ['Все читают один и тот же текст на языке хоста — счёт полностью равный'],
+            en: ['Everyone reads the same text in the host’s language — a perfectly even score']
+          }
+        }
+      ]
     }
   ]
 };

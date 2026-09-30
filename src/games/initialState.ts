@@ -6,6 +6,9 @@ import type { SpyfallState } from '@/types/spyfall';
 import type { WallRushMode, WallRushState } from '@/types/wallrush';
 import type { DotsState } from '@/types/dots';
 import type { ReversiState } from '@/types/reversi';
+import type { WikilerPlayer, WikilerState } from '@/types/wikiler';
+import { WIKILER_TOPICS, type WikilerTopic } from '@/data/wikiler/topics';
+import { HIDDEN_DEFAULT, HIDDEN_MAX, HIDDEN_MIN, type WikilerLang } from '@/lib/gameLogic/wikiler';
 import { emptyBoard, DEFAULT_SIZE, MIN_SIZE, MAX_SIZE } from '@/lib/gameLogic/dots';
 import { startingBoard, BOARD_SIZE as REVERSI_SIZE } from '@/lib/gameLogic/reversi';
 import { WALLS_FOR_MODE, PLAYERS_FOR_MODE, BOARD_FOR_MODE } from '@/lib/gameLogic/wallrush';
@@ -44,7 +47,24 @@ export interface GameStateByType {
   wallrush: WallRushState;
   dots: DotsState;
   reversi: ReversiState;
+  wikiler: WikilerState;
 }
+
+/** A Wikiler player as they join, before any round. */
+export function newWikilerPlayer(base: { id: string; name: string; avatarUrl: string; isHost: boolean; lang?: WikilerLang }): WikilerPlayer {
+  return {
+    ...base,
+    score: 0,
+    attempts: 0,
+    done: false,
+    result: null,
+    history: [],
+    isReadyForNextRound: false,
+    tabLeaves: 0
+  };
+}
+
+const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n));
 
 export type AnyGameState = GameStateByType[GameId];
 
@@ -247,6 +267,39 @@ const FACTORIES: { [K in GameId]: (args: FactoryArgs) => GameStateByType[K] } = 
     settings: { maxPlayers: 2, turnDuration: 45 }
   }),
 
+  wikiler: ({ maxPlayers, values, now, base }) => {
+    const topic = str(values, 'topic', 'random');
+    const lang: WikilerLang = str(values, 'locale', 'ru') === 'en' ? 'en' : 'ru';
+    return {
+      players: [newWikilerPlayer({ ...base, lang })],
+      status: 'waiting',
+      // The article is drawn when the host starts, not while the room waits.
+      round: null,
+      roundIndex: 0,
+      next: null,
+      played: [],
+      startTime: 0,
+      lastActionTime: now,
+      notifications: [],
+      version: 1,
+      gameType: 'wikiler',
+      settings: {
+        maxPlayers,
+        rounds: clamp(num(values, 'rounds', 5), 1, 20),
+        roundDuration: clamp(num(values, 'roundMinutes', 3), 1, 15) * 60,
+        hidden: clamp(num(values, 'hidden', HIDDEN_DEFAULT), HIDDEN_MIN, HIDDEN_MAX),
+        showLetters: str(values, 'letters', 'shown') !== 'hidden',
+        mode: str(values, 'mode', 'unlimited') === 'limited' ? 'limited' : 'unlimited',
+        attempts: clamp(num(values, 'attempts', 20), 1, 50),
+        // The host's interface language (the create screen passes it) — the
+        // round's own; players read theirs unless the host keeps everyone on it.
+        lang,
+        articles: str(values, 'articleLang', 'own') === 'host' ? 'host' : 'own',
+        topic: (WIKILER_TOPICS as readonly string[]).includes(topic) ? (topic as WikilerTopic) : 'random'
+      }
+    };
+  },
+
   coup: ({ maxPlayers, now, base }) => {
     const player: CoupPlayer = { ...base, coins: 2, cards: [], isDead: false, isReady: true };
 
@@ -383,6 +436,21 @@ const REMATCH: { [K in GameId]: (parent: GameStateByType[K]) => GameStateByType[
     turnDeadline: undefined,
     passes: 0,
     winnerIds: [],
+    startTime: 0,
+    lastActionTime: Date.now(),
+    notifications: [],
+    version: 1
+  }),
+
+  wikiler: (p) => ({
+    ...p,
+    players: [],
+    status: 'waiting',
+    round: null,
+    roundIndex: 0,
+    next: null,
+    played: [],
+    roundEndedAt: undefined,
     startTime: 0,
     lastActionTime: Date.now(),
     notifications: [],

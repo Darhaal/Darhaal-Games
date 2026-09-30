@@ -1,0 +1,44 @@
+{
+  "people": ["People"],
+  "people_politicians": ["People#Politicians and leaders"],
+  "people_military": ["People#Military leaders and theorists", "People#Rebels, revolutionaries and activists"],
+  "people_scientists": ["People#Scientists, inventors and mathematicians"],
+  "people_thinkers": ["People#Philosophers, historians, political and social scientists"],
+  "people_writers": ["People#Writers", "People#Journalists"],
+  "people_artists": ["People#Visual artists", "People#Musicians and composers"],
+  "people_screen": ["People#Entertainers", "People#Directors, producers and screenwriters"],
+  "people_sports": ["People#Sports figures"],
+  "people_explorers": ["People#Explorers", "People#Businesspeople"],
+  "people_religious": ["People#Religious figures"],
+
+  "history": ["History"],
+  "society": ["Society and social sciences"],
+  "politics": [
+    "Society and social sciences#Politics and government", "Society and social sciences#Business and economics",
+    "Society and social sciences#Law", "Society and social sciences#International organizations"
+  ],
+
+  "geography": ["Geography"],
+  "countries": ["Geography#Countries and other regions"],
+  "cities": ["Geography#Cities"],
+  "landforms": ["Geography#Physical geography"],
+
+  "arts": ["Arts"],
+  "culture": ["Society and social sciences#Culture", "Society and social sciences#Language", "Society and social sciences#Mass media"],
+  "philosophy": ["Philosophy and religion"],
+
+  "everyday": ["Everyday life"],
+  "sports": ["Everyday life#Sports and recreation"],
+  "biology": ["Biology and health sciences"],
+  "animals": ["Biology and health sciences#Animals"],
+  "plants": ["Biology and health sciences#Plants", "Biology and health sciences#Botany"],
+  "health": ["Biology and health sciences#Health, medicine and disease"],
+
+  "physical": ["Physical sciences"],
+  "astronomy": ["Physical sciences#Astronomy"],
+  "physics": ["Physical sciences#Physics"],
+  "chemistry": ["Physical sciences#Chemistry"],
+  "earth": ["Physical sciences#Earth science"],
+  "technology": ["Technology"],
+  "mathematics": ["Mathematics"]
+}

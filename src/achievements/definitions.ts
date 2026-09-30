@@ -219,7 +219,8 @@ const WIN_LADDER_TITLES: Record<GameId, Text> = {
   coup: { ru: 'Кукловод', en: 'Puppet Master' },
   wallrush: { ru: 'Прорыв', en: 'Breakthrough' },
   dots: { ru: 'Квадратура', en: 'Squaring Up' },
-  reversi: { ru: 'Изнанка', en: 'Flip Side' }
+  reversi: { ru: 'Изнанка', en: 'Flip Side' },
+  wikiler: { ru: 'Книжный червь', en: 'Bookworm' }
 };
 
 const winLadder = (game: GameId): Ladder => ({
@@ -524,6 +525,46 @@ const FEATS: Record<GameId, Feat[]> = {
       title: { ru: 'Фотофиниш', en: 'Photo Finish' },
       description: { ru: 'Победите с перевесом в одну-две фишки', en: 'Win by one or two discs' },
       reached: (p) => any(p, 'reversi', (r) => won(r) && num(r, 'margin') >= 1 && num(r, 'margin') <= 2)
+    }
+  ]),
+
+  // Reads the details the Wikiler hook records — docs/wikiler-spec.md, section 9.
+  wikiler: feats('wikiler', [
+    {
+      id: 'wikiler.half_word', icon: Zap, tier: 'gold',
+      title: { ru: 'С полуслова', en: 'In a Word' },
+      description: { ru: 'Назовите статью за 5 попыток или меньше', en: 'Name the article in 5 attempts or fewer' },
+      reached: (p) => any(p, 'wikiler', (r) => num(r, 'quickTitle') <= 5)
+    },
+    {
+      id: 'wikiler.thousand', icon: Crown, tier: 'gold',
+      title: { ru: 'Тысячник', en: 'Near a Thousand' },
+      description: { ru: 'Угадайте раунд на 950 очков и больше', en: 'Solve a round for 950 points or more' },
+      reached: (p) => any(p, 'wikiler', (r) => num(r, 'bestRound') >= 950)
+    },
+    {
+      id: 'wikiler.clean', icon: Target, tier: 'silver',
+      title: { ru: 'Без промаха', en: 'Clean Sheet' },
+      description: { ru: 'Угадайте раунд без единого промаха', en: 'Solve a round without a single miss' },
+      reached: (p) => any(p, 'wikiler', (r) => num(r, 'cleanRounds') >= 1)
+    },
+    {
+      id: 'wikiler.erudite', icon: Medal, tier: 'silver',
+      title: { ru: 'Эрудит', en: 'Polymath' },
+      description: { ru: 'Угадайте все раунды матча из пяти и больше', en: 'Solve every round of a match of five or more' },
+      reached: (p) => any(p, 'wikiler', (r) => num(r, 'rounds') >= 5 && num(r, 'solved') === num(r, 'rounds'))
+    },
+    {
+      id: 'wikiler.lightning', icon: Timer, tier: 'silver',
+      title: { ru: 'Молниеносно', en: 'Lightning Guess' },
+      description: { ru: 'Угадайте статью за 30 секунд', en: 'Solve an article within 30 seconds' },
+      reached: (p) => any(p, 'wikiler', (r) => num(r, 'fastestSolve') <= 30)
+    },
+    {
+      id: 'wikiler.last_try', icon: Hourglass, tier: 'bronze',
+      title: { ru: 'На последней попытке', en: 'Last Attempt' },
+      description: { ru: 'Угадайте статью на последней разрешённой попытке', en: 'Solve an article on the last attempt allowed' },
+      reached: (p) => any(p, 'wikiler', (r) => num(r, 'lastTry') >= 1)
     }
   ])
 };

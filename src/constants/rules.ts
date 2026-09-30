@@ -397,6 +397,67 @@ export const GAME_RULES: Record<Locale, Record<GameId, GameRulesData>> = {
           type: 'list'
         }
       ]
+    },
+    wikiler: {
+      title: 'Wikiler',
+      description: 'Угадайте статью Википедии',
+      sections: [
+        {
+          title: 'Цель игры',
+          icon: Trophy,
+          content: 'Всем дают одну и ту же статью Википедии, в которой скрыты почти все значимые слова (по умолчанию 90%) и всё название. Открывайте слова и узнайте статью. Раунд угадан, когда вы ввели её название или открыли все слова названия.',
+          type: 'text'
+        },
+        {
+          title: 'Как играть',
+          icon: Search,
+          content: [
+            'СЛОВО: напишите слово — если оно есть в статье, откроются все его места и видно, сколько раз оно встретилось. Вместе со словом могут открыться его грамматические формы.',
+            'СТАТЬЯ: рискните и введите название целиком. Верно — раунд ваш с текущим счётом; неверно — минус 50 очков.',
+            'Служебные слова (и, в, на, the, of…), числа и знаки видны сразу.',
+            'Когда раунд для вас закончился — угадали вы или нет, — откроется вся статья и её карточка из Википедии.',
+            'Скрытое слово — серая плашка длиной со слово. Число букв на ней видно сразу или по нажатию — как решит хост.'
+          ],
+          type: 'list'
+        },
+        {
+          title: 'Очки',
+          icon: Target,
+          content: [
+            'В начале раунда — 1000 очков.',
+            'Время: весь раунд стоит 500 очков, они тают равномерно.',
+            'Слово: промах — минус 25, одно вхождение — 20, два — 15, три — 10, четыре — 5, пять и больше — бесплатно.',
+            'Неверное название — минус 50.',
+            'Угаданный раунд — не меньше 10 очков, неугаданный — 0. Итог — сумма раундов.'
+          ],
+          type: 'list'
+        },
+        {
+          title: 'Режимы',
+          icon: Clock,
+          content: [
+            'Без ограничений: пробуйте сколько угодно, держат только очки и время.',
+            'Ограниченные попытки: каждое слово и каждое название тратит попытку, даже бесплатное. Кончились — раунд не угадан.'
+          ],
+          type: 'list'
+        },
+        {
+          title: 'Управление',
+          icon: Keyboard,
+          content: [
+            'Enter — отправить слово или название.',
+            'Tab в поле ввода — переключить СЛОВО и СТАТЬЯ.',
+            'После раунда Enter нажимает «Далее».'
+          ],
+          type: 'list'
+        },
+        {
+          title: 'Откуда статьи',
+          icon: Eye,
+          content: 'Статьи загружаются прямо с сайта Википедии (ru.wikipedia.org или en.wikipedia.org). Тему выбирает хост: любая статья или одна из 34 тем. Статья у всех одна, но каждый читает её на языке своего интерфейса — версии на разных языках немного отличаются; в дополнительных настройках хост может дать всем один текст на своём языке. Тексты написаны авторами Википедии и доступны по лицензии CC BY-SA 4.0 — после раунда видны ссылка на статью, лицензию и список авторов. Wikiler не связан с Википедией и фондом Викимедиа.',
+          type: 'text'
+        }
+      ]
     }
   },
   en: {
@@ -782,6 +843,67 @@ export const GAME_RULES: Record<Locale, Record<GameId, GameRulesData>> = {
             'Count moves, not discs. Leaving your rival with almost nothing to play is how the endgame is won.'
           ],
           type: 'list'
+        }
+      ]
+    },
+    wikiler: {
+      title: 'Wikiler',
+      description: 'Name the Wikipedia article',
+      sections: [
+        {
+          title: 'Goal',
+          icon: Trophy,
+          content: 'Everyone gets the same Wikipedia article with nearly every meaningful word hidden (90% by default) and the whole title. Open words and work out the article. A round is solved when you type its title or open every word of the title.',
+          type: 'text'
+        },
+        {
+          title: 'How to play',
+          icon: Search,
+          content: [
+            'WORD: type a word — if the article has it, every place it occurs opens and you see how many there are. Its grammatical forms may open with it.',
+            'ARTICLE: take the risk and type the whole title. Right, and the round is yours at the current score; wrong costs 50 points.',
+            'Function words (the, of, and…), numbers and punctuation are shown from the start.',
+            'Once the round is over for you — solved or not — the whole article opens with its Wikipedia card.',
+            'A hidden word is a grey block as long as the word. Its letter count shows from the start or on a tap — the host decides.'
+          ],
+          type: 'list'
+        },
+        {
+          title: 'Score',
+          icon: Target,
+          content: [
+            'A round starts at 1,000 points.',
+            'Time: the whole round costs 500 points, melting away evenly.',
+            'Words: a miss costs 25, one occurrence 20, two 15, three 10, four 5, five or more nothing.',
+            'A wrong title costs 50.',
+            'A solved round is worth at least 10, an unsolved one 0. The match adds up the rounds.'
+          ],
+          type: 'list'
+        },
+        {
+          title: 'Modes',
+          icon: Clock,
+          content: [
+            'Unlimited: guess as much as you like; only the score and the clock hold you back.',
+            'Limited attempts: every word and every title spends an attempt, even a free one. Run out and the round is lost.'
+          ],
+          type: 'list'
+        },
+        {
+          title: 'Controls',
+          icon: Keyboard,
+          content: [
+            'Enter — send the word or the title.',
+            'Tab in the input — switch between WORD and ARTICLE.',
+            'After a round, Enter presses Next.'
+          ],
+          type: 'list'
+        },
+        {
+          title: 'Where the articles come from',
+          icon: Eye,
+          content: 'Articles load straight from Wikipedia (ru.wikipedia.org or en.wikipedia.org). The host picks the topic: any article or one of 34 topics. Everyone gets the same article, each reading it in their own interface language — the language versions differ a little; in the advanced settings the host can give everyone one text in the host’s language. The text is written by Wikipedia’s authors and available under CC BY-SA 4.0 — after each round you get a link to the article, the licence and the list of authors. Wikiler is not affiliated with Wikipedia or the Wikimedia Foundation.',
+          type: 'text'
         }
       ]
     }

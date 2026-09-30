@@ -333,7 +333,7 @@ export const GAMES_CONTENT: GameContent[] = [
           'Начните вводить название страны — подсказки появятся сразу под полем.',
           'Выбирайте подсказку стрелками и Tab или введите ответ целиком.',
           'Отвечайте как можно раньше: скорость напрямую влияет на количество очков.',
-          'После всех раундов сравните итоговые очки с соперниками.'
+          'После раунда — угадали вы или нет — откроется вся статья с её карточкой из Википедии. После всех раундов сравните итоговые очки с соперниками.'
         ],
         features: [
           'Более двухсот стран и территорий',
@@ -390,7 +390,7 @@ export const GAMES_CONTENT: GameContent[] = [
           'Start typing a country name — suggestions appear right below the field.',
           'Pick a suggestion with the arrow keys and Tab, or type the full answer.',
           'Answer as early as you can: speed feeds directly into your score.',
-          'After the final round, compare your total with everyone else.'
+          'After each round — solved or not — the whole article opens with its Wikipedia card. After the final round, compare your total with everyone else.'
         ],
         features: [
           'Over two hundred countries and territories',
@@ -1058,6 +1058,123 @@ export const GAMES_CONTENT: GameContent[] = [
       }
     }
   },
+  {
+    ...gameFacts('wikiler'),
+    locales: {
+      ru: {
+        ...localeFacts('wikiler', 'ru'),
+        metaTitle: 'Wikiler — угадай статью Википедии по словам',
+        metaDescription:
+          'Словесная викторина по статьям Википедии: почти все слова скрыты, вы открываете их по одному и угадываете название. Соло и до 20 игроков.',
+        intro: [
+          'Wikiler — игра по статьям Википедии. Вам показывают статью, в которой скрыты почти все значимые слова и всё название. Вы пишете слова — и они открываются везде, где встречаются в тексте.',
+          'Задача — узнать статью. Можно открывать слова, пока не проявится название, а можно рискнуть раньше и ввести его целиком: чем меньше попыток и времени ушло, тем больше очков.',
+          'Играть можно одному или компанией до двадцати человек: у всех одна и та же статья, каждый угадывает сам, а очки складываются по раундам.'
+        ],
+        howToPlay: [
+          'Выберите тему — случайную статью или одну из 34 тем, — число раундов и время. Остальное — в дополнительных настройках.',
+          'Пишите слова: совпавшие откроются в статье вместе с грамматическими формами, и будет видно, сколько раз они встретились.',
+          'Служебные слова, числа и знаки видны сразу — по ним читается строение текста.',
+          'Когда догадались, переключитесь на вкладку «Статья» и введите название.',
+          'Неверное название стоит 50 очков, а промах словом — 25, поэтому угадывайте с умом.',
+          'После всех раундов сравните итоговые очки с соперниками.'
+        ],
+        features: [
+          'Настоящие статьи Википедии: каждый читает свою на русском или английском',
+          'Случайная статья или одна из 34 тем: люди, история, география, наука…',
+          'Грамматические формы слова открываются вместе',
+          'Соло и мультиплеер до двадцати игроков',
+          'Режимы без ограничений и с лимитом попыток',
+          'Настраиваемые раунды, время, доля скрытых слов и подсказка с числом букв'
+        ],
+        strategy: [
+          'Начинайте с частых слов общей темы: «год», «город», «страна», «вид». Они дёшевы и быстро подсказывают, о чём статья.',
+          'Смотрите на форму текста: даты и числа, длина абзацев и заголовки разделов выдают тип статьи — биография, город, животное.',
+          'Первое предложение — главное. В нём название обычно повторяется и определяется одной фразой.',
+          'Рискуйте названием, когда вариантов два-три: 50 очков штрафа меньше, чем минута раздумий.',
+        ],
+        mistakes: [
+          'Угадывают редкие слова — промах стоит 25 очков, а частое слово почти бесплатно.',
+          'Ждут, пока проявится всё название, и теряют очки на времени.',
+          'Вводят название во вкладке «Слово» — она принимает по одному слову.',
+        ],
+        faq: [
+          {
+            q: 'Откуда берутся статьи?',
+            a: 'Прямо из Википедии: браузер загружает их с ru.wikipedia.org или en.wikipedia.org — каждому на языке его интерфейса, или всем на языке хоста, если он так выбрал. Тексты статей написаны авторами Википедии и распространяются по лицензии CC BY-SA 4.0 — после каждого раунда видна ссылка на статью и список её авторов.'
+          },
+          {
+            q: 'Как считаются очки?',
+            a: 'В начале раунда 1000 очков. Время раунда целиком стоит 500, промах словом — 25 (чем чаще слово встречается, тем дешевле попытка), неверное название — 50. Угаданный раунд приносит не меньше 10 очков.'
+          },
+          {
+            q: 'Почему вместе со словом открылись другие?',
+            a: 'Открываются грамматические формы слова: «работа» откроет и «работы», и «работой». Формы определяются автоматически, поэтому иногда вместе открываются и родственные слова.'
+          },
+          {
+            q: 'Это игра Википедии?',
+            a: 'Нет. Wikiler использует открытые статьи Википедии, но не связан с Википедией и фондом Викимедиа.'
+          }
+        ]
+      },
+      en: {
+        ...localeFacts('wikiler', 'en'),
+        metaTitle: 'Wikiler — guess the Wikipedia article',
+        metaDescription:
+          'A word quiz on Wikipedia articles: nearly every word is hidden, you open them one by one and name the article. Solo or up to 20 players.',
+        intro: [
+          'Wikiler is a game played on Wikipedia articles. You get an article with nearly every meaningful word hidden and the whole title. Type a word and it opens everywhere it appears in the text.',
+          'The goal is to name the article. Open words until the title shows through — or take the risk earlier and type the title outright: the fewer attempts and the less time it took, the more points.',
+          'Play alone or with up to twenty people: everyone gets the same article, each guesses on their own, and points add up across rounds.'
+        ],
+        howToPlay: [
+          'Choose a topic — a random article or one of 34 topics — the number of rounds and the time. The rest is in the advanced settings.',
+          'Type words: the ones that match open in the article along with their grammatical forms, and you see how many times they occur.',
+          'Function words, numbers and punctuation are shown from the start, so you can read the shape of the text.',
+          'When you know it, switch to the Article tab and type the title.',
+          'A wrong title costs 50 points and a missed word 25, so guess wisely.',
+          'After the final round, compare your total with everyone else.'
+        ],
+        features: [
+          'Real Wikipedia articles: each player reads theirs in English or Russian',
+          'A random article or one of 34 topics: people, history, geography, science…',
+          'Grammatical forms of a word open together',
+          'Solo and multiplayer for up to twenty',
+          'Unlimited or limited attempts',
+          'Configurable rounds, time, share of hidden words and a letter-count hint'
+        ],
+        strategy: [
+          'Open with common words of the general field: "year", "city", "country", "species". They are cheap and quickly tell you what the article is about.',
+          'Read the shape of the text: dates and numbers, paragraph lengths and section headings give away the kind of article — a biography, a city, an animal.',
+          'The first sentence matters most. It usually repeats the title and defines it in one phrase.',
+          'Risk the title when you are down to two or three candidates: a 50-point penalty is less than a minute of hesitation.',
+        ],
+        mistakes: [
+          'Guessing rare words — a miss costs 25 points, while a common word is nearly free.',
+          'Waiting for the whole title to appear and losing points to the clock.',
+          'Typing the title in the Word tab, which takes one word at a time.',
+        ],
+        faq: [
+          {
+            q: 'Where do the articles come from?',
+            a: 'Straight from Wikipedia: your browser loads them from en.wikipedia.org or ru.wikipedia.org — each player in their interface language, or everyone in the host’s if the host chose so. The articles are written by Wikipedia’s authors and available under CC BY-SA 4.0 — after each round you get a link to the article and its list of authors.'
+          },
+          {
+            q: 'How is the score calculated?',
+            a: 'A round starts at 1,000 points. The whole round costs 500 over time, a missed word 25 (the more often a word occurs, the cheaper the attempt), a wrong title 50. A solved round is worth at least 10.'
+          },
+          {
+            q: 'Why did other words open with mine?',
+            a: 'Grammatical forms open together: "work" also opens "works" and "worked". The forms are found automatically, so occasionally related words open too.'
+          },
+          {
+            q: 'Is this a Wikipedia game?',
+            a: 'No. Wikiler uses Wikipedia’s open articles but is not affiliated with Wikipedia or the Wikimedia Foundation.'
+          }
+        ]
+      }
+    }
+  },
 ];
 
 /**
@@ -1069,7 +1186,7 @@ export const GAMES_CONTENT: GameContent[] = [
  * by hand when the wording, the games or the FAQs change — not for styling or
  * unrelated code.
  */
-export const CONTENT_REVISION = '2026-08-20';
+export const CONTENT_REVISION = '2026-09-30';
 
 /** Every public game slug, in the order they should appear on the hub page. */
 export const GAME_SLUGS = GAMES_CONTENT.map((g) => g.slug);
@@ -1151,7 +1268,7 @@ export const HOME_CONTENT: Record<Locale, HomeCopy> = {
       },
       {
         q: 'Сколько человек можно позвать?',
-        a: 'Зависит от игры: Морской бой и Реверси рассчитаны на двоих; Сапёр, Стены и «Точки и квадраты» — до четырёх; Переворот — до шести; Шпион — до двенадцати; Флагер — до двадцати.'
+        a: 'Зависит от игры: Морской бой и Реверси рассчитаны на двоих; Сапёр, Стены и «Точки и квадраты» — до четырёх; Переворот — до шести; Шпион — до двенадцати; Флагер и Wikiler — до двадцати.'
       },
       {
         q: 'Это бесплатно?',
@@ -1201,7 +1318,7 @@ export const HOME_CONTENT: Record<Locale, HomeCopy> = {
       },
       {
         q: 'How many people can join?',
-        a: 'It depends on the game: Battleship and Reversi are for two; Minesweeper, Wall Rush and Dots & Boxes take up to four; Coup up to six; Spyfall up to twelve; and Flager up to twenty.'
+        a: 'It depends on the game: Battleship and Reversi are for two; Minesweeper, Wall Rush and Dots & Boxes take up to four; Coup up to six; Spyfall up to twelve; and Flager and Wikiler up to twenty.'
       },
       {
         q: 'Is it free?',
