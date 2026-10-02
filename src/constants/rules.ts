@@ -426,7 +426,7 @@ export const GAME_RULES: Record<Locale, Record<GameId, GameRulesData>> = {
           content: [
             'В начале раунда — 1000 очков.',
             'Время: весь раунд стоит 500 очков, они тают равномерно.',
-            'Слово: промах — минус 25, одно вхождение — 20, два — 15, три — 10, четыре — 5, пять и больше — бесплатно.',
+            'Слово: промах — минус 10, найденное слово — минус 2. Это при 50 попытках; чем меньше лимит, тем дороже каждая попытка: при 10 попытках промах стоит 50, находка — 10.',
             'Неверное название — минус 50.',
             'Угаданный раунд — не меньше 10 очков, неугаданный — 0. Итог — сумма раундов.'
           ],
@@ -874,7 +874,7 @@ export const GAME_RULES: Record<Locale, Record<GameId, GameRulesData>> = {
           content: [
             'A round starts at 1,000 points.',
             'Time: the whole round costs 500 points, melting away evenly.',
-            'Words: a miss costs 25, one occurrence 20, two 15, three 10, four 5, five or more nothing.',
+            'Words: a miss costs 10, a word the article has costs 2. That is at 50 attempts; the tighter the limit, the dearer each attempt: at 10 attempts a miss costs 50 and a find 10.',
             'A wrong title costs 50.',
             'A solved round is worth at least 10, an unsolved one 0. The match adds up the rounds.'
           ],

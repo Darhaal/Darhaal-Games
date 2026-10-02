@@ -111,15 +111,25 @@ describe('a word guess (3)', () => {
     { text: 'Isaac Newton was an English physicist. Physics owes him much; physics, physics and physics.' }
   ], 'en');
 
-  it('costs less the more often the word occurs', () => {
-    expect([0, 1, 2, 3, 4, 5, 6].map(guessCost)).toEqual([25, 20, 15, 10, 5, 0, 0]);
+  it('costs 10 a miss and 2 a find, however often the word occurs', () => {
+    expect([0, 1, 2, 7].map((n) => guessCost(n))).toEqual([10, 2, 2, 2]);
+    expect([guessCost(0, 50), guessCost(1, 50)]).toEqual([10, 2]);
+  });
+
+  it('a tighter attempt limit makes each attempt dearer in proportion', () => {
+    expect([guessCost(0, 10), guessCost(1, 10)]).toEqual([50, 10]);
+    expect([guessCost(0, 25), guessCost(1, 25)]).toEqual([20, 4]);
+    expect([guessCost(0, 3), guessCost(1, 3)]).toEqual([167, 33]);
+    // Spending every attempt on misses weighs the same, whatever the limit.
+    for (const limit of [1, 5, 10, 25, 50]) expect(Math.abs(limit * guessCost(0, limit) - 500)).toBeLessThanOrEqual(limit);
   });
 
   it('reports the occurrences and the cost', () => {
     expect(evaluateGuess(article, 'physics', new Set(), 'en')).toEqual({
-      kind: 'word', key: wordKey('physics', 'en'), occurrences: 4, cost: 5
+      kind: 'word', key: wordKey('physics', 'en'), occurrences: 4, cost: 2
     });
-    expect(evaluateGuess(article, 'gravity', new Set(), 'en')).toMatchObject({ kind: 'word', occurrences: 0, cost: 25 });
+    expect(evaluateGuess(article, 'gravity', new Set(), 'en')).toMatchObject({ kind: 'word', occurrences: 0, cost: 10 });
+    expect(evaluateGuess(article, 'gravity', new Set(), 'en', 10)).toMatchObject({ cost: 50 });
   });
 
   it('a word already open is a free repeat, not an attempt', () => {
@@ -164,11 +174,11 @@ describe('solving (2, 6)', () => {
 });
 
 describe('the score (3)', () => {
-  it('the spec’s example: a fifth of the time, physics ×4, England ×2, one wrong title → 830', () => {
+  it('the spec’s example: a fifth of the time, physics ×4, England ×2, gravity ×0, one wrong title → 836', () => {
     expect(roundScore({
       solved: true, elapsedMs: 12_000, durationMs: 60_000,
-      wordPenalty: guessCost(4) + guessCost(2), wrongTitles: 1
-    })).toBe(830);
+      wordPenalty: guessCost(4) + guessCost(2) + guessCost(0), wrongTitles: 1
+    })).toBe(836);
   });
 
   it('time costs at most 500, however late', () => {

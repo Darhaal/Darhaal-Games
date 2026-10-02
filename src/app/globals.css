@@ -26,6 +26,16 @@
  *
  * Small screens are untouched: that is where the tight sizes earn their keep.
  */
+/* Wikiler: a word fades in where it opens instead of popping in. */
+@theme {
+  --animate-word-in: word-in 450ms ease-out both;
+}
+
+@keyframes word-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 @media (min-width: 1280px) {
   :root {
     --text-3xs: 0.6563rem;        /* 9  -> 10.5 */

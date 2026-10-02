@@ -1076,7 +1076,7 @@ export const GAMES_CONTENT: GameContent[] = [
           'Пишите слова: совпавшие откроются в статье вместе с грамматическими формами, и будет видно, сколько раз они встретились.',
           'Служебные слова, числа и знаки видны сразу — по ним читается строение текста.',
           'Когда догадались, переключитесь на вкладку «Статья» и введите название.',
-          'Неверное название стоит 50 очков, а промах словом — 25, поэтому угадывайте с умом.',
+          'Неверное название стоит 50 очков, промах словом — 10, а найденное слово — 2, поэтому угадывайте с умом.',
           'После всех раундов сравните итоговые очки с соперниками.'
         ],
         features: [
@@ -1094,7 +1094,7 @@ export const GAMES_CONTENT: GameContent[] = [
           'Рискуйте названием, когда вариантов два-три: 50 очков штрафа меньше, чем минута раздумий.',
         ],
         mistakes: [
-          'Угадывают редкие слова — промах стоит 25 очков, а частое слово почти бесплатно.',
+          'Угадывают редкие слова — промах стоит впятеро дороже, чем найденное слово.',
           'Ждут, пока проявится всё название, и теряют очки на времени.',
           'Вводят название во вкладке «Слово» — она принимает по одному слову.',
         ],
@@ -1105,7 +1105,7 @@ export const GAMES_CONTENT: GameContent[] = [
           },
           {
             q: 'Как считаются очки?',
-            a: 'В начале раунда 1000 очков. Время раунда целиком стоит 500, промах словом — 25 (чем чаще слово встречается, тем дешевле попытка), неверное название — 50. Угаданный раунд приносит не меньше 10 очков.'
+            a: 'В начале раунда 1000 очков. Время раунда целиком стоит 500, промах словом — 10, найденное слово — 2 (при лимите попыток меньше 50 — пропорционально дороже), неверное название — 50. Угаданный раунд приносит не меньше 10 очков.'
           },
           {
             q: 'Почему вместе со словом открылись другие?',
@@ -1132,7 +1132,7 @@ export const GAMES_CONTENT: GameContent[] = [
           'Type words: the ones that match open in the article along with their grammatical forms, and you see how many times they occur.',
           'Function words, numbers and punctuation are shown from the start, so you can read the shape of the text.',
           'When you know it, switch to the Article tab and type the title.',
-          'A wrong title costs 50 points and a missed word 25, so guess wisely.',
+          'A wrong title costs 50 points, a missed word 10 and a found one 2, so guess wisely.',
           'After the final round, compare your total with everyone else.'
         ],
         features: [
@@ -1150,7 +1150,7 @@ export const GAMES_CONTENT: GameContent[] = [
           'Risk the title when you are down to two or three candidates: a 50-point penalty is less than a minute of hesitation.',
         ],
         mistakes: [
-          'Guessing rare words — a miss costs 25 points, while a common word is nearly free.',
+          'Guessing rare words — a miss costs five times what a found word does.',
           'Waiting for the whole title to appear and losing points to the clock.',
           'Typing the title in the Word tab, which takes one word at a time.',
         ],
@@ -1161,7 +1161,7 @@ export const GAMES_CONTENT: GameContent[] = [
           },
           {
             q: 'How is the score calculated?',
-            a: 'A round starts at 1,000 points. The whole round costs 500 over time, a missed word 25 (the more often a word occurs, the cheaper the attempt), a wrong title 50. A solved round is worth at least 10.'
+            a: 'A round starts at 1,000 points. The whole round costs 500 over time, a missed word 10 and a found one 2 (dearer in proportion under an attempt limit below 50), a wrong title 50. A solved round is worth at least 10.'
           },
           {
             q: 'Why did other words open with mine?',

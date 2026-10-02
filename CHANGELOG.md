@@ -7,6 +7,22 @@ releasing.
 Format: [Semantic Versioning](https://semver.org/). Types: **major** = platform
 milestone, **minor** = new game mode / feature, **patch** = fixes & improvements.
 
+## [2.12.3] — 2026-09-30 (patch)
+
+### Changed
+- **Wikiler costs less per attempt.** A missed word costs 10 and a word the
+  article has costs 2, however often it occurs (was 25 for a miss, down to
+  nothing for a word found five times or more). That is at 50 attempts; a
+  tighter limit makes each attempt dearer in proportion — at 10 attempts a
+  miss costs 50 and a find 10 — so spending every attempt weighs the same
+  whatever the limit. Unlimited rounds cost the base. A wrong title still
+  costs 50.
+- **Smoother Wikiler text.** A grey block is now measured to the exact width
+  its word takes, so opening a word swaps it in place instead of reflowing
+  the paragraph; the word fades in, and the newest word's mark fades out
+  when the next one opens. The live score steps once a second with the
+  clock instead of four uneven steps a second.
+
 ## [2.12.2] — 2026-09-30 (patch)
 
 ### Added

@@ -150,8 +150,46 @@ function describe(feedback: Feedback, t: Texts): { text: string; good: boolean }
   }
 }
 
+/** A word's width in em, set in the given font weight. */
+type Measure = (text: string, weight: number) => number;
+
+/** From the letter count: close, but not what the word will take once it opens. */
+const estimateWidth: Measure = (text) => Math.max(1, letterCount(text)) * 0.58 + 0.2;
+
+/**
+ * Word widths for the grey blocks. Once the page font has loaded, each block
+ * is measured to the exact width its word takes, so opening a word swaps the
+ * block for the word in place — nothing reflows and the paragraph does not
+ * jump. Until then, and on the server, the estimate.
+ */
+function useWordWidths(): Measure {
+  const [measure, setMeasure] = useState<Measure>(() => estimateWidth);
+  useEffect(() => {
+    let cancelled = false;
+    const ctx = document.createElement('canvas').getContext('2d');
+    if (!ctx) return;
+    document.fonts.ready.then(() => {
+      if (cancelled) return;
+      const family = getComputedStyle(document.body).fontFamily;
+      const cache = new Map<string, number>();
+      setMeasure(() => (text: string, weight: number) => {
+        const key = `${weight}|${text}`;
+        let width = cache.get(key);
+        if (width === undefined) {
+          ctx.font = `${weight} 100px ${family}`;
+          width = ctx.measureText(text).width / 100;
+          cache.set(key, width);
+        }
+        return width;
+      });
+    });
+    return () => { cancelled = true; };
+  }, []);
+  return measure;
+}
+
 /** A hidden word: a grey block its own width, with its letter count — always, or on a tap. */
-function Hidden({ text, peek, onPeek, label }: { text: string; peek: boolean; onPeek: () => void; label: string }) {
+function Hidden({ text, width, peek, onPeek, label }: { text: string; width: number; peek: boolean; onPeek: () => void; label: string }) {
   const n = letterCount(text);
   return (
     <button
@@ -160,15 +198,18 @@ function Hidden({ text, peek, onPeek, label }: { text: string; peek: boolean; on
       title={label}
       aria-label={label}
       className="inline-flex items-center justify-center align-baseline bg-[#E6E1DC] hover:bg-[#D9D3CC] rounded-[3px] h-[1.05em] translate-y-[0.12em] transition-colors"
-      style={{ width: `${Math.max(1, n) * 0.58 + 0.2}em` }}
+      style={{ width: `${Math.max(0.5, width)}em` }}
     >
       {peek && <span className="text-[0.62em] font-black text-[#8A9099] tabular-nums leading-none">{n}</span>}
     </button>
   );
 }
 
-function Tokens({ tokens, revealed, showAll, lastKey, peekId, onPeek, letters, idPrefix, t }: {
+function Tokens({ tokens, revealed, showAll, lastKey, peekId, onPeek, letters, measure, weight, idPrefix, t }: {
   tokens: Token[];
+  /** Sizes the grey blocks; `weight` is the font weight they sit in. */
+  measure: Measure;
+  weight: number;
   /** Every hidden word shows its letter count, not just the tapped one (a lobby setting). */
   letters: boolean;
   revealed: ReadonlySet<string>;
@@ -184,15 +225,23 @@ function Tokens({ tokens, revealed, showAll, lastKey, peekId, onPeek, letters, i
       {tokens.map((token, i) => {
         if (token.kind === 'sep' || token.key === null) return <React.Fragment key={i}>{token.text}</React.Fragment>;
         if (revealed.has(token.key)) {
+          // Fades in where its block was; the newest word's mark fades out
+          // when the next one opens, rather than blinking off.
           return (
-            <span key={i} data-key={token.key} className={token.key === lastKey ? 'bg-[#9e1316]/10 rounded-[3px] shadow-[0_0_0_2px_rgba(158,19,22,0.1)]' : undefined}>
+            <span
+              key={i}
+              data-key={token.key}
+              className={`rounded-[3px] animate-word-in motion-reduce:animate-none transition-[background-color,box-shadow] duration-700 ease-out ${
+                token.key === lastKey ? 'bg-[#9e1316]/10 shadow-[0_0_0_2px_rgba(158,19,22,0.1)]' : 'bg-transparent shadow-[0_0_0_2px_rgba(158,19,22,0)]'
+              }`}
+            >
               {token.text}
             </span>
           );
         }
         if (showAll) return <span key={i} className="text-[#B5B3AD]">{token.text}</span>;
         const id = `${idPrefix}-${i}`;
-        return <Hidden key={i} text={token.text} peek={letters || peekId === id} onPeek={() => onPeek(id)} label={t.letters(letterCount(token.text))} />;
+        return <Hidden key={i} text={token.text} width={measure(token.text, weight)} peek={letters || peekId === id} onPeek={() => onPeek(id)} label={t.letters(letterCount(token.text))} />;
       })}
     </>
   );
@@ -246,6 +295,7 @@ export default function WikilerGame({
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [peekId, setPeekId] = useState<string | null>(null);
   const togglePeek = useCallback((id: string) => setPeekId((p) => (p === id ? null : id)), []);
+  const measure = useWordWidths();
 
   // Leaving the tab mid-round is counted and shown in the results.
   const [tabLeaves, setTabLeaves] = useState(0);
@@ -350,7 +400,10 @@ export default function WikilerGame({
 
   const lastKey = [...r.guesses].reverse().find((g) => g.key)?.key ?? null;
   const showAll = !!me?.done || !isPlaying;
-  const liveScore = me?.done ? me.result?.score ?? 0 : r.scoreNow(clock);
+  // Steps once a second with the clock, not four uneven steps a second.
+  const liveScore = me?.done
+    ? me.result?.score ?? 0
+    : r.scoreNow(round ? round.startTime + Math.floor(elapsedMs / 1000) * 1000 : clock);
   const roundNumber = gameState.roundIndex + 1;
   const described = feedback ? describe(feedback, t) : null;
   const wiki = reading?.lang ?? settings.lang;
@@ -415,7 +468,7 @@ export default function WikilerGame({
         )}
         <h2 className="text-2xl md:text-3xl font-black text-[#1A1F26] leading-snug mb-5">
           {r.article ? (
-            <Tokens tokens={r.article.titleTokens} revealed={r.revealed} showAll={showAll} lastKey={lastKey} peekId={peekId} onPeek={togglePeek} letters={settings.showLetters} idPrefix="t" t={t} />
+            <Tokens tokens={r.article.titleTokens} revealed={r.revealed} showAll={showAll} lastKey={lastKey} peekId={peekId} onPeek={togglePeek} letters={settings.showLetters} measure={measure} weight={900} idPrefix="t" t={t} />
           ) : <span className="text-[#B5B3AD]">· · ·</span>}
         </h2>
 
@@ -440,11 +493,11 @@ export default function WikilerGame({
               {r.article.blocks.map((block, i) =>
                 block.heading ? (
                   <h3 key={i} className="text-lg font-black pt-2">
-                    <Tokens tokens={block.tokens} revealed={r.revealed} showAll={showAll} lastKey={lastKey} peekId={peekId} onPeek={togglePeek} letters={settings.showLetters} idPrefix={`b${i}`} t={t} />
+                    <Tokens tokens={block.tokens} revealed={r.revealed} showAll={showAll} lastKey={lastKey} peekId={peekId} onPeek={togglePeek} letters={settings.showLetters} measure={measure} weight={900} idPrefix={`b${i}`} t={t} />
                   </h3>
                 ) : (
                   <p key={i}>
-                    <Tokens tokens={block.tokens} revealed={r.revealed} showAll={showAll} lastKey={lastKey} peekId={peekId} onPeek={togglePeek} letters={settings.showLetters} idPrefix={`b${i}`} t={t} />
+                    <Tokens tokens={block.tokens} revealed={r.revealed} showAll={showAll} lastKey={lastKey} peekId={peekId} onPeek={togglePeek} letters={settings.showLetters} measure={measure} weight={400} idPrefix={`b${i}`} t={t} />
                   </p>
                 )
               )}

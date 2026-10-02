@@ -1,4 +1,4 @@
-export const APP_VERSION = '2.12.2';
+export const APP_VERSION = '2.12.3';
 
 export type VersionType = 'major' | 'minor' | 'patch' | 'init';
 
@@ -57,6 +57,16 @@ export function formatReleaseRange(from: string, to: string, lang: 'ru' | 'en'):
  */
 export const VERSION_HISTORY: VersionLog[] = [
   /* ===================== 2.12.x ===================== */
+
+  {
+    ver: '2.12.3',
+    date: '2026-09-30',
+    type: 'patch',
+    desc: {
+      ru: 'Wikiler: попытки стали дешевле — промах стоит 10 очков, найденное слово 2, сколько бы раз оно ни встречалось. Это при 50 попытках; с меньшим лимитом каждая попытка пропорционально дороже, при 10 попытках промах стоит 50, находка 10. Текст статьи больше не дёргается: серая плашка по ширине точно совпадает со словом, поэтому открытое слово встаёт на её место, не сдвигая строку, и плавно проявляется. Счёт тает ровно раз в секунду, вместе с часами.',
+      en: 'Wikiler: attempts cost less — a miss is 10 points and a found word 2, however often it occurs. That is at 50 attempts; under a tighter limit each attempt is dearer in proportion, at 10 attempts a miss costs 50 and a find 10. The article text no longer jumps: a grey block is exactly as wide as its word, so an opened word takes its place without shifting the line, and fades in. The score melts once a second, with the clock.'
+    }
+  },
 
   {
     ver: '2.12.2',

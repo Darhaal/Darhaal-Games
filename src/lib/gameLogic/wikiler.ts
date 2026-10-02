@@ -172,8 +172,24 @@ export function buildArticle(
 
 // --------------------------------------------------------------- guesses --
 
-/** Cost of a word guess: the more often it occurs, the cheaper (section 3). */
-export const guessCost = (occurrences: number) => Math.max(0, 25 - 5 * occurrences);
+/** The attempt limit the word costs are set for (section 3). */
+export const COST_BASE_ATTEMPTS = 50;
+/** A word the article does not have. */
+export const MISS_COST = 10;
+/** A word the article has, however often. */
+export const FOUND_COST = 2;
+
+/**
+ * Cost of a word guess (section 3): 10 for a miss and 2 for a word the
+ * article has, at 50 attempts a round. A tighter limit makes each attempt
+ * dearer in proportion — at 10 attempts a miss costs 50 and a find 10 — so
+ * spending every attempt weighs the same whatever the limit; an unlimited
+ * round costs the base.
+ */
+export function guessCost(occurrences: number, limit: number | null = null): number {
+  const scale = limit !== null && limit > 0 && limit < COST_BASE_ATTEMPTS ? COST_BASE_ATTEMPTS / limit : 1;
+  return Math.round((occurrences > 0 ? FOUND_COST : MISS_COST) * scale);
+}
 
 export type WordGuess =
   | { kind: 'invalid'; reason: 'empty' | 'several' | 'open' }
@@ -183,8 +199,15 @@ export type WordGuess =
 /**
  * What a typed word does. Not a guess at all: nothing typed, several words at
  * once, or a word that is always shown. A repeat is free and not an attempt.
+ * `limit` is the round's attempt limit, null when unlimited — it sets the cost.
  */
-export function evaluateGuess(article: Article, input: string, revealed: ReadonlySet<string>, lang: WikilerLang): WordGuess {
+export function evaluateGuess(
+  article: Article,
+  input: string,
+  revealed: ReadonlySet<string>,
+  lang: WikilerLang,
+  limit: number | null = null
+): WordGuess {
   const words = tokenize(input.trim(), lang).filter((t): t is WordToken => t.kind === 'word');
   if (words.length === 0) return { kind: 'invalid', reason: 'empty' };
   if (words.length > 1) return { kind: 'invalid', reason: 'several' };
@@ -192,7 +215,7 @@ export function evaluateGuess(article: Article, input: string, revealed: Readonl
   if (key === null) return { kind: 'invalid', reason: 'open' };
   if (revealed.has(key)) return { kind: 'repeat', key };
   const occurrences = article.counts.get(key) ?? 0;
-  return { kind: 'word', key, occurrences, cost: guessCost(occurrences) };
+  return { kind: 'word', key, occurrences, cost: guessCost(occurrences, limit) };
 }
 
 /** The fallback way to win: every group of the title is open (section 2). */
@@ -232,8 +255,8 @@ export const SCORE_FLOOR = 10;
 
 /**
  * A round's score (section 3): 1000, less up to 500 for time taken, less the
- * word costs, less 50 for each wrong title; never below 10 once solved, and 0
- * if not solved.
+ * word costs (`guessCost`), less 50 for each wrong title; never below 10 once
+ * solved, and 0 if not solved.
  */
 export function roundScore(round: {
   solved: boolean;

@@ -175,13 +175,13 @@ export function useWikilerRound(opts: {
 
   const guessWord = useCallback((input: string): Feedback => {
     if (!canGuess || !article || Date.now() < (round?.startTime ?? 0)) return { kind: 'wait' };
-    const outcome = evaluateGuess(article, input, revealed, lang);
+    const outcome = evaluateGuess(article, input, revealed, lang, limit);
     if (outcome.kind === 'invalid') return outcome;
     if (outcome.kind === 'repeat') return { kind: 'repeat' };
     const text = input.trim();
     addGuess({ kind: 'word', text, key: outcome.key, occurrences: outcome.occurrences, cost: outcome.cost });
     return { kind: 'word', text, occurrences: outcome.occurrences, cost: outcome.cost };
-  }, [canGuess, article, round, revealed, lang, addGuess]);
+  }, [canGuess, article, round, revealed, lang, limit, addGuess]);
 
   const guessTitle = useCallback(async (input: string): Promise<Feedback> => {
     const text = input.trim();
