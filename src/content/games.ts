@@ -1072,7 +1072,7 @@ export const GAMES_CONTENT: GameContent[] = [
           'Играть можно одному или компанией до двадцати человек: у всех одна и та же статья, каждый угадывает сам, а очки складываются по раундам.'
         ],
         howToPlay: [
-          'Выберите тему — случайную статью или одну из 34 тем, — число раундов и время. Остальное — в дополнительных настройках.',
+          'Выберите тему — случайную статью или одну из 34 тем, — сложность, число раундов и время. Остальное — в дополнительных настройках.',
           'Пишите слова: совпавшие откроются в статье вместе с грамматическими формами, и будет видно, сколько раз они встретились.',
           'Служебные слова, числа и знаки видны сразу — по ним читается строение текста.',
           'Когда догадались, переключитесь на вкладку «Статья» и введите название.',
@@ -1081,7 +1081,7 @@ export const GAMES_CONTENT: GameContent[] = [
         ],
         features: [
           'Настоящие статьи Википедии: каждый читает свою на русском или английском',
-          'Случайная статья или одна из 34 тем: люди, история, география, наука…',
+          'Случайная статья или одна из 34 тем: люди, история, география, наука… — легко, средне или сложно',
           'Грамматические формы слова открываются вместе',
           'Соло и мультиплеер до двадцати игроков',
           'Режимы без ограничений и с лимитом попыток',
@@ -1128,7 +1128,7 @@ export const GAMES_CONTENT: GameContent[] = [
           'Play alone or with up to twenty people: everyone gets the same article, each guesses on their own, and points add up across rounds.'
         ],
         howToPlay: [
-          'Choose a topic — a random article or one of 34 topics — the number of rounds and the time. The rest is in the advanced settings.',
+          'Choose a topic — a random article or one of 34 topics — the difficulty, the number of rounds and the time. The rest is in the advanced settings.',
           'Type words: the ones that match open in the article along with their grammatical forms, and you see how many times they occur.',
           'Function words, numbers and punctuation are shown from the start, so you can read the shape of the text.',
           'When you know it, switch to the Article tab and type the title.',
@@ -1137,7 +1137,7 @@ export const GAMES_CONTENT: GameContent[] = [
         ],
         features: [
           'Real Wikipedia articles: each player reads theirs in English or Russian',
-          'A random article or one of 34 topics: people, history, geography, science…',
+          'A random article or one of 34 topics: people, history, geography, science… — easy, medium or hard',
           'Grammatical forms of a word open together',
           'Solo and multiplayer for up to twenty',
           'Unlimited or limited attempts',

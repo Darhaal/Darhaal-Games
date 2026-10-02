@@ -82,5 +82,20 @@ export const POOL_TOPICS = WIKILER_TOPICS.filter((t) => t !== 'random') as Exclu
 
 export const TOPICS: Record<WikilerTopic, TopicDef> = Object.fromEntries(DEFS.map((d) => [d.id, d])) as Record<WikilerTopic, TopicDef>;
 
+/**
+ * How well known the articles are (docs/wikiler-spec.md, section 5): a topic's
+ * articles ranked by how much they are read in the round's language, in
+ * thirds — the most read are easy, the least read hard. `any` takes them all.
+ */
+export const WIKILER_DIFFICULTIES = ['any', 'easy', 'medium', 'hard'] as const;
+export type WikilerDifficulty = (typeof WIKILER_DIFFICULTIES)[number];
+
+export const DIFFICULTIES: Record<WikilerDifficulty, { emoji: string; label: Text }> = {
+  any: { emoji: '🎲', label: { ru: 'Любая', en: 'Any' } },
+  easy: { emoji: '🟢', label: { ru: 'Легко', en: 'Easy' } },
+  medium: { emoji: '🟡', label: { ru: 'Средне', en: 'Medium' } },
+  hard: { emoji: '🔴', label: { ru: 'Сложно', en: 'Hard' } }
+};
+
 /** Which vital-articles pages feed each topic — shared with the pool builder. */
 export const TOPIC_PAGES: Record<Exclude<WikilerTopic, 'random'>, string[]> = TOPIC_SOURCES;

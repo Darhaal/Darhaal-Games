@@ -11,9 +11,11 @@
  * Writes public/wikiler/<topic>.json — the topic's articles as rows of their
  * titles, one column per language (null where that language's article is
  * missing or too short), so a room whose players read different languages can
- * draw one article that exists in all of theirs:
+ * draw one article that exists in all of theirs — then each title's views in
+ * the last 30 days, which set the difficulty (the most read third of a topic
+ * is easy, the least read third hard):
  *
- *   { "langs": ["en", "ru"], "articles": [["Isaac Newton", "Ньютон, Исаак"], …] }
+ *   { "langs": ["en", "ru"], "articles": [["Isaac Newton", "Ньютон, Исаак", 312004, 61877], …] }
  *
  * Only the host of a room fetches one, when a round starts.
  *
@@ -128,6 +130,56 @@ async function lengths(lang, titles) {
   return out;
 }
 
+/** Views of each title in the last 30 days, fifty titles a request. */
+async function monthlyViews(lang, titles) {
+  const out = new Map();
+  for (let i = 0; i < titles.length; i += 50) {
+    const batch = titles.slice(i, i + 50);
+    let cont = {};
+    do {
+      const body = await api(lang, { action: 'query', titles: batch.join('|'), prop: 'pageviews', pvipdays: '30', ...cont });
+      for (const p of body.query?.pages ?? []) {
+        if (!p.pageviews) continue;
+        const sum = Object.values(p.pageviews).reduce((a, b) => a + (b ?? 0), 0);
+        out.set(p.title, (out.get(p.title) ?? 0) + sum);
+      }
+      cont = body.continue ?? null;
+    } while (cont);
+    if ((i / 50) % 40 === 0) console.log(`  ${lang} views: ${Math.min(i + 50, titles.length)}/${titles.length}`);
+  }
+  return out;
+}
+
+/**
+ * One title's views in the last 30 days from Wikimedia's pageviews service —
+ * for the titles the action API left without data (it answers
+ * "pvi-cached-error-title" for a while after a failed fetch). 0 if it has none.
+ */
+async function restViews(lang, title) {
+  const day = (d) => d.toISOString().slice(0, 10).replaceAll('-', '');
+  const end = new Date(Date.now() - 86_400_000);
+  const start = new Date(end.getTime() - 29 * 86_400_000);
+  const url = `https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/${lang}.wikipedia/all-access/user/` +
+    `${encodeURIComponent(title.replaceAll(' ', '_'))}/daily/${day(start)}/${day(end)}`;
+  for (let attempt = 0; attempt < 4; attempt++) {
+    await sleep(PAUSE_MS);
+    requests++;
+    const res = await fetch(url, { headers: { 'User-Agent': UA } });
+    if (res.status === 404) return 0;
+    if (res.ok) return ((await res.json()).items ?? []).reduce((n, item) => n + (item.views ?? 0), 0);
+    await sleep(5000 * 2 ** attempt);
+  }
+  return 0;
+}
+
+/** Fills in, one by one, the titles `monthlyViews` got nothing for. */
+async function fillMissingViews(lang, titles, views) {
+  // No entry, or a sum of nothing but gaps: both mean the API had no data then.
+  const missing = titles.filter((t) => !views.get(t));
+  if (missing.length) console.log(`  ${lang}: ${missing.length} titles without views, asking one by one`);
+  for (const title of missing) views.set(title, await restViews(lang, title));
+}
+
 const sources = [...new Set(Object.values(TOPICS).flat())];
 const pages = [...new Set(sources.map((s) => s.split('#')[0]))];
 
@@ -157,6 +209,14 @@ const allRu = [...new Set([...byPage.values()].flatMap((p) => [...p.entries.valu
 console.log(`ru lengths for ${allRu.length} titles`);
 const ruLengths = await lengths('ru', allRu);
 
+// Views of every title that makes it into a pool, per language.
+const enTitles = [...new Set([...byPage.values()].flatMap((p) => [...p.entries.values()]).filter((e) => e.enBytes >= MIN_BYTES).map((e) => e.en))];
+const ruTitles = [...new Set([...ruLengths.values()].filter((x) => x.bytes >= MIN_BYTES).map((x) => x.title))];
+console.log(`views for ${enTitles.length} en and ${ruTitles.length} ru titles`);
+const views = { en: await monthlyViews('en', enTitles), ru: await monthlyViews('ru', ruTitles) };
+await fillMissingViews('en', enTitles, views.en);
+await fillMissingViews('ru', ruTitles, views.ru);
+
 const dir = path.join('public', 'wikiler');
 fs.rmSync(dir, { recursive: true, force: true });
 fs.mkdirSync(dir, { recursive: true });
@@ -172,7 +232,7 @@ for (const [topic, topicSources] of Object.entries(TOPICS)) {
     // Two English articles can link the same Russian one; it is drawn once.
     let ru = ruPage && ruPage.bytes >= MIN_BYTES && !seenRu.has(ruPage.title) ? ruPage.title : null;
     if (ru) seenRu.add(ru);
-    if (en || ru) rows.push([en, ru]);
+    if (en || ru) rows.push([en, ru, en ? views.en.get(en) ?? 0 : null, ru ? views.ru.get(ru) ?? 0 : null]);
   }
   const count = (i) => rows.filter((r) => r[i]).length;
   console.log(`${topic}: linked ${all.length} · en ${count(0)} · ru ${count(1)} · both ${rows.filter((r) => r[0] && r[1]).length}`);

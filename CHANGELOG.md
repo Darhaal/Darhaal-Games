@@ -7,6 +7,24 @@ releasing.
 Format: [Semantic Versioning](https://semver.org/). Types: **major** = platform
 milestone, **minor** = new game mode / feature, **patch** = fixes & improvements.
 
+## [2.13.0] — 2026-10-02 (minor) — **Easy, Medium, Hard**
+
+> Every Wikiler topic in three difficulties, by how well known its articles are.
+
+### Added
+- **Difficulty in Wikiler**, beside the topic: Any, Easy, Medium, Hard. A
+  topic's articles are ranked by how much they are read in the round's
+  language — views in the last 30 days — and cut in thirds: the most read
+  third is Easy, the least read Hard. So every topic comes in three
+  variations ("All people — easy" is the most famous third of them). A
+  random article uses view bands instead (en: 20,000+ / 3,000–20,000 /
+  under 3,000; ru: 5,000+ / 800–5,000 / under 800) and falls back to the
+  pool at the same difficulty. The round's label names it.
+- The topic pool carries each title's views (`public/wikiler/<topic>.json`
+  rows are titles, then views); `byDifficulty` in `src/lib/wikiler/pick.ts`
+  makes the thirds, and `tests/wikiler-pool.test.ts` checks every topic has
+  at least 15 articles per difficulty in each language.
+
 ## [2.12.4] — 2026-10-02 (patch)
 
 ### Changed

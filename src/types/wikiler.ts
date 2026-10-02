@@ -1,6 +1,6 @@
 import type { GameNotification } from './notification';
 import type { WikilerLang } from '@/lib/gameLogic/wikiler';
-import type { WikilerTopic } from '@/data/wikiler/topics';
+import type { WikilerDifficulty, WikilerTopic } from '@/data/wikiler/topics';
 
 /**
  * Wikiler — guess the Wikipedia article from the words you open. See
@@ -117,5 +117,7 @@ export interface WikilerState {
     /** Each player in their language, or everyone in the host's. Older rooms: host. */
     articles?: WikilerArticleLang;
     topic: WikilerTopic;
+    /** How well known the articles are. Older rooms: any. */
+    difficulty?: WikilerDifficulty;
   };
 }

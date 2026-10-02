@@ -454,7 +454,7 @@ export const GAME_RULES: Record<Locale, Record<GameId, GameRulesData>> = {
         {
           title: 'Откуда статьи',
           icon: Eye,
-          content: 'Статьи загружаются прямо с сайта Википедии (ru.wikipedia.org или en.wikipedia.org). Тему выбирает хост: любая статья или одна из 34 тем. Статья у всех одна, но каждый читает её на языке своего интерфейса — версии на разных языках немного отличаются; в дополнительных настройках хост может дать всем один текст на своём языке. Тексты написаны авторами Википедии и доступны по лицензии CC BY-SA 4.0 — после раунда видны ссылка на статью, лицензию и список авторов. Wikiler не связан с Википедией и фондом Викимедиа.',
+          content: 'Статьи загружаются прямо с сайта Википедии (ru.wikipedia.org или en.wikipedia.org). Тему выбирает хост: любая статья или одна из 34 тем, и сложность: «Легко» — самая читаемая треть темы, «Средне» — средняя, «Сложно» — наименее читаемая. Статья у всех одна, но каждый читает её на языке своего интерфейса — версии на разных языках немного отличаются; в дополнительных настройках хост может дать всем один текст на своём языке. Тексты написаны авторами Википедии и доступны по лицензии CC BY-SA 4.0 — после раунда видны ссылка на статью, лицензию и список авторов. Wikiler не связан с Википедией и фондом Викимедиа.',
           type: 'text'
         }
       ]
@@ -902,7 +902,7 @@ export const GAME_RULES: Record<Locale, Record<GameId, GameRulesData>> = {
         {
           title: 'Where the articles come from',
           icon: Eye,
-          content: 'Articles load straight from Wikipedia (ru.wikipedia.org or en.wikipedia.org). The host picks the topic: any article or one of 34 topics. Everyone gets the same article, each reading it in their own interface language — the language versions differ a little; in the advanced settings the host can give everyone one text in the host’s language. The text is written by Wikipedia’s authors and available under CC BY-SA 4.0 — after each round you get a link to the article, the licence and the list of authors. Wikiler is not affiliated with Wikipedia or the Wikimedia Foundation.',
+          content: 'Articles load straight from Wikipedia (ru.wikipedia.org or en.wikipedia.org). The host picks the topic — any article or one of 34 topics — and the difficulty: Easy is the most read third of the topic, Medium the middle one, Hard the least read. Everyone gets the same article, each reading it in their own interface language — the language versions differ a little; in the advanced settings the host can give everyone one text in the host’s language. The text is written by Wikipedia’s authors and available under CC BY-SA 4.0 — after each round you get a link to the article, the licence and the list of authors. Wikiler is not affiliated with Wikipedia or the Wikimedia Foundation.',
           type: 'text'
         }
       ]

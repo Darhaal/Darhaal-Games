@@ -18,7 +18,7 @@ import { letterCount, readingVersion, type Token, type WikilerLang } from '@/lib
 import { articleUrl, CC_BY_SA_URL, historyUrl } from '@/lib/wikiler/wikipedia';
 import { useWikilerRound, type Feedback, type GuessEntry } from '@/hooks/useWikilerRound';
 import { WIKILER_BETWEEN_ROUNDS_SECONDS } from '@/hooks/useWikilerGame';
-import { TOPICS } from '@/data/wikiler/topics';
+import { DIFFICULTIES, TOPICS } from '@/data/wikiler/topics';
 import ArticlePreview from './wikiler/ArticlePreview';
 import { pluralEn, pluralRu } from '@/lib/plural';
 import { playSfx } from '@/lib/sound';
@@ -535,7 +535,11 @@ export default function WikilerGame({
     <>
       <TurnCard
         lang={lang}
-        label={`${t.roundOf(Math.min(roundNumber, settings.rounds), settings.rounds)} · ${TOPICS[settings.topic].label[lang]}`}
+        label={[
+          t.roundOf(Math.min(roundNumber, settings.rounds), settings.rounds),
+          TOPICS[settings.topic].label[lang],
+          ...(settings.difficulty && settings.difficulty !== 'any' ? [DIFFICULTIES[settings.difficulty].label[lang]] : [])
+        ].join(' · ')}
         title={statusTitle}
         hint={statusHint}
         secondsLeft={isPlaying && startsIn <= 0 ? secondsLeft : undefined}

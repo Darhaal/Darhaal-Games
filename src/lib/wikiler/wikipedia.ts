@@ -339,14 +339,16 @@ const views = (p: RandomPage) => Object.values(p.pageviews ?? {}).reduce<number>
 export async function pickRandomArticle(
   lang: WikilerLang,
   exclude: ReadonlySet<string> = new Set(),
-  also: readonly WikilerLang[] = []
+  also: readonly WikilerLang[] = [],
+  /** Views in the last 30 days it must have, from–to: a difficulty's band. */
+  band: readonly [number, number] = [MIN_MONTHLY_VIEWS, Infinity]
 ): Promise<WikilerArticleRef | null> {
   for (let batch = 0; batch < RANDOM_BATCHES; batch++) {
     const url = `${host(lang)}/w/api.php?action=query&generator=random&grnnamespace=0&grnlimit=${BATCH_SIZE}` +
       '&prop=info%7Cpageviews&pvipdays=30&format=json&formatversion=2&origin=*';
     const data = await (await get(url)).json() as { query?: { pages?: RandomPage[] } };
     const candidates = (data.query?.pages ?? [])
-      .filter((p) => (p.length ?? 0) >= MIN_BYTES && views(p) >= MIN_MONTHLY_VIEWS && !exclude.has(p.title))
+      .filter((p) => (p.length ?? 0) >= MIN_BYTES && views(p) >= Math.max(MIN_MONTHLY_VIEWS, band[0]) && views(p) < band[1] && !exclude.has(p.title))
       .sort((a, b) => views(b) - views(a))
       .slice(0, 2);
     for (const c of candidates) {

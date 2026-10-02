@@ -125,7 +125,7 @@ export function useWikilerGame(lobbyId: string | null, userId: string | undefine
     const snapshot = gameStateRef.current;
     if (!snapshot || snapshot.status !== 'waiting') return false;
     const ref = await pickArticle(snapshot.settings.lang, snapshot.settings.topic, new Set(),
-      languagesNeeded(snapshot.settings, snapshot.players));
+      languagesNeeded(snapshot.settings, snapshot.players), snapshot.settings.difficulty ?? 'any');
     if (!ref) return false;
     await updateState((current) => {
       if (current.status !== 'waiting') return null;
@@ -233,7 +233,7 @@ export function useWikilerGame(lobbyId: string | null, userId: string | undefine
     if (!snapshot) return;
     (async () => {
       const ref = await pickArticle(snapshot.settings.lang, snapshot.settings.topic, new Set(snapshot.played),
-        languagesNeeded(snapshot.settings, snapshot.players));
+        languagesNeeded(snapshot.settings, snapshot.players), snapshot.settings.difficulty ?? 'any');
       if (!ref) {
         drawing.current = null; // try again on the next render
         return;

@@ -1,4 +1,4 @@
-export const APP_VERSION = '2.12.4';
+export const APP_VERSION = '2.13.0';
 
 export type VersionType = 'major' | 'minor' | 'patch' | 'init';
 
@@ -56,6 +56,19 @@ export function formatReleaseRange(from: string, to: string, lang: 'ru' | 'en'):
  * (/changelog) loads it, so the app's bundle does not carry it.
  */
 export const VERSION_HISTORY: VersionLog[] = [
+  /* ===================== 2.13.x ===================== */
+
+  {
+    ver: '2.13.0',
+    date: '2026-10-02',
+    type: 'minor',
+    title: { ru: 'Легко, средне, сложно', en: 'Easy, Medium, Hard' },
+    desc: {
+      ru: 'В Wikiler у каждой темы теперь три уровня сложности. Статьи темы делятся на трети по тому, насколько их читают: самые известные — «Легко», наименее известные — «Сложно». «Все люди — легко» — самая знаменитая треть людей, «сложно» — те, кого знают знатоки. Сложность выбирается рядом с темой и видна в подписи раунда; «Любая» берёт всё вперемешку.',
+      en: 'Every Wikiler topic now comes in three difficulties. A topic’s articles are cut in thirds by how much they are read: the best known are Easy, the least known Hard. "All people — easy" is the most famous third of them, "hard" the ones experts know. The difficulty is picked beside the topic and named in the round’s label; Any mixes them all.'
+    }
+  },
+
   /* ===================== 2.12.x ===================== */
 
   {

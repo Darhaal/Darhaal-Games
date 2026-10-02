@@ -7,7 +7,7 @@ import type { WallRushMode, WallRushState } from '@/types/wallrush';
 import type { DotsState } from '@/types/dots';
 import type { ReversiState } from '@/types/reversi';
 import type { WikilerPlayer, WikilerState } from '@/types/wikiler';
-import { WIKILER_TOPICS, type WikilerTopic } from '@/data/wikiler/topics';
+import { WIKILER_DIFFICULTIES, WIKILER_TOPICS, type WikilerDifficulty, type WikilerTopic } from '@/data/wikiler/topics';
 import { HIDDEN_DEFAULT, HIDDEN_MAX, HIDDEN_MIN, type WikilerLang } from '@/lib/gameLogic/wikiler';
 import { emptyBoard, DEFAULT_SIZE, MIN_SIZE, MAX_SIZE } from '@/lib/gameLogic/dots';
 import { startingBoard, BOARD_SIZE as REVERSI_SIZE } from '@/lib/gameLogic/reversi';
@@ -269,6 +269,7 @@ const FACTORIES: { [K in GameId]: (args: FactoryArgs) => GameStateByType[K] } = 
 
   wikiler: ({ maxPlayers, values, now, base }) => {
     const topic = str(values, 'topic', 'random');
+    const difficulty = str(values, 'difficulty', 'any');
     const lang: WikilerLang = str(values, 'locale', 'ru') === 'en' ? 'en' : 'ru';
     return {
       players: [newWikilerPlayer({ ...base, lang })],
@@ -295,7 +296,8 @@ const FACTORIES: { [K in GameId]: (args: FactoryArgs) => GameStateByType[K] } = 
         // round's own; players read theirs unless the host keeps everyone on it.
         lang,
         articles: str(values, 'articleLang', 'own') === 'host' ? 'host' : 'own',
-        topic: (WIKILER_TOPICS as readonly string[]).includes(topic) ? (topic as WikilerTopic) : 'random'
+        topic: (WIKILER_TOPICS as readonly string[]).includes(topic) ? (topic as WikilerTopic) : 'random',
+        difficulty: (WIKILER_DIFFICULTIES as readonly string[]).includes(difficulty) ? (difficulty as WikilerDifficulty) : 'any'
       }
     };
   },

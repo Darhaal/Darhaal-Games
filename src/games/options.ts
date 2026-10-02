@@ -1,8 +1,8 @@
-import { BookOpenText, Bomb, Clock, EyeOff, Flag, Grid, Hash, Languages, Layers, Swords, type LucideIcon } from 'lucide-react';
+import { BookOpenText, Bomb, Clock, EyeOff, Flag, Gauge, Grid, Hash, Languages, Layers, Swords, type LucideIcon } from 'lucide-react';
 import { SPYFALL_PACKS } from '@/data/spyfall/locations';
 import { BOARD_FOR_MODE, PLAYERS_FOR_MODE, WALLS_FOR_MODE } from '@/lib/gameLogic/wallrush';
 import { DEFAULT_SIZE, MIN_SIZE, MAX_SIZE, boxCount } from '@/lib/gameLogic/dots';
-import { WIKILER_TOPICS, TOPICS } from '@/data/wikiler/topics';
+import { WIKILER_TOPICS, TOPICS, WIKILER_DIFFICULTIES, DIFFICULTIES } from '@/data/wikiler/topics';
 import { HIDDEN_DEFAULT, HIDDEN_MAX, HIDDEN_MIN } from '@/lib/gameLogic/wikiler';
 import { GAMES, type GameId, type Locale } from './registry';
 
@@ -356,6 +356,25 @@ export const GAME_OPTIONS: Record<GameId, GameOption[]> = {
         preview: topic === 'random'
           ? { ru: ['Любая статья Википедии, достаточно длинная и читаемая'], en: ['Any Wikipedia article that is long enough and read'] }
           : { ru: ['Из статей первостепенной важности Википедии'], en: ['From Wikipedia’s vital articles'] }
+      }))
+    },
+    {
+      kind: 'choice',
+      key: 'difficulty',
+      label: { ru: 'Сложность', en: 'Difficulty' },
+      icon: Gauge,
+      default: 'any',
+      previewLabel: { ru: 'Какие статьи', en: 'Which articles' },
+      choices: WIKILER_DIFFICULTIES.map((level) => ({
+        value: level,
+        emoji: DIFFICULTIES[level].emoji,
+        label: DIFFICULTIES[level].label,
+        preview: {
+          any: { ru: ['Все статьи темы вперемешку'], en: ['Every article of the topic, mixed'] },
+          easy: { ru: ['Самая читаемая треть темы — то, что знают все'], en: ['The most read third of the topic — what everyone knows'] },
+          medium: { ru: ['Средняя треть: известное, но не самое'], en: ['The middle third: known, but not the most'] },
+          hard: { ru: ['Наименее читаемая треть темы — для знатоков'], en: ['The least read third of the topic — for experts'] }
+        }[level]
       }))
     },
     {
