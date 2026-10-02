@@ -208,10 +208,10 @@ describe('game registry', () => {
       });
     });
 
-    it('starts Wikiler with nine words in ten hidden, each reading their own language', () => {
+    it('starts Wikiler with three words in four hidden, each reading their own language', () => {
       const state = createInitialState('wikiler', host, 20, { ...defaultOptionValues('wikiler'), locale: 'en' });
 
-      expect(state.settings).toMatchObject({ hidden: 90, showLetters: true, articles: 'own', lang: 'en', rounds: 5, roundDuration: 180 });
+      expect(state.settings).toMatchObject({ hidden: 75, showLetters: true, articles: 'own', lang: 'en', rounds: 5, roundDuration: 180 });
       expect(state.players[0].lang).toBe('en');
     });
 

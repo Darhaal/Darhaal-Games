@@ -109,6 +109,11 @@ export interface Paragraph {
   text: string;
   /** A section heading rather than body text. */
   heading?: boolean;
+  /**
+   * Where the bracket after the title sits, `[from, to)` in `text` — its
+   * words are the title in other languages and never open at the start.
+   */
+  hold?: [number, number];
 }
 
 export interface Block {
@@ -124,6 +129,8 @@ export interface Article {
   counts: Map<string, number>;
   /** The groups the title is made of — all open means the round is won. */
   titleKeys: string[];
+  /** Groups the start never opens: the title's translations, in the bracket after it. */
+  heldKeys: string[];
   /** Content words shown — at most the limit, give or take a paragraph. */
   contentWords: number;
 }
@@ -150,9 +157,19 @@ export function buildArticle(
   limit = MAX_CONTENT_WORDS
 ): Article {
   const blocks: Block[] = [];
+  const held = new Set<string>();
   let total = 0;
   for (const p of paragraphs) {
-    const tokens = tokenize(p.text, lang);
+    let tokens: Token[];
+    if (p.hold) {
+      // Split at the brackets, which are never inside a word.
+      const [from, to] = p.hold;
+      const inside = tokenize(p.text.slice(from, to), lang);
+      for (const t of inside) if (t.kind === 'word' && t.key !== null) held.add(t.key);
+      tokens = [...tokenize(p.text.slice(0, from), lang), ...inside, ...tokenize(p.text.slice(to), lang)];
+    } else {
+      tokens = tokenize(p.text, lang);
+    }
     const n = contentWords(tokens);
     if (!p.heading && total > 0 && total + n > limit) break;
     blocks.push({ heading: !!p.heading, tokens });
@@ -167,7 +184,11 @@ export function buildArticle(
   }
   const titleKeys = [...new Set(titleTokens.flatMap((t) => (t.kind === 'word' && t.key !== null ? [t.key] : [])))];
 
-  return { title, titleTokens, blocks, counts, titleKeys, contentWords: contentWords(blocks.flatMap((b) => b.tokens)) };
+  return {
+    title, titleTokens, blocks, counts, titleKeys,
+    heldKeys: [...held].filter((k) => counts.has(k)),
+    contentWords: contentWords(blocks.flatMap((b) => b.tokens))
+  };
 }
 
 // --------------------------------------------------------------- guesses --
@@ -294,21 +315,22 @@ function seeded(seed: string): () => number {
 export const HIDDEN_MIN = 50;
 export const HIDDEN_MAX = 100;
 /**
- * Nine words in ten hidden unless the host says otherwise: a few scattered
- * words give the first guesses something to start from, and the title is
- * never among them.
+ * Three words in four hidden unless the host says otherwise: the scattered
+ * open ones give the first guesses something to start from, and the title
+ * and its translations are never among them.
  */
-export const HIDDEN_DEFAULT = 90;
+export const HIDDEN_DEFAULT = 75;
 
 /**
  * The groups open from the start when less than all is hidden: a seeded
- * random share of the article's content groups, never one from the title.
- * The seed is the round's, so every player starts from the same text.
+ * random share of the article's content groups — never one from the title,
+ * nor one from the title's translations in the bracket after it. The seed
+ * is the round's, so every player starts from the same text.
  */
 export function initialReveal(article: Article, hiddenPercent: number, seed: string): Set<string> {
   const hidden = Math.min(HIDDEN_MAX, Math.max(HIDDEN_MIN, hiddenPercent));
-  const title = new Set(article.titleKeys);
-  const keys = [...article.counts.keys()].filter((k) => !title.has(k)).sort();
+  const never = new Set([...article.titleKeys, ...(article.heldKeys ?? [])]);
+  const keys = [...article.counts.keys()].filter((k) => !never.has(k)).sort();
   const random = seeded(seed);
   for (let i = keys.length - 1; i > 0; i--) {
     const j = Math.floor(random() * (i + 1));

@@ -1,4 +1,4 @@
-export const APP_VERSION = '2.12.3';
+export const APP_VERSION = '2.12.4';
 
 export type VersionType = 'major' | 'minor' | 'patch' | 'init';
 
@@ -57,6 +57,20 @@ export function formatReleaseRange(from: string, to: string, lang: 'ru' | 'en'):
  */
 export const VERSION_HISTORY: VersionLog[] = [
   /* ===================== 2.12.x ===================== */
+
+  {
+    ver: '2.12.4',
+    date: '2026-10-02',
+    type: 'patch',
+    desc: {
+      ru: 'В Wikiler по умолчанию открыта четверть слов — скрыто 75%. Перевод названия на другие языки в скобке после него («др.-греч. Ἀριστοτέλης», «англ. Sir Isaac Newton») больше никогда не открывается в начале раунда — только если его ввести.',
+      en: 'Wikiler opens a quarter of the words by default — 75% hidden. The title’s translations in the bracket after it ("Ancient Greek: Ἀριστοτέλης") never open at the start of a round any more — only when typed.'
+    },
+    fixes: {
+      ru: ['На телефоне кнопка чата перекрывала кнопку отправки в Wikiler.'],
+      en: ['On a phone the chat button covered Wikiler’s send button.']
+    }
+  },
 
   {
     ver: '2.12.3',

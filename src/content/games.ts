@@ -1065,9 +1065,9 @@ export const GAMES_CONTENT: GameContent[] = [
         ...localeFacts('wikiler', 'ru'),
         metaTitle: 'Wikiler — угадай статью Википедии по словам',
         metaDescription:
-          'Словесная викторина по статьям Википедии: почти все слова скрыты, вы открываете их по одному и угадываете название. Соло и до 20 игроков.',
+          'Словесная викторина по статьям Википедии: большинство слов скрыто, вы открываете их по одному и угадываете название. Соло и до 20 игроков.',
         intro: [
-          'Wikiler — игра по статьям Википедии. Вам показывают статью, в которой скрыты почти все значимые слова и всё название. Вы пишете слова — и они открываются везде, где встречаются в тексте.',
+          'Wikiler — игра по статьям Википедии. Вам показывают статью, в которой скрыта большая часть значимых слов и всё название. Вы пишете слова — и они открываются везде, где встречаются в тексте.',
           'Задача — узнать статью. Можно открывать слова, пока не проявится название, а можно рискнуть раньше и ввести его целиком: чем меньше попыток и времени ушло, тем больше очков.',
           'Играть можно одному или компанией до двадцати человек: у всех одна и та же статья, каждый угадывает сам, а очки складываются по раундам.'
         ],
@@ -1121,9 +1121,9 @@ export const GAMES_CONTENT: GameContent[] = [
         ...localeFacts('wikiler', 'en'),
         metaTitle: 'Wikiler — guess the Wikipedia article',
         metaDescription:
-          'A word quiz on Wikipedia articles: nearly every word is hidden, you open them one by one and name the article. Solo or up to 20 players.',
+          'A word quiz on Wikipedia articles: most words are hidden, you open them one by one and name the article. Solo or up to 20 players.',
         intro: [
-          'Wikiler is a game played on Wikipedia articles. You get an article with nearly every meaningful word hidden and the whole title. Type a word and it opens everywhere it appears in the text.',
+          'Wikiler is a game played on Wikipedia articles. You get an article with most of its meaningful words hidden and the whole title. Type a word and it opens everywhere it appears in the text.',
           'The goal is to name the article. Open words until the title shows through — or take the risk earlier and type the title outright: the fewer attempts and the less time it took, the more points.',
           'Play alone or with up to twenty people: everyone gets the same article, each guesses on their own, and points add up across rounds.'
         ],

@@ -7,6 +7,23 @@ releasing.
 Format: [Semantic Versioning](https://semver.org/). Types: **major** = platform
 milestone, **minor** = new game mode / feature, **patch** = fixes & improvements.
 
+## [2.12.4] — 2026-10-02 (patch)
+
+### Changed
+- **Wikiler opens a quarter of the words by default** (75% hidden, was 90%).
+- **The title's translations never open at the start.** The bracket right
+  after an article's bold title holds the title in other languages, its
+  transcription and dates — «Аристотель (др.-греч. Ἀριστοτέλης, …)»,
+  "Isaac Newton (/ˈnjuːtən/; …)". A random opening could show
+  "Ἀριστοτέλης" or "Newton" and give the answer away; the words of that
+  bracket are now held back like the title's own, and open only when typed.
+  The text itself is unchanged.
+
+### Fixed
+- **On a phone the chat button covered Wikiler's send button.** During a
+  round the guess bar is pinned to the bottom of a phone screen, so the chat
+  button moves to the top there; on a wide screen it stays in its corner.
+
 ## [2.12.3] — 2026-09-30 (patch)
 
 ### Changed

@@ -405,7 +405,7 @@ export const GAME_RULES: Record<Locale, Record<GameId, GameRulesData>> = {
         {
           title: 'Цель игры',
           icon: Trophy,
-          content: 'Всем дают одну и ту же статью Википедии, в которой скрыты почти все значимые слова (по умолчанию 90%) и всё название. Открывайте слова и узнайте статью. Раунд угадан, когда вы ввели её название или открыли все слова названия.',
+          content: 'Всем дают одну и ту же статью Википедии, в которой скрыта большая часть значимых слов (по умолчанию 75%) и всё название. Открывайте слова и узнайте статью. Раунд угадан, когда вы ввели её название или открыли все слова названия.',
           type: 'text'
         },
         {
@@ -414,7 +414,7 @@ export const GAME_RULES: Record<Locale, Record<GameId, GameRulesData>> = {
           content: [
             'СЛОВО: напишите слово — если оно есть в статье, откроются все его места и видно, сколько раз оно встретилось. Вместе со словом могут открыться его грамматические формы.',
             'СТАТЬЯ: рискните и введите название целиком. Верно — раунд ваш с текущим счётом; неверно — минус 50 очков.',
-            'Служебные слова (и, в, на, the, of…), числа и знаки видны сразу.',
+            'Служебные слова (и, в, на, the, of…), числа и знаки видны сразу. Название и его переводы в скобке после него сразу не открываются никогда.',
             'Когда раунд для вас закончился — угадали вы или нет, — откроется вся статья и её карточка из Википедии.',
             'Скрытое слово — серая плашка длиной со слово. Число букв на ней видно сразу или по нажатию — как решит хост.'
           ],
@@ -853,7 +853,7 @@ export const GAME_RULES: Record<Locale, Record<GameId, GameRulesData>> = {
         {
           title: 'Goal',
           icon: Trophy,
-          content: 'Everyone gets the same Wikipedia article with nearly every meaningful word hidden (90% by default) and the whole title. Open words and work out the article. A round is solved when you type its title or open every word of the title.',
+          content: 'Everyone gets the same Wikipedia article with most of its meaningful words hidden (75% by default) and the whole title. Open words and work out the article. A round is solved when you type its title or open every word of the title.',
           type: 'text'
         },
         {
@@ -862,7 +862,7 @@ export const GAME_RULES: Record<Locale, Record<GameId, GameRulesData>> = {
           content: [
             'WORD: type a word — if the article has it, every place it occurs opens and you see how many there are. Its grammatical forms may open with it.',
             'ARTICLE: take the risk and type the whole title. Right, and the round is yours at the current score; wrong costs 50 points.',
-            'Function words (the, of, and…), numbers and punctuation are shown from the start.',
+            'Function words (the, of, and…), numbers and punctuation are shown from the start. The title and its translations in the bracket after it never are.',
             'Once the round is over for you — solved or not — the whole article opens with its Wikipedia card.',
             'A hidden word is a grey block as long as the word. Its letter count shows from the start or on a tap — the host decides.'
           ],

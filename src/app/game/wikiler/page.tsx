@@ -187,13 +187,14 @@ function WikilerContent() {
         forceNextRound={forceNextRound}
         leaveGame={handleLeave}
       />
-      {/* The results pin "play again" and "menu" to the bottom edge. */}
+      {/* The results pin "play again" and "menu" to the bottom edge, and on a
+          phone the guess bar is pinned there during a round. */}
       {seated && (
         <LobbyChat
           lobbyId={lobbyId}
           userId={userId}
           lang={lang}
-          anchor={gameState.status === 'finished' ? 'top' : 'bottom'}
+          anchor={gameState.status === 'finished' ? 'top' : gameState.status === 'playing' ? 'top-below-lg' : 'bottom'}
         />
       )}
     </>

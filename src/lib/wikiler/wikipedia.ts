@@ -103,6 +103,66 @@ function text(el: Element): string {
   return out.replace(/\s+/g, ' ').trim();
 }
 
+// ------------------------------------------------- the opening sentence --
+
+/** Marks where the opening bracket starts and ends, until `extractParagraphs` reads them off. */
+const HOLD_START = '\uE000';
+const HOLD_END = '\uE001';
+
+/**
+ * The bracket that follows the bold title in an opening paragraph —
+ * «Аристотель (др.-греч. Ἀριστοτέλης, 384 до н. э. — 322 до н. э.)»,
+ * "Aristotle (Ancient Greek: Ἀριστοτέλης, romanized: Aristotélēs; …)" —
+ * as the text nodes and offsets of its "(" and its ")", or null.
+ */
+function openingBracket(p: Element): { open: Text; openAt: number; close: Text; closeAt: number } | null {
+  const walker = p.ownerDocument.createTreeWalker(p, NodeFilter.SHOW_TEXT);
+  let seenBold = !p.querySelector('b, strong');
+  let open: { node: Text; at: number } | null = null;
+  let depth = 0;
+  for (let node = walker.nextNode() as Text | null; node; node = walker.nextNode() as Text | null) {
+    if (!seenBold) {
+      if (node.parentElement?.closest('b, strong')) seenBold = true;
+      continue;
+    }
+    for (let i = 0; i < node.data.length; i++) {
+      const ch = node.data[i];
+      if (ch === '(') {
+        if (depth === 0 && !open) open = { node, at: i };
+        depth++;
+      } else if (ch === ')' && depth > 0) {
+        depth--;
+        if (depth === 0 && open) return { open: open.node, openAt: open.at, close: node, closeAt: i };
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Marks the opening bracket in the lead's first paragraph. It holds the
+ * title in other languages, its transcription and pronunciation — words
+ * that would give the answer away if the start opened them by chance, so
+ * they stay hidden until a player types them (section 2).
+ */
+function markOpeningBracket(lead: Element) {
+  const p = Array.from(lead.querySelectorAll('p')).find((el) => (el.textContent ?? '').trim() !== '');
+  const bracket = p && openingBracket(p);
+  if (!bracket) return;
+  const { open, openAt, close, closeAt } = bracket;
+  // The end first: in a bracket within one text node it sits after the start.
+  close.data = close.data.slice(0, closeAt + 1) + HOLD_END + close.data.slice(closeAt + 1);
+  open.data = open.data.slice(0, openAt) + HOLD_START + open.data.slice(openAt);
+}
+
+/** A paragraph's text with the marks read off into `hold`. */
+function withHold(text: string): Paragraph {
+  const start = text.indexOf(HOLD_START);
+  const end = text.indexOf(HOLD_END);
+  const clean = text.replace(HOLD_START, '').replace(HOLD_END, '');
+  return start >= 0 && end > start ? { text: clean, hold: [start, end - 1] } : { text: clean };
+}
+
 /**
  * The prose of a Wikipedia article's HTML, as headings and paragraphs, in
  * order. List items count as paragraphs; nested ones are part of their parent.
@@ -110,6 +170,9 @@ function text(el: Element): string {
 export function extractParagraphs(doc: Document, lang: WikilerLang): Paragraph[] {
   const body = doc.body;
   body.querySelectorAll(REMOVED).forEach((el) => el.remove());
+  // Parsoid wraps the lead — everything before the first heading — in section 0.
+  const lead = body.querySelector('section[data-mw-section-id="0"]');
+  if (lead) markOpeningBracket(lead);
 
   const paragraphs: Paragraph[] = [];
   let skippingLevel: number | null = null;
@@ -130,8 +193,8 @@ export function extractParagraphs(doc: Document, lang: WikilerLang): Paragraph[]
     }
     if (skippingLevel !== null) continue;
     if (tag === 'li' && el.parentElement?.closest('li')) continue;
-    const t = text(el);
-    if (t) paragraphs.push({ text: t });
+    const paragraph = withHold(text(el));
+    if (paragraph.text) paragraphs.push(paragraph);
   }
   return paragraphs;
 }

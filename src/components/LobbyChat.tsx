@@ -68,8 +68,22 @@ function saveReadMark(lobbyId: string | null, id: number) {
  * Bottom right by default. A screen that keeps its own controls pinned to
  * the bottom edge — Coup's hand, Flager's results — asks for the top instead,
  * so the button never lands on something the player has to press.
+ * `top-below-lg` is for controls pinned only on phones and tablets, as
+ * Wikiler's guess bar: the top there, the usual corner on a wide screen.
  */
-export type ChatAnchor = 'bottom' | 'top';
+export type ChatAnchor = 'bottom' | 'top' | 'top-below-lg';
+
+/** The closed button's corner, and the open panel's from `sm` up (below it the panel is a bottom sheet). */
+const BUTTON_CORNER: Record<ChatAnchor, string> = {
+  bottom: 'bottom-4',
+  top: 'top-24',
+  'top-below-lg': 'top-24 lg:top-auto lg:bottom-4'
+};
+const PANEL_CORNER: Record<ChatAnchor, string> = {
+  bottom: 'sm:bottom-4',
+  top: 'sm:bottom-auto sm:top-24',
+  'top-below-lg': 'sm:bottom-auto sm:top-24 lg:top-auto lg:bottom-4'
+};
 
 /**
  * A room's chat, as a button that opens a panel.
@@ -153,7 +167,7 @@ export default function LobbyChat({
 
   if (!lobbyId) return null;
 
-  const corner = anchor === 'top' ? 'top-24' : 'bottom-4';
+  const corner = BUTTON_CORNER[anchor];
 
   return (
     <>
@@ -177,7 +191,7 @@ export default function LobbyChat({
         <div
           role="dialog"
           aria-label={t.title}
-          className={`fixed z-[220] inset-x-2 bottom-2 sm:inset-x-auto sm:right-4 ${anchor === 'top' ? 'sm:bottom-auto sm:top-24' : 'sm:bottom-4'} sm:w-[360px] h-[min(70vh,520px)] flex flex-col bg-white border border-[#E6E1DC] rounded-3xl shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-200`}
+          className={`fixed z-[220] inset-x-2 bottom-2 sm:inset-x-auto sm:right-4 ${PANEL_CORNER[anchor]} sm:w-[360px] h-[min(70vh,520px)] flex flex-col bg-white border border-[#E6E1DC] rounded-3xl shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-200`}
         >
           <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#E6E1DC]">
             <span className="text-sm font-black uppercase tracking-wider text-[#1A1F26]">{t.title}</span>

@@ -3,6 +3,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
   extractParagraphs, fetchArticle, otherVersions, pickRandomArticle, resolveTitle, WIKI_HEADERS, WikipediaError
 } from '@/lib/wikiler/wikipedia';
+import { buildArticle, initialReveal, wordKey } from '@/lib/gameLogic/wikiler';
 
 /**
  * Talking to Wikipedia. The HTML below is small but shaped like the real
@@ -70,6 +71,56 @@ describe('extractParagraphs', () => {
       '<body><p>Текст статьи.</p><h2>Примечания</h2><p>Сноска.</p><h2>Литература</h2><p>Книга.</p></body>'
     ), 'ru');
     expect(ru).toEqual([{ text: 'Текст статьи.' }]);
+  });
+});
+
+// The bracket after the bold title, shaped as Parsoid renders it (checked
+// against ru «Аристотель», «Ньютон, Исаак», «Москва» and en "Aristotle",
+// "Isaac Newton" on 2026-10-02).
+describe('the opening bracket', () => {
+  const lead = (inner: string) =>
+    `<body><section data-mw-section-id="0"><p>${inner}</p><p>Второй абзац (не скобка после названия).</p></section>` +
+    '<section data-mw-section-id="1"><h2>История</h2><p>Дальше.</p></section></body>';
+  const extract = (html: string, lang: 'ru' | 'en') => extractParagraphs(parse(html), lang);
+  const held = (p: { text: string; hold?: [number, number] }) => (p.hold ? p.text.slice(...p.hold) : null);
+
+  it('keeps the translations in the text and marks their bracket', () => {
+    const [first] = extract(lead(
+      '<b>Аристо́тель</b> (<a title="Древнегреческий язык">др.-греч.</a><span> </span><span lang="grc"><span>Ἀριστοτέλης</span></span>, ' +
+      '<a>384 до н. э.</a> — <a>322 до н. э.</a>) — греческий философ.'
+    ), 'ru');
+    expect(first.text).toBe('Аристо́тель (др.-греч. Ἀριστοτέλης, 384 до н. э. — 322 до н. э.) — греческий философ.');
+    expect(held(first)).toBe('(др.-греч. Ἀριστοτέλης, 384 до н. э. — 322 до н. э.)');
+  });
+
+  it('finds the bracket after the bold title, nested brackets and all', () => {
+    const [first] = extract(lead(
+      '<b>Sir Isaac Newton</b> (<span class="IPA">/ˈnjuːtən/</span>; 4 January 1643 [O.S. 25 December 1642] (Julian) – 1727) ' +
+      'was a polymath (and more).'
+    ), 'en');
+    expect(held(first)).toBe('(/ˈnjuːtən/; 4 January 1643 [O.S. 25 December 1642] (Julian) – 1727)');
+  });
+
+  it('marks only the first paragraph, and nothing without a bracket', () => {
+    const paragraphs = extract(lead('<b>Москва́</b> — столица России.'), 'ru');
+    expect(paragraphs.every((p) => p.hold === undefined)).toBe(true);
+    expect(paragraphs.map((p) => p.text)).toContain('Второй абзац (не скобка после названия).');
+  });
+
+  it('never opens a translation of the title at the start', () => {
+    const [first] = extract(lead(
+      '<b>Исаак Ньютон</b> (<a>англ.</a> <span lang="en">Sir Isaac Newton</span>) — английский физик, математик и механик.'
+    ), 'ru');
+    const article = buildArticle('Ньютон, Исаак', [first], 'ru');
+    const held = new Set(article.heldKeys);
+    expect(held.has(wordKey('Newton', 'ru')!)).toBe(true);
+    // Even with half the words open, across many rounds.
+    for (let seed = 0; seed < 50; seed++) {
+      const open = initialReveal(article, 50, `s${seed}`);
+      expect([...open].some((k) => held.has(k)), `seed s${seed}`).toBe(false);
+    }
+    // Typed, it opens like any other word.
+    expect(article.counts.get(wordKey('Newton', 'ru')!)).toBe(1);
   });
 });
 
