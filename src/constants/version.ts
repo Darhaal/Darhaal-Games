@@ -1,4 +1,4 @@
-export const APP_VERSION = '2.13.0';
+export const APP_VERSION = '2.14.0';
 
 export type VersionType = 'major' | 'minor' | 'patch' | 'init';
 
@@ -56,6 +56,19 @@ export function formatReleaseRange(from: string, to: string, lang: 'ru' | 'en'):
  * (/changelog) loads it, so the app's bundle does not carry it.
  */
 export const VERSION_HISTORY: VersionLog[] = [
+  /* ===================== 2.14.x ===================== */
+
+  {
+    ver: '2.14.0',
+    date: '2026-10-05',
+    type: 'minor',
+    title: { ru: 'Время покажет', en: 'Time Will Tell' },
+    desc: {
+      ru: 'Новая, десятая игра — Timler. Всем показывают одну фотографию, а вы называете, когда она снята: год — обязательно, день и месяц — если знаете, это ставка: точная дата +300, промах до −100. Чем старше снимок, тем больше допуск: ошибка на 5 лет почти ничего не стоит у фото 1840-х и съедает почти все очки у фото последних лет. Трём самым точным — бонус за место, а время тает с первой секунды, так что кто ответил раньше, теряет меньше. После раунда ответы всех встают цветными пузырьками с аватарками на общую шкалу времени, а под фото — что это за событие, ссылка на статью и автор. От 1 до 20 игроков, эпохи от XIX века до наших дней, три уровня сложности и режим 18+ в дополнительных настройках. 7 543 фотографии из Викиданных и Wikimedia Commons, свои достижения и статистика — отдельно в одиночку и с людьми.',
+      en: 'A new, tenth game — Timler. Everyone sees the same photograph and names when it was taken: the year is a must, the day and month if you know them — a bet, +300 for the exact date, down to −100 for a miss. The older the photo, the more room: five years off costs almost nothing on a photo from the 1840s and nearly everything on one from the last few years. The three most accurate get a place bonus, and time melts from the first second, so whoever answers first loses least. After each round everyone’s answers land as coloured avatar bubbles on one timeline, and under the photo you see what it shows, a link to the article and the author. 1 to 20 players, eras from the 19th century to today, three difficulties and an 18+ mode in the advanced settings. 7,543 photographs from Wikidata and Wikimedia Commons, achievements of its own, and statistics kept apart for solo and together.'
+    }
+  },
+
   /* ===================== 2.13.x ===================== */
 
   {

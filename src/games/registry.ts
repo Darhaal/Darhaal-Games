@@ -28,7 +28,7 @@ export type Locale = 'ru' | 'en';
  * segment, so renaming an id orphans existing lobbies and inbound links.
  */
 export const GAME_IDS = [
-  'spyfall', 'minesweeper', 'flager', 'battleship', 'coup', 'wallrush', 'dots', 'reversi', 'wikiler'
+  'spyfall', 'minesweeper', 'flager', 'battleship', 'coup', 'wallrush', 'dots', 'reversi', 'wikiler', 'timler'
 ] as const;
 
 export type GameId = (typeof GAME_IDS)[number];
@@ -197,6 +197,23 @@ export const GAMES: readonly GameDefinition[] = [
     genre: { ru: 'Словесная викторина', en: 'Word quiz' },
     accent: '#4338ca',
     tint: 'bg-indigo-50 text-indigo-600',
+    hasSoloMode: true,
+    bestScore: { ru: 'Лучший счёт', en: 'Best score' }
+  },
+  {
+    id: 'timler',
+    // One name in both languages, like Wikiler's.
+    name: { ru: 'Timler', en: 'Timler' },
+    tagline: {
+      ru: 'Угадайте, когда снята фотография — год или даже день.',
+      en: 'Guess when the photo was taken — the year, or even the day.'
+    },
+    // Everyone looks at the same photo at once, so the room holds a crowd.
+    players: { min: 1, max: 20 },
+    playtimeMinutes: 8,
+    genre: { ru: 'Историческая викторина', en: 'History quiz' },
+    accent: '#b45309',
+    tint: 'bg-amber-50 text-amber-700',
     hasSoloMode: true,
     bestScore: { ru: 'Лучший счёт', en: 'Best score' }
   }

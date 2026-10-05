@@ -1,11 +1,16 @@
 # Backlog
 
-State after **v2.13.0**. This is the real list, including the things that
+State after **v2.14.0**. This is the real list, including the things that
 are open on purpose — see [docs/security.md](docs/security.md) for the
 reasoning behind the accepted risks.
 
 ## Open
 
+- **An achievements update across all games.** Wikiler and Timler shipped
+  with a first handful each (Timler: seven, agreed 2026-10-05) so the games
+  could go out; the plan is one pass over every game's set together —
+  balance the tiers, fill the gaps between games, retire the ones nobody
+  earns or everybody does.
 - **Browser E2E for multiplayer.** The hooks are now played by several players
   at once against an in-memory copy of the room row
   ([`tests/support/fakeSupabase.ts`](tests/support/fakeSupabase.ts)), which
@@ -47,6 +52,10 @@ Rechecked 2026-09-25.
 - **ESLint 10.** `eslint-plugin-react`, pulled in by `eslint-config-next`, still
   calls `context.getFilename()`, removed in 10 — linting crashes outright. The
   plugin is still at 7.37.5, unchanged since April 2025.
+- **`braces` advisory (GHSA-vfj7-8cjw-p6xm).** Flagged in every version,
+  reached only through `eslint-config-next` → `fast-glob` → `micromatch`, so
+  it is a linting-time dependency with no fixed release to move to. The site
+  ships none of it (`npm audit --omit=dev` is clean).
 - **TypeScript 7.** `typescript-eslint` 8.70 accepts TypeScript below 6.1 only.
   Worth revisiting, since `tsc`, the tests and the build all pass under 7
   already.

@@ -220,7 +220,8 @@ const WIN_LADDER_TITLES: Record<GameId, Text> = {
   wallrush: { ru: 'Прорыв', en: 'Breakthrough' },
   dots: { ru: 'Квадратура', en: 'Squaring Up' },
   reversi: { ru: 'Изнанка', en: 'Flip Side' },
-  wikiler: { ru: 'Книжный червь', en: 'Bookworm' }
+  wikiler: { ru: 'Книжный червь', en: 'Bookworm' },
+  timler: { ru: 'Хронист', en: 'Chronicler' }
 };
 
 const winLadder = (game: GameId): Ladder => ({
@@ -565,6 +566,46 @@ const FEATS: Record<GameId, Feat[]> = {
       title: { ru: 'На последней попытке', en: 'Last Attempt' },
       description: { ru: 'Угадайте статью на последней разрешённой попытке', en: 'Solve an article on the last attempt allowed' },
       reached: (p) => any(p, 'wikiler', (r) => num(r, 'lastTry') >= 1)
+    }
+  ]),
+
+  // Reads the details the Timler hook records — docs/timler-spec.md, section 9.
+  timler: feats('timler', [
+    {
+      id: 'timler.bullseye', icon: Target, tier: 'silver',
+      title: { ru: 'В яблочко', en: 'Bullseye' },
+      description: { ru: 'Угадайте год точно', en: 'Name the exact year' },
+      reached: (p) => any(p, 'timler', (r) => num(r, 'exactYears') >= 1)
+    },
+    {
+      id: 'timler.same_day', icon: CalendarDays, tier: 'gold',
+      title: { ru: 'День в день', en: 'To the Day' },
+      description: { ru: 'Угадайте дату точно — день, месяц и год', en: 'Name the exact date — day, month and year' },
+      reached: (p) => any(p, 'timler', (r) => num(r, 'exactDates') >= 1)
+    },
+    {
+      id: 'timler.time_machine', icon: Rocket, tier: 'gold',
+      title: { ru: 'Машина времени', en: 'Time Machine' },
+      description: { ru: 'Сыграйте матч из 5 раундов и больше, ни разу не ошибившись больше чем на 2 года', en: 'Play a match of 5 rounds or more without ever being more than 2 years off' },
+      reached: (p) => any(p, 'timler', (r) => num(r, 'rounds') >= 5 && num(r, 'worstError') <= 2)
+    },
+    {
+      id: 'timler.almost', icon: Hourglass, tier: 'bronze',
+      title: { ru: 'Почти', en: 'So Close' },
+      description: { ru: 'Ошибитесь ровно на один год', en: 'Be exactly one year off' },
+      reached: (p) => any(p, 'timler', (r) => num(r, 'oneOff') >= 1)
+    },
+    {
+      id: 'timler.antique', icon: Feather, tier: 'silver',
+      title: { ru: 'Старина', en: 'Antiquarian' },
+      description: { ru: 'Угадайте точный год фото, снятого до 1900 года', en: 'Name the exact year of a photo taken before 1900' },
+      reached: (p) => any(p, 'timler', (r) => num(r, 'oldExact') >= 1)
+    },
+    {
+      id: 'timler.lightning', icon: Zap, tier: 'silver',
+      title: { ru: 'Молния', en: 'Lightning' },
+      description: { ru: 'Угадайте год точно за 5 секунд', en: 'Name the exact year within 5 seconds' },
+      reached: (p) => any(p, 'timler', (r) => num(r, 'fastExact') <= 5)
     }
   ])
 };

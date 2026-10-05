@@ -7,6 +7,79 @@ releasing.
 Format: [Semantic Versioning](https://semver.org/). Types: **major** = platform
 milestone, **minor** = new game mode / feature, **patch** = fixes & improvements.
 
+## [2.14.0] — 2026-10-05 (minor) — **Time Will Tell**
+
+> The tenth game: a photograph, and one question — when was it taken?
+
+### Added
+- **Timler — a new game, the tenth.** Everyone sees the same photograph and
+  names when it was taken: the year is a must, the day and month a bet.
+  1–20 players, 1–20 rounds of 15 s to 3 min, a three-second countdown while
+  the photo loads; the next one loads while everyone looks at the results.
+  - **Score.** 1000 for the exact year, less the further off, with room in
+    proportion to the photo's age — a quarter of its age in years, never
+    under two: five years off is worth about 900 on a photo from the 1840s,
+    700 on one from the 1960s, 160 on one from 2015 and 80 on one from the
+    last few years. The date is a bet: the very day +300, a week off +143,
+    a month off −53, further down to −100. The three most accurate get
+    +100 / +60 / +30 — the last place never does. Time melts up to 200 from
+    the first second, so whoever answers first loses least. A round never
+    scores below 0.
+  - **The results.** Everyone's answers land as bubbles in their colour with
+    their avatar inside, on a timeline scaled to fit them; close answers
+    stack, the right date is a red line. Under it each player's answer, how
+    far off it was and the points; under the photo what it shows, a link to
+    the Wikipedia article in the reader's language, the author and the
+    licence.
+  - **The lobby.** Era — all time, before 1900, 1900–1945, 1946–2000, since
+    2001 — and difficulty by how well known the photo is, the best known
+    third easy. In the advanced settings an 18+ mode, off by default, that
+    adds battles, disasters and nudes in fine-art photography; even with it,
+    never bodies, executions or blood.
+  - **Controls.** A year slider, − and + buttons, or type the year; on a
+    phone the answer stays pinned under the thumb. ← and → move the year,
+    Shift for ten; Enter answers; after a round Enter presses Next.
+  - **Photos: 7,543**, from Wikidata and Wikimedia Commons — notable events
+    with a photo taken in the event's own year (paintings, maps and later
+    pictures of a memorial are left out), and dated photographs with a
+    Wikipedia article: 224 before 1900, 895 from 1900–1945, 1,054 from
+    1946–2000, 5,370 since 2001. They load straight from Commons.
+  - Statistics split solo from together (alone, a match is won with more
+    than half the rounds within five years), and seven achievements: a
+    ladder of wins (Chronicler), Bullseye (the exact year), To the Day (the
+    exact date), Time Machine (5+ rounds, never more than 2 years off), So
+    Close (exactly a year off), Antiquarian (the exact year of a photo
+    before 1900), Lightning (the exact year within 5 seconds).
+  - Rules in both languages, a public page with its FAQ, the sitemap entry
+    and preview card; the privacy policy now names Wikimedia Commons beside
+    Wikipedia.
+
+### Security
+- **Next.js 16.3.8.** It closes a critical advisory in `next/og`'s
+  `ImageResponse` — remote code execution (GHSA-vcvr-r3jv-pc5j) — which is
+  what draws the site's preview cards. The shipped dependencies are at zero
+  advisories again. One remains in the linter's toolchain: `braces`, under
+  `eslint-config-next`, is flagged in every version, so there is nothing to
+  move to; it never reaches the site.
+
+### Changed
+- Wikiler and Timler share one set of difficulty levels
+  (`src/data/difficulty.ts`).
+
+### Engineering
+- `scripts/timler-pool.mjs` builds `public/timler/<era>.json`: Wikidata in
+  year slices (a long answer is cut off mid-stream), Commons in two passes —
+  dates first, then categories and article use only for what passed — with
+  answers cached on disk, a 30-second timeout, a batch Commons hangs on
+  split until the culprit is left out, and a time budget so a run can stop
+  and the next carry on (`POOL_BUDGET_MIN`).
+- Pure rules in `src/lib/gameLogic/timler.ts` — the score, the places, the
+  timeline's axis and bubble rows; the round is scored once, for everyone,
+  by whoever closes it. Tests for the core, a round played by several
+  players on the in-memory room, and the pool's eras and difficulties.
+- `TODO.md`: an achievements update across all games, with Wikiler's and
+  Timler's first sets in it.
+
 ## [2.13.0] — 2026-10-02 (minor) — **Easy, Medium, Hard**
 
 > Every Wikiler topic in three difficulties, by how well known its articles are.

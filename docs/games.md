@@ -1,6 +1,6 @@
 # 🎮 Game Modes
 
-Darhaal Games ships nine real-time multiplayer games. Each has a route under
+Darhaal Games ships ten real-time multiplayer games. Each has a route under
 `src/app/game/`, a UI component in `src/components/`, and its logic in a hook
 under `src/hooks/`.
 
@@ -15,6 +15,7 @@ under `src/hooks/`.
 | Dots & Boxes | Abstract | `game/dots` | `DotsGame.tsx` | `useDotsGame.ts` |
 | Reversi | Abstract | `game/reversi` | `ReversiGame.tsx` | `useReversiGame.ts` |
 | Wikiler | Word quiz | `game/wikiler` | `WikilerGame.tsx` | `useWikilerGame.ts`, `useWikilerRound.ts` |
+| Timler | History quiz | `game/timler` | `TimlerGame.tsx`, `timler/Timeline.tsx` | `useTimlerGame.ts` |
 
 ## 🚩 Flager — Geography quiz
 Guess the country while its flag is gradually revealed through digital noise, with
@@ -64,6 +65,15 @@ Wikipedia access in `src/lib/wikiler/`, the topic pool in
 `public/wikiler/` (built by `scripts/wikiler-pool.mjs` from the pages and
 sections listed in `src/data/wikiler/topic-sources.json`).
 
+## 🕰️ Timler — History quiz
+Say when a photograph was taken — the year, or the whole date as a bet. Up to
+20 players see the same photo; the round's answers land as avatar bubbles on
+one timeline. Rules and scoring in `docs/timler-spec.md`; logic (score,
+places, the timeline's axis and bubble rows) in `src/lib/gameLogic/timler.ts`,
+the pool in `public/timler/<era>.json` (built by `scripts/timler-pool.mjs`
+from Wikidata and Wikimedia Commons), the photos loaded by the player's
+browser straight from Commons.
+
 ## ⌨️ Controls
 
 Every game is playable by mouse and by touch. Keyboard controls are listed in
@@ -79,6 +89,7 @@ here:
 | Coup | **Esc** cancels choosing a target |
 | Spyfall | **Esc** closes the location guess and the accusation prompt (the vote cannot be dismissed) |
 | Wikiler | **Enter** sends the word or the title · **Tab** in the input switches between Word and Article · **Enter** presses "Next" after a round |
+| Timler | **← / →** the year one back or forward, **Shift** for ten · **Enter** answers · **Enter** presses "Next" after a round |
 | Dots & Boxes, Reversi | Pointer only — a move is a single tap on the board |
 | Everywhere | **Esc** closes the rules and the chat · **Enter** sends a chat message |
 

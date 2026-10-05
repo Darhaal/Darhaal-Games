@@ -86,16 +86,13 @@ export const TOPICS: Record<WikilerTopic, TopicDef> = Object.fromEntries(DEFS.ma
  * How well known the articles are (docs/wikiler-spec.md, section 5): a topic's
  * articles ranked by how much they are read in the round's language, in
  * thirds — the most read are easy, the least read hard. `any` takes them all.
+ * The levels are shared with Timler (`src/data/difficulty.ts`).
  */
-export const WIKILER_DIFFICULTIES = ['any', 'easy', 'medium', 'hard'] as const;
-export type WikilerDifficulty = (typeof WIKILER_DIFFICULTIES)[number];
-
-export const DIFFICULTIES: Record<WikilerDifficulty, { emoji: string; label: Text }> = {
-  any: { emoji: '🎲', label: { ru: 'Любая', en: 'Any' } },
-  easy: { emoji: '🟢', label: { ru: 'Легко', en: 'Easy' } },
-  medium: { emoji: '🟡', label: { ru: 'Средне', en: 'Medium' } },
-  hard: { emoji: '🔴', label: { ru: 'Сложно', en: 'Hard' } }
-};
+export {
+  DIFFICULTY_LEVELS as WIKILER_DIFFICULTIES,
+  DIFFICULTIES,
+  type Difficulty as WikilerDifficulty
+} from '@/data/difficulty';
 
 /** Which vital-articles pages feed each topic — shared with the pool builder. */
 export const TOPIC_PAGES: Record<Exclude<WikilerTopic, 'random'>, string[]> = TOPIC_SOURCES;

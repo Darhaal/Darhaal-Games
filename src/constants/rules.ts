@@ -458,6 +458,67 @@ export const GAME_RULES: Record<Locale, Record<GameId, GameRulesData>> = {
           type: 'text'
         }
       ]
+    },
+    timler: {
+      title: 'Timler',
+      description: 'Угадайте, когда снято фото',
+      sections: [
+        {
+          title: 'Цель игры',
+          icon: Trophy,
+          content: 'Всем показывают одну и ту же фотографию. Назовите, когда она снята: год — обязательно, день и месяц — если знаете. Чем ближе к настоящей дате, тем больше очков.',
+          type: 'text'
+        },
+        {
+          title: 'Как играть',
+          icon: Search,
+          content: [
+            'Выберите год ползунком, кнопками − и + или впишите его. Если у фото известен день, можно добавить день и месяц.',
+            'Нажмите «Ответить» — ответ окончательный. Соперники видят только, что вы ответили.',
+            'Раунд кончается, когда ответили все или вышло время. Нет ответа — 0 очков.',
+            'После раунда — шкала с ответами всех цветными пузырьками, правильная дата и рассказ о фото.'
+          ],
+          type: 'list'
+        },
+        {
+          title: 'Очки',
+          icon: Target,
+          content: [
+            'Год: 1000 за точный год, меньше — чем дальше. Допуск растёт с возрастом снимка: ошибка на 5 лет у фото 1840-х почти не стоит очков (около 900), у фото 1960-х — около 700, у фото последних лет — почти всё (около 80).',
+            'Дата — это ставка: день в день +300, неделя +143, месяц −53, дальше до −100. Не уверены — оставьте только год.',
+            'Места: трём самым точным +100, +60 и +30; последнему месту бонуса нет.',
+            'Время: очки тают с первой секунды, к концу раунда — до −200. Кто ответил раньше, тот потерял меньше.',
+            'Очки раунда не бывают меньше 0. Итог — сумма раундов.'
+          ],
+          type: 'list'
+        },
+        {
+          title: 'Настройки',
+          icon: Clock,
+          content: [
+            'Эпоха: всё время, до 1900, 1900–1945, 1946–2000 или с 2001 года.',
+            'Сложность: самая известная треть фото — «Легко», наименее известная — «Сложно».',
+            'Режим 18+ (в дополнительных настройках) добавляет бои, катастрофы и обнажённую натуру в фотоискусстве. Тел погибших, казней и крови нет и в нём.'
+          ],
+          type: 'list'
+        },
+        {
+          title: 'Управление',
+          icon: Keyboard,
+          content: [
+            '← и → — год на один назад или вперёд, с Shift — на десять.',
+            'Enter — ответить.',
+            'После раунда Enter нажимает «Далее».'
+          ],
+          type: 'list'
+        },
+        {
+          title: 'Откуда фото',
+          icon: Eye,
+          content: 'Фотографии — из Wikimedia Commons, куда их передали музеи, библиотеки и архивы (Библиотека Конгресса, Национальный архив Нидерландов, Федеральный архив Германии и другие), и из Викиданных. Они загружаются прямо с сайтов Wikimedia; после раунда видны автор, лицензия и ссылка на файл. Timler не связан с фондом Викимедиа.',
+          type: 'text'
+        }
+      ]
     }
   },
   en: {
@@ -903,6 +964,67 @@ export const GAME_RULES: Record<Locale, Record<GameId, GameRulesData>> = {
           title: 'Where the articles come from',
           icon: Eye,
           content: 'Articles load straight from Wikipedia (ru.wikipedia.org or en.wikipedia.org). The host picks the topic — any article or one of 34 topics — and the difficulty: Easy is the most read third of the topic, Medium the middle one, Hard the least read. Everyone gets the same article, each reading it in their own interface language — the language versions differ a little; in the advanced settings the host can give everyone one text in the host’s language. The text is written by Wikipedia’s authors and available under CC BY-SA 4.0 — after each round you get a link to the article, the licence and the list of authors. Wikiler is not affiliated with Wikipedia or the Wikimedia Foundation.',
+          type: 'text'
+        }
+      ]
+    },
+    timler: {
+      title: 'Timler',
+      description: 'Guess when the photo was taken',
+      sections: [
+        {
+          title: 'Goal',
+          icon: Trophy,
+          content: 'Everyone sees the same photograph. Say when it was taken: the year is a must, the day and month if you know them. The closer to the real date, the more points.',
+          type: 'text'
+        },
+        {
+          title: 'How to play',
+          icon: Search,
+          content: [
+            'Pick the year with the slider, the − and + buttons, or type it in. If the photo’s day is known, you can add the day and month.',
+            'Press Answer — it is final. The others only see that you have answered.',
+            'A round ends when everyone has answered or time is up. No answer scores 0.',
+            'After the round: a timeline of everyone’s answers as coloured bubbles, the right date and the story of the photo.'
+          ],
+          type: 'list'
+        },
+        {
+          title: 'Score',
+          icon: Target,
+          content: [
+            'The year: 1,000 for the exact year, less the further off. The older the photo, the more room: five years off costs almost nothing on a photo from the 1840s (about 900), gives about 700 on one from the 1960s, and almost nothing on one from the last few years (about 80).',
+            'The date is a bet: the very day +300, a week off +143, a month off −53, further down to −100. Not sure? Leave just the year.',
+            'Places: the three most accurate get +100, +60 and +30; the last place never does.',
+            'Time: points melt from the first second, up to −200 by the end of the round. Whoever answers first loses the least.',
+            'A round never scores below 0. The match adds up the rounds.'
+          ],
+          type: 'list'
+        },
+        {
+          title: 'Settings',
+          icon: Clock,
+          content: [
+            'Era: all time, before 1900, 1900–1945, 1946–2000 or since 2001.',
+            'Difficulty: the best known third of the photos is Easy, the least known Hard.',
+            '18+ mode (in the advanced settings) adds battles, disasters and nudes in fine-art photography. Even there: no bodies, executions or blood.'
+          ],
+          type: 'list'
+        },
+        {
+          title: 'Controls',
+          icon: Keyboard,
+          content: [
+            '← and → — the year one back or forward, ten with Shift.',
+            'Enter — answer.',
+            'After a round, Enter presses Next.'
+          ],
+          type: 'list'
+        },
+        {
+          title: 'Where the photos come from',
+          icon: Eye,
+          content: 'The photographs come from Wikimedia Commons — given to it by museums, libraries and archives (the Library of Congress, the National Archives of the Netherlands, the German Federal Archives and others) — and from Wikidata. They load straight from Wikimedia’s sites; after each round you see the author, the licence and a link to the file. Timler is not affiliated with the Wikimedia Foundation.',
           type: 'text'
         }
       ]

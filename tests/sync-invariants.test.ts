@@ -31,6 +31,7 @@ describe('game_state write invariants', () => {
       'useMinesweeperGame.ts',
       'useReversiGame.ts',
       'useSpyfallGame.ts',
+      'useTimlerGame.ts',
       'useWallRushGame.ts',
       'useWikilerGame.ts'
     ]);

@@ -1175,6 +1175,123 @@ export const GAMES_CONTENT: GameContent[] = [
       }
     }
   },
+  {
+    ...gameFacts('timler'),
+    locales: {
+      ru: {
+        ...localeFacts('timler', 'ru'),
+        metaTitle: 'Timler — угадай год фотографии онлайн',
+        metaDescription:
+          'Историческая викторина по фотографиям: угадайте, когда снят кадр — год или точную дату. Соло и компанией до 20 игроков.',
+        intro: [
+          'Timler — викторина по старым и новым фотографиям. Всем показывают один и тот же снимок, а вы называете, когда он сделан: год — обязательно, день и месяц — если знаете.',
+          'Фотографии — от первых дагеротипов 1840-х до событий этого года: улицы, люди, техника, события. Чем ближе ответ к настоящей дате, тем больше очков.',
+          'Играть можно одному или компанией до двадцати человек. После каждого раунда ответы всех встают на общую шкалу времени — сразу видно, кто был ближе.'
+        ],
+        howToPlay: [
+          'Выберите эпоху (или всё время), сложность, число раундов и время на раунд.',
+          'Рассмотрите фото: одежда, машины, вывески, качество снимка — всё подсказывает время.',
+          'Выберите год ползунком, кнопками или впишите его. Если уверены — добавьте день и месяц.',
+          'Нажмите «Ответить». Раунд кончается, когда ответили все или вышло время.',
+          'После раунда — шкала с ответами всех, правильная дата и рассказ о снимке.',
+          'После всех раундов сравните итоговые очки с соперниками.'
+        ],
+        features: [
+          'Настоящие исторические фотографии из открытых архивов',
+          'Год или точная дата — каждый решает сам',
+          'Шкала с ответами всех игроков после раунда',
+          'Соло и мультиплеер до двадцати игроков',
+          'Эпохи от XIX века до наших дней и три уровня сложности',
+          'Режим 18+ — по желанию, в дополнительных настройках'
+        ],
+        strategy: [
+          'Смотрите на технику: модели машин, телефоны, самолёты дают десятилетие точнее всего.',
+          'Цвет и качество снимка — подсказка: ранние фото коричневые и размытые, цвет массово появляется после 1950-х.',
+          'Одежда и причёски меняются быстро — шляпы, длина юбок, ширина брюк.',
+          'Добавляйте день, только если узнали событие: дата — это ставка, наугад она в среднем отнимает очки.'
+        ],
+        mistakes: [
+          'Тянут до последней секунды — очки за время тают с самой первой.',
+          'Ставят дату наугад: промах на месяц уже в минусе.',
+          'Забывают нажать «Ответить» — без ответа раунд приносит ноль.'
+        ],
+        faq: [
+          {
+            q: 'Откуда берутся фотографии?',
+            a: 'Из Wikimedia Commons и Викиданных: туда передали снимки музеи, библиотеки и архивы — Библиотека Конгресса США, Национальный архив Нидерландов, Федеральный архив Германии и другие. Фото загружаются прямо с сайтов Wikimedia; после раунда видны автор, лицензия и ссылка на файл.'
+          },
+          {
+            q: 'Как считаются очки?',
+            a: 'За точный год — 1000. Допуск растёт с возрастом снимка: промах на 5 лет у фото XIX века почти ничего не стоит, а у фото последних лет — почти все очки. Если указать день и месяц, можно получить до +300 за точную дату или до −100 за промах. Трём самым точным — +100, +60 и +30 за место, а время с первой секунды снимает до 200: кто ответил раньше, теряет меньше.'
+          },
+          {
+            q: 'Что такое режим 18+?',
+            a: 'Без него в игре нет войны, катастроф и обнажённой натуры. Режим 18+ включается в дополнительных настройках и добавляет такие снимки, но тел погибших, казней и крови нет и в нём.'
+          },
+          {
+            q: 'Это игра Wikimedia?',
+            a: 'Нет. Timler использует открытые фотографии Wikimedia Commons, но не связан с фондом Викимедиа.'
+          }
+        ]
+      },
+      en: {
+        ...localeFacts('timler', 'en'),
+        metaTitle: 'Timler — guess the year of the photo',
+        metaDescription:
+          'A history quiz played on photographs: guess when each was taken — the year, or the exact date. Solo or with up to 20 players.',
+        intro: [
+          'Timler is a quiz played on photographs old and new. Everyone sees the same picture and says when it was taken: the year is a must, the day and month if you know them.',
+          'The photos run from the first daguerreotypes of the 1840s to this year’s news: streets, people, machines, events. The closer to the real date, the more points.',
+          'Play alone or with up to twenty people. After each round everyone’s answers land on one timeline, so you see at once who was closest.'
+        ],
+        howToPlay: [
+          'Pick an era (or all time), a difficulty, the number of rounds and the time per round.',
+          'Study the photo: clothes, cars, signs, the look of the print — all of it tells the time.',
+          'Pick the year with the slider, the buttons, or type it in. If you are sure, add the day and month.',
+          'Press Answer. A round ends when everyone has answered or time is up.',
+          'After the round: a timeline of everyone’s answers, the right date and the story of the photo.',
+          'After the final round, compare your total with everyone else.'
+        ],
+        features: [
+          'Real historical photographs from open archives',
+          'The year or the exact date — each player decides',
+          'A timeline of every answer after the round',
+          'Solo and multiplayer for up to twenty',
+          'Eras from the 19th century to today and three difficulties',
+          'An optional 18+ mode in the advanced settings'
+        ],
+        strategy: [
+          'Look at the machines: car models, phones and planes give the decade most precisely.',
+          'Colour and quality are clues: early photos are brown and soft, colour becomes common after the 1950s.',
+          'Clothes and hair change fast — hats, hemlines, the width of trousers.',
+          'Add the day only if you recognise the event: the date is a bet, and a random one costs points on average.'
+        ],
+        mistakes: [
+          'Waiting until the last second — time costs points from the very first.',
+          'Guessing a date at random: a month off is already a minus.',
+          'Forgetting to press Answer — a round without one scores zero.'
+        ],
+        faq: [
+          {
+            q: 'Where do the photos come from?',
+            a: 'From Wikimedia Commons and Wikidata, where museums, libraries and archives have given their pictures — the Library of Congress, the National Archives of the Netherlands, the German Federal Archives and others. They load straight from Wikimedia’s sites; after each round you see the author, the licence and a link to the file.'
+          },
+          {
+            q: 'How is the score calculated?',
+            a: 'The exact year is worth 1,000. The older the photo, the more room: five years off costs next to nothing on a 19th-century photo and nearly all the points on one from the last few years. Add the day and month for up to +300 for the exact date, or down to −100 for a miss. The three most accurate get +100, +60 and +30 for their place, and time costs up to 200 from the first second: whoever answers first loses least.'
+          },
+          {
+            q: 'What is the 18+ mode?',
+            a: 'Without it the game has no war, disasters or nudity. The 18+ mode, in the advanced settings, adds such photos — but even there, no bodies, executions or blood.'
+          },
+          {
+            q: 'Is this a Wikimedia game?',
+            a: 'No. Timler uses the open photographs of Wikimedia Commons but is not affiliated with the Wikimedia Foundation.'
+          }
+        ]
+      }
+    }
+  },
 ];
 
 /**
@@ -1186,7 +1303,7 @@ export const GAMES_CONTENT: GameContent[] = [
  * by hand when the wording, the games or the FAQs change — not for styling or
  * unrelated code.
  */
-export const CONTENT_REVISION = '2026-09-30';
+export const CONTENT_REVISION = '2026-10-05';
 
 /** Every public game slug, in the order they should appear on the hub page. */
 export const GAME_SLUGS = GAMES_CONTENT.map((g) => g.slug);
@@ -1268,7 +1385,7 @@ export const HOME_CONTENT: Record<Locale, HomeCopy> = {
       },
       {
         q: 'Сколько человек можно позвать?',
-        a: 'Зависит от игры: Морской бой и Реверси рассчитаны на двоих; Сапёр, Стены и «Точки и квадраты» — до четырёх; Переворот — до шести; Шпион — до двенадцати; Флагер и Wikiler — до двадцати.'
+        a: 'Зависит от игры: Морской бой и Реверси рассчитаны на двоих; Сапёр, Стены и «Точки и квадраты» — до четырёх; Переворот — до шести; Шпион — до двенадцати; Флагер, Wikiler и Timler — до двадцати.'
       },
       {
         q: 'Это бесплатно?',
@@ -1318,7 +1435,7 @@ export const HOME_CONTENT: Record<Locale, HomeCopy> = {
       },
       {
         q: 'How many people can join?',
-        a: 'It depends on the game: Battleship and Reversi are for two; Minesweeper, Wall Rush and Dots & Boxes take up to four; Coup up to six; Spyfall up to twelve; and Flager and Wikiler up to twenty.'
+        a: 'It depends on the game: Battleship and Reversi are for two; Minesweeper, Wall Rush and Dots & Boxes take up to four; Coup up to six; Spyfall up to twelve; and Flager, Wikiler and Timler up to twenty.'
       },
       {
         q: 'Is it free?',

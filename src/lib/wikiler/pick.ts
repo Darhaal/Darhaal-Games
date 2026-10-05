@@ -1,5 +1,6 @@
 import { countContentWords, MIN_CONTENT_WORDS, type WikilerLang } from '@/lib/gameLogic/wikiler';
 import { POOL_TOPICS, type WikilerDifficulty, type WikilerTopic } from '@/data/wikiler/topics';
+import { byFame } from '@/data/difficulty';
 import type { WikilerArticleRef } from '@/types/wikiler';
 import { articleRef, fetchArticle, otherVersions, pickRandomArticle } from './wikipedia';
 
@@ -54,12 +55,7 @@ export function readPool(file: PoolFile): PoolEntry[] {
  * least read hard.
  */
 export function byDifficulty(entries: readonly PoolEntry[], lang: WikilerLang, difficulty: WikilerDifficulty): PoolEntry[] {
-  const read = entries.filter((e) => e.titles[lang]);
-  if (difficulty === 'any') return read;
-  const ranked = [...read].sort((a, b) => (b.views[lang] ?? 0) - (a.views[lang] ?? 0));
-  const third = Math.ceil(ranked.length / 3);
-  const at = { easy: 0, medium: 1, hard: 2 }[difficulty];
-  return ranked.slice(at * third, (at + 1) * third);
+  return byFame(entries.filter((e) => e.titles[lang]), (e) => e.views[lang] ?? 0, difficulty);
 }
 
 /**

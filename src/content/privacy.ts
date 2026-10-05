@@ -27,7 +27,7 @@ export interface PolicyCopy {
 }
 
 /** Changed by hand when the policy changes — never a build timestamp. */
-export const POLICY_UPDATED = '2026-09-30';
+export const POLICY_UPDATED = '2026-10-05';
 
 export const PRIVACY_CONTENT: Record<Locale, PolicyCopy> = {
   ru: {
@@ -76,7 +76,7 @@ export const PRIVACY_CONTENT: Record<Locale, PolicyCopy> = {
           'Supabase — база данных и аутентификация, хранит всё перечисленное выше.',
           'Vercel — хостинг, обрабатывает запросы к сайту и ведёт технические логи.',
           'Google Analytics — только с вашего согласия и только обезличенные события.',
-          'Википедия (фонд Викимедиа) — только в игре Wikiler: ваш браузер сам загружает с неё статьи, поэтому Википедия видит ваш IP-адрес и какие статьи загружены, как при обычном чтении Википедии. Ваш идентификатор, никнейм и ходы в игре туда не передаются. Как Википедия обращается с этими данными — в её политике конфиденциальности: foundation.wikimedia.org/wiki/Policy:Privacy_policy/ru.',
+          'Википедия и Wikimedia Commons (фонд Викимедиа) — только в играх Wikiler и Timler: ваш браузер сам загружает оттуда статьи и фотографии, поэтому Викимедиа видит ваш IP-адрес и что загружено, как при обычном чтении Википедии. Ваш идентификатор, никнейм и ходы в игре туда не передаются. Как Википедия обращается с этими данными — в её политике конфиденциальности: foundation.wikimedia.org/wiki/Policy:Privacy_policy/ru.',
           'Мы не продаём данные и не передаём их рекламным сетям.'
         ]
       },
@@ -145,7 +145,7 @@ export const PRIVACY_CONTENT: Record<Locale, PolicyCopy> = {
           'Supabase — the database and authentication; it holds everything listed above.',
           'Vercel — hosting; it serves requests to the site and keeps technical logs.',
           'Google Analytics — only with your consent, and only anonymous events.',
-          'Wikipedia (the Wikimedia Foundation) — only in Wikiler: your browser loads the articles from it directly, so Wikipedia sees your IP address and which articles were loaded, just as when you read Wikipedia. Your identifier, nickname and moves in the game are not sent. How Wikipedia handles that data is in its privacy policy: foundation.wikimedia.org/wiki/Policy:Privacy_policy.',
+          'Wikipedia and Wikimedia Commons (the Wikimedia Foundation) — only in Wikiler and Timler: your browser loads the articles and photographs from them directly, so Wikimedia sees your IP address and what was loaded, just as when you read Wikipedia. Your identifier, nickname and moves in the game are not sent. How Wikipedia handles that data is in its privacy policy: foundation.wikimedia.org/wiki/Policy:Privacy_policy.',
           'We do not sell data and do not pass it to advertising networks.'
         ]
       },

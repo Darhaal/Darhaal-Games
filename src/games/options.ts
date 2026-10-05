@@ -1,4 +1,4 @@
-import { BookOpenText, Bomb, Clock, EyeOff, Flag, Gauge, Grid, Hash, Languages, Layers, Swords, type LucideIcon } from 'lucide-react';
+import { BookOpenText, Bomb, CalendarRange, Clock, EyeOff, Flag, Gauge, Grid, Hash, Languages, Layers, ShieldAlert, Swords, type LucideIcon } from 'lucide-react';
 import { SPYFALL_PACKS } from '@/data/spyfall/locations';
 import { BOARD_FOR_MODE, PLAYERS_FOR_MODE, WALLS_FOR_MODE } from '@/lib/gameLogic/wallrush';
 import { DEFAULT_SIZE, MIN_SIZE, MAX_SIZE, boxCount } from '@/lib/gameLogic/dots';
@@ -503,8 +503,96 @@ export const GAME_OPTIONS: Record<GameId, GameOption[]> = {
         }
       ]
     }
+  ],
+
+  // docs/timler-spec.md, section 6.
+  timler: [
+    {
+      kind: 'choice',
+      key: 'era',
+      label: { ru: 'Эпоха', en: 'Era' },
+      icon: CalendarRange,
+      default: 'all',
+      previewLabel: { ru: 'Какие фото', en: 'Which photos' },
+      choices: [
+        { value: 'all', emoji: '🕰️', label: { ru: 'Всё время', en: 'All time' }, preview: { ru: ['1839–сегодня: каждый раунд — из случайной эпохи'], en: ['1839 to today: each round from a random era'] } },
+        { value: 'before1900', emoji: '🎩', label: { ru: 'До 1900', en: 'Before 1900' }, preview: { ru: ['Первые фотографии: дагеротипы, XIX век'], en: ['The first photographs: daguerreotypes, the 19th century'] } },
+        { value: '1900-1945', emoji: '📻', label: { ru: '1900–1945', en: '1900–1945' }, preview: { ru: ['Начало века, две мировые войны'], en: ['The turn of the century and two world wars'] } },
+        { value: '1946-2000', emoji: '📺', label: { ru: '1946–2000', en: '1946–2000' }, preview: { ru: ['Послевоенный мир, космос, конец века'], en: ['The post-war world, space, the end of the century'] } },
+        { value: 'since2001', emoji: '📱', label: { ru: 'С 2001', en: 'Since 2001' }, preview: { ru: ['XXI век, вплоть до этого года'], en: ['The 21st century, up to this year'] } }
+      ]
+    },
+    {
+      kind: 'choice',
+      key: 'difficulty',
+      label: { ru: 'Сложность', en: 'Difficulty' },
+      icon: Gauge,
+      default: 'any',
+      previewLabel: { ru: 'Какие фото', en: 'Which photos' },
+      choices: WIKILER_DIFFICULTIES.map((level) => ({
+        value: level,
+        emoji: DIFFICULTIES[level].emoji,
+        label: DIFFICULTIES[level].label,
+        preview: {
+          any: { ru: ['Все фото эпохи вперемешку'], en: ['Every photo of the era, mixed'] },
+          easy: { ru: ['Самая известная треть: снимки, которые видел каждый'], en: ['The best known third: photos everyone has seen'] },
+          medium: { ru: ['Средняя треть: известное, но не самое'], en: ['The middle third: known, but not the most'] },
+          hard: { ru: ['Наименее известная треть — для знатоков'], en: ['The least known third — for experts'] }
+        }[level]
+      }))
+    },
+    {
+      kind: 'slider',
+      key: 'rounds',
+      label: { ru: 'Раунды', en: 'Rounds' },
+      icon: Layers,
+      min: 1,
+      max: 20,
+      step: 1,
+      default: 5
+    },
+    {
+      kind: 'slider',
+      key: 'roundSeconds',
+      label: { ru: 'Время раунда', en: 'Round time' },
+      icon: Clock,
+      min: 15,
+      max: 180,
+      step: 15,
+      default: 60,
+      format: (value, locale) => value < 60
+        ? `${value} ${seconds[locale]}`
+        : `${Math.floor(value / 60)}:${String(value % 60).padStart(2, '0')}`
+    },
+    {
+      kind: 'choice',
+      key: 'adult',
+      label: { ru: 'Режим 18+', en: '18+ mode' },
+      icon: ShieldAlert,
+      default: 'off',
+      advanced: true,
+      previewLabel: { ru: 'Какие фото', en: 'Which photos' },
+      choices: [
+        {
+          value: 'off',
+          emoji: '🙂',
+          label: { ru: 'Выключен', en: 'Off' },
+          preview: { ru: ['Без войны, катастроф и обнажённой натуры'], en: ['No war, disasters or nudity'] }
+        },
+        {
+          value: 'on',
+          emoji: '🔞',
+          label: { ru: 'Включён', en: 'On' },
+          preview: {
+            ru: ['Добавляются бои, катастрофы, концлагеря, обнажённая натура в фотоискусстве', 'Тел погибших, казней и крови нет и здесь'],
+            en: ['Adds battles, disasters, concentration camps, nudes in fine-art photography', 'No bodies, executions or blood even here']
+          }
+        }
+      ]
+    }
   ]
 };
+
 
 /** The headcount a mode-driven game is fixed to, given the chosen options. */
 export function playersFromOptions(id: GameId, values: OptionValues): number | undefined {

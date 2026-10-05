@@ -7,6 +7,8 @@ import type { WallRushMode, WallRushState } from '@/types/wallrush';
 import type { DotsState } from '@/types/dots';
 import type { ReversiState } from '@/types/reversi';
 import type { WikilerPlayer, WikilerState } from '@/types/wikiler';
+import { TIMLER_ERAS, type TimlerEra, type TimlerPlayer, type TimlerState } from '@/types/timler';
+import { DIFFICULTY_LEVELS, type Difficulty } from '@/data/difficulty';
 import { WIKILER_DIFFICULTIES, WIKILER_TOPICS, type WikilerDifficulty, type WikilerTopic } from '@/data/wikiler/topics';
 import { HIDDEN_DEFAULT, HIDDEN_MAX, HIDDEN_MIN, type WikilerLang } from '@/lib/gameLogic/wikiler';
 import { emptyBoard, DEFAULT_SIZE, MIN_SIZE, MAX_SIZE } from '@/lib/gameLogic/dots';
@@ -48,6 +50,12 @@ export interface GameStateByType {
   dots: DotsState;
   reversi: ReversiState;
   wikiler: WikilerState;
+  timler: TimlerState;
+}
+
+/** A Timler player as they join, before any round. */
+export function newTimlerPlayer(base: { id: string; name: string; avatarUrl: string; isHost: boolean }): TimlerPlayer {
+  return { ...base, score: 0, guess: null, history: [], isReadyForNextRound: false };
 }
 
 /** A Wikiler player as they join, before any round. */
@@ -302,6 +310,33 @@ const FACTORIES: { [K in GameId]: (args: FactoryArgs) => GameStateByType[K] } = 
     };
   },
 
+  timler: ({ maxPlayers, values, now, base }) => {
+    const era = str(values, 'era', 'all');
+    const difficulty = str(values, 'difficulty', 'any');
+    return {
+      players: [newTimlerPlayer(base)],
+      status: 'waiting',
+      // The photo is drawn when the host starts, not while the room waits.
+      round: null,
+      roundIndex: 0,
+      next: null,
+      played: [],
+      startTime: 0,
+      lastActionTime: now,
+      notifications: [],
+      version: 1,
+      gameType: 'timler',
+      settings: {
+        maxPlayers,
+        rounds: clamp(num(values, 'rounds', 5), 1, 20),
+        roundDuration: clamp(num(values, 'roundSeconds', 60), 15, 180),
+        era: (TIMLER_ERAS as readonly string[]).includes(era) ? (era as TimlerEra) : 'all',
+        difficulty: (DIFFICULTY_LEVELS as readonly string[]).includes(difficulty) ? (difficulty as Difficulty) : 'any',
+        adult: str(values, 'adult', 'off') === 'on'
+      }
+    };
+  },
+
   coup: ({ maxPlayers, now, base }) => {
     const player: CoupPlayer = { ...base, coins: 2, cards: [], isDead: false, isReady: true };
 
@@ -445,6 +480,21 @@ const REMATCH: { [K in GameId]: (parent: GameStateByType[K]) => GameStateByType[
   }),
 
   wikiler: (p) => ({
+    ...p,
+    players: [],
+    status: 'waiting',
+    round: null,
+    roundIndex: 0,
+    next: null,
+    played: [],
+    roundEndedAt: undefined,
+    startTime: 0,
+    lastActionTime: Date.now(),
+    notifications: [],
+    version: 1
+  }),
+
+  timler: (p) => ({
     ...p,
     players: [],
     status: 'waiting',

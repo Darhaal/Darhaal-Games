@@ -52,7 +52,8 @@ describe('every game', () => {
   const HOOKS: Record<(typeof GAME_IDS)[number], string> = {
     spyfall: 'useSpyfallGame', minesweeper: 'useMinesweeperGame', flager: 'useFlagerGame',
     battleship: 'useBattleshipGame', coup: 'useCoupGame', wallrush: 'useWallRushGame',
-    dots: 'useDotsGame', reversi: 'useReversiGame', wikiler: 'useWikilerGame'
+    dots: 'useDotsGame', reversi: 'useReversiGame', wikiler: 'useWikilerGame',
+    timler: 'useTimlerGame'
   };
 
   it.each(GAME_IDS.map((id) => [id]))('%s records through recordMatch and counts a walk-out as a loss', (id) => {
