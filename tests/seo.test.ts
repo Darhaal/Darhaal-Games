@@ -7,9 +7,17 @@ import {
   faqJsonLd,
   videoGameJsonLd,
   NOINDEX,
-  hubMetadata
+  hubMetadata,
+  homeMetadata,
+  gameMetadata,
+  INDEXED_LOCALES,
+  organizationJsonLd,
+  websiteJsonLd,
+  PERSON_ID,
+  ORGANIZATION_ID
 } from '@/lib/seo';
-import { GAMES_CONTENT, GAME_SLUGS, getGameContent, CONTENT_REVISION } from '@/content/games';
+import { GAMES_CONTENT, GAME_SLUGS, HOME_CONTENT, getGameContent, CONTENT_REVISION } from '@/content/games';
+import sitemap from '@/app/sitemap';
 
 /**
  * These are cheap to get wrong and expensive to notice: a malformed canonical
@@ -18,17 +26,17 @@ import { GAMES_CONTENT, GAME_SLUGS, getGameContent, CONTENT_REVISION } from '@/c
  */
 
 describe('localizedPath', () => {
-  it('serves Russian from the bare path', () => {
-    expect(localizedPath('ru', '/games/coup')).toBe('/games/coup');
-    expect(localizedPath('ru', '/')).toBe('/');
+  it('serves English from the bare path', () => {
+    expect(localizedPath('en', '/games/coup')).toBe('/games/coup');
+    expect(localizedPath('en', '/')).toBe('/');
   });
 
-  it('prefixes English with /en', () => {
-    expect(localizedPath('en', '/games/coup')).toBe('/en/games/coup');
+  it('prefixes Russian with /ru', () => {
+    expect(localizedPath('ru', '/games/coup')).toBe('/ru/games/coup');
   });
 
-  it('never produces an empty href for the English root', () => {
-    expect(localizedPath('en', '/')).toBe('/en');
+  it('never produces an empty href for the Russian root', () => {
+    expect(localizedPath('ru', '/')).toBe('/ru');
   });
 });
 
@@ -42,24 +50,42 @@ describe('absoluteUrl', () => {
   });
 });
 
-describe('buildAlternates', () => {
-  const alts = buildAlternates('en', '/games/spyfall');
+describe('indexed locales', () => {
+  // Russian is off the index for now (2026-10-05). These pin what that means;
+  // adding 'ru' to INDEXED_LOCALES is meant to fail them.
+  it('offers English only', () => {
+    expect(INDEXED_LOCALES).toEqual(['en']);
+  });
 
   it('points canonical at the current locale', () => {
-    expect(alts?.canonical).toBe('https://games.okhten.com/en/games/spyfall');
+    expect(buildAlternates('en', '/games/spyfall')?.canonical).toBe('https://games.okhten.com/games/spyfall');
+    expect(buildAlternates('ru', '/games/spyfall')?.canonical).toBe('https://games.okhten.com/ru/games/spyfall');
   });
 
-  it('declares both locales plus x-default', () => {
-    const langs = alts?.languages as Record<string, string>;
-    expect(langs.ru).toBe('https://games.okhten.com/games/spyfall');
-    expect(langs.en).toBe('https://games.okhten.com/en/games/spyfall');
-    expect(langs['x-default']).toBe(langs.ru);
+  it('declares no hreflang pair that would point at a noindex page', () => {
+    expect(buildAlternates('en', '/games/coup')?.languages).toBeUndefined();
+    expect(buildAlternates('ru', '/games/coup')?.languages).toBeUndefined();
   });
 
-  it('is symmetric — each locale points at the same pair', () => {
-    const ru = buildAlternates('ru', '/games/coup')?.languages as Record<string, string>;
-    const en = buildAlternates('en', '/games/coup')?.languages as Record<string, string>;
-    expect(ru).toEqual(en);
+  it('keeps Russian pages out of the index but lets their links count', () => {
+    const coup = getGameContent('coup')!;
+    for (const meta of [homeMetadata('ru'), hubMetadata('ru'), gameMetadata(coup, 'ru')]) {
+      expect(meta.robots).toEqual({ index: false, follow: true });
+    }
+  });
+
+  it('leaves English pages to the root layout robots (index, follow)', () => {
+    const coup = getGameContent('coup')!;
+    for (const meta of [homeMetadata('en'), hubMetadata('en'), gameMetadata(coup, 'en')]) {
+      expect(meta.robots).toBeUndefined();
+    }
+  });
+
+  it('lists English pages only in the sitemap', () => {
+    const urls = sitemap().map((entry) => entry.url);
+    expect(urls).toContain('https://games.okhten.com/');
+    expect(urls).toContain('https://games.okhten.com/games/timler');
+    expect(urls.filter((url) => /\/(ru|en)(\/|$)/.test(url.replace('https://games.okhten.com', '')))).toEqual([]);
   });
 });
 
@@ -125,7 +151,7 @@ describe('structured data', () => {
   const coup = getGameContent('coup')!;
 
   it('emits a VideoGame node with a resolvable url and player range', () => {
-    const node = videoGameJsonLd(coup, 'ru') as Record<string, unknown>;
+    const node = videoGameJsonLd(coup, 'en') as Record<string, unknown>;
     expect(node['@type']).toBe('VideoGame');
     expect(node.url).toBe('https://games.okhten.com/games/coup');
     expect(node.numberOfPlayers).toMatchObject({ minValue: 2, maxValue: 6 });
@@ -150,12 +176,51 @@ describe('structured data', () => {
     ]) as { itemListElement: { position: number; item: string }[] };
 
     expect(node.itemListElement[0].position).toBe(1);
-    expect(node.itemListElement[1].item).toBe('https://games.okhten.com/games/coup');
+    expect(node.itemListElement[1].item).toBe('https://games.okhten.com/ru/games/coup');
   });
 });
 
 describe('NOINDEX', () => {
   it('keeps app screens out of the index and stops link-following', () => {
     expect(NOINDEX.robots).toMatchObject({ index: false, follow: false });
+  });
+});
+
+describe('who is behind the site', () => {
+  // okhten.com publishes the developer and the company under these ids; the
+  // same ids here are what lets a search engine join the two sites.
+  it('reuses the ids okhten.com publishes', () => {
+    expect(PERSON_ID).toBe('https://okhten.com/#artem-okhten');
+    expect(ORGANIZATION_ID).toBe('https://okhtengroup.com/#organization');
+  });
+
+  it('names the developer, the handle and the nationality', () => {
+    const founder = organizationJsonLd().founder;
+    expect(founder['@id']).toBe(PERSON_ID);
+    expect(founder.name).toBe('Artem Okhten');
+    expect(founder.alternateName).toEqual(expect.arrayContaining(['Артем Охтень', 'Darhaal']));
+    expect(founder.nationality.name).toBe('Ukraine');
+  });
+
+  it('credits the developer on the site and on every game', () => {
+    expect(websiteJsonLd().creator['@id']).toBe(PERSON_ID);
+    for (const game of GAMES_CONTENT) {
+      expect((videoGameJsonLd(game, 'en') as { author: { '@id': string } }).author['@id']).toBe(PERSON_ID);
+    }
+  });
+
+  it('answers it on the home page in both languages', () => {
+    for (const [locale, name] of [['ru', 'Артем Охтень'], ['en', 'Artem Okhten']] as const) {
+      const answer = HOME_CONTENT[locale].faq.find((item) => item.q.includes('Darhaal Games'));
+      expect(answer?.a, locale).toContain(name);
+      expect(answer?.a, locale).toMatch(/украинск|Ukrainian/);
+    }
+  });
+});
+
+describe('the home page', () => {
+  it('is English at the root and Russian under /ru', () => {
+    expect(homeMetadata('en').alternates?.canonical).toBe('https://games.okhten.com/');
+    expect(homeMetadata('ru').alternates?.canonical).toBe('https://games.okhten.com/ru');
   });
 });

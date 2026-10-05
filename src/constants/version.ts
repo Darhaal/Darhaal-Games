@@ -1,4 +1,4 @@
-export const APP_VERSION = '2.14.0';
+export const APP_VERSION = '2.14.1';
 
 export type VersionType = 'major' | 'minor' | 'patch' | 'init';
 
@@ -57,6 +57,16 @@ export function formatReleaseRange(from: string, to: string, lang: 'ru' | 'en'):
  */
 export const VERSION_HISTORY: VersionLog[] = [
   /* ===================== 2.14.x ===================== */
+
+  {
+    ver: '2.14.1',
+    date: '2026-10-05',
+    type: 'patch',
+    desc: {
+      ru: 'Сайт по умолчанию на английском, как и само приложение: главная, страницы игр, политика и история изменений живут по коротким адресам, русские версии — под /ru, а старые адреса /en перенаправляют на новые. Пока в поиск попадает только английская версия. На главной теперь сказано, кто делает Darhaal Games — Артем Охтень, украинский разработчик с ником Darhaal, — а внизу каждой страницы ссылки на автора и на исходный код на GitHub.',
+      en: 'The site is in English by default, like the app itself: the home page, the game pages, the privacy policy and the changelog live at the short addresses, the Russian versions under /ru, and the old /en addresses redirect to the new ones. Only the English version is offered to search engines for now. The home page now says who makes Darhaal Games — Artem Okhten, a Ukrainian developer whose handle is Darhaal — and every page links to the author and to the source on GitHub at the bottom.'
+    }
+  },
 
   {
     ver: '2.14.0',

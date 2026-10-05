@@ -1,5 +1,9 @@
+import type { Metadata } from 'next';
 import HomeClient from '@/components/HomeClient';
 import HomeLanding from '@/components/seo/HomeLanding';
+import { homeMetadata } from '@/lib/seo';
+
+export const metadata: Metadata = homeMetadata('en');
 
 /**
  * The domain root.
@@ -13,5 +17,5 @@ import HomeLanding from '@/components/seo/HomeLanding';
  * the sign-in card plus this content for everyone else.
  */
 export default function Home() {
-  return <HomeClient landing={<HomeLanding locale="ru" />} />;
+  return <HomeClient landing={<HomeLanding locale="en" />} />;
 }

@@ -1,6 +1,6 @@
 import type { MetadataRoute } from 'next';
 import { CONTENT_REVISION, GAMES_CONTENT } from '@/content/games';
-import { absoluteUrl, localizedPath } from '@/lib/seo';
+import { INDEXED_LOCALES, absoluteUrl, localizedPath } from '@/lib/seo';
 import { POLICY_UPDATED } from '@/content/privacy';
 import { VERSION_HISTORY } from '@/constants/version';
 
@@ -8,8 +8,9 @@ import { VERSION_HISTORY } from '@/constants/version';
  * Only genuinely public, indexable URLs belong here — the app screens are
  * disallowed in robots.ts and are deliberately absent.
  *
- * Every entry on the /games tree carries its hreflang pair so search engines
- * treat the RU and EN versions as translations rather than duplicates.
+ * Only the indexed locales are listed (`INDEXED_LOCALES`); once there is more
+ * than one, every entry carries its hreflang pair so search engines treat the
+ * versions as translations rather than duplicates.
  */
 export default function sitemap(): MetadataRoute.Sitemap {
   // A fixed content-revision date, never a build timestamp — see the note on
@@ -17,53 +18,62 @@ export default function sitemap(): MetadataRoute.Sitemap {
   // change by the second, and claiming otherwise is noise.
   const lastModified = CONTENT_REVISION;
 
-  const withAlternates = (path: string) => ({
-    ru: absoluteUrl(localizedPath('ru', path)),
-    en: absoluteUrl(localizedPath('en', path))
-  });
+  const withAlternates = (path: string) =>
+    INDEXED_LOCALES.length > 1
+      ? {
+          alternates: {
+            languages: Object.fromEntries(
+              INDEXED_LOCALES.map((l) => [l, absoluteUrl(localizedPath(l, path))])
+            )
+          }
+        }
+      : {};
 
-  const hub: MetadataRoute.Sitemap = (['ru', 'en'] as const).map((locale) => ({
+  const hub: MetadataRoute.Sitemap = INDEXED_LOCALES.map((locale) => ({
     url: absoluteUrl(localizedPath(locale, '/games')),
     lastModified,
     changeFrequency: 'weekly',
     priority: 0.9,
-    alternates: { languages: withAlternates('/games') }
+    ...withAlternates('/games')
   }));
 
-  const privacy: MetadataRoute.Sitemap = (['ru', 'en'] as const).map((locale) => ({
+  const privacy: MetadataRoute.Sitemap = INDEXED_LOCALES.map((locale) => ({
     url: absoluteUrl(localizedPath(locale, '/privacy')),
     lastModified: new Date(POLICY_UPDATED),
     changeFrequency: 'yearly',
     priority: 0.3,
-    alternates: { languages: withAlternates('/privacy') }
+    ...withAlternates('/privacy')
   }));
 
   // Changes with every release, so it carries the latest one's day.
-  const changelog: MetadataRoute.Sitemap = (['ru', 'en'] as const).map((locale) => ({
+  const changelog: MetadataRoute.Sitemap = INDEXED_LOCALES.map((locale) => ({
     url: absoluteUrl(localizedPath(locale, '/changelog')),
     lastModified: VERSION_HISTORY[0].date,
     changeFrequency: 'weekly',
     priority: 0.4,
-    alternates: { languages: withAlternates('/changelog') }
+    ...withAlternates('/changelog')
   }));
 
   const details: MetadataRoute.Sitemap = GAMES_CONTENT.flatMap((game) =>
-    (['ru', 'en'] as const).map((locale) => ({
+    INDEXED_LOCALES.map((locale) => ({
       url: absoluteUrl(localizedPath(locale, `/games/${game.slug}`)),
       lastModified,
       changeFrequency: 'monthly' as const,
       priority: 0.8,
-      alternates: { languages: withAlternates(`/games/${game.slug}`) }
+      ...withAlternates(`/games/${game.slug}`)
     }))
   );
 
+  const home: MetadataRoute.Sitemap = INDEXED_LOCALES.map((locale) => ({
+    url: absoluteUrl(localizedPath(locale, '/')),
+    lastModified,
+    changeFrequency: 'weekly',
+    priority: 1,
+    ...withAlternates('/')
+  }));
+
   return [
-    {
-      url: absoluteUrl('/'),
-      lastModified,
-      changeFrequency: 'weekly',
-      priority: 1
-    },
+    ...home,
     ...hub,
     ...details,
     ...privacy,

@@ -68,7 +68,7 @@ describe('the changelog page', () => {
       const meta = changelogMetadata(locale);
       expect(String(meta.title).length + ' · Darhaal Games'.length).toBeLessThanOrEqual(60);
       expect(String(meta.description).length).toBeLessThanOrEqual(160);
-      expect(meta.alternates?.canonical).toBe(`https://games.okhten.com${locale === 'ru' ? '' : '/en'}/changelog`);
+      expect(meta.alternates?.canonical).toBe(`https://games.okhten.com${locale === 'ru' ? '/ru' : ''}/changelog`);
     }
   });
 });

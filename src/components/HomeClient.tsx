@@ -445,7 +445,7 @@ function HomeContent({ landing }: { landing: React.ReactNode }) {
                  </div>
                  {/* The game keeps 2.0 on; every version since the launch is on its own page. */}
                  <Link
-                   href={lang === 'ru' ? '/changelog' : '/en/changelog'}
+                   href={lang === 'ru' ? '/ru/changelog' : '/changelog'}
                    className="flex items-center justify-between px-4 py-3 border-t border-gray-100 text-2xs font-black uppercase tracking-widest text-gray-900 hover:text-[#9e1316] transition-colors"
                  >
                    {t.fullChangelog} <span aria-hidden>→</span>

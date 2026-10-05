@@ -59,7 +59,7 @@ export default function ConsentBanner() {
           {t.text}{' '}
           <span className="text-[#8A9099]">{t.detail}</span>{' '}
           <Link
-            href={lang === 'ru' ? '/privacy' : '/en/privacy'}
+            href={lang === 'ru' ? '/ru/privacy' : '/privacy'}
             className="font-bold text-[#1A1F26] underline underline-offset-2 hover:text-[#9e1316] transition-colors whitespace-nowrap"
           >
             {t.policy}

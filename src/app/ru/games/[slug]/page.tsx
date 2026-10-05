@@ -16,13 +16,13 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { slug } = await params;
   const game = getGameContent(slug);
   if (!game) return {};
-  return gameMetadata(game, 'en');
+  return gameMetadata(game, 'ru');
 }
 
-export default async function GamePageEn({ params }: Params) {
+export default async function GamePageRu({ params }: Params) {
   const { slug } = await params;
   const game = getGameContent(slug);
   if (!game) notFound();
 
-  return <GameDetail game={game} locale="en" />;
+  return <GameDetail game={game} locale="ru" />;
 }

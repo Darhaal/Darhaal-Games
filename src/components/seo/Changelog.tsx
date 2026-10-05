@@ -8,7 +8,7 @@ import PublicShell from './PublicShell';
 import JsonLd from './JsonLd';
 
 /**
- * The full changelog, shared by /changelog and /en/changelog: every version
+ * The full changelog, shared by /changelog and /ru/changelog: every version
  * from 1.0.0 on, grouped by release line (2.12, 2.11…) under its major, each
  * with its date, what it brought and what it fixed.
  *

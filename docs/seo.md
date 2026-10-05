@@ -40,11 +40,10 @@ auction.
 
 | URL | Type | Indexable |
 |-----|------|-----------|
-| `/` | App entry (client, auth wall) | ✅ (brand queries only) |
-| `/games` | Public hub, RU | ✅ |
-| `/games/[slug]` | Public game page, RU | ✅ |
-| `/en/games` | Public hub, EN | ✅ |
-| `/en/games/[slug]` | Public game page, EN | ✅ |
+| `/` | App entry (client, auth wall), EN landing | ✅ |
+| `/games`, `/games/[slug]`, `/privacy`, `/changelog` | Public pages, EN | ✅ |
+| `/ru`, `/ru/games`, `/ru/games/[slug]`, `/ru/privacy`, `/ru/changelog` | The same in Russian | ❌ `noindex, follow` for now |
+| `/en`, `/en/*` | Where English used to live | 308 → the bare path |
 | `/play`, `/create`, `/achievements`, `/reset-password`, `/game/*` | App screens | ❌ noindex |
 
 App screens are excluded twice over: `Disallow` in `robots.ts` **and** a
@@ -75,17 +74,27 @@ braces — `Disallow` alone does not remove a URL that is already indexed.
 
 ## Locale strategy
 
-Russian is canonical and served from the bare path; English lives under `/en`.
+English is the default and served from the bare path, like the app itself
+(it starts in English until a player picks Russian); Russian lives under `/ru`.
+Until 2026-10-05 it was the other way round — Russian at the root, English
+under `/en` — and `/en/*` now redirects permanently to the bare path.
 
-- `/games/coup` ⇄ `/en/games/coup`, each declaring both `hreflang` alternates
-  plus `x-default` → the Russian URL.
-- The document element is `<html lang="ru">`. The English subtree overrides it
-  with `lang="en"` on the `PublicShell` root, which is valid HTML — the nearest
-  ancestor `lang` wins.
-- Reading the pathname in the root layout to set `<html lang>` per request
-  would require `headers()`, which opts the **entire app** out of static
-  generation. Not worth it for one attribute when hreflang already carries the
-  locale signal.
+**Only English is indexed for now** (decided 2026-10-05). `INDEXED_LOCALES` in
+`lib/seo.ts` is the one switch:
+
+- a locale outside it renders `noindex, follow` — its links still count, the
+  page is just not listed — and stays out of `sitemap.xml`;
+- while only one locale is indexed, no page declares `hreflang`: a pair that
+  points at a `noindex` page is one search engines reject;
+- adding `'ru'` brings back the Russian pages, their sitemap entries and the
+  `/games/coup` ⇄ `/ru/games/coup` pairs with `x-default` → English, with
+  nothing else to touch (and the "indexed locales" tests to update).
+
+The document element is `<html lang="en">`; the Russian subtree overrides it
+with `lang="ru"` on the `PublicShell` / `HomeLanding` root, which is valid
+HTML — the nearest ancestor `lang` wins. Reading the pathname in the root
+layout to set `<html lang>` per request would require `headers()`, which
+opts the **entire app** out of static generation.
 
 ## Structured data
 
@@ -102,6 +111,28 @@ Each game page emits six JSON-LD blocks:
 
 The hub emits `ItemList` + `BreadcrumbList`.
 
+### Who is behind it
+
+The `Organization` is Okhten Group LLC and its `founder` is the developer,
+both under the **same `@id`s okhten.com publishes** —
+`https://okhtengroup.com/#organization` and `https://okhten.com/#artem-okhten`
+(`PERSON_ID`, `ORGANIZATION_ID` in `lib/seo.ts`). Matching ids are how a
+search engine reads two sites as one person rather than two strangers who
+share a name. The person node carries both spellings, the handle Darhaal and
+Ukrainian nationality; `WebSite` names Darhaal as an alternate name and the
+person as `creator`; every `VideoGame` names the person as `author`.
+
+The visible half matters as much for AI answers, which read the page rather
+than the markup: the home FAQ answers "Who makes Darhaal Games?" in both
+languages, and every public footer links to okhten.com (`rel="author"`) and
+the GitHub repository.
+
+Why (2026-10-05): "darhaal games" was corrected to "darfall games", `site:`
+showed six English game pages and no home page, and Google's AI answer
+called the platform Russian — the root was Russian and nothing said
+otherwise. The same day English moved to the root (see Locale strategy). If okhten.com changes its ids, change them here too; a test pins
+them.
+
 Validate after changes with the
 [Rich Results Test](https://search.google.com/test/rich-results).
 
@@ -112,10 +143,10 @@ Validate after changes with the
    land around 140–160 characters, and `metaTitle` must leave room for the
    ` · Darhaal Games` suffix: tests fail above 60 rendered characters.
 2. That is the whole job. The hub card, the detail page, both locale routes,
-   the sitemap entries, the hreflang pairs and the OG image all derive from it,
-   for both locales, automatically.
+   the sitemap entries, the hreflang pairs (once both locales are indexed) and
+   the OG image all derive from it, for both locales, automatically.
 3. Run `npm run build` and confirm the new `/games/<slug>` and
-   `/en/games/<slug>` routes appear as prerendered.
+   `/ru/games/<slug>` routes appear as prerendered.
 
 ## Environment
 
@@ -143,12 +174,12 @@ file. Needs a commit and a deploy before the provider can fetch it.
 
 Each renders its meta tag only when set, so an unused one costs nothing.
 
-Yandex is worth doing alongside Google here: the canonical locale is Russian
-and the Russian-speaking audience is the primary one.
+Yandex matters once the Russian pages are indexed; until then it has nothing
+Russian to list.
 
-After verifying, submit `https://games.okhten.com/sitemap.xml` in both. It
-lists the app entry, both hubs and every game in both locales, each carrying
-its hreflang pair.
+After verifying, submit `https://games.okhten.com/sitemap.xml`. It lists the
+indexed locales only — today the English root, hub, games, privacy policy and
+changelog.
 
 ## Post-deploy checklist
 
@@ -170,7 +201,8 @@ Confirmed live on 2026-08-21:
 
 Still to do, all outside the codebase:
 
-- [ ] Verify ownership in Google Search Console (file or meta tag above)
+- [x] Verify ownership in Google Search Console — done by the owner, confirmed
+      2026-10-05 (not through the meta tag: the env var is unset)
 - [ ] Verify ownership in Yandex Webmaster
 - [ ] Submit the sitemap in both
 - [ ] Run the [Rich Results Test](https://search.google.com/test/rich-results)

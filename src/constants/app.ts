@@ -10,6 +10,25 @@ export const APP_NAME = 'Darhaal Games';
 /** Legal entity that owns the platform */
 export const COMPANY_NAME = 'Okhten Group LLC';
 
+/** The studio's own site — okhten.com publishes the company under this URL */
+export const COMPANY_URL = 'https://okhtengroup.com';
+
+/**
+ * The developer behind the platform. "Darhaal" is the handle, which is where
+ * the name comes from. okhten.com publishes the same person as structured
+ * data; `lib/seo.ts` reuses its ids so search engines join the two.
+ */
+export const AUTHOR = {
+  name: { ru: 'Артем Охтень', en: 'Artem Okhten' },
+  handle: 'Darhaal',
+  url: 'https://okhten.com',
+  github: 'https://github.com/Darhaal',
+  linkedin: 'https://www.linkedin.com/in/artem-okhten'
+} as const;
+
+/** The public, read-only copy of the source */
+export const SOURCE_URL = 'https://github.com/Darhaal/Darhaal-Games';
+
 /** Copyright line used in footers */
 export const COPYRIGHT = `© 2026 ${COMPANY_NAME}`;
 
@@ -29,8 +48,8 @@ export const APP_TAGLINE = {
   en: 'Board and logic games online with friends — free, no download.'
 } as const;
 
-/** Locale served at the bare path; the other locale lives under /en */
-export const DEFAULT_LOCALE = 'ru' as const;
+/** Locale served at the bare path; Russian lives under /ru */
+export const DEFAULT_LOCALE = 'en' as const;
 
 /**
  * Default generated avatar for a given seed (user id, nickname, etc.).

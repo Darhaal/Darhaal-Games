@@ -23,20 +23,20 @@ const geistMono = Geist_Mono({
 });
 
 /**
- * Russian is the canonical locale and is served from the bare path, so the
- * document language is `ru`. The English subtree under /en overrides it with a
- * `lang="en"` wrapper on its own content (valid HTML: the nearest ancestor
+ * English is the default locale and is served from the bare path, so the
+ * document language is `en`. The Russian subtree under /ru overrides it with a
+ * `lang="ru"` wrapper on its own content (valid HTML: the nearest ancestor
  * `lang` wins). Reading the pathname here instead would require `headers()`,
  * which opts the entire app out of static generation — not worth it for one
- * attribute when hreflang already carries the locale signal.
+ * attribute.
  */
 /**
  * Search-engine ownership tokens, rendered as meta tags when present.
  *
  * The alternative is dropping the provider's HTML file into `public/`, which
  * is served from the domain root — that works too, but needs a commit and a
- * deploy. Setting the env var in Vercel does not. Yandex is here alongside
- * Google because the primary audience is Russian-speaking.
+ * deploy. Setting the env var in Vercel does not. Yandex is kept for the day
+ * the Russian pages are indexed (`INDEXED_LOCALES` in lib/seo.ts).
  */
 const verification = {
   ...(process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION && {
@@ -50,28 +50,27 @@ const verification = {
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: `${APP_NAME} — настольные и логические игры онлайн с друзьями`,
+    default: `${APP_NAME} — board and logic games online with friends`,
     template: `%s · ${APP_NAME}`,
   },
-  description: APP_TAGLINE.ru,
+  description: APP_TAGLINE.en,
   applicationName: APP_NAME,
   authors: [{ name: COMPANY_NAME }],
   creator: COMPANY_NAME,
   publisher: COMPANY_NAME,
-  // The app entry has a single URL — it switches language client-side, so it
-  // declares a canonical only. Real hreflang pairs live on the /games tree.
+  // The fallback for app screens, which are noindex anyway. Public pages set
+  // their own (buildAlternates).
   alternates: { canonical: absoluteUrl("/") },
   keywords: [
-    "игры онлайн",
-    "играть с друзьями",
-    "настольные игры онлайн",
-    "шпион онлайн",
-    "сапёр онлайн",
-    "морской бой онлайн",
-    "переворот coup",
-    "викторина флаги",
     "online games with friends",
     "browser party games",
+    "board games online",
+    "spyfall online",
+    "coup online",
+    "minesweeper multiplayer",
+    "battleship online",
+    "flag quiz",
+    "guess the year photo",
   ],
   category: "games",
   icons: {
@@ -84,16 +83,16 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     siteName: APP_NAME,
-    title: `${APP_NAME} — настольные и логические игры онлайн с друзьями`,
-    description: APP_TAGLINE.ru,
+    title: `${APP_NAME} — board and logic games online with friends`,
+    description: APP_TAGLINE.en,
     url: SITE_URL,
-    locale: "ru_RU",
-    alternateLocale: ["en_US"],
+    locale: "en_US",
+    alternateLocale: ["ru_RU"],
   },
   twitter: {
     card: "summary_large_image",
-    title: `${APP_NAME} — играйте с друзьями онлайн`,
-    description: APP_TAGLINE.ru,
+    title: `${APP_NAME} — play with friends online`,
+    description: APP_TAGLINE.en,
   },
   robots: {
     index: true,
@@ -122,12 +121,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ru">
+    <html lang="en">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[#F0F2F5] text-[#334155]`}
       >
         <JsonLd data={organizationJsonLd()} />
-        <JsonLd data={websiteJsonLd("ru")} />
+        <JsonLd data={websiteJsonLd()} />
         {children}
         <AppToaster />
         <AchievementToaster />

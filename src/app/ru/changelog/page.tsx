@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import Changelog from '@/components/seo/Changelog';
 import { changelogMetadata } from '@/lib/seo';
 
-export const metadata: Metadata = changelogMetadata('en');
+export const metadata: Metadata = changelogMetadata('ru');
 
-export default function ChangelogPageEn() {
-  return <Changelog locale="en" />;
+export default function ChangelogPageRu() {
+  return <Changelog locale="ru" />;
 }

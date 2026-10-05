@@ -12,7 +12,7 @@ export function generateStaticParams() {
 export default async function Image({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const game = getGameContent(slug);
-  const copy = game?.locales.en;
+  const copy = game?.locales.ru;
 
   return renderOgImage({
     title: copy?.name ?? 'Darhaal Games',

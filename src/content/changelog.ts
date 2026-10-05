@@ -2,7 +2,7 @@ import type { Locale } from '@/games/registry';
 import type { VersionType } from '@/constants/version';
 
 /**
- * Copy for the changelog page (/changelog, /en/changelog). The versions
+ * Copy for the changelog page (/changelog, /ru/changelog). The versions
  * themselves live in `src/constants/version.ts` and `versionLegacy.ts`.
  */
 export const CHANGELOG_COPY = {

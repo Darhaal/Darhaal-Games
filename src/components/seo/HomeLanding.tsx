@@ -1,7 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { GAMES_CONTENT, HOME_CONTENT, type Locale } from '@/content/games';
-import { COPYRIGHT } from '@/constants/app';
+import { APP_NAME, AUTHOR, COPYRIGHT, SOURCE_URL } from '@/constants/app';
 import { faqPageJsonLd, localizedPath } from '@/lib/seo';
 import JsonLd from './JsonLd';
 
@@ -21,7 +21,7 @@ import JsonLd from './JsonLd';
  * platform, the hub helps you choose between the five. Saying the same thing
  * twice would put two of our own pages in the same auction.
  */
-export default function HomeLanding({ locale = 'ru' }: { locale?: Locale }) {
+export default function HomeLanding({ locale = 'en' }: { locale?: Locale }) {
   const copy = HOME_CONTENT[locale];
 
   return (
@@ -33,7 +33,10 @@ export default function HomeLanding({ locale = 'ru' }: { locale?: Locale }) {
           <Image src="/logo512.png" alt="" width={28} height={28} className="w-7 h-7 object-contain" />
         </div>
 
-        <h1 className="mt-6 text-4xl md:text-6xl font-black tracking-tighter leading-[1.05] text-gray-900">
+        <p className="mt-6 text-2xs font-black uppercase tracking-widest text-[#8A9099]">
+          {APP_NAME}
+        </p>
+        <h1 className="mt-3 text-4xl md:text-6xl font-black tracking-tighter leading-[1.05] text-gray-900">
           {copy.heroTitle}
         </h1>
         <p className="mt-6 text-base md:text-lg text-gray-500 font-medium leading-relaxed max-w-2xl mx-auto">
@@ -141,13 +144,21 @@ export default function HomeLanding({ locale = 'ru' }: { locale?: Locale }) {
         <span className="text-2xs font-black tracking-[0.2em] uppercase text-gray-500">
           {COPYRIGHT}
         </span>
-        <Link
-          href={localizedPath(locale === 'ru' ? 'en' : 'ru', '/games')}
-          hrefLang={locale === 'ru' ? 'en' : 'ru'}
-          className="text-2xs font-bold uppercase tracking-wider text-gray-400 hover:text-[#9e1316] transition-colors"
-        >
-          {locale === 'ru' ? 'English' : 'Русский'}
-        </Link>
+        <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
+          <a href={AUTHOR.url} rel="author" className="text-2xs font-bold uppercase tracking-wider text-gray-400 hover:text-[#9e1316] transition-colors">
+            {AUTHOR.name[locale]}
+          </a>
+          <a href={SOURCE_URL} className="text-2xs font-bold uppercase tracking-wider text-gray-400 hover:text-[#9e1316] transition-colors">
+            GitHub
+          </a>
+          <Link
+            href={localizedPath(locale === 'ru' ? 'en' : 'ru', '/')}
+            hrefLang={locale === 'ru' ? 'en' : 'ru'}
+            className="text-2xs font-bold uppercase tracking-wider text-gray-400 hover:text-[#9e1316] transition-colors"
+          >
+            {locale === 'ru' ? 'English' : 'Русский'}
+          </Link>
+        </div>
       </footer>
     </div>
   );

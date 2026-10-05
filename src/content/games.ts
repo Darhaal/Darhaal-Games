@@ -1394,6 +1394,10 @@ export const HOME_CONTENT: Record<Locale, HomeCopy> = {
       {
         q: 'Как пригласить друга в уже созданную комнату?',
         a: 'Отправьте ему ссылку на комнату или продиктуйте её код — он попадёт сразу в вашу партию.'
+      },
+      {
+        q: 'Кто делает Darhaal Games?',
+        a: 'Артем Охтень, украинский разработчик с ником Darhaal — отсюда и название. Юридически платформа принадлежит студии Okhten Group LLC, а исходный код открыт для чтения на GitHub.'
       }
     ]
   },
@@ -1444,6 +1448,10 @@ export const HOME_CONTENT: Record<Locale, HomeCopy> = {
       {
         q: 'How do I invite someone to a room I already made?',
         a: 'Send them the room link or read out its code — they land straight in your match.'
+      },
+      {
+        q: 'Who makes Darhaal Games?',
+        a: 'Artem Okhten, a Ukrainian developer — Darhaal is the handle, hence the name. The platform belongs to the studio Okhten Group LLC, and the source code is published on GitHub for anyone to read.'
       }
     ]
   }

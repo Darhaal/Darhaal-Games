@@ -7,6 +7,35 @@ releasing.
 Format: [Semantic Versioning](https://semver.org/). Types: **major** = platform
 milestone, **minor** = new game mode / feature, **patch** = fixes & improvements.
 
+## [2.14.1] — 2026-10-05 (patch)
+
+> English at the root, and a site that says who makes it.
+
+### Changed
+- **English is the site's default language, at the bare addresses.** `/`,
+  `/games`, every game page, the privacy policy and the changelog are now in
+  English, like the app, which starts in English; Russian moved to `/ru`
+  (`/ru/games/coup`). The old `/en/…` addresses redirect permanently, so
+  the English pages Google already lists keep their place.
+- **Only English is indexed for now.** The Russian pages answer
+  `noindex, follow` and are left out of the sitemap and of hreflang; one
+  switch (`INDEXED_LOCALES` in `src/lib/seo.ts`) brings them back.
+- **Structured data joins okhten.com's.** The company and the developer use
+  the same ids okhten.com publishes (`okhtengroup.com/#organization`,
+  `okhten.com/#artem-okhten`), the developer carries both spellings of the
+  name, the handle and Ukrainian nationality, the site names Darhaal as an
+  alternate name and its creator, and every game names its author. Before,
+  the site's only organisation was a company with the games' logo and no
+  people — a search for "darhaal games" was corrected to "darfall games",
+  and Google's AI answer called the platform Russian.
+
+### Added
+- **Who makes Darhaal Games**, on the home page in both languages: Artem
+  Okhten, a Ukrainian developer whose handle is Darhaal; the platform belongs
+  to Okhten Group LLC; the source is on GitHub. Every public page links to
+  the author's site and the repository in its footer, and the home page
+  names the brand above its heading.
+
 ## [2.14.0] — 2026-10-05 (minor) — **Time Will Tell**
 
 > The tenth game: a photograph, and one question — when was it taken?
