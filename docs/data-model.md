@@ -140,19 +140,34 @@ A room is removed in exactly two ways:
 | Trigger | Mechanism |
 |---------|-----------|
 | The last participant leaves, or the host closes the room | `leave_lobby(p_lobby_id)` RPC (SECURITY DEFINER) |
-| The room goes stale | `cleanup_stale_lobbies()`, run daily at 04:00 UTC by pg_cron |
+| The room goes stale | `cleanup_stale_lobbies()`, run every minute by pg_cron |
 
 Leaving a **finished** match deliberately does not touch the row — the results
 belong to everyone still looking at them, so the scoreboard must survive the
 first player closing the tab. That is what makes the scheduled sweep necessary.
 
-Staleness is measured from `game_state.lastActionTime` (JS milliseconds),
-falling back to `created_at`, with two intentionally generous windows:
+**Who is here** is written down, because Realtime presence lives outside SQL:
+every client with a room open — lobby or match, through `useLobbySync` — calls
+`touch_lobby(id)` every thirty seconds, which moves `last_seen_at` to now (only
+for a participant). A closing tab (`pagehide`) and leaving the room's page
+inside the site call `touch_lobby(id, true)`, which moves a **waiting** room's
+`last_seen_at` to nine minutes ago: anyone still inside pings within thirty
+seconds and takes it back, a reload pings on load, and otherwise the next sweep
+takes the room a minute later. A phone switching apps or a sleeping laptop
+sends nothing and keeps the full ten minutes.
 
-- `finished` → **1 day**
-- anything else → **7 days** (a waiting or playing room untouched for a week
-  was abandoned, not paused — this catches matches closed mid-game that never
-  reached `finished`)
+A room is stale when:
+
+- `waiting` and `last_seen_at` is **10 minutes** old (1, after its last tab
+  closed);
+- `finished` and its last action (`game_state.lastActionTime`, falling back
+  to `created_at`) is **1 day** old;
+- anything else — a match — and both `last_seen_at` and the last action are
+  **30 minutes** old.
+
+The room list (`/play`) reads `last_seen_at` too and hides a waiting room
+nobody has had open for **two minutes** before the sweep deletes it — a
+background tab still pings about once a minute.
 
 The function is housekeeping, not an app capability: execute is revoked from
 `anon` and `authenticated`. Inspect the schedule with

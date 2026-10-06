@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import React, { useState, useEffect, useRef, memo } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, memo } from 'react';
 import {
   Bomb, Flag, Trophy,
   ZoomIn, ZoomOut, Loader2,
@@ -163,16 +163,44 @@ interface BoardViewProps {
   onReveal: (x: number, y: number) => void;
   onFlag: (x: number, y: number) => void;
   onChord: (x: number, y: number) => void;
-  scale?: number;
   isTouchModeFlag?: boolean;
   /** «(Вы)» / "(You)" — the board knows who it belongs to, not the language. */
   youLabel?: string;
 }
 
-const BoardView = ({ player, statusText, isMe, onReveal, onFlag, onChord, scale = 1, isTouchModeFlag, youLabel }: BoardViewProps) => {
+const BoardView = ({ player, statusText, isMe, onReveal, onFlag, onChord, isTouchModeFlag, youLabel }: BoardViewProps) => {
   const [zoom, setZoom] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
+
+  /**
+   * How far the board is scaled down to fit its card, whole and centred.
+   * Four boards share a screen, so each card is a fraction of it; a 16 × 16
+   * board at full size used to spill over every edge, its frame cut off and
+   * the board pushed off centre. Measured on the real elements — a cell is
+   * 24 px on a phone and 32 px wider up, plus the gaps and the frame — and
+   * again whenever either changes size. Zoom (your own board) is on top.
+   */
+  const [fit, setFit] = useState(1);
+  useLayoutEffect(() => {
+      const container = containerRef.current;
+      const grid = gridRef.current;
+      if (!container || !grid) return;
+      const measure = () => {
+          const w = grid.offsetWidth, h = grid.offsetHeight;
+          if (!w || !h || !container.clientWidth || !container.clientHeight) return;
+          const room = 24;
+          setFit(Math.min(1, (container.clientWidth - room) / w, (container.clientHeight - room) / h));
+      };
+      // Once before the first paint, so the board never shows at the wrong
+      // size; then on every resize of the card or the board.
+      measure();
+      const observer = new ResizeObserver(measure);
+      observer.observe(container);
+      observer.observe(grid);
+      return () => observer.disconnect();
+  }, []);
 
   // Drag logic
   const isDragging = useRef(false);
@@ -190,9 +218,10 @@ const BoardView = ({ player, statusText, isMe, onReveal, onFlag, onChord, scale 
   const pressedCell = useRef<Cell | null>(null);
 
   const clampOffset = (newX: number, newY: number, z: number) => {
-      if (!player.board[0]) return { x: 0, y: 0 };
-      const boardW = player.board[0].length * 32 * z * scale;
-      const boardH = player.board.length * 32 * z * scale;
+      const grid = gridRef.current;
+      if (!grid) return { x: 0, y: 0 };
+      const boardW = grid.offsetWidth * z * fit;
+      const boardH = grid.offsetHeight * z * fit;
       const limitX = boardW / 1.5 + 100;
       const limitY = boardH / 1.5 + 100;
       return {
@@ -406,15 +435,14 @@ const BoardView = ({ player, statusText, isMe, onReveal, onFlag, onChord, scale 
         >
             <div className="absolute inset-0 opacity-5 pointer-events-none" style={{ backgroundImage: 'radial-gradient(#94a3b8 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
             <div
-                className="absolute transition-transform duration-75 ease-linear will-change-transform origin-center"
+                className="absolute left-1/2 top-1/2 transition-transform duration-75 ease-linear will-change-transform origin-center"
                 style={{
-                    transform: `translate3d(${offset.x}px, ${offset.y}px, 0) scale(${zoom * scale})`,
-                    left: '50%', top: '50%',
-                    marginLeft: `-${(player.board[0]?.length * 32) / 2}px`,
-                    marginTop: `-${(player.board.length * 32) / 2}px`
+                    // Centred on its own measured size, then panned, then scaled about its centre.
+                    transform: `translate(-50%, -50%) translate3d(${offset.x}px, ${offset.y}px, 0) scale(${zoom * fit})`
                 }}
             >
-                <div className="inline-grid gap-[2px] bg-[#D6D0C4] p-[2px] shadow-sm"
+                <div ref={gridRef}
+                     className="inline-grid gap-[2px] bg-[#B8AF9F] p-[3px] rounded-md shadow-[0_2px_8px_-2px_rgba(26,31,38,0.25)]"
                      style={{ gridTemplateColumns: `repeat(${player.board[0]?.length || 10}, min-content)` }}>
                     {player.board.map((row: Cell[], y: number) => row.map((cell: Cell, x: number) => (
                         <CellComponent
@@ -547,8 +575,18 @@ export default function MinesweeperGame({ gameState, userId, revealCell, toggleF
             </button>
         </div>
 
-        <main className={`flex-1 px-4 pb-4 sm:px-6 sm:pb-6 grid gap-6 ${players.length === 1 ? 'grid-cols-1' : players.length === 2 ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-2'} overflow-hidden`}>
-            <div className={`relative ${players.length > 2 ? 'col-span-2 row-span-2 md:col-span-1 md:row-span-1' : ''}`}>
+        {/* Three or four players: your board gets most of the room — on a
+            phone most of the height with the others in a strip below, on a
+            wide screen the left with the others stacked on the right. Four
+            equal quarters left yours as small as anyone's. */}
+        <main className={`flex-1 min-h-0 px-4 pb-4 sm:px-6 sm:pb-6 grid gap-4 lg:gap-6 ${
+            players.length === 1 ? 'grid-cols-1'
+            : players.length === 2 ? 'grid-cols-1 md:grid-cols-2'
+            : players.length === 4
+              ? 'grid-cols-3 md:grid-cols-2 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:grid-rows-3'
+              : 'grid-cols-2 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:grid-rows-2'
+        } overflow-hidden`}>
+            <div className={`relative min-h-0 ${players.length === 4 ? 'col-span-3 row-span-3 md:col-span-1 md:row-span-1 lg:row-span-3' : players.length === 3 ? 'col-span-2 row-span-2 md:col-span-1 md:row-span-1 lg:row-span-2' : ''}`}>
                <BoardView
                   player={me}
                   isMe={true}
@@ -561,8 +599,8 @@ export default function MinesweeperGame({ gameState, userId, revealCell, toggleF
                />
             </div>
             {opponents.map(p => (
-                <div key={p.id} className="relative opacity-90 hover:opacity-100 transition-opacity">
-                    <BoardView player={p} statusText={statusText} isMe={false} onReveal={()=>{}} onFlag={()=>{}} onChord={()=>{}} scale={players.length > 2 ? 0.8 : 1} />
+                <div key={p.id} className="relative min-h-0 opacity-90 hover:opacity-100 transition-opacity">
+                    <BoardView player={p} statusText={statusText} isMe={false} onReveal={()=>{}} onFlag={()=>{}} onChord={()=>{}} />
                 </div>
             ))}
         </main>

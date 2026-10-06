@@ -94,6 +94,21 @@ if (!lobby) process.exit(1);
   pass('B cannot read lobbies.password', !!error, error?.code ?? 'READABLE');
 }
 
+// --- touch_lobby: a closing tab hands the room a minute's grace; only a
+//     participant can say so, and the next ping takes it back ---
+{
+  const seen = async () => new Date((await A.from('lobbies').select('last_seen_at').eq('id', lobby.id).single()).data.last_seen_at).getTime();
+  await B.rpc('touch_lobby', { p_lobby_id: lobby.id, p_leaving: true });
+  const afterStranger = Date.now() - await seen();
+  pass('touch_lobby ignores a leaving non-participant', afterStranger < 2 * 60_000, `${Math.round(afterStranger / 1000)} s ago`);
+  await A.rpc('touch_lobby', { p_lobby_id: lobby.id, p_leaving: true });
+  const afterLeaving = Date.now() - await seen();
+  pass('touch_lobby leaving leaves a minute to the sweep', afterLeaving > 8.5 * 60_000 && afterLeaving < 10 * 60_000, `${Math.round(afterLeaving / 1000)} s ago`);
+  await A.rpc('touch_lobby', { p_lobby_id: lobby.id });
+  const afterPing = Date.now() - await seen();
+  pass('a ping takes the room back', afterPing < 60_000, `${Math.round(afterPing / 1000)} s ago`);
+}
+
 // --- B calls leave_lobby on a room it does not belong to ---
 {
   const { data, error } = await B.rpc('leave_lobby', { p_lobby_id: lobby.id });

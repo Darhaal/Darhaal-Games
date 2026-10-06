@@ -67,7 +67,7 @@ function broadcast(event: 'UPDATE' | 'DELETE', row: Row) {
 /** Test-side controls over the fake database. */
 export const db = {
   /** Writes that landed and writes the CAS turned away, since the last reset. */
-  stats: { writes: 0, conflicts: 0 },
+  stats: { writes: 0, conflicts: 0, touches: 0 },
 
   reset() {
     rows.clear();
@@ -75,6 +75,7 @@ export const db = {
     interceptors = [];
     db.stats.writes = 0;
     db.stats.conflicts = 0;
+    db.stats.touches = 0;
   },
 
   /** A lobby row holding `state`, as the create screen would leave it. */
@@ -177,6 +178,12 @@ export const supabase = {
       return { data: true, error: null };
     }
 
+    // The room's "somebody is here" mark (useLobbyTouch) — nothing to model.
+    if (name === 'touch_lobby') {
+      db.stats.touches++;
+      return { data: null, error: null };
+    }
+
     if (name === 'leave_lobby') {
       const row = rows.get(lobbyId);
       if (row) {
@@ -187,6 +194,10 @@ export const supabase = {
     }
 
     throw new Error(`fake supabase: no rpc ${name}`);
+  },
+
+  auth: {
+    getSession: async () => ({ data: { session: null }, error: null })
   },
 
   channel() {

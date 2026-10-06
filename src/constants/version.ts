@@ -1,4 +1,4 @@
-export const APP_VERSION = '2.14.3';
+export const APP_VERSION = '2.14.4';
 
 export type VersionType = 'major' | 'minor' | 'patch' | 'init';
 
@@ -57,6 +57,26 @@ export function formatReleaseRange(from: string, to: string, lang: 'ru' | 'en'):
  */
 export const VERSION_HISTORY: VersionLog[] = [
   /* ===================== 2.14.x ===================== */
+
+  {
+    ver: '2.14.4',
+    date: '2026-10-07',
+    type: 'patch',
+    desc: {
+      ru: 'Сапёр на троих и четверых: каждое поле теперь целиком помещается в свою карточку, стоит по центру и обведено заметной рамкой, а ваше поле получает больше места — на телефоне почти всю высоту, на широком экране левую половину.',
+      en: 'Minesweeper for three and four: every board now fits its card whole, centred and inside a clear frame, and yours gets most of the room — nearly the full height on a phone, the left half on a wide screen.'
+    },
+    fixes: {
+      ru: [
+        'Комната, из которой все ушли, пропадает из списка за минуту-две, а не за 15 минут — в неё больше не попасть, чтобы тут же вылететь.',
+        'Брошенный матч удаляется через полчаса, а не через неделю.'
+      ],
+      en: [
+        'A room everyone has left drops out of the list in a minute or two, not fifteen — no more joining one only to be dropped.',
+        'An abandoned match is cleared after half an hour, not a week.'
+      ]
+    }
+  },
 
   {
     ver: '2.14.3',

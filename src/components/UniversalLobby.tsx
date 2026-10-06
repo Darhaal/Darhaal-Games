@@ -9,7 +9,6 @@ import {
 import { getGame } from '@/games/registry';
 import { GAME_ICONS } from '@/games/icons';
 import { usePresenceHeartbeat } from '@/hooks/usePresenceHeartbeat';
-import { useLobbyTouch } from '@/hooks/useLobbyTouch';
 import { showToast } from '@/lib/toast';
 import { track } from '@/lib/analytics';
 import { GA_EVENTS } from '@/constants/analytics';
@@ -79,10 +78,6 @@ export default function UniversalLobby({
 
   // Presence connection
   const { onlineUserIds, isSynced } = usePresenceHeartbeat(roomCode, currentUserId);
-
-  // Tells the database somebody is still here. Presence alone is invisible to
-  // the cleanup job, so a room whose last tab closed used to linger for days.
-  useLobbyTouch(lobbyId, !!currentUserId);
 
   /**
    * The series, highest first.

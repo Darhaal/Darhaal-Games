@@ -37,7 +37,17 @@ interface LobbyRow {
   status: string;
   is_private: boolean;
   created_at: string;
+  /** Moved forward every thirty seconds while anyone has the room open (useLobbyTouch). */
+  last_seen_at?: string;
 }
+
+/**
+ * A waiting room nobody has had open for this long is not offered: its host
+ * has gone, and whoever joined would be dropped as soon as their client
+ * noticed. Two minutes, because a background tab still pings about once a
+ * minute; the room is deleted outright after ten (one, if the tab was closed).
+ */
+const EMPTY_ROOM_MS = 2 * 60_000;
 
 // IMPORTANT: the password column is intentionally NOT selected — the check
 // runs server-side via the join_lobby_check RPC (see supabase/migrations)
@@ -120,11 +130,18 @@ function PlayContent() {
   // Escape closes the private-room password dialog
   useEscape(!!selectedLobby, () => setSelectedLobby(null));
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  // The list's clock: a room that goes quiet sends no event, so the filter
+  // looks again every thirty seconds.
+  const [listedAt, setListedAt] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setListedAt(Date.now()), 30_000);
+    return () => clearInterval(timer);
+  }, []);
 
   const fetchLobbies = async () => {
     const { data } = await supabase
       .from('lobbies')
-      .select('id, name, code, game_state, status, is_private, created_at')
+      .select('id, name, code, game_state, status, is_private, created_at, last_seen_at')
       .neq('status', 'finished')
       .order('created_at', { ascending: false });
 
@@ -273,6 +290,9 @@ function PlayContent() {
 
   const processedLobbies = lobbies
     .filter(l => {
+        // Nobody has had it open lately: an empty room, whatever its roster says.
+        if (l.status === 'waiting' && l.last_seen_at && listedAt - new Date(l.last_seen_at).getTime() > EMPTY_ROOM_MS) return false;
+
         const term = search.toLowerCase();
         const players = getPlayers(l);
         const matchesRoomName = l.name.toLowerCase().includes(term);

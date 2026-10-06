@@ -7,6 +7,46 @@ releasing.
 Format: [Semantic Versioning](https://semver.org/). Types: **major** = platform
 milestone, **minor** = new game mode / feature, **patch** = fixes & improvements.
 
+## [2.14.4] — 2026-10-07 (patch)
+
+### Fixed
+- **A room whose host has gone closes in a minute or two, not fifteen.**
+  A waiting room whose last tab closed sat in the list for up to fifteen
+  minutes — ten without a ping, then up to five until the sweep — and
+  whoever joined it was dropped fifteen seconds later, when their client
+  removed the absent host. Now a closing tab says so (`pagehide`, and
+  leaving the room's page inside the site), which leaves the room a minute
+  before it is swept unless anyone still inside pings; the sweep runs every
+  minute instead of every five; and the list hides a waiting room nobody
+  has had open for two minutes even before it is deleted. A phone switching
+  apps or a sleeping laptop still keeps the full ten minutes.
+- **An abandoned match is gone in half an hour, not a week.** The game
+  screens now ping too, so a match is alive while anyone has it open; one
+  with no ping and no move for thirty minutes is deleted (it used to be
+  judged by its last move alone and kept seven days).
+- **Minesweeper for three and four: every board whole, framed and centred.**
+  Each board is scaled to fit its card — measured on the real cells, a
+  phone's 24 px or a desktop's 32 px plus the gaps — where a 16 × 16 board
+  used to spill past every edge of a quarter-screen card, its frame cut off
+  and the board pushed off centre (it was centred on a guess of 32 px a
+  cell). The frame is darker, with a soft shadow, so the board's edge reads
+  against the page. Your own board gets most of the room: on a phone most
+  of the height with the others in a strip below, on a wide screen the left
+  side with the others stacked on the right. Zoom and pan still work on top.
+
+### Engineering
+- `supabase/migrations/20261007000000_lobbies_close_sooner.sql` (applied):
+  `touch_lobby(id, leaving)`, `last_seen_at` readable by the list, the
+  thirty-minute rule for matches, the sweep every minute.
+  `scripts/authz-test.mjs` checks that only a participant can mark a room
+  left and that the next ping takes it back.
+- The room ping moved from the lobby screen into `useLobbySync`, which
+  every game runs in every phase.
+- The ping never throws (it runs from a timer, where an error goes
+  unhandled), and the in-memory Supabase of the game-flow tests answers
+  `auth.getSession` and `touch_lobby` — the first build of 2.14.4 passed
+  every test but failed CI on the unhandled rejections.
+
 ## [2.14.3] — 2026-10-06 (patch)
 
 ### Changed
