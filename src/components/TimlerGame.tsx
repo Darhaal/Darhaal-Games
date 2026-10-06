@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowRight, CalendarPlus, Check, ExternalLink, History, Loader2, Maximize2, Minus, Plus, X } from 'lucide-react';
+import { ArrowRight, CalendarPlus, Check, ChevronDown, ChevronUp, ExternalLink, History, Loader2, Maximize2, Minus, Plus, X } from 'lucide-react';
 import GameHeader from './GameHeader';
 import GameRulesModal from './GameRulesModal';
 import GameNotificationToast from './GameNotificationToast';
@@ -58,6 +58,8 @@ const T = {
     loadError: 'Фото не загрузилось',
     loadErrorPainting: 'Картина не загрузилась',
     yourAnswer: 'Ваш ответ',
+    openAnswer: 'Ответить',
+    hideAnswer: 'Свернуть',
     year: 'Год',
     addDate: '+ день и месяц',
     removeDate: 'только год',
@@ -105,6 +107,8 @@ const T = {
     loadError: 'The photo did not load',
     loadErrorPainting: 'The painting did not load',
     yourAnswer: 'Your answer',
+    openAnswer: 'Answer',
+    hideAnswer: 'Hide',
     year: 'Year',
     addDate: '+ day and month',
     removeDate: 'year only',
@@ -188,6 +192,10 @@ export default function TimlerGame({
   const [showRules, setShowRules] = useState(false);
   const [resultHidden, setResultHidden] = useState(false);
   const [fullScreen, setFullScreen] = useState(false);
+  // The phone's answer bar starts folded, so the photo and the table stay in
+  // view; a tap opens it for this round, and it folds itself once the answer
+  // is in or the round is over.
+  const [answerOpenFor, setAnswerOpenFor] = useState<string | null>(null);
   const [loaded, setLoaded] = useState<{ key: string; ok: boolean } | null>(null);
   const photoReady = loaded?.key === roundKey && loaded.ok;
   const photoFailed = loaded?.key === roundKey && !loaded.ok;
@@ -236,6 +244,7 @@ export default function TimlerGame({
   const elapsedMs = round ? Math.max(0, clock - round.startTime) : 0;
   const secondsLeft = Math.max(0, Math.ceil((durationMs - elapsedMs) / 1000));
   const canAnswer = isPlaying && !!me && !me.guess && startsIn <= 0 && elapsedMs < durationMs + 1000;
+  const barOpen = answerOpenFor === roundKey && !me?.guess;
 
   // Out of time: anyone still here closes the round, once.
   const forced = useRef<string | null>(null);
@@ -470,9 +479,10 @@ export default function TimlerGame({
         <div className="text-4xl font-black text-[#1A1F26] tabular-nums leading-none">{me?.score ?? 0}</div>
       </GameCard>
 
+      {/* A leaderboard, as in Flager: everyone's total at all times, best first. */}
       <PlayersCard
         lang={lang}
-        rows={gameState.players.map((p) => ({
+        rows={ranked.map((p) => ({
           id: p.id,
           name: p.name,
           avatarUrl: p.avatarUrl || defaultAvatar(p.id),
@@ -483,7 +493,7 @@ export default function TimlerGame({
             // During a round, the others see that you answered — not what.
             <span className={p.guess ? 'text-emerald-600' : ''}>{p.guess ? t.done : t.thinking}</span>
           ) : undefined,
-          aside: !isPlaying ? <span className="text-sm font-black text-[#1A1F26] tabular-nums">{p.score}</span> : undefined
+          aside: <span className="text-sm font-black text-[#1A1F26] tabular-nums">{p.score}</span>
         }))}
       />
     </>
@@ -514,12 +524,48 @@ export default function TimlerGame({
 
       <GameLayout board={board} side={side} boardWidth={900} />
       {/* Room for the phone's answer bar, so the bottom of the page is not hidden under it. */}
-      {isPlaying && <div className="lg:hidden h-56" aria-hidden />}
+      {isPlaying && <div className={`lg:hidden ${barOpen ? 'h-72' : 'h-20'}`} aria-hidden />}
 
-      {/* On a phone the answer stays under the thumb instead of below the photo. */}
+      {/* On a phone the answer stays under the thumb instead of below the photo —
+          folded to one line until tapped. */}
       {isPlaying && (
         <div className="lg:hidden fixed inset-x-0 bottom-0 z-30 bg-white/95 backdrop-blur border-t border-[#E6E1DC] px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-8px_24px_-12px_rgba(26,31,38,0.15)]">
-          {answerForm}
+          {barOpen ? (
+            <>
+              <button
+                type="button"
+                onClick={() => setAnswerOpenFor(null)}
+                aria-expanded
+                className="w-full flex items-center justify-between mb-3 text-2xs font-black uppercase tracking-widest text-[#8A9099] hover:text-[#9e1316] transition-colors"
+              >
+                {t.yourAnswer}
+                <span className="inline-flex items-center gap-1">{t.hideAnswer} <ChevronDown className="w-3.5 h-3.5" /></span>
+              </button>
+              {answerForm}
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setAnswerOpenFor(roundKey)}
+              disabled={!!me?.guess}
+              aria-expanded={false}
+              className="w-full flex items-center justify-between gap-3 text-left disabled:cursor-default"
+            >
+              <span className="min-w-0">
+                <span className="block text-2xs font-black uppercase tracking-widest text-[#8A9099]">{me?.guess ? t.answered : t.yourAnswer}</span>
+                <span className="block text-xl font-black text-[#1A1F26] tabular-nums leading-tight">
+                  {me?.guess ? formatDate(me.guess, lang) : yearValid ? draft.year : middle}
+                </span>
+              </span>
+              {me?.guess ? (
+                <Check className="w-6 h-6 text-emerald-600 shrink-0" />
+              ) : (
+                <span className={`shrink-0 inline-flex items-center gap-1.5 px-4 py-2.5 ${BUTTON_PRIMARY}`}>
+                  {t.openAnswer} <ChevronUp className="w-4 h-4" />
+                </span>
+              )}
+            </button>
+          )}
         </div>
       )}
 

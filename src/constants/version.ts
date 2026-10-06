@@ -1,4 +1,4 @@
-export const APP_VERSION = '2.14.2';
+export const APP_VERSION = '2.14.3';
 
 export type VersionType = 'major' | 'minor' | 'patch' | 'init';
 
@@ -57,6 +57,16 @@ export function formatReleaseRange(from: string, to: string, lang: 'ru' | 'en'):
  */
 export const VERSION_HISTORY: VersionLog[] = [
   /* ===================== 2.14.x ===================== */
+
+  {
+    ver: '2.14.3',
+    date: '2026-10-06',
+    type: 'patch',
+    desc: {
+      ru: 'Timler: таблица игроков теперь всегда показывает счёт, как во Флагере, — и во время раунда, лучшие сверху, рядом с «думает…» или «ответил». На телефоне панель ответа свёрнута в одну строку — год и кнопка «Ответить», — чтобы картинка и таблица оставались на экране; по нажатию она раскрывается, а после ответа сворачивается сама.',
+      en: 'Timler: the players card always shows the score, as Flager’s does — during the round too, best first, beside "thinking…" or "answered". On a phone the answer bar folds to one line — your year and an Answer button — so the picture and the table stay in view; a tap opens it, and it folds itself once you have answered.'
+    }
+  },
 
   {
     ver: '2.14.2',

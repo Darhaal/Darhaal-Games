@@ -7,6 +7,17 @@ releasing.
 Format: [Semantic Versioning](https://semver.org/). Types: **major** = platform
 milestone, **minor** = new game mode / feature, **patch** = fixes & improvements.
 
+## [2.14.3] — 2026-10-06 (patch)
+
+### Changed
+- **Timler: a leaderboard all the time.** The players card shows everyone's
+  total during the round too, best first, as Flager's does — beside
+  "thinking…" or "answered ✓".
+- **Timler: the phone's answer bar folds.** It starts as one line — your
+  year and an Answer button — so the picture and the table stay in view; a
+  tap opens the full form, "Hide" folds it, and it folds itself once you
+  have answered or the round moves on.
+
 ## [2.14.2] — 2026-10-06 (patch)
 
 > Timler dates paintings too: from the Renaissance to the avant-garde, on their own or mixed with photos.
