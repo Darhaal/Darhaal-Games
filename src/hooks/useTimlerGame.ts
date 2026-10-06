@@ -237,7 +237,7 @@ export function useTimlerGame(lobbyId: string | null, userId: string | undefined
       durationSeconds: matchSeconds(state.startTime, left ? now() : state.lastActionTime,
         state.settings.rounds * state.settings.roundDuration),
       score: me.score,
-      details: { ...details, era: state.settings.era, ...(left ? { left: true } : {}) }
+      details: { ...details, medium: state.settings.medium ?? 'photos', era: state.settings.era, ...(left ? { left: true } : {}) }
     });
   };
 

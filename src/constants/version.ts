@@ -1,4 +1,4 @@
-export const APP_VERSION = '2.14.1';
+export const APP_VERSION = '2.14.2';
 
 export type VersionType = 'major' | 'minor' | 'patch' | 'init';
 
@@ -57,6 +57,16 @@ export function formatReleaseRange(from: string, to: string, lang: 'ru' | 'en'):
  */
 export const VERSION_HISTORY: VersionLog[] = [
   /* ===================== 2.14.x ===================== */
+
+  {
+    ver: '2.14.2',
+    date: '2026-10-06',
+    type: 'patch',
+    desc: {
+      ru: 'В Timler теперь можно угадывать и живопись. В настройках новый выбор «Что угадываем»: фото — как раньше и по умолчанию, живопись или всё вместе, и тогда каждый раунд — фото или картина поровну. 6 847 картин с XIV века по 1945 год, у каждой точно известен год: свои эпохи — до 1600, 1600–1799, XIX век и 1900–1945, а в лобби видны только эпохи, где есть картинки выбранного вида. После раунда — название, художник и статья. В режиме 18+ появился третий вариант — «Только 18+»: раунды только из того, что отмечено 18+. Эпоха фото XIX века теперь называется «1800–1899».',
+      en: 'Timler dates paintings too. A new setting, "What to date": photos — as before and by default — paintings, or both, when each round is a photo or a painting, half and half. 6,847 paintings from the 14th century to 1945, each with its year known for certain, in eras of their own — before 1600, 1600–1799, the 19th century and 1900–1945; the lobby shows only the eras the chosen kind has. After each round: the title, the painter and the article. The 18+ mode gains a third choice, "18+ only": rounds from nothing but what is marked 18+. The 19th-century photo era is now called "1800–1899".'
+    }
+  },
 
   {
     ver: '2.14.1',

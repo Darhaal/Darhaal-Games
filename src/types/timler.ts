@@ -2,19 +2,32 @@ import type { GameNotification } from './notification';
 import type { Difficulty } from '@/data/difficulty';
 
 /**
- * Timler — say when a photo was taken. See docs/timler-spec.md.
+ * Timler — say when a photo was taken, or a painting painted. See
+ * docs/timler-spec.md.
  *
  * Shaped for twenty players in one row: a guess is written once, when the
  * player answers; the round is scored once, by whoever closes it, from the
  * guesses in the state — places need everyone's answer at once.
  */
 
-/** The lobby's eras; `all` draws each round from one of the four at random. */
-export const TIMLER_ERAS = ['all', 'before1900', '1900-1945', '1946-2000', 'since2001'] as const;
+/** What the rounds show: photos (the default), paintings, or either. */
+export const TIMLER_MEDIA = ['photos', 'paintings', 'both'] as const;
+export type TimlerMedium = (typeof TIMLER_MEDIA)[number];
+
+/**
+ * The lobby's eras; `all` draws each round from one at random. Photos have
+ * the last four, paintings the first four — src/lib/timler/eras.ts.
+ */
+export const TIMLER_ERAS = ['all', 'before1600', '1600-1799', '1800-1899', '1900-1945', '1946-2000', 'since2001'] as const;
 export type TimlerEra = (typeof TIMLER_ERAS)[number];
 
-/** A photo as the pool holds it and the round carries it. */
+/**
+ * A picture as the pool holds it and the round carries it — a photo, or a
+ * painting when `kind` says so (the name stayed from when there were only photos).
+ */
 export interface TimlerPhoto {
+  /** Absent for a photo, and in rooms from before paintings. */
+  kind?: 'painting';
   /** File name on Wikimedia Commons. */
   file: string;
   /** When it was taken: "1939-09-01", or "1939" when only the year is known. */
@@ -27,8 +40,11 @@ export interface TimlerPhoto {
   description: { ru: string | null; en: string | null };
   /** Wikipedia articles about what it shows. */
   article: { ru: string | null; en: string | null };
+  /** Who took the photo, or who made the file, as Commons names them. */
   author: string;
   license: string;
+  /** A painting's painter, from Wikidata. */
+  creator?: { ru: string | null; en: string | null };
 }
 
 /** A guess as written when the player answers. */
@@ -99,9 +115,13 @@ export interface TimlerState {
     rounds: number;
     /** Seconds per round. */
     roundDuration: number;
+    /** Absent in rooms from before paintings: photos. */
+    medium?: TimlerMedium;
     era: TimlerEra;
     difficulty: Difficulty;
-    /** Photos marked 18+ may be drawn (section 8). */
+    /** Pictures marked 18+ may be drawn (section 8). */
     adult: boolean;
+    /** Only pictures marked 18+ — absent in rooms from before it, i.e. no. */
+    adultOnly?: boolean;
   };
 }

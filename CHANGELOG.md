@@ -7,6 +7,59 @@ releasing.
 Format: [Semantic Versioning](https://semver.org/). Types: **major** = platform
 milestone, **minor** = new game mode / feature, **patch** = fixes & improvements.
 
+## [2.14.2] — 2026-10-06 (patch)
+
+> Timler dates paintings too: from the Renaissance to the avant-garde, on their own or mixed with photos.
+
+### Added
+- **Timler: paintings.** A new lobby setting, "What to date": photos (the
+  default, as before), paintings, or both — then each round is a photo or a
+  painting, half and half. Paintings run from the 14th century to 1945 and
+  have their own eras: before 1600, 1600–1799, 1800–1899, 1900–1945; the
+  lobby offers only the eras the chosen kind has, and switching kinds puts
+  an era it lacks back to all time. A painting round asks "When was this
+  painted?", and afterwards names the painting and the painter, with the
+  article and the file on Commons. Scoring is unchanged — room in
+  proportion to age, so twenty years off a 16th-century canvas still gives
+  over 800.
+- **6,847 paintings**, from Wikidata: paintings written about on two or more
+  Wikipedias whose year is known for certain — no "circa", no "between", no
+  two different years, and no file whose name dates it otherwise ("1432 ca.",
+  "1413-15"): 1,257 before 1600, 1,535 from 1600–1799, 3,054 from the 19th
+  century, 1,001 from 1900–1945. When Wikidata names two painters, the one
+  the description names is shown (one painting had an actor added as
+  Kandinsky's co-author). In 18+ mode they add nudes, battles,
+  crucifixions, martyrs and executions; never blood, torture or severed
+  heads (Judith, Salome, John the Baptist), the Massacre of the Innocents or
+  anatomy lessons.
+
+- **Timler: "18+ only".** The 18+ setting in the advanced settings gets a
+  third choice that draws only what is marked 18+ — for photos, battles,
+  disasters, concentration camps and fine-art nudes; for paintings, nudes,
+  battles, crucifixions, martyrs and executions. What is never in the game
+  stays out here too. The round card says "18+ only" while it is on.
+
+### Security
+- `sharp` 0.35.5 (a librsvg advisory, GHSA-wq5f-xc86-pv6w — the image
+  optimiser renders the SVG avatars through it) and `source-map-js` 1.2.2
+  (GHSA-68fv-2mgg-jv7q). The shipped dependencies are at zero advisories again.
+
+### Changed
+- The 19th-century photo era is now "1800–1899" (it was "Before 1900"); a
+  room from before keeps working.
+- Antiquarian: the exact year of a photo **or painting** from before 1900.
+
+### Engineering
+- `scripts/timler-paintings.mjs` builds `public/timler/paintings/<era>.json`
+  through QLever — the Wikidata Query Service times out on a million
+  paintings, and Wikidata's own API turns bots away for hours while its
+  replication lags; photos moved to `public/timler/photos/`. What both
+  builders share (cache, retries, the Commons passes) is
+  `scripts/lib/wikimedia.mjs`.
+- Create-screen choices can depend on other options: a choice may be offered
+  only when `showWhen` holds, and preview what it holds for the current
+  values; a value taken off offer goes back to its default.
+
 ## [2.14.1] — 2026-10-05 (patch)
 
 > English at the root, and a site that says who makes it.

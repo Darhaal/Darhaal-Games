@@ -598,7 +598,7 @@ const FEATS: Record<GameId, Feat[]> = {
     {
       id: 'timler.antique', icon: Feather, tier: 'silver',
       title: { ru: 'Старина', en: 'Antiquarian' },
-      description: { ru: 'Угадайте точный год фото, снятого до 1900 года', en: 'Name the exact year of a photo taken before 1900' },
+      description: { ru: 'Угадайте точный год фото или картины до 1900 года', en: 'Name the exact year of a photo or painting from before 1900' },
       reached: (p) => any(p, 'timler', (r) => num(r, 'oldExact') >= 1)
     },
     {

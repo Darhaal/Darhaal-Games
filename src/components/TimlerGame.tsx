@@ -20,29 +20,21 @@ import { DIFFICULTIES } from '@/data/difficulty';
 import { useGameKeys } from '@/hooks/useGameKeys';
 import { useEscape } from '@/hooks/useEscape';
 import { TIMLER_BETWEEN_ROUNDS_SECONDS } from '@/hooks/useTimlerGame';
-import { FIRST_YEAR, daysInMonth, hasDay, parseDate, type TimlerDate } from '@/lib/gameLogic/timler';
+import { daysInMonth, hasDay, parseDate, type TimlerDate } from '@/lib/gameLogic/timler';
 import { articleUrl, filePage, imageUrl, preload } from '@/lib/timler/pool';
+import { MEDIUM_YEARS, answerRange, pictureMedium } from '@/lib/timler/eras';
 import { pluralEn, pluralRu } from '@/lib/plural';
 import { playSfx } from '@/lib/sound';
-import type { TimlerEra, TimlerRoundResult, TimlerState } from '@/types/timler';
+import type { TimlerPhoto, TimlerRoundResult, TimlerState } from '@/types/timler';
 
 /**
- * Timler's screen — docs/timler-spec.md, sections 2–5. The photo is the
- * board; beside it the round, the answer, the score and the table. After a
- * round, the timeline of everyone's answers. Built from the shared game
- * parts (docs/design-system.md).
+ * Timler's screen — docs/timler-spec.md, sections 2–5 and 13. The photo or
+ * the painting is the board; beside it the round, the answer, the score and
+ * the table. After a round, the timeline of everyone's answers. Built from
+ * the shared game parts (docs/design-system.md).
  */
 
 const THIS_YEAR = new Date().getFullYear();
-
-/** The years an era's photos come from — the range of the answer slider. */
-const ERA_YEARS: Record<TimlerEra, [number, number]> = {
-  all: [FIRST_YEAR, THIS_YEAR],
-  before1900: [FIRST_YEAR, 1899],
-  '1900-1945': [1900, 1945],
-  '1946-2000': [1946, 2000],
-  since2001: [2001, THIS_YEAR]
-};
 
 const MONTH_NAMES = {
   ru: ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'],
@@ -54,18 +46,23 @@ const T = {
     roundOf: (n: number, total: number) => `Раунд ${n} из ${total}`,
     roundClock: 'раунд',
     whenTaken: 'Когда снято фото?',
+    whenPainted: 'Когда написана картина?',
+    adultOnly: 'Только 18+',
     answered: 'Ответ принят',
     roundOver: 'Раунд окончен',
     hintPick: 'Год — обязательно, день и месяц — если знаете',
     hintWait: 'Ждём остальных',
     startsIn: 'Начинаем через',
     loading: 'Загружаем фото…',
+    loadingPainting: 'Загружаем картину…',
     loadError: 'Фото не загрузилось',
+    loadErrorPainting: 'Картина не загрузилась',
     yourAnswer: 'Ваш ответ',
     year: 'Год',
     addDate: '+ день и месяц',
     removeDate: 'только год',
     onlyYear: 'У этого фото известен только год',
+    onlyYearPainting: 'У этой картины известен только год',
     day: 'День',
     month: 'Месяц',
     submit: 'Ответить',
@@ -79,6 +76,8 @@ const T = {
     days: (n: number) => `${n} ${pluralRu(n, ['день', 'дня', 'дней'])}`,
     readMore: 'Статья в Википедии',
     photoBy: 'Фото',
+    painter: 'Художник',
+    fileBy: 'Файл',
     next: 'Далее',
     total: 'Итоги',
     waitingGroup: 'Ждём остальных…',
@@ -94,18 +93,23 @@ const T = {
     roundOf: (n: number, total: number) => `Round ${n} of ${total}`,
     roundClock: 'round',
     whenTaken: 'When was this taken?',
+    whenPainted: 'When was this painted?',
+    adultOnly: '18+ only',
     answered: 'Answer in',
     roundOver: 'Round over',
     hintPick: 'The year is a must; the day and month if you know them',
     hintWait: 'Waiting for the others',
     startsIn: 'Starting in',
     loading: 'Loading the photo…',
+    loadingPainting: 'Loading the painting…',
     loadError: 'The photo did not load',
+    loadErrorPainting: 'The painting did not load',
     yourAnswer: 'Your answer',
     year: 'Year',
     addDate: '+ day and month',
     removeDate: 'year only',
     onlyYear: 'Only the year is known for this photo',
+    onlyYearPainting: 'Only the year is known for this painting',
     day: 'Day',
     month: 'Month',
     submit: 'Answer',
@@ -119,6 +123,8 @@ const T = {
     days: (n: number) => `${n} ${pluralEn(n, 'day', 'days')}`,
     readMore: 'Wikipedia article',
     photoBy: 'Photo',
+    painter: 'Painter',
+    fileBy: 'File',
     next: 'Next',
     total: 'Results',
     waitingGroup: 'Waiting for the others…',
@@ -145,7 +151,7 @@ function describeError(guess: TimlerDate, answer: TimlerDate, t: Texts): string 
   return `${years > 0 ? '+' : '−'}${t.years(Math.abs(years))}`;
 }
 
-/** The photo, with what it shows in the reader's language and the other one as a fallback. */
+/** A name in the reader's language, the other one as a fallback. */
 const pick = <V,>(both: { ru: V | null; en: V | null }, lang: 'ru' | 'en') => both[lang] ?? both[lang === 'ru' ? 'en' : 'ru'];
 
 interface TimlerGameProps {
@@ -173,7 +179,11 @@ export default function TimlerGame({
   const photoDate = photo ? parseDate(photo.date) : null;
   const photoHasDay = !!photoDate && hasDay(photoDate);
   const roundKey = `${gameState.roundIndex}:${photo?.file ?? ''}`;
-  const [minYear, maxYear] = ERA_YEARS[settings.era] ?? ERA_YEARS.all;
+  const painting = photo?.kind === 'painting';
+  // The slider spans the room's era within the years this kind of picture can
+  // be from; typing may go anywhere the medium can.
+  const [minYear, maxYear] = answerRange(settings.era, photo ?? {});
+  const [firstYear] = MEDIUM_YEARS[pictureMedium(photo ?? {})];
 
   const [showRules, setShowRules] = useState(false);
   const [resultHidden, setResultHidden] = useState(false);
@@ -210,7 +220,7 @@ export default function TimlerGame({
   const draft = form.key === roundKey ? form : { key: roundKey, year: String(middle), withDate: false, day: 1, month: 1 };
   const setDraft = (patch: Partial<typeof draft>) => setForm({ ...draft, ...patch });
   const year = Number(draft.year);
-  const yearValid = draft.year !== '' && Number.isInteger(year) && year >= FIRST_YEAR && year <= THIS_YEAR;
+  const yearValid = draft.year !== '' && Number.isInteger(year) && year >= firstYear && year <= THIS_YEAR;
   const maxDay = yearValid ? daysInMonth(year, draft.month) : 31;
   const withDate = draft.withDate && photoHasDay;
   const day = Math.min(draft.day, maxDay);
@@ -279,7 +289,7 @@ export default function TimlerGame({
 
   const nudge = (by: number) => {
     const from = yearValid ? year : middle;
-    setDraft({ year: String(Math.min(THIS_YEAR, Math.max(FIRST_YEAR, from + by))) });
+    setDraft({ year: String(Math.min(THIS_YEAR, Math.max(firstYear, from + by))) });
   };
 
   // ←/→ move the year, Enter answers (docs/games.md → Controls).
@@ -313,11 +323,11 @@ export default function TimlerGame({
         )}
         {!photoReady && !photoFailed && (
           <div className="absolute inset-0 flex items-center justify-center gap-2 text-sm font-bold text-[#8A9099]">
-            <Loader2 className="w-4 h-4 animate-spin text-[#9e1316]" /> {t.loading}
+            <Loader2 className="w-4 h-4 animate-spin text-[#9e1316]" /> {painting ? t.loadingPainting : t.loading}
           </div>
         )}
         {photoFailed && (
-          <div className="absolute inset-0 flex items-center justify-center text-sm font-bold text-[#8A9099]">{t.loadError}</div>
+          <div className="absolute inset-0 flex items-center justify-center text-sm font-bold text-[#8A9099]">{painting ? t.loadErrorPainting : t.loadError}</div>
         )}
         {isPlaying && startsIn > 0 && (
           <div className="absolute inset-0 z-10 bg-white/85 backdrop-blur-sm flex flex-col items-center justify-center">
@@ -396,7 +406,7 @@ export default function TimlerGame({
       <CalendarPlus className="w-3.5 h-3.5" /> {withDate ? t.removeDate : t.addDate}
     </button>
   ) : (
-    <span className="text-2xs font-bold text-[#B5B3AD]">{t.onlyYear}</span>
+    <span className="text-2xs font-bold text-[#B5B3AD]">{painting ? t.onlyYearPainting : t.onlyYear}</span>
   );
 
   const answerForm = me?.guess ? (
@@ -434,14 +444,15 @@ export default function TimlerGame({
 
   // ------------------------------------------------------------ the side --
 
-  const statusTitle = !isPlaying ? t.roundOver : me?.guess ? t.answered : t.whenTaken;
+  const statusTitle = !isPlaying ? t.roundOver : me?.guess ? t.answered : painting ? t.whenPainted : t.whenTaken;
   const side = (
     <>
       <TurnCard
         lang={lang}
         label={[
           t.roundOf(Math.min(roundNumber, settings.rounds), settings.rounds),
-          ...(settings.difficulty !== 'any' ? [DIFFICULTIES[settings.difficulty].label[lang]] : [])
+          ...(settings.difficulty !== 'any' ? [DIFFICULTIES[settings.difficulty].label[lang]] : []),
+          ...(settings.adultOnly ? [t.adultOnly] : [])
         ].join(' · ')}
         title={statusTitle}
         hint={isPlaying ? (me?.guess ? t.hintWait : t.hintPick) : undefined}
@@ -528,7 +539,7 @@ export default function TimlerGame({
           <div className={`${DIALOG_PANEL} max-w-2xl max-h-[92vh] overflow-y-auto`}>
             <div className={LABEL}>{t.roundOf(roundNumber, settings.rounds)}</div>
             <h2 className="text-2xl font-black text-[#1A1F26] mt-1">{formatDate(photoDate, lang)}</h2>
-            <p className="text-sm font-bold text-[#8A9099] mb-5">{pick(photo.title, lang)}</p>
+            <p className="text-sm font-bold text-[#8A9099] mb-5">{[pick(photo.title, lang), painterOf(photo, lang)].filter(Boolean).join(' · ')}</p>
 
             <Timeline
               answer={photoDate}
@@ -607,20 +618,28 @@ export default function TimlerGame({
   );
 }
 
-/** What the photo shows, when, a few lines about it, a link, and its author and licence. */
+/** A painting's painter in the reader's language; null for a photo. */
+const painterOf = (photo: TimlerPhoto, lang: 'ru' | 'en') => (photo.creator ? pick(photo.creator, lang) : null);
+
+/**
+ * What the picture shows, when, a few lines about it, a link, and its credit:
+ * a photo's author, or a painting's painter and its file on Commons.
+ */
 function PhotoCaption({ photo, date, lang, t }: {
-  photo: NonNullable<TimlerState['round']>['photo'];
+  photo: TimlerPhoto;
   date: TimlerDate;
   lang: 'ru' | 'en';
   t: Texts;
 }) {
   const title = pick(photo.title, lang);
+  const painter = painterOf(photo, lang);
   const description = pick(photo.description, lang);
   const articleLang: 'ru' | 'en' | null = photo.article[lang] ? lang : photo.article[lang === 'ru' ? 'en' : 'ru'] ? (lang === 'ru' ? 'en' : 'ru') : null;
   return (
     <div className="px-5 md:px-7 py-4 border-t border-[#F1F5F9]">
       <div className="text-xl font-black text-[#1A1F26]">{formatDate(date, lang)}</div>
       {title && <div className="text-sm font-bold text-[#1A1F26] mt-0.5">{title}</div>}
+      {painter && <div className="text-sm font-bold text-[#8A9099]">{t.painter}: {painter}</div>}
       {description && <div className="text-sm text-gray-600 mt-1">{description}</div>}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-2xs font-bold text-[#8A9099]">
         {articleLang && (
@@ -629,7 +648,7 @@ function PhotoCaption({ photo, date, lang, t }: {
           </a>
         )}
         <a href={filePage(photo.file)} target="_blank" rel="noopener noreferrer" className="underline hover:text-[#9e1316]">
-          {t.photoBy}: {photo.author || 'Wikimedia Commons'}{photo.license ? ` · ${photo.license}` : ''}
+          {photo.kind === 'painting' ? t.fileBy : t.photoBy}: {photo.author || 'Wikimedia Commons'}{photo.license ? ` · ${photo.license}` : ''}
         </a>
       </div>
     </div>

@@ -16,7 +16,7 @@ import {
 import { GAMES, playerRange, type GameDefinition } from '@/games/registry';
 import { GAME_ICONS } from '@/games/icons';
 import {
-  GAME_OPTIONS, defaultOptionValues, num, playersFromOptions,
+  GAME_OPTIONS, choicePreview, defaultOptionValues, num, offeredChoices, playersFromOptions, withOfferedChoices,
   type ChoiceOption, type GameOption, type OptionValues
 } from '@/games/options';
 import { createInitialState } from '@/games/initialState';
@@ -129,7 +129,9 @@ function OptionControl({
     );
   }
 
-  const selected = option.choices.find((c) => c.value === values[option.key]);
+  const choices = offeredChoices(option, values);
+  const selected = choices.find((c) => c.value === values[option.key]);
+  const preview = selected ? choicePreview(selected, values) : undefined;
   const Icon = option.icon;
 
   // A long list reads better as a dropdown than as a wall of buttons.
@@ -145,7 +147,7 @@ function OptionControl({
           onChange={(e) => onChange(option.key, e.target.value)}
           className="w-full bg-[#F8FAFC] border border-gray-200 focus:bg-white focus:border-[#1A1F26] rounded-xl py-3 px-4 font-bold text-[#1A1F26] outline-none transition-all text-sm cursor-pointer"
         >
-          {groupChoices(option.choices, lang).map(({ group, choices }, i) => {
+          {groupChoices(choices, lang).map(({ group, choices }, i) => {
             const items = choices.map((choice) => (
               <option key={choice.value} value={choice.value}>
                 {choice.emoji ? `${choice.emoji}  ` : ''}{choice.label[lang]}
@@ -154,8 +156,8 @@ function OptionControl({
             return group ? <optgroup key={group} label={group}>{items}</optgroup> : <React.Fragment key={i}>{items}</React.Fragment>;
           })}
         </select>
-        {selected?.preview && (
-          <p className="text-2xs font-bold text-[#8A9099] px-1">{selected.preview[lang].join(' · ')}</p>
+        {preview && (
+          <p className="text-2xs font-bold text-[#8A9099] px-1">{preview[lang].join(' · ')}</p>
         )}
       </div>
     );
@@ -167,7 +169,7 @@ function OptionControl({
         <Icon className="w-3.5 h-3.5 text-gray-400" /> {option.label[lang]}
       </label>
       <div className="grid grid-cols-2 gap-2">
-        {option.choices.map((choice) => (
+        {choices.map((choice) => (
           <button
             key={choice.value}
             type="button"
@@ -184,13 +186,13 @@ function OptionControl({
         ))}
       </div>
 
-      {selected?.preview && (
+      {preview && (
         <div className="bg-[#F8FAFC] p-4 rounded-xl border border-[#E6E1DC]">
           <div className="text-2xs font-bold text-[#8A9099] uppercase tracking-widest mb-3">
             {option.previewLabel[lang]}
           </div>
           <div className="flex flex-wrap gap-2">
-            {selected.preview[lang].map((item) => (
+            {preview[lang].map((item) => (
               <span
                 key={item}
                 className="text-2xs font-bold bg-white px-2 py-1 rounded-md border border-[#E6E1DC] text-[#1A1F26]"
@@ -269,7 +271,10 @@ export default function CreatePage() {
 
   const setOption = (key: string, value: number | string) =>
     setOptionValues((prev) => {
-      const next = { ...prev, [key]: value };
+      // A choice the new value takes off offer goes back to its default.
+      const next = selectedGame
+        ? withOfferedChoices(GAME_OPTIONS[selectedGame.id], { ...prev, [key]: value })
+        : { ...prev, [key]: value };
       // A mode-driven game carries its headcount in the option itself.
       if (selectedGame) {
         const fixed = playersFromOptions(selectedGame.id, next);

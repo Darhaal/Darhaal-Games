@@ -11,6 +11,12 @@ import type { TimlerRoundResult } from '@/types/timler';
 /** The first year a photo can be from: the daguerreotype was announced in 1839. */
 export const FIRST_YEAR = 1839;
 
+/** The first year a painting in the pool can be from (scripts/timler-paintings.mjs). */
+export const FIRST_PAINTING_YEAR = 1300;
+
+/** The last: Commons hosts only free files, so later paintings are too few for an era. */
+export const LAST_PAINTING_YEAR = 1945;
+
 /** A date to the day, or only its year when that is all that is named or known. */
 export interface TimlerDate {
   year: number;

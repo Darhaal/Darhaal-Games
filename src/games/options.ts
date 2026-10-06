@@ -1,9 +1,11 @@
-import { BookOpenText, Bomb, CalendarRange, Clock, EyeOff, Flag, Gauge, Grid, Hash, Languages, Layers, ShieldAlert, Swords, type LucideIcon } from 'lucide-react';
+import { BookOpenText, Bomb, CalendarRange, Clock, EyeOff, Flag, Gauge, Grid, Hash, Images, Languages, Layers, ShieldAlert, Swords, type LucideIcon } from 'lucide-react';
 import { SPYFALL_PACKS } from '@/data/spyfall/locations';
 import { BOARD_FOR_MODE, PLAYERS_FOR_MODE, WALLS_FOR_MODE } from '@/lib/gameLogic/wallrush';
 import { DEFAULT_SIZE, MIN_SIZE, MAX_SIZE, boxCount } from '@/lib/gameLogic/dots';
 import { WIKILER_TOPICS, TOPICS, WIKILER_DIFFICULTIES, DIFFICULTIES } from '@/data/wikiler/topics';
 import { HIDDEN_DEFAULT, HIDDEN_MAX, HIDDEN_MIN } from '@/lib/gameLogic/wikiler';
+import { eraFits } from '@/lib/timler/eras';
+import type { TimlerEra, TimlerMedium } from '@/types/timler';
 import { GAMES, type GameId, type Locale } from './registry';
 
 /**
@@ -60,8 +62,17 @@ export interface ChoiceOption extends OptionBase {
     value: string;
     emoji?: string;
     label: Record<Locale, string>;
-    /** Optional contents preview, shown once the choice is selected. */
-    preview?: Record<Locale, string[]>;
+    /**
+     * Optional contents preview, shown once the choice is selected — or a
+     * function of the other values, when what it holds depends on them.
+     */
+    preview?: Record<Locale, string[]> | ((values: OptionValues) => Record<Locale, string[]>);
+    /**
+     * Offered only when this holds — e.g. an era only for the media that have
+     * pictures from it. A value that stops being offered falls back to the
+     * option's default.
+     */
+    showWhen?: (values: OptionValues) => boolean;
     /**
      * Headcount this choice fixes, for a game whose registry entry names this
      * option in `playersFromOption`.
@@ -84,11 +95,59 @@ export const num = (values: OptionValues, key: string, fallback = 0): number => 
   return Number.isFinite(n) ? n : fallback;
 };
 
+/** The choices of an option on offer for these values. */
+export const offeredChoices = (option: ChoiceOption, values: OptionValues) =>
+  option.choices.filter((choice) => choice.showWhen?.(values) ?? true);
+
+/** A choice's preview for these values. */
+export const choicePreview = (choice: ChoiceOption['choices'][number], values: OptionValues) =>
+  typeof choice.preview === 'function' ? choice.preview(values) : choice.preview;
+
+/**
+ * The values with every choice that is no longer on offer put back to its
+ * option's default — picking "Photos" drops a painting-only era.
+ */
+export function withOfferedChoices(options: readonly GameOption[], values: OptionValues): OptionValues {
+  let out = values;
+  for (const option of options) {
+    if (option.kind !== 'choice' || !(option.key in out)) continue;
+    if (!offeredChoices(option, out).some((c) => c.value === out[option.key])) out = { ...out, [option.key]: option.default };
+  }
+  return out;
+}
+
 /** Reads a string option back. */
 export const str = (values: OptionValues, key: string, fallback = ''): string => {
   const raw = values[key];
   return typeof raw === 'string' ? raw : fallback;
 };
+
+/** Timler's medium as the create screen holds it. */
+const timlerMedium = (values: OptionValues): TimlerMedium => {
+  const m = str(values, 'medium', 'photos');
+  return m === 'paintings' || m === 'both' ? m : 'photos';
+};
+
+type Lines = Record<Locale, string[]>;
+
+/** A preview by medium: the photo lines, the painting lines, or both for "both". */
+const byMedium = (photos: Lines | null, paintings: Lines | null) => (values: OptionValues): Lines => {
+  const medium = timlerMedium(values);
+  const parts = medium === 'photos' ? [photos] : medium === 'paintings' ? [paintings] : [photos, paintings];
+  return {
+    ru: parts.flatMap((p) => p?.ru ?? []),
+    en: parts.flatMap((p) => p?.en ?? [])
+  };
+};
+
+/** An era choice, offered for the media that have pictures from it. */
+const timlerEra = (value: TimlerEra, emoji: string, label: Record<Locale, string>, preview: ChoiceOption['choices'][number]['preview']) => ({
+  value,
+  emoji,
+  label,
+  preview,
+  showWhen: (values: OptionValues) => eraFits(value, timlerMedium(values))
+});
 
 const minutes = { ru: 'мин', en: 'm' };
 const seconds = { ru: 'сек', en: 's' };
@@ -505,21 +564,74 @@ export const GAME_OPTIONS: Record<GameId, GameOption[]> = {
     }
   ],
 
-  // docs/timler-spec.md, section 6.
+  // docs/timler-spec.md, sections 6 and 13.
   timler: [
+    {
+      kind: 'choice',
+      key: 'medium',
+      label: { ru: 'Что угадываем', en: 'What to date' },
+      icon: Images,
+      default: 'photos',
+      previewLabel: { ru: 'Что попадётся', en: 'What comes up' },
+      choices: [
+        {
+          value: 'photos',
+          emoji: '📷',
+          label: { ru: 'Фото', en: 'Photos' },
+          preview: { ru: ['Фотографии с 1839 года до наших дней'], en: ['Photographs from 1839 to this year'] }
+        },
+        {
+          value: 'paintings',
+          emoji: '🖼️',
+          label: { ru: 'Живопись', en: 'Paintings' },
+          preview: {
+            ru: ['Картины с XIV века по 1945 год', 'Возрождение, барокко, импрессионизм, авангард'],
+            en: ['Paintings from the 14th century to 1945', 'Renaissance, Baroque, Impressionism, the avant-garde']
+          }
+        },
+        {
+          value: 'both',
+          emoji: '🎨',
+          label: { ru: 'Всё вместе', en: 'Both' },
+          preview: { ru: ['Каждый раунд — фото или картина, поровну'], en: ['Each round a photo or a painting, half and half'] }
+        }
+      ]
+    },
     {
       kind: 'choice',
       key: 'era',
       label: { ru: 'Эпоха', en: 'Era' },
       icon: CalendarRange,
       default: 'all',
-      previewLabel: { ru: 'Какие фото', en: 'Which photos' },
+      previewLabel: { ru: 'Что попадётся', en: 'What comes up' },
       choices: [
-        { value: 'all', emoji: '🕰️', label: { ru: 'Всё время', en: 'All time' }, preview: { ru: ['1839–сегодня: каждый раунд — из случайной эпохи'], en: ['1839 to today: each round from a random era'] } },
-        { value: 'before1900', emoji: '🎩', label: { ru: 'До 1900', en: 'Before 1900' }, preview: { ru: ['Первые фотографии: дагеротипы, XIX век'], en: ['The first photographs: daguerreotypes, the 19th century'] } },
-        { value: '1900-1945', emoji: '📻', label: { ru: '1900–1945', en: '1900–1945' }, preview: { ru: ['Начало века, две мировые войны'], en: ['The turn of the century and two world wars'] } },
-        { value: '1946-2000', emoji: '📺', label: { ru: '1946–2000', en: '1946–2000' }, preview: { ru: ['Послевоенный мир, космос, конец века'], en: ['The post-war world, space, the end of the century'] } },
-        { value: 'since2001', emoji: '📱', label: { ru: 'С 2001', en: 'Since 2001' }, preview: { ru: ['XXI век, вплоть до этого года'], en: ['The 21st century, up to this year'] } }
+        timlerEra('all', '🕰️', { ru: 'Всё время', en: 'All time' }, (values) => ({
+          photos: { ru: ['1839–сегодня: каждый раунд — из случайной эпохи'], en: ['1839 to today: each round from a random era'] },
+          paintings: { ru: ['XIV век–1945: каждый раунд — из случайной эпохи'], en: ['The 14th century to 1945: each round from a random era'] },
+          both: { ru: ['От XIV века до сегодня: каждый раунд — из случайной эпохи'], en: ['The 14th century to today: each round from a random era'] }
+        })[timlerMedium(values)]),
+        timlerEra('before1600', '🏰', { ru: 'До 1600', en: 'Before 1600' }, byMedium(null, {
+          ru: ['Средневековье и Возрождение'], en: ['The Middle Ages and the Renaissance']
+        })),
+        timlerEra('1600-1799', '🎻', { ru: '1600–1799', en: '1600–1799' }, byMedium(null, {
+          ru: ['Барокко, рококо, Просвещение'], en: ['Baroque, Rococo, the Enlightenment']
+        })),
+        timlerEra('1800-1899', '🎩', { ru: '1800–1899', en: '1800–1899' }, byMedium(
+          { ru: ['Первые фотографии: дагеротипы, с 1839 года'], en: ['The first photographs: daguerreotypes, from 1839'] },
+          { ru: ['Романтизм, реализм, импрессионизм'], en: ['Romanticism, Realism, Impressionism'] }
+        )),
+        timlerEra('1900-1945', '📻', { ru: '1900–1945', en: '1900–1945' }, byMedium(
+          { ru: ['Начало века, две мировые войны'], en: ['The turn of the century and two world wars'] },
+          { ru: ['Модерн и авангард'], en: ['Art Nouveau and the avant-garde'] }
+        )),
+        timlerEra('1946-2000', '📺', { ru: '1946–2000', en: '1946–2000' }, byMedium(
+          { ru: ['Послевоенный мир, космос, конец века'], en: ['The post-war world, space, the end of the century'] },
+          { ru: ['Только фото: картин этих лет на свободных лицензиях почти нет'], en: ['Photos only: hardly any paintings this recent are free to show'] }
+        )),
+        timlerEra('since2001', '📱', { ru: 'С 2001', en: 'Since 2001' }, byMedium(
+          { ru: ['XXI век, вплоть до этого года'], en: ['The 21st century, up to this year'] },
+          { ru: ['Только фото'], en: ['Photos only'] }
+        ))
       ]
     },
     {
@@ -528,14 +640,14 @@ export const GAME_OPTIONS: Record<GameId, GameOption[]> = {
       label: { ru: 'Сложность', en: 'Difficulty' },
       icon: Gauge,
       default: 'any',
-      previewLabel: { ru: 'Какие фото', en: 'Which photos' },
+      previewLabel: { ru: 'Что попадётся', en: 'What comes up' },
       choices: WIKILER_DIFFICULTIES.map((level) => ({
         value: level,
         emoji: DIFFICULTIES[level].emoji,
         label: DIFFICULTIES[level].label,
         preview: {
-          any: { ru: ['Все фото эпохи вперемешку'], en: ['Every photo of the era, mixed'] },
-          easy: { ru: ['Самая известная треть: снимки, которые видел каждый'], en: ['The best known third: photos everyone has seen'] },
+          any: { ru: ['Всё из эпохи вперемешку'], en: ['Everything from the era, mixed'] },
+          easy: { ru: ['Самая известная треть: то, что видел каждый'], en: ['The best known third: what everyone has seen'] },
           medium: { ru: ['Средняя треть: известное, но не самое'], en: ['The middle third: known, but not the most'] },
           hard: { ru: ['Наименее известная треть — для знатоков'], en: ['The least known third — for experts'] }
         }[level]
@@ -571,22 +683,46 @@ export const GAME_OPTIONS: Record<GameId, GameOption[]> = {
       icon: ShieldAlert,
       default: 'off',
       advanced: true,
-      previewLabel: { ru: 'Какие фото', en: 'Which photos' },
+      previewLabel: { ru: 'Что попадётся', en: 'What comes up' },
       choices: [
         {
           value: 'off',
           emoji: '🙂',
           label: { ru: 'Выключен', en: 'Off' },
-          preview: { ru: ['Без войны, катастроф и обнажённой натуры'], en: ['No war, disasters or nudity'] }
+          preview: byMedium(
+            { ru: ['Без войны, катастроф и обнажённой натуры'], en: ['No war, disasters or nudity'] },
+            { ru: ['Без битв, смерти и обнажённой натуры'], en: ['No battles, death or nudes'] }
+          )
         },
         {
           value: 'on',
           emoji: '🔞',
           label: { ru: 'Включён', en: 'On' },
-          preview: {
-            ru: ['Добавляются бои, катастрофы, концлагеря, обнажённая натура в фотоискусстве', 'Тел погибших, казней и крови нет и здесь'],
-            en: ['Adds battles, disasters, concentration camps, nudes in fine-art photography', 'No bodies, executions or blood even here']
-          }
+          preview: byMedium(
+            {
+              ru: ['Добавляются бои, катастрофы, концлагеря, обнажённая натура в фотоискусстве', 'Тел погибших, казней и крови нет и здесь'],
+              en: ['Adds battles, disasters, concentration camps, nudes in fine-art photography', 'No bodies, executions or blood even here']
+            },
+            {
+              ru: ['В живописи — обнажённая натура, битвы, распятия, мученики, казни', 'Крови, пыток и отрубленных голов нет и здесь'],
+              en: ['In paintings: nudes, battles, crucifixions, martyrs, executions', 'No blood, torture or severed heads even here']
+            }
+          )
+        },
+        {
+          value: 'only',
+          emoji: '🔥',
+          label: { ru: 'Только 18+', en: '18+ only' },
+          preview: byMedium(
+            {
+              ru: ['Только бои, катастрофы, концлагеря и обнажённая натура в фотоискусстве', 'Тел погибших, казней и крови нет и здесь'],
+              en: ['Only battles, disasters, concentration camps and nudes in fine-art photography', 'No bodies, executions or blood even here']
+            },
+            {
+              ru: ['Только обнажённая натура, битвы, распятия, мученики и казни', 'Крови, пыток и отрубленных голов нет и здесь'],
+              en: ['Only nudes, battles, crucifixions, martyrs and executions', 'No blood, torture or severed heads even here']
+            }
+          )
         }
       ]
     }

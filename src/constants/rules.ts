@@ -461,12 +461,12 @@ export const GAME_RULES: Record<Locale, Record<GameId, GameRulesData>> = {
     },
     timler: {
       title: 'Timler',
-      description: 'Угадайте, когда снято фото',
+      description: 'Угадайте, когда снято фото или написана картина',
       sections: [
         {
           title: 'Цель игры',
           icon: Trophy,
-          content: 'Всем показывают одну и ту же фотографию. Назовите, когда она снята: год — обязательно, день и месяц — если знаете. Чем ближе к настоящей дате, тем больше очков.',
+          content: 'Всем показывают одну и ту же фотографию — или картину, если хост включил живопись. Назовите, когда она снята или написана: год — обязательно, день и месяц — если знаете. Чем ближе к настоящей дате, тем больше очков.',
           type: 'text'
         },
         {
@@ -476,7 +476,7 @@ export const GAME_RULES: Record<Locale, Record<GameId, GameRulesData>> = {
             'Выберите год ползунком, кнопками − и + или впишите его. Если у фото известен день, можно добавить день и месяц.',
             'Нажмите «Ответить» — ответ окончательный. Соперники видят только, что вы ответили.',
             'Раунд кончается, когда ответили все или вышло время. Нет ответа — 0 очков.',
-            'После раунда — шкала с ответами всех цветными пузырьками, правильная дата и рассказ о фото.'
+            'После раунда — шкала с ответами всех цветными пузырьками, правильная дата и рассказ о фото или картине и её авторе.'
           ],
           type: 'list'
         },
@@ -484,7 +484,7 @@ export const GAME_RULES: Record<Locale, Record<GameId, GameRulesData>> = {
           title: 'Очки',
           icon: Target,
           content: [
-            'Год: 1000 за точный год, меньше — чем дальше. Допуск растёт с возрастом снимка: ошибка на 5 лет у фото 1840-х почти не стоит очков (около 900), у фото 1960-х — около 700, у фото последних лет — почти всё (около 80).',
+            'Год: 1000 за точный год, меньше — чем дальше. Допуск растёт с возрастом снимка: ошибка на 5 лет у фото 1840-х почти не стоит очков (около 900), у фото 1960-х — около 700, у фото последних лет — почти всё (около 80). Картины считаются так же: у полотна XVI века и ошибка на 20 лет даёт больше 800.',
             'Дата — это ставка: день в день +300, неделя +143, месяц −53, дальше до −100. Не уверены — оставьте только год.',
             'Места: трём самым точным +100, +60 и +30; последнему месту бонуса нет.',
             'Время: очки тают с первой секунды, к концу раунда — до −200. Кто ответил раньше, тот потерял меньше.',
@@ -496,9 +496,10 @@ export const GAME_RULES: Record<Locale, Record<GameId, GameRulesData>> = {
           title: 'Настройки',
           icon: Clock,
           content: [
-            'Эпоха: всё время, до 1900, 1900–1945, 1946–2000 или с 2001 года.',
-            'Сложность: самая известная треть фото — «Легко», наименее известная — «Сложно».',
-            'Режим 18+ (в дополнительных настройках) добавляет бои, катастрофы и обнажённую натуру в фотоискусстве. Тел погибших, казней и крови нет и в нём.'
+            'Что угадываем: фото (по умолчанию), живопись или всё вместе — тогда каждый раунд фото или картина поровну.',
+            'Эпоха: всё время или одна из эпох. У фото — 1800–1899 (снимки с 1839 года), 1900–1945, 1946–2000, с 2001. У живописи — до 1600, 1600–1799, 1800–1899, 1900–1945: картин позже 1945 на свободных лицензиях почти нет.',
+            'Сложность: самая известная треть — «Легко», наименее известная — «Сложно».',
+            'Режим 18+ (в дополнительных настройках) добавляет бои, катастрофы и обнажённую натуру в фотоискусстве, а в живописи — обнажённую натуру, битвы, распятия, мучеников и казни. Тел погибших и казней на фото нет и в нём, а крови, пыток и отрубленных голов — нигде. «Только 18+» показывает лишь такие снимки и картины.'
           ],
           type: 'list'
         },
@@ -513,9 +514,9 @@ export const GAME_RULES: Record<Locale, Record<GameId, GameRulesData>> = {
           type: 'list'
         },
         {
-          title: 'Откуда фото',
+          title: 'Откуда фото и картины',
           icon: Eye,
-          content: 'Фотографии — из Wikimedia Commons, куда их передали музеи, библиотеки и архивы (Библиотека Конгресса, Национальный архив Нидерландов, Федеральный архив Германии и другие), и из Викиданных. Они загружаются прямо с сайтов Wikimedia; после раунда видны автор, лицензия и ссылка на файл. Timler не связан с фондом Викимедиа.',
+          content: 'Фотографии — из Wikimedia Commons, куда их передали музеи, библиотеки и архивы (Библиотека Конгресса, Национальный архив Нидерландов, Федеральный архив Германии и другие), и из Викиданных. Картины — из Викиданных: только те, о которых есть статьи хотя бы в двух Википедиях и у которых точно известен год, без «около» и «между»; изображения — с Wikimedia Commons. Всё загружается прямо с сайтов Wikimedia; после раунда видны автор, лицензия и ссылка на файл. Timler не связан с фондом Викимедиа.',
           type: 'text'
         }
       ]
@@ -970,12 +971,12 @@ export const GAME_RULES: Record<Locale, Record<GameId, GameRulesData>> = {
     },
     timler: {
       title: 'Timler',
-      description: 'Guess when the photo was taken',
+      description: 'Guess when the photo was taken or the painting painted',
       sections: [
         {
           title: 'Goal',
           icon: Trophy,
-          content: 'Everyone sees the same photograph. Say when it was taken: the year is a must, the day and month if you know them. The closer to the real date, the more points.',
+          content: 'Everyone sees the same photograph — or painting, if the host turned paintings on. Say when it was taken or painted: the year is a must, the day and month if you know them. The closer to the real date, the more points.',
           type: 'text'
         },
         {
@@ -985,7 +986,7 @@ export const GAME_RULES: Record<Locale, Record<GameId, GameRulesData>> = {
             'Pick the year with the slider, the − and + buttons, or type it in. If the photo’s day is known, you can add the day and month.',
             'Press Answer — it is final. The others only see that you have answered.',
             'A round ends when everyone has answered or time is up. No answer scores 0.',
-            'After the round: a timeline of everyone’s answers as coloured bubbles, the right date and the story of the photo.'
+            'After the round: a timeline of everyone’s answers as coloured bubbles, the right date and the story of the photo or painting and who made it.'
           ],
           type: 'list'
         },
@@ -993,7 +994,7 @@ export const GAME_RULES: Record<Locale, Record<GameId, GameRulesData>> = {
           title: 'Score',
           icon: Target,
           content: [
-            'The year: 1,000 for the exact year, less the further off. The older the photo, the more room: five years off costs almost nothing on a photo from the 1840s (about 900), gives about 700 on one from the 1960s, and almost nothing on one from the last few years (about 80).',
+            'The year: 1,000 for the exact year, less the further off. The older the photo, the more room: five years off costs almost nothing on a photo from the 1840s (about 900), gives about 700 on one from the 1960s, and almost nothing on one from the last few years (about 80). Paintings score the same way: on a 16th-century canvas even twenty years off gives over 800.',
             'The date is a bet: the very day +300, a week off +143, a month off −53, further down to −100. Not sure? Leave just the year.',
             'Places: the three most accurate get +100, +60 and +30; the last place never does.',
             'Time: points melt from the first second, up to −200 by the end of the round. Whoever answers first loses the least.',
@@ -1005,9 +1006,10 @@ export const GAME_RULES: Record<Locale, Record<GameId, GameRulesData>> = {
           title: 'Settings',
           icon: Clock,
           content: [
-            'Era: all time, before 1900, 1900–1945, 1946–2000 or since 2001.',
-            'Difficulty: the best known third of the photos is Easy, the least known Hard.',
-            '18+ mode (in the advanced settings) adds battles, disasters and nudes in fine-art photography. Even there: no bodies, executions or blood.'
+            'What to date: photos (the default), paintings, or both — then each round is a photo or a painting, half and half.',
+            'Era: all time or one era. Photos have 1800–1899 (from 1839), 1900–1945, 1946–2000 and since 2001; paintings have before 1600, 1600–1799, 1800–1899 and 1900–1945 — hardly any later paintings are free to show.',
+            'Difficulty: the best known third is Easy, the least known Hard.',
+            '18+ mode (in the advanced settings) adds battles, disasters and nudes in fine-art photography, and in paintings nudes, battles, crucifixions, martyrs and executions. Even there, no bodies or executions in photos — and no blood, torture or severed heads anywhere. "18+ only" shows nothing else.'
           ],
           type: 'list'
         },
@@ -1022,9 +1024,9 @@ export const GAME_RULES: Record<Locale, Record<GameId, GameRulesData>> = {
           type: 'list'
         },
         {
-          title: 'Where the photos come from',
+          title: 'Where the pictures come from',
           icon: Eye,
-          content: 'The photographs come from Wikimedia Commons — given to it by museums, libraries and archives (the Library of Congress, the National Archives of the Netherlands, the German Federal Archives and others) — and from Wikidata. They load straight from Wikimedia’s sites; after each round you see the author, the licence and a link to the file. Timler is not affiliated with the Wikimedia Foundation.',
+          content: 'The photographs come from Wikimedia Commons — given to it by museums, libraries and archives (the Library of Congress, the National Archives of the Netherlands, the German Federal Archives and others) — and from Wikidata. The paintings come from Wikidata: only those written about on at least two Wikipedias whose year is known for certain, not "circa" or "between"; their images are on Wikimedia Commons. Everything loads straight from Wikimedia’s sites; after each round you see the author, the licence and a link to the file. Timler is not affiliated with the Wikimedia Foundation.',
           type: 'text'
         }
       ]

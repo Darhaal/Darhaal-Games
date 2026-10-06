@@ -5,7 +5,7 @@ import {
   GAMES, GAME_IDS, getGame, isGameId, requireGame, roomCapacity, playerRange
 } from '@/games/registry';
 import { GAME_ICONS } from '@/games/icons';
-import { GAME_OPTIONS, defaultOptionValues } from '@/games/options';
+import { GAME_OPTIONS, choicePreview, defaultOptionValues, offeredChoices } from '@/games/options';
 import { createInitialState, createRematchState } from '@/games/initialState';
 import { GAME_RULES } from '@/constants/rules';
 import { GAMES_CONTENT, getGameContent } from '@/content/games';
@@ -130,6 +130,15 @@ describe('game registry', () => {
           } else {
             expect(option.choices.length).toBeGreaterThan(0);
             expect(option.choices.some((c) => c.value === option.default)).toBe(true);
+            // …and on offer with the other defaults, each offered choice
+            // previewing something in both languages.
+            const defaults = defaultOptionValues(game.id);
+            const offered = offeredChoices(option, defaults);
+            expect(offered.some((c) => c.value === option.default), `${option.key}: default on offer`).toBe(true);
+            for (const choice of offered) {
+              const preview = choicePreview(choice, defaults);
+              if (preview) for (const locale of LOCALES) expect(preview[locale].length, `${option.key}/${choice.value}`).toBeGreaterThan(0);
+            }
           }
         }
       });

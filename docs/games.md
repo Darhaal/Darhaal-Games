@@ -66,13 +66,16 @@ Wikipedia access in `src/lib/wikiler/`, the topic pool in
 sections listed in `src/data/wikiler/topic-sources.json`).
 
 ## 🕰️ Timler — History quiz
-Say when a photograph was taken — the year, or the whole date as a bet. Up to
-20 players see the same photo; the round's answers land as avatar bubbles on
-one timeline. Rules and scoring in `docs/timler-spec.md`; logic (score,
-places, the timeline's axis and bubble rows) in `src/lib/gameLogic/timler.ts`,
-the pool in `public/timler/<era>.json` (built by `scripts/timler-pool.mjs`
-from Wikidata and Wikimedia Commons), the photos loaded by the player's
-browser straight from Commons.
+Say when a photograph was taken, or a painting painted — the year, or the
+whole date as a bet. Photos by default; the host can pick paintings or both.
+Up to 20 players see the same picture; the round's answers land as avatar
+bubbles on one timeline. Rules and scoring in `docs/timler-spec.md`; logic
+(score, places, the timeline's axis and bubble rows) in
+`src/lib/gameLogic/timler.ts`, the eras each medium has in
+`src/lib/timler/eras.ts`, the pool in `public/timler/<medium>/<era>.json`
+(photos built by `scripts/timler-pool.mjs`, paintings by
+`scripts/timler-paintings.mjs`, both from Wikidata and Wikimedia Commons), the
+pictures loaded by the player's browser straight from Commons.
 
 ## ⌨️ Controls
 

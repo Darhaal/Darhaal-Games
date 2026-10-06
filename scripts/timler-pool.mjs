@@ -1,5 +1,6 @@
 /**
- * Builds Timler's photo pool — docs/timler-spec.md, section 7.
+ * Builds Timler's photo pool — docs/timler-spec.md, section 7. The paintings
+ * have their own builder, scripts/timler-paintings.mjs.
  *
  *   node scripts/timler-pool.mjs
  *
@@ -14,24 +15,18 @@
  * out paintings, maps, logos and later pictures of a memorial. The date asked
  * is the photo's own: to the day when Commons knows it, otherwise the year.
  *
- * Writes public/timler/<era>.json — the photos of one era, as rows:
+ * Writes public/timler/photos/<era>.json — the photos of one era, as rows:
  *
  *   { "fields": [...], "photos": [["File.jpg", "1939-09-01", 0, 312, "en label", …], …] }
- *
- * Requests go one at a time, identify themselves and back off when told to,
- * as Wikimedia's API etiquette asks: https://www.mediawiki.org/wiki/API:Etiquette
  */
-import fs from 'node:fs';
 import path from 'node:path';
-import crypto from 'node:crypto';
+import { commonsInfo, commonsUse, fileOf, itemNames, qid, requestCount, sparql, strip, writePool } from './lib/wikimedia.mjs';
 
-const UA = 'DarhaalGames-Timler/1.0 (https://games.okhten.com; photo pool builder)';
-const PAUSE_MS = 300;
 const FIRST_YEAR = 1839;
 const LAST_YEAR = new Date().getFullYear();
-/** The eras of the lobby, by the year a photo was taken. */
+/** The photo eras of the lobby (src/lib/timler/eras.ts), by the year a photo was taken. */
 const ERAS = [
-  ['before1900', FIRST_YEAR, 1899],
+  ['1800-1899', FIRST_YEAR, 1899],
   ['1900-1945', 1900, 1945],
   ['1946-2000', 1946, 2000],
   ['since2001', 2001, LAST_YEAR]
@@ -41,111 +36,6 @@ const ALWAYS_OUT = /corps|dead bod|death|execut|massacre|genocid|atrocit|lynch|b
 const ADULT = /\bwar\b|wars\b|battle|combat|bombing|bomb|attack|shooting|terror|invasion|siege|riot|military operation|offensive|airstrike|explosion|disaster|earthquake|tsunami|crash|derail|shipwreck|sinking|fire\b|wildfire|holocaust|concentration camp|ghetto|nazi|nude|nudity|naked|erotic|weapon|война|битва|сражение|штурм|бомбардир|теракт|катастроф|землетрясен|концлагер/i;
 /** Studio portraits and crops of them: a face says little about a year. */
 const PORTRAIT = /portrait|porträt|portret|headshot|\(cropped\)|cropped\b/i;
-
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-let requests = 0;
-
-/**
- * Answers kept on disk for a day, so a build cut short by the network picks
- * up where it stopped instead of asking Wikimedia everything again.
- * Under node_modules/.cache, which git ignores.
- */
-const CACHE = path.join('node_modules', '.cache', 'timler-pool');
-const CACHE_HOURS = 24;
-fs.mkdirSync(CACHE, { recursive: true });
-const cacheFile = (url) => path.join(CACHE, crypto.createHash('sha1').update(url).digest('hex'));
-function cached(url) {
-  const f = cacheFile(url);
-  if (!fs.existsSync(f) || Date.now() - fs.statSync(f).mtimeMs > CACHE_HOURS * 3_600_000) return null;
-  return fs.readFileSync(f, 'utf8');
-}
-const remember = (url, text) => fs.writeFileSync(cacheFile(url), text);
-
-const BUDGET_MS = Number(process.env.POOL_BUDGET_MIN ?? 0) * 60_000;
-const startedAt = Date.now();
-/** Before asking the network: out of this run's time, stop — the cache keeps what is done. */
-function withinBudget() {
-  if (BUDGET_MS && Date.now() - startedAt > BUDGET_MS) {
-    console.log(`out of time after ${requests} requests — run again to carry on`);
-    process.exit(3);
-  }
-}
-
-/** fetch, with a dropped connection retried like a 503 rather than ending the build. */
-async function fetchRetrying(url, init, tries = 6) {
-  withinBudget();
-  for (let attempt = 0; ; attempt++) {
-    try {
-      // A stalled connection is given up on after 30 s, not the default five minutes.
-      return await fetch(url, { ...init, signal: AbortSignal.timeout(30_000) });
-    } catch (e) {
-      if (attempt >= tries - 1) throw e;
-      console.log(`  ${e.cause?.code ?? e.name ?? e.message} — again in ${5 * 2 ** attempt}s`);
-      await sleep(5000 * 2 ** attempt);
-    }
-  }
-}
-
-async function getJson(url, init = {}, tries = 6) {
-  const hit = cached(url);
-  if (hit) return JSON.parse(hit);
-  for (let attempt = 0; attempt < 6; attempt++) {
-    await sleep(PAUSE_MS);
-    requests++;
-    const res = await fetchRetrying(url, { ...init, headers: { 'User-Agent': UA, ...(init.headers ?? {}) } }, tries);
-    const retryAfter = Number(res.headers.get('retry-after')) || 0;
-    if (res.status === 429 || res.status >= 500) {
-      const wait = Math.max(retryAfter * 1000, 5000 * 2 ** attempt);
-      console.log(`  ${res.status} — waiting ${wait / 1000}s`);
-      await sleep(wait);
-      continue;
-    }
-    const text = await res.text();
-    const body = JSON.parse(text);
-    if (body.error?.code === 'maxlag') {
-      await sleep(Math.max(retryAfter * 1000, 5000));
-      continue;
-    }
-    if (body.error) throw new Error(`${body.error.code} ${body.error.info}`);
-    remember(url, text);
-    return body;
-  }
-  throw new Error(`gave up on ${url}`);
-}
-
-const api = (host, params, tries = 6) =>
-  getJson(`https://${host}/w/api.php?` + new URLSearchParams({ format: 'json', formatversion: '2', maxlag: '5', ...params }), {}, tries);
-
-/**
- * A SPARQL query's rows. As TSV, which is a third of the JSON: a query that
- * runs into the 60-second limit is cut off mid-answer, and a cut answer is
- * retried rather than half read.
- */
-async function sparql(query) {
-  const url = 'https://query.wikidata.org/sparql?' + new URLSearchParams({ query });
-  for (let attempt = 0; attempt < 4; attempt++) {
-    let text = cached(url);
-    let ok = text !== null;
-    if (!ok) {
-      await sleep(PAUSE_MS);
-      requests++;
-      const res = await fetchRetrying(url, { headers: { 'User-Agent': UA, Accept: 'text/tab-separated-values' } });
-      text = await res.text();
-      ok = res.ok && !text.includes('java.util.concurrent') && !text.includes('SPARQL-QUERY');
-      if (ok) remember(url, text);
-    }
-    if (ok) {
-      const [head, ...lines] = text.trim().split('\n');
-      const keys = head.split('\t').map((k) => k.replace(/^\?/, ''));
-      // TSV wraps IRIs in <> and literals in quotes, with ^^type after a date.
-      const value = (v) => v.replace(/^<(.*)>$/, '$1').replace(/^"(.*)"(\^\^.*|@.*)?$/, '$1');
-      return lines.filter(Boolean).map((l) => Object.fromEntries(l.split('\t').map((v, i) => [keys[i], value(v)])));
-    }
-    console.log(`  query cut off or refused — again in ${10 * (attempt + 1)}s`);
-    await sleep(10_000 * (attempt + 1));
-  }
-  throw new Error('SPARQL gave up');
-}
 
 /** Year ranges small enough for one query each. */
 const SLICES = [
@@ -164,10 +54,6 @@ async function sliced(pattern) {
   }
   return rows;
 }
-
-const fileOf = (url) => decodeURIComponent(url.replace(/^https?:\/\/commons\.wikimedia\.org\/wiki\/Special:FilePath\//, '')).replaceAll('_', ' ');
-const qid = (url) => url.replace(/^.*\//, '');
-const strip = (html = '') => html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 
 /**
  * A Commons date field as a date: Commons writes it for people — "29 April
@@ -222,78 +108,8 @@ console.log(`${candidates.size} JPEG candidates`);
 
 // ------------------------------------------------------ the files on Commons --
 
-/**
- * Pass one, for every candidate: what the file is and when it was made —
- * imageinfo only, which answers fifty files in one request.
- */
-async function commonsDates(files) {
-  const out = new Map();
-  // Some file makes Commons hang over its metadata: a batch that does not
-  // answer is split in two until the file that hangs stands alone, and is
-  // left out.
-  const fetchBatch = async (batch) => {
-    let body;
-    try {
-      body = await api('commons.wikimedia.org', {
-        action: 'query', titles: batch.map((f) => `File:${f}`).join('|'), prop: 'imageinfo',
-        iiprop: 'mime|extmetadata', iiextmetadatafilter: 'DateTimeOriginal|Artist|LicenseShortName'
-      }, 2);
-    } catch {
-      if (batch.length === 1) { console.log(`  skipped, Commons does not answer for it: ${batch[0]}`); return; }
-      const half = Math.ceil(batch.length / 2);
-      await fetchBatch(batch.slice(0, half));
-      await fetchBatch(batch.slice(half));
-      return;
-    }
-    const normal = new Map((body.query?.normalized ?? []).map((n) => [n.to, n.from]));
-    for (const p of body.query?.pages ?? []) {
-      if (p.missing || !p.imageinfo?.[0]) continue;
-      out.set((normal.get(p.title) ?? p.title).replace(/^File:/, ''), { mime: p.imageinfo[0].mime, meta: p.imageinfo[0].extmetadata ?? {} });
-    }
-  };
-  for (let i = 0; i < files.length; i += 50) {
-    await fetchBatch(files.slice(i, i + 50));
-    if ((i / 50) % 100 === 0) console.log(`  dates: ${Math.min(i + 50, files.length)}/${files.length}`);
-  }
-  return out;
-}
-
-/** Continuations a batch may take for its lists — popular files are used on hundreds of pages. */
-const MAX_CONTINUES = 3;
-
-/**
- * Pass two, only for the files that passed one: their categories (for 18+
- * and portraits) and the articles using them (for fame). A file used on
- * hundreds of pages is counted only so far — enough to rank it.
- */
-async function commonsUse(files) {
-  const out = new Map();
-  for (let i = 0; i < files.length; i += 50) {
-    const batch = files.slice(i, i + 50).map((f) => `File:${f}`);
-    let cont = {};
-    for (let round = 0; cont && round <= MAX_CONTINUES; round++) {
-      const body = await api('commons.wikimedia.org', {
-        action: 'query', titles: batch.join('|'), prop: 'categories|globalusage',
-        cllimit: 'max', clshow: '!hidden', gunamespace: '0', gulimit: 'max', ...cont
-      });
-      const normal = new Map((body.query?.normalized ?? []).map((n) => [n.to, n.from]));
-      for (const p of body.query?.pages ?? []) {
-        if (p.missing) continue;
-        const key = (normal.get(p.title) ?? p.title).replace(/^File:/, '');
-        const entry = out.get(key) ?? { categories: [], usage: new Set() };
-        for (const c of p.categories ?? []) entry.categories.push(c.title.replace(/^Category:/, ''));
-        for (const u of p.globalusage ?? []) entry.usage.add(`${u.wiki}:${u.title}`);
-        out.set(key, entry);
-      }
-      cont = body.continue ?? null;
-    }
-    if ((i / 50) % 40 === 0) console.log(`  use: ${Math.min(i + 50, files.length)}/${files.length}`);
-  }
-  return out;
-}
-
 console.log('Commons: what each picture is and when it was taken');
-const dates = await commonsDates([...candidates.keys()]);
+const dates = await commonsInfo([...candidates.keys()]);
 
 const dated = [];
 let notPhoto = 0, noDate = 0, otherYear = 0, portrait = 0, out = 0;
@@ -333,26 +149,6 @@ console.log(`kept ${kept.length} — not a photo ${notPhoto}, no clear date ${no
 
 // ------------------------------------------------- names, in both languages --
 
-/** Labels, descriptions and article titles of the items, fifty at a time. */
-async function itemNames(ids) {
-  const out = new Map();
-  for (let i = 0; i < ids.length; i += 50) {
-    const body = await api('www.wikidata.org', {
-      action: 'wbgetentities', ids: ids.slice(i, i + 50).join('|'),
-      props: 'labels|descriptions|sitelinks', languages: 'en|ru', sitefilter: 'enwiki|ruwiki'
-    });
-    for (const [id, e] of Object.entries(body.entities ?? {})) {
-      out.set(id, {
-        en: e.labels?.en?.value ?? null, ru: e.labels?.ru?.value ?? null,
-        enDesc: e.descriptions?.en?.value ?? null, ruDesc: e.descriptions?.ru?.value ?? null,
-        enwiki: e.sitelinks?.enwiki?.title ?? null, ruwiki: e.sitelinks?.ruwiki?.title ?? null
-      });
-    }
-    if ((i / 50) % 40 === 0) console.log(`  names: ${Math.min(i + 50, ids.length)}/${ids.length}`);
-  }
-  return out;
-}
-
 console.log('Wikidata: names');
 const names = await itemNames([...new Set(kept.map((k) => k.item))]);
 // A photo with no name in either language cannot be explained afterwards.
@@ -364,9 +160,6 @@ for (const k of named.sort((a, b) => b.fame - a.fame)) if (!byItem.has(k.item)) 
 // ------------------------------------------------------------------ write --
 
 const FIELDS = ['file', 'date', 'adult', 'fame', 'en', 'ru', 'enDesc', 'ruDesc', 'enwiki', 'ruwiki', 'author', 'license'];
-const dir = path.join('public', 'timler');
-fs.rmSync(dir, { recursive: true, force: true });
-fs.mkdirSync(dir, { recursive: true });
 for (const [era, from, to] of ERAS) {
   const photos = [...byItem.values()]
     .filter((k) => { const y = Number(k.date.slice(0, 4)); return y >= from && y <= to; })
@@ -378,6 +171,6 @@ for (const [era, from, to] of ERAS) {
   const days = photos.filter((p) => p[1].length === 10).length;
   const adult = photos.filter((p) => p[2]).length;
   console.log(`${era}: ${photos.length} photos (${photos.length - adult} without 18+, ${days} with a day)`);
-  fs.writeFileSync(path.join(dir, `${era}.json`), JSON.stringify({ fields: FIELDS, photos }));
+  writePool(path.join('public', 'timler', 'photos', `${era}.json`), FIELDS, photos);
 }
-console.log(`done — ${requests} requests`);
+console.log(`done — ${requestCount()} requests`);

@@ -7,7 +7,8 @@ import type { WallRushMode, WallRushState } from '@/types/wallrush';
 import type { DotsState } from '@/types/dots';
 import type { ReversiState } from '@/types/reversi';
 import type { WikilerPlayer, WikilerState } from '@/types/wikiler';
-import { TIMLER_ERAS, type TimlerEra, type TimlerPlayer, type TimlerState } from '@/types/timler';
+import { TIMLER_ERAS, TIMLER_MEDIA, type TimlerEra, type TimlerMedium, type TimlerPlayer, type TimlerState } from '@/types/timler';
+import { eraFits } from '@/lib/timler/eras';
 import { DIFFICULTY_LEVELS, type Difficulty } from '@/data/difficulty';
 import { WIKILER_DIFFICULTIES, WIKILER_TOPICS, type WikilerDifficulty, type WikilerTopic } from '@/data/wikiler/topics';
 import { HIDDEN_DEFAULT, HIDDEN_MAX, HIDDEN_MIN, type WikilerLang } from '@/lib/gameLogic/wikiler';
@@ -311,7 +312,11 @@ const FACTORIES: { [K in GameId]: (args: FactoryArgs) => GameStateByType[K] } = 
   },
 
   timler: ({ maxPlayers, values, now, base }) => {
-    const era = str(values, 'era', 'all');
+    const rawMedium = str(values, 'medium', 'photos');
+    const medium: TimlerMedium = (TIMLER_MEDIA as readonly string[]).includes(rawMedium) ? (rawMedium as TimlerMedium) : 'photos';
+    const rawEra = str(values, 'era', 'all');
+    // An era the medium has no pictures from would draw nothing: all time instead.
+    const era: TimlerEra = (TIMLER_ERAS as readonly string[]).includes(rawEra) && eraFits(rawEra as TimlerEra, medium) ? (rawEra as TimlerEra) : 'all';
     const difficulty = str(values, 'difficulty', 'any');
     return {
       players: [newTimlerPlayer(base)],
@@ -330,9 +335,11 @@ const FACTORIES: { [K in GameId]: (args: FactoryArgs) => GameStateByType[K] } = 
         maxPlayers,
         rounds: clamp(num(values, 'rounds', 5), 1, 20),
         roundDuration: clamp(num(values, 'roundSeconds', 60), 15, 180),
-        era: (TIMLER_ERAS as readonly string[]).includes(era) ? (era as TimlerEra) : 'all',
+        medium,
+        era,
         difficulty: (DIFFICULTY_LEVELS as readonly string[]).includes(difficulty) ? (difficulty as Difficulty) : 'any',
-        adult: str(values, 'adult', 'off') === 'on'
+        adult: str(values, 'adult', 'off') !== 'off',
+        adultOnly: str(values, 'adult', 'off') === 'only'
       }
     };
   },
