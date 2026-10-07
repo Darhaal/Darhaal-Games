@@ -1,7 +1,7 @@
 import {
   Anchor, Bomb, CalendarDays, Clock, Compass, Crosshair, Crown, Eye, EyeOff, Feather, Flag, Flame,
   Gamepad2, Ghost, Grid3x3, Hammer, Handshake, Hourglass, Layers, Link2, Map as MapIcon, Maximize2,
-  Medal, Moon, Rocket, Route, Scale, Search, Shield, ShieldCheck, Skull, Sparkles, Swords, Target,
+  Medal, Moon, Music, Rocket, Route, Scale, Search, Shield, ShieldCheck, Skull, Sparkles, Swords, Target,
   Timer, Trophy, TrendingUp, Undo2, Users, Wand2, Zap, type LucideIcon
 } from 'lucide-react';
 import { GAMES, requireGame, type GameId } from '@/games/registry';
@@ -221,7 +221,8 @@ const WIN_LADDER_TITLES: Record<GameId, Text> = {
   dots: { ru: 'Квадратура', en: 'Squaring Up' },
   reversi: { ru: 'Изнанка', en: 'Flip Side' },
   wikiler: { ru: 'Книжный червь', en: 'Bookworm' },
-  timler: { ru: 'Хронист', en: 'Chronicler' }
+  timler: { ru: 'Хронист', en: 'Chronicler' },
+  songler: { ru: 'Диджей', en: 'DJ' }
 };
 
 const winLadder = (game: GameId): Ladder => ({
@@ -606,6 +607,46 @@ const FEATS: Record<GameId, Feat[]> = {
       title: { ru: 'Молния', en: 'Lightning' },
       description: { ru: 'Угадайте год точно за 5 секунд', en: 'Name the exact year within 5 seconds' },
       reached: (p) => any(p, 'timler', (r) => num(r, 'fastExact') <= 5)
+    }
+  ]),
+
+  // Reads the details the Songler hook records — docs/songler-spec.md, section 9.
+  songler: feats('songler', [
+    {
+      id: 'songler.first_note', icon: Music, tier: 'gold',
+      title: { ru: 'С первой ноты', en: 'First Note' },
+      description: { ru: 'Угадайте песню по первой половине секунды', en: 'Name a song from its first half second' },
+      reached: (p) => any(p, 'songler', (r) => num(r, 'firstNote') >= 1)
+    },
+    {
+      id: 'songler.perfect_pitch', icon: Sparkles, tier: 'gold',
+      title: { ru: 'Абсолютный слух', en: 'Perfect Pitch' },
+      description: { ru: 'Сыграйте матч из 5 раундов и больше, угадывая каждую песню не дольше чем со второй попытки', en: 'Play a match of 5 rounds or more naming every song within two tries' },
+      reached: (p) => any(p, 'songler', (r) => num(r, 'rounds') >= 5 && num(r, 'worstTry') <= 1)
+    },
+    {
+      id: 'songler.clean_sweep', icon: Trophy, tier: 'silver',
+      title: { ru: 'Ни одной мимо', en: 'Clean Sweep' },
+      description: { ru: 'Угадайте все песни матча из 5 раундов и больше', en: 'Name every song of a match of 5 rounds or more' },
+      reached: (p) => any(p, 'songler', (r) => num(r, 'rounds') >= 5 && num(r, 'solved') === num(r, 'rounds'))
+    },
+    {
+      id: 'songler.last_chance', icon: Hourglass, tier: 'bronze',
+      title: { ru: 'В последний момент', en: 'Last Chance' },
+      description: { ru: 'Угадайте песню с последней попытки', en: 'Name a song on the last try' },
+      reached: (p) => any(p, 'songler', (r) => num(r, 'lastChance') >= 1)
+    },
+    {
+      id: 'songler.lightning', icon: Zap, tier: 'silver',
+      title: { ru: 'Молния', en: 'Lightning' },
+      description: { ru: 'Угадайте песню за 5 секунд', en: 'Name a song within 5 seconds' },
+      reached: (p) => any(p, 'songler', (r) => num(r, 'fastest') <= 5)
+    },
+    {
+      id: 'songler.deep_cut', icon: Search, tier: 'gold',
+      title: { ru: 'Знаток', en: 'Deep Cut' },
+      description: { ru: 'На сложности «Сложно» угадайте песню по первой половине секунды', en: 'On Hard, name a song from its first half second' },
+      reached: (p) => any(p, 'songler', (r) => r.details.difficulty === 'hard' && num(r, 'firstNote') >= 1)
     }
   ])
 };

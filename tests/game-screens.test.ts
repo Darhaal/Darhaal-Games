@@ -23,7 +23,8 @@ const COMPONENT: Record<(typeof GAME_IDS)[number], string> = {
   dots: 'DotsGame',
   reversi: 'ReversiGame',
   wikiler: 'WikilerGame',
-  timler: 'TimlerGame'
+  timler: 'TimlerGame',
+  songler: 'SonglerGame'
 };
 
 const source = (id: (typeof GAME_IDS)[number]) =>

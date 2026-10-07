@@ -23,11 +23,13 @@ export const absoluteUrl = (path = '/'): string =>
   new URL(path.startsWith('/') ? path : `/${path}`, SITE_URL).toString();
 
 /**
- * Locales offered to search engines. Russian is left out for now (decided
- * 2026-10-05): the site is English by default and the audience to find first
- * searches in English.
+ * Locales offered to search engines. Russian was left out on 2026-10-05 and
+ * back on 2026-10-07: Search Console showed about 70% of the impressions
+ * coming from Russian-speaking countries, nearly all of them for Russian
+ * Spyfall queries, ranking 9th to 15th, while the English queries sat on the
+ * fourth page and below.
  */
-export const INDEXED_LOCALES: readonly Locale[] = ['en'];
+export const INDEXED_LOCALES: readonly Locale[] = ['en', 'ru'];
 
 export const isIndexed = (locale: Locale): boolean => INDEXED_LOCALES.includes(locale);
 

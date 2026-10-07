@@ -9,6 +9,7 @@ import {
 } from '@/lib/seo';
 import JsonLd from './JsonLd';
 import PublicShell from './PublicShell';
+import SpyfallLocations from './SpyfallLocations';
 
 /**
  * A single game's public page — the main ranking surface.
@@ -185,6 +186,8 @@ export default function GameDetail({
             ))}
           </ul>
         </section>
+
+        {game.slug === 'spyfall' && <SpyfallLocations locale={locale} />}
 
         <section className="mt-12">
           <h2 className="text-2xl md:text-3xl font-black tracking-tighter text-gray-900">{t.faq}</h2>

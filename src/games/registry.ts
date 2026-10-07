@@ -28,7 +28,7 @@ export type Locale = 'ru' | 'en';
  * segment, so renaming an id orphans existing lobbies and inbound links.
  */
 export const GAME_IDS = [
-  'spyfall', 'minesweeper', 'flager', 'battleship', 'coup', 'wallrush', 'dots', 'reversi', 'wikiler', 'timler'
+  'spyfall', 'minesweeper', 'flager', 'battleship', 'coup', 'wallrush', 'dots', 'reversi', 'wikiler', 'timler', 'songler'
 ] as const;
 
 export type GameId = (typeof GAME_IDS)[number];
@@ -214,6 +214,23 @@ export const GAMES: readonly GameDefinition[] = [
     genre: { ru: 'Историческая викторина', en: 'History quiz' },
     accent: '#b45309',
     tint: 'bg-amber-50 text-amber-700',
+    hasSoloMode: true,
+    bestScore: { ru: 'Лучший счёт', en: 'Best score' }
+  },
+  {
+    id: 'songler',
+    // One name in both languages, like Wikiler's and Timler's.
+    name: { ru: 'Songler', en: 'Songler' },
+    tagline: {
+      ru: 'Угадайте песню по отрывку — с каждой попыткой он длиннее.',
+      en: 'Name the song from a snippet that grows with every try.'
+    },
+    // Everyone hears the same song at once, so the room holds a crowd.
+    players: { min: 1, max: 20 },
+    playtimeMinutes: 8,
+    genre: { ru: 'Музыкальная викторина', en: 'Music quiz' },
+    accent: '#be185d',
+    tint: 'bg-pink-50 text-pink-700',
     hasSoloMode: true,
     bestScore: { ru: 'Лучший счёт', en: 'Best score' }
   }

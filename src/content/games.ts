@@ -1306,6 +1306,123 @@ export const GAMES_CONTENT: GameContent[] = [
       }
     }
   },
+  {
+    ...gameFacts('songler'),
+    locales: {
+      ru: {
+        ...localeFacts('songler', 'ru'),
+        metaTitle: 'Songler — угадай песню по отрывку',
+        metaDescription:
+          'Музыкальная викторина: угадайте песню по отрывку в полсекунды — с каждой попыткой он длиннее. 37 категорий, соло и компанией до 20 игроков.',
+        intro: [
+          'Songler — музыкальная викторина в духе Heardle и Songless. Всем играет одна и та же песня: сначала полсекунды, и если не узнали — отрывок растёт до 1, 2, 4, 8 и 15 секунд.',
+          'Песен несколько тысяч: хиты по десятилетиям от 60-х до 2020-х, рок, поп, хип-хоп, электроника, K-pop, латино, джаз, классика, музыка из кино, игр и аниме, Евровидение, а также русская поп-музыка, русский рок и рэп, советская эстрада и украинская музыка.',
+          'Играть можно одному или компанией до двадцати человек. Кто узнал песню по самому короткому отрывку и быстрее, получает больше очков.'
+        ],
+        howToPlay: [
+          'Выберите категорию, сложность, число раундов и время на раунд.',
+          'Нажмите ▶ и послушайте отрывок — сначала это полсекунды.',
+          'Начните вводить название или исполнителя и выберите песню из подсказок.',
+          'Не узнали — нажмите «Пропустить»: отрывок станет длиннее. Всего шесть попыток.',
+          'После раунда — обложка, название, исполнитель, весь 30-секундный отрывок и результаты всех.',
+          'После всех раундов сравните итоговые очки с соперниками.'
+        ],
+        features: [
+          'Отрывки растут: 0,5 → 1 → 2 → 4 → 8 → 15 секунд',
+          '37 категорий: десятилетия, жанры, кино, игры, аниме, русская, советская и украинская музыка',
+          'Подсказки по мере ввода — из всех песен игры',
+          'Соло и мультиплеер до двадцати игроков',
+          'Три уровня сложности по популярности песен',
+          'Таблица лидеров и свои достижения'
+        ],
+        strategy: [
+          'Первые полсекунды — это тембр и аранжировка: голос, гитара, синтезатор. Часто этого хватает, чтобы понять эпоху и исполнителя.',
+          'Не уверены в песне, но узнали исполнителя — назовите его самую известную песню: если это не она, вы хотя бы получите утешительные очки.',
+          'Пропуск стоит только очков за попытку: лучше послушать подольше, чем гадать вслепую.',
+          'Отрывок — обычно середина песни или припев, а не самое начало: вспоминайте припевы.'
+        ],
+        mistakes: [
+          'Тянут время — очки тают с первой секунды.',
+          'Ищут песню по неточному названию: попробуйте ввести исполнителя — подсказки найдут песню и по нему.',
+          'Сдаются раньше времени: даже на последней попытке песня приносит 100 очков.'
+        ],
+        faq: [
+          {
+            q: 'Откуда берутся песни?',
+            a: 'Из Deezer: редакторские плейлисты по десятилетиям и жанрам и самые популярные треки известных исполнителей. Отрывки — 30-секундные превью Deezer, они загружаются прямо с его серверов.'
+          },
+          {
+            q: 'Почему отрывок не с самого начала песни?',
+            a: 'Превью, которые Deezer разрешает показывать, — это 30 секунд, которые выбрал сам сервис, обычно середина или припев. Песню целиком с первой секунды без подписки показать нельзя.'
+          },
+          {
+            q: 'Как считаются очки?',
+            a: 'Угадали с первой попытки — 1000, дальше 800, 600, 400, 250 и 100. Назвали другую песню того же исполнителя, но не угадали — 100 утешительных. Трём лучшим — +100, +60 и +30 за место, а время с первой секунды снимает до 200.'
+          },
+          {
+            q: 'Это игра Deezer?',
+            a: 'Нет. Songler использует открытый API и превью Deezer, но не связан с Deezer.'
+          }
+        ]
+      },
+      en: {
+        ...localeFacts('songler', 'en'),
+        metaTitle: 'Songler — name the song from a snippet',
+        metaDescription:
+          'A music quiz: name the song from half a second of it — every try makes the snippet longer. 37 categories, solo or with up to 20 players.',
+        intro: [
+          'Songler is a music quiz in the spirit of Heardle and Songless. Everyone hears the same song: half a second at first, and if nobody knows it the snippet grows to 1, 2, 4, 8 and 15 seconds.',
+          'There are thousands of songs: hits by decade from the 1960s to the 2020s, rock, pop, hip-hop, electronic, K-pop, Latin, jazz, classical, film, game and anime music, Eurovision, plus Russian pop, Russian rock and rap, Soviet pop and Ukrainian music.',
+          'Play alone or with up to twenty people. Whoever knew the song from the shortest snippet, and fastest, scores the most.'
+        ],
+        howToPlay: [
+          'Pick a category, a difficulty, the number of rounds and the time per round.',
+          'Press ▶ to hear the snippet — half a second at first.',
+          'Start typing the title or the artist and pick the song from the suggestions.',
+          'No idea? Press Skip and the snippet grows. Six tries in all.',
+          'After the round: the cover, title, artist, the whole 30-second preview and everyone’s results.',
+          'After the final round, compare your total with everyone else.'
+        ],
+        features: [
+          'Growing snippets: 0.5 → 1 → 2 → 4 → 8 → 15 seconds',
+          '37 categories: decades, genres, film, games, anime, Russian, Soviet and Ukrainian music',
+          'Suggestions as you type, from every song in the game',
+          'Solo and multiplayer for up to twenty',
+          'Three difficulties by how popular the songs are',
+          'A live leaderboard and achievements of its own'
+        ],
+        strategy: [
+          'The first half second is the sound: the voice, the guitar, the synth. It often gives away the era and the artist.',
+          'Not sure of the song but you know the artist? Name their best-known one: if it is not that, you still get a consolation.',
+          'A skip costs only the points of the try — better to hear more than to guess blind.',
+          'The snippet is usually the middle of the song or the chorus, not its start: think choruses.'
+        ],
+        mistakes: [
+          'Waiting — points melt from the first second.',
+          'Searching for a half-remembered title: type the artist instead, the suggestions find the song by it too.',
+          'Giving up early: even the last try is worth 100.'
+        ],
+        faq: [
+          {
+            q: 'Where do the songs come from?',
+            a: 'From Deezer: its editors’ playlists by decade and genre, and the most played tracks of well-known artists. The snippets are Deezer’s 30-second previews, loaded straight from its servers.'
+          },
+          {
+            q: 'Why does the snippet not start at the very beginning?',
+            a: 'The previews Deezer allows others to play are 30 seconds it picks itself — usually the middle or the chorus. A whole song from its first second cannot be played without a subscription.'
+          },
+          {
+            q: 'How is the score calculated?',
+            a: 'Named on the first try — 1,000, then 800, 600, 400, 250 and 100. Named another song by the same artist but never this one — 100 as a consolation. The best three get +100, +60 and +30 for their place, and time costs up to 200 from the first second.'
+          },
+          {
+            q: 'Is this a Deezer game?',
+            a: 'No. Songler uses Deezer’s open API and previews but is not affiliated with Deezer.'
+          }
+        ]
+      }
+    }
+  },
 ];
 
 /**
@@ -1317,7 +1434,7 @@ export const GAMES_CONTENT: GameContent[] = [
  * by hand when the wording, the games or the FAQs change — not for styling or
  * unrelated code.
  */
-export const CONTENT_REVISION = '2026-10-06';
+export const CONTENT_REVISION = '2026-10-07';
 
 /** Every public game slug, in the order they should appear on the hub page. */
 export const GAME_SLUGS = GAMES_CONTENT.map((g) => g.slug);
@@ -1399,7 +1516,7 @@ export const HOME_CONTENT: Record<Locale, HomeCopy> = {
       },
       {
         q: 'Сколько человек можно позвать?',
-        a: 'Зависит от игры: Морской бой и Реверси рассчитаны на двоих; Сапёр, Стены и «Точки и квадраты» — до четырёх; Переворот — до шести; Шпион — до двенадцати; Флагер, Wikiler и Timler — до двадцати.'
+        a: 'Зависит от игры: Морской бой и Реверси рассчитаны на двоих; Сапёр, Стены и «Точки и квадраты» — до четырёх; Переворот — до шести; Шпион — до двенадцати; Флагер, Wikiler, Timler и Songler — до двадцати.'
       },
       {
         q: 'Это бесплатно?',
@@ -1453,7 +1570,7 @@ export const HOME_CONTENT: Record<Locale, HomeCopy> = {
       },
       {
         q: 'How many people can join?',
-        a: 'It depends on the game: Battleship and Reversi are for two; Minesweeper, Wall Rush and Dots & Boxes take up to four; Coup up to six; Spyfall up to twelve; and Flager, Wikiler and Timler up to twenty.'
+        a: 'It depends on the game: Battleship and Reversi are for two; Minesweeper, Wall Rush and Dots & Boxes take up to four; Coup up to six; Spyfall up to twelve; and Flager, Wikiler, Timler and Songler up to twenty.'
       },
       {
         q: 'Is it free?',

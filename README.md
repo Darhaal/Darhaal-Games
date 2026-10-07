@@ -1,8 +1,8 @@
 # Darhaal Games
 
-![Version](https://img.shields.io/badge/version-2.14.4-blue.svg) ![License](https://img.shields.io/badge/license-View%20%26%20Study%20Only-red.svg) ![Tests](https://img.shields.io/badge/tests-1047-brightgreen.svg)
+![Version](https://img.shields.io/badge/version-2.15.0-blue.svg) ![License](https://img.shields.io/badge/license-View%20%26%20Study%20Only-red.svg) ![Tests](https://img.shields.io/badge/tests-1139-brightgreen.svg)
 
-Ten board, logic and quiz games you can play with friends in a browser. One person
+Eleven board, logic and quiz games you can play with friends in a browser. One person
 creates a room, shares the link, everyone else joins — no install, no account
 required.
 
@@ -68,6 +68,7 @@ build if any attack succeeds.
 | **Reversi** | 2 | Legal moves shown; a turn with none passes by itself |
 | **Wikiler** | 1–20 | Guess a Wikipedia article word by word; loaded straight from Wikipedia, grammatical forms open together |
 | **Timler** | 1–20 | Say when a photo was taken or a painting painted — the year, or the date as a bet; everyone's answers on one timeline |
+| **Songler** | 1–20 | Name the song from half a second of it — the snippet grows with every try; 37 categories from Deezer |
 
 Rules, tactics and per-game notes: [`docs/games.md`](docs/games.md).
 
@@ -121,7 +122,7 @@ not forgotten.
 | Hosting | Vercel |
 
 No state-management library: the shared sync hook and React state cover it.
-Zero `any`, zero `@ts-ignore`, zero vulnerabilities in shipped dependencies, 1047 tests.
+Zero `any`, zero `@ts-ignore`, zero vulnerabilities in shipped dependencies, 1139 tests.
 
 ---
 

@@ -9,6 +9,8 @@ import type { ReversiState } from '@/types/reversi';
 import type { WikilerPlayer, WikilerState } from '@/types/wikiler';
 import { TIMLER_ERAS, TIMLER_MEDIA, type TimlerEra, type TimlerMedium, type TimlerPlayer, type TimlerState } from '@/types/timler';
 import { eraFits } from '@/lib/timler/eras';
+import type { SonglerPlayer, SonglerState } from '@/types/songler';
+import { SONGLER_CATEGORIES, type SonglerCategory } from '@/data/songler/categories';
 import { DIFFICULTY_LEVELS, type Difficulty } from '@/data/difficulty';
 import { WIKILER_DIFFICULTIES, WIKILER_TOPICS, type WikilerDifficulty, type WikilerTopic } from '@/data/wikiler/topics';
 import { HIDDEN_DEFAULT, HIDDEN_MAX, HIDDEN_MIN, type WikilerLang } from '@/lib/gameLogic/wikiler';
@@ -52,6 +54,12 @@ export interface GameStateByType {
   reversi: ReversiState;
   wikiler: WikilerState;
   timler: TimlerState;
+  songler: SonglerState;
+}
+
+/** A Songler player as they join, before any round. */
+export function newSonglerPlayer(base: { id: string; name: string; avatarUrl: string; isHost: boolean }): SonglerPlayer {
+  return { ...base, score: 0, attempts: [], history: [], isReadyForNextRound: false };
 }
 
 /** A Timler player as they join, before any round. */
@@ -344,6 +352,32 @@ const FACTORIES: { [K in GameId]: (args: FactoryArgs) => GameStateByType[K] } = 
     };
   },
 
+  songler: ({ maxPlayers, values, now, base }) => {
+    const category = str(values, 'category', 'all');
+    const difficulty = str(values, 'difficulty', 'any');
+    return {
+      players: [newSonglerPlayer(base)],
+      status: 'waiting',
+      // The song is drawn when the host starts, not while the room waits.
+      round: null,
+      roundIndex: 0,
+      next: null,
+      played: [],
+      startTime: 0,
+      lastActionTime: now,
+      notifications: [],
+      version: 1,
+      gameType: 'songler',
+      settings: {
+        maxPlayers,
+        rounds: clamp(num(values, 'rounds', 5), 1, 20),
+        roundDuration: clamp(num(values, 'roundSeconds', 60), 15, 180),
+        category: (SONGLER_CATEGORIES as readonly string[]).includes(category) ? (category as SonglerCategory) : 'all',
+        difficulty: (DIFFICULTY_LEVELS as readonly string[]).includes(difficulty) ? (difficulty as Difficulty) : 'any'
+      }
+    };
+  },
+
   coup: ({ maxPlayers, now, base }) => {
     const player: CoupPlayer = { ...base, coins: 2, cards: [], isDead: false, isReady: true };
 
@@ -502,6 +536,21 @@ const REMATCH: { [K in GameId]: (parent: GameStateByType[K]) => GameStateByType[
   }),
 
   timler: (p) => ({
+    ...p,
+    players: [],
+    status: 'waiting',
+    round: null,
+    roundIndex: 0,
+    next: null,
+    played: [],
+    roundEndedAt: undefined,
+    startTime: 0,
+    lastActionTime: Date.now(),
+    notifications: [],
+    version: 1
+  }),
+
+  songler: (p) => ({
     ...p,
     players: [],
     status: 'waiting',

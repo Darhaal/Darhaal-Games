@@ -1,5 +1,5 @@
 import {
-  BookOpenText, Bomb, BrickWall, CircleDot, Fingerprint, Flag, Grid2x2, History, ScrollText, Ship, type LucideIcon
+  BookOpenText, Bomb, BrickWall, CircleDot, Fingerprint, Flag, Grid2x2, History, Music, ScrollText, Ship, type LucideIcon
 } from 'lucide-react';
 import type { GameId } from './registry';
 
@@ -23,5 +23,6 @@ export const GAME_ICONS: Record<GameId, LucideIcon> = {
   dots: Grid2x2,
   reversi: CircleDot,
   wikiler: BookOpenText,
-  timler: History
+  timler: History,
+  songler: Music
 };

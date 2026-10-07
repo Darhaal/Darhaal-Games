@@ -27,7 +27,7 @@ export interface PolicyCopy {
 }
 
 /** Changed by hand when the policy changes — never a build timestamp. */
-export const POLICY_UPDATED = '2026-10-05';
+export const POLICY_UPDATED = '2026-10-07';
 
 export const PRIVACY_CONTENT: Record<Locale, PolicyCopy> = {
   ru: {
@@ -77,6 +77,7 @@ export const PRIVACY_CONTENT: Record<Locale, PolicyCopy> = {
           'Vercel — хостинг, обрабатывает запросы к сайту и ведёт технические логи.',
           'Google Analytics — только с вашего согласия и только обезличенные события.',
           'Википедия и Wikimedia Commons (фонд Викимедиа) — только в играх Wikiler и Timler: ваш браузер сам загружает оттуда статьи и фотографии, поэтому Викимедиа видит ваш IP-адрес и что загружено, как при обычном чтении Википедии. Ваш идентификатор, никнейм и ходы в игре туда не передаются. Как Википедия обращается с этими данными — в её политике конфиденциальности: foundation.wikimedia.org/wiki/Policy:Privacy_policy/ru.',
+          'Deezer — только в игре Songler: ваш браузер сам загружает оттуда 30-секундные отрывки песен и обложки, поэтому Deezer видит ваш IP-адрес и какие песни загружены. Ссылку на отрывок для каждого раунда наш сервер запрашивает у Deezer по номеру песни — без ваших данных. Ваш идентификатор, никнейм и ответы туда не передаются. Политика Deezer: deezer.com/legal/personal-datas.',
           'Мы не продаём данные и не передаём их рекламным сетям.'
         ]
       },
@@ -146,6 +147,7 @@ export const PRIVACY_CONTENT: Record<Locale, PolicyCopy> = {
           'Vercel — hosting; it serves requests to the site and keeps technical logs.',
           'Google Analytics — only with your consent, and only anonymous events.',
           'Wikipedia and Wikimedia Commons (the Wikimedia Foundation) — only in Wikiler and Timler: your browser loads the articles and photographs from them directly, so Wikimedia sees your IP address and what was loaded, just as when you read Wikipedia. Your identifier, nickname and moves in the game are not sent. How Wikipedia handles that data is in its privacy policy: foundation.wikimedia.org/wiki/Policy:Privacy_policy.',
+          'Deezer — only in Songler: your browser loads the 30-second song previews and album covers from it directly, so Deezer sees your IP address and which songs were loaded. Our server asks Deezer for each round’s preview link by the song’s number alone — none of your data goes with it. Your identifier, nickname and answers are not sent. Deezer’s policy: deezer.com/legal/personal-datas.',
           'We do not sell data and do not pass it to advertising networks.'
         ]
       },

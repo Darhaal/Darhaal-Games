@@ -16,6 +16,7 @@ under `src/hooks/`.
 | Reversi | Abstract | `game/reversi` | `ReversiGame.tsx` | `useReversiGame.ts` |
 | Wikiler | Word quiz | `game/wikiler` | `WikilerGame.tsx` | `useWikilerGame.ts`, `useWikilerRound.ts` |
 | Timler | History quiz | `game/timler` | `TimlerGame.tsx`, `timler/Timeline.tsx` | `useTimlerGame.ts` |
+| Songler | Music quiz | `game/songler` | `SonglerGame.tsx` | `useSonglerGame.ts` |
 
 ## 🚩 Flager — Geography quiz
 Guess the country while its flag is gradually revealed through digital noise, with
@@ -77,6 +78,16 @@ bubbles on one timeline. Rules and scoring in `docs/timler-spec.md`; logic
 `scripts/timler-paintings.mjs`, both from Wikidata and Wikimedia Commons), the
 pictures loaded by the player's browser straight from Commons.
 
+## 🎵 Songler — Music quiz
+Name the song from a snippet that grows with every try: 0.5, 1, 2, 4, 8 and 15
+seconds, six tries, a skip to hear more. Up to 20 players hear the same song;
+the sooner you name it, the more it is worth. Rules and scoring in
+`docs/songler-spec.md`; logic (snippets, score, places, when two names are one
+song) in `src/lib/gameLogic/songler.ts`; the pool in `public/songler/` (built
+by `scripts/songler-pool.mjs` from Deezer); the audio decoded with Web Audio in
+`src/lib/songler/audio.ts`, fetched each round through
+`/api/songler/preview/<id>`, because Deezer's preview links expire.
+
 ## ⌨️ Controls
 
 Every game is playable by mouse and by touch. Keyboard controls are listed in
@@ -93,6 +104,7 @@ here:
 | Spyfall | **Esc** closes the location guess and the accusation prompt (the vote cannot be dismissed) |
 | Wikiler | **Enter** sends the word or the title · **Tab** in the input switches between Word and Article · **Enter** presses "Next" after a round |
 | Timler | **← / →** the year one back or forward, **Shift** for ten · **Enter** answers · **Enter** presses "Next" after a round |
+| Songler | **Space** plays the snippet (outside the answer field) · **↑ / ↓** pick a suggestion · **Enter** answers with it · **Esc** hides the list · **Enter** presses "Next" after a round |
 | Dots & Boxes, Reversi | Pointer only — a move is a single tap on the board |
 | Everywhere | **Esc** closes the rules and the chat · **Enter** sends a chat message |
 

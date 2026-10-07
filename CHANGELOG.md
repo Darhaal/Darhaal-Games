@@ -7,6 +7,73 @@ releasing.
 Format: [Semantic Versioning](https://semver.org/). Types: **major** = platform
 milestone, **minor** = new game mode / feature, **patch** = fixes & improvements.
 
+## [2.15.0] — 2026-10-07 (minor) — **Name That Tune**
+
+> The eleventh game: half a second of a song, and the snippet grows with every try.
+
+### Changed
+- **The Russian pages are back in search.** Taking them out on 2026-10-05
+  turned out to take out most of the site's search: Search Console showed
+  about 70% of the impressions coming from Russian-speaking countries, nearly
+  all for Russian Spyfall queries ranking 9th to 15th, while English queries
+  sat on the fourth page and below. English stays the default at the bare
+  addresses; `/ru/…` is indexed again, and every page names its translation.
+
+### Added
+- **Every Spyfall location on the game's page** — 330 in 15 packs, by pack,
+  in both languages, from the game's own data. People search for the list on
+  its own, and it is the most content any page can carry that no other site
+  has word for word.
+- **Songler — a new game, the eleventh.** Name the song from a snippet that
+  grows with every try, in the spirit of Heardle and Songless: 0.5, 1, 2, 4,
+  8 and 15 seconds, six tries, a Skip to hear more — and after a miss the
+  longer snippet plays at once. 1–20 players hear the same song at the same
+  time; the others see only how far each player has got.
+  - **Score.** Named on the first try 1,000, then 800, 600, 400, 250 and 100;
+    another song by the right artist but never this one, 100. The three who
+    named it in the fewest tries (the quicker on a tie) get +100 / +60 / +30
+    — the last place never does — and time melts up to 200 from the first
+    second.
+  - **37 categories**, grouped in the lobby: everything, current hits, the
+    decades from the 1960s to the 2020s, fifteen genres (pop, rock, metal,
+    punk, alternative, hip-hop, R&B, funk & disco, electronic, Latin, K-pop,
+    country, jazz & blues, classical, afrobeats), film, Disney, game and anime
+    music, Eurovision, Christmas, summer hits, French songs, and Russian pop,
+    Russian rock, Russian rap, Soviet pop and Ukrainian music. Difficulty by
+    how often a song is played, as in Wikiler and Timler.
+  - **The answer** is picked from suggestions as you type — the title or the
+    artist — drawn from every song in the game, so the list never narrows
+    the answer. A remaster, a single or a live version of the right song
+    counts as the right song.
+  - **After a round**: the cover, title, artist and year, the whole
+    30-second preview, a link to the song on Deezer, and who named it on
+    which try. A live leaderboard beside the round, as in Flager and Timler.
+  - Statistics split solo from together (alone, a match is won by naming
+    more than half the songs), and seven achievements: a ladder of wins
+    (DJ), First Note, Perfect Pitch, Clean Sweep, Last Chance, Lightning and
+    Deep Cut.
+  - Rules in both languages, a public page with its FAQ, the sitemap entry
+    and preview card. The privacy policy now names Deezer: the browser loads
+    the previews and covers from it, so it sees the player's IP address.
+- **4,091 songs** from Deezer: its editors' playlists, and for Russian,
+  Soviet and Ukrainian music — where Deezer has no editors — the most played
+  tracks of named artists, only those where the artist is the main one.
+
+### Engineering
+- `scripts/songler-pool.mjs` builds `public/songler/songs.json` and
+  `categories.json`: one song per title and artist (the most played
+  version), each track looked up for its preview and year, a reissue's year
+  outside its decade left out rather than shown wrong, remaster notes taken
+  off titles, an artist taken only on an exact name.
+- `/api/songler/preview/<id>` looks up a fresh preview link and redirects to
+  it: Deezer signs the links for about fifteen minutes and sends no CORS
+  headers from its API, while its CDN does — so the page decodes the MP3 with
+  Web Audio and plays exactly half a second (`src/lib/songler/audio.ts`).
+  The next song loads while everyone looks at the results.
+- Pure rules in `src/lib/gameLogic/songler.ts` — snippets, score, places,
+  when two names are one song — with tests for the core, a round played by
+  several players on the in-memory room, the pool and the suggestions.
+
 ## [2.14.4] — 2026-10-07 (patch)
 
 ### Fixed

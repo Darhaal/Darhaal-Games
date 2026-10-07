@@ -42,7 +42,7 @@ auction.
 |-----|------|-----------|
 | `/` | App entry (client, auth wall), EN landing | ✅ |
 | `/games`, `/games/[slug]`, `/privacy`, `/changelog` | Public pages, EN | ✅ |
-| `/ru`, `/ru/games`, `/ru/games/[slug]`, `/ru/privacy`, `/ru/changelog` | The same in Russian | ❌ `noindex, follow` for now |
+| `/ru`, `/ru/games`, `/ru/games/[slug]`, `/ru/privacy`, `/ru/changelog` | The same in Russian | ✅ |
 | `/en`, `/en/*` | Where English used to live | 308 → the bare path |
 | `/play`, `/create`, `/achievements`, `/reset-password`, `/game/*` | App screens | ❌ noindex |
 
@@ -79,16 +79,23 @@ English is the default and served from the bare path, like the app itself
 Until 2026-10-05 it was the other way round — Russian at the root, English
 under `/en` — and `/en/*` now redirects permanently to the bare path.
 
-**Only English is indexed for now** (decided 2026-10-05). `INDEXED_LOCALES` in
-`lib/seo.ts` is the one switch:
+**Both languages are indexed.** `INDEXED_LOCALES` in `lib/seo.ts` is the one
+switch:
 
-- a locale outside it renders `noindex, follow` — its links still count, the
-  page is just not listed — and stays out of `sitemap.xml`;
-- while only one locale is indexed, no page declares `hreflang`: a pair that
-  points at a `noindex` page is one search engines reject;
-- adding `'ru'` brings back the Russian pages, their sitemap entries and the
-  `/games/coup` ⇄ `/ru/games/coup` pairs with `x-default` → English, with
-  nothing else to touch (and the "indexed locales" tests to update).
+- every indexed page declares the `/games/coup` ⇄ `/ru/games/coup` pair with
+  `x-default` → English, and both are in `sitemap.xml`;
+- a locale taken out renders `noindex, follow` — its links still count, the
+  page is just not listed — leaves the sitemap, and no page declares
+  `hreflang` while only one locale is left: a pair that points at a
+  `noindex` page is one search engines reject.
+
+Russian was taken out on 2026-10-05 and put back on 2026-10-07, when Search
+Console (19 Aug – 4 Oct) showed what it would have cost: 233 impressions, about
+70% from Russian-speaking countries (Russia 72, Kazakhstan 48, Ukraine 24,
+Belarus 11), nearly all for Russian Spyfall queries at positions 9–15 — the
+Russian Spyfall page alone had 100 of them — while English queries sat at 34–63.
+Since the move Russian ranks under new URLs (`/ru/…`); the old bare URLs are
+English now, and hreflang is what tells Google the two are one page.
 
 The document element is `<html lang="en">`; the Russian subtree overrides it
 with `lang="ru"` on the `PublicShell` / `HomeLanding` root, which is valid

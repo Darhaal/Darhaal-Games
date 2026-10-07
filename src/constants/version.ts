@@ -1,4 +1,4 @@
-export const APP_VERSION = '2.14.4';
+export const APP_VERSION = '2.15.0';
 
 export type VersionType = 'major' | 'minor' | 'patch' | 'init';
 
@@ -56,6 +56,23 @@ export function formatReleaseRange(from: string, to: string, lang: 'ru' | 'en'):
  * (/changelog) loads it, so the app's bundle does not carry it.
  */
 export const VERSION_HISTORY: VersionLog[] = [
+  /* ===================== 2.15.x ===================== */
+
+  {
+    ver: '2.15.0',
+    date: '2026-10-07',
+    type: 'minor',
+    title: { ru: 'Угадай мелодию', en: 'Name That Tune' },
+    desc: {
+      ru: 'Новая, одиннадцатая игра — Songler. Всем играет одна и та же песня — сначала полсекунды; не узнали или пропустили — отрывок растёт до 1, 2, 4, 8 и 15 секунд, всего шесть попыток. Песню выбираете из подсказок по названию или исполнителю. Чем раньше угадали, тем больше очков: 1000 с первой попытки и 100 с последней, плюс бонус за место, а время тает с первой секунды. Назвали другую песню того же исполнителя — 100 утешительных. После раунда — обложка, название, исполнитель, весь 30-секундный отрывок и ссылка на Deezer. 4 091 песня в 37 категориях: десятилетия с 60-х по 2020-е, жанры, кино, игры, аниме, Евровидение, а также русская поп-музыка, русский рок и рэп, советская эстрада и украинская музыка. От 1 до 20 игроков, свои достижения и статистика.',
+      en: 'A new, eleventh game — Songler. Everyone hears the same song — half a second of it at first; a miss or a skip makes the snippet grow to 1, 2, 4, 8 and 15 seconds, six tries in all. Pick the song from suggestions by title or artist. The sooner you name it, the more it is worth: 1,000 on the first try and 100 on the last, plus a place bonus, with time melting from the first second. Another song by the right artist earns a 100-point consolation. After each round: the cover, title, artist, the whole 30-second preview and a link to Deezer. 4,091 songs in 37 categories: the decades from the 1960s to the 2020s, genres, film, games, anime, Eurovision, plus Russian pop, Russian rock and rap, Soviet pop and Ukrainian music. 1 to 20 players, achievements and statistics of its own.'
+    },
+    fixes: {
+      ru: ['Страница «Шпиона» теперь перечисляет все 330 локаций по наборам, а русская версия сайта снова видна в поиске.'],
+      en: ['The Spyfall page now lists all 330 locations by pack, and the Russian side of the site is back in search.']
+    }
+  },
+
   /* ===================== 2.14.x ===================== */
 
   {

@@ -1,10 +1,11 @@
-import { BookOpenText, Bomb, CalendarRange, Clock, EyeOff, Flag, Gauge, Grid, Hash, Images, Languages, Layers, ShieldAlert, Swords, type LucideIcon } from 'lucide-react';
+import { BookOpenText, Bomb, CalendarRange, Clock, Disc3, EyeOff, Flag, Gauge, Grid, Hash, Images, Languages, Layers, ShieldAlert, Swords, type LucideIcon } from 'lucide-react';
 import { SPYFALL_PACKS } from '@/data/spyfall/locations';
 import { BOARD_FOR_MODE, PLAYERS_FOR_MODE, WALLS_FOR_MODE } from '@/lib/gameLogic/wallrush';
 import { DEFAULT_SIZE, MIN_SIZE, MAX_SIZE, boxCount } from '@/lib/gameLogic/dots';
 import { WIKILER_TOPICS, TOPICS, WIKILER_DIFFICULTIES, DIFFICULTIES } from '@/data/wikiler/topics';
 import { HIDDEN_DEFAULT, HIDDEN_MAX, HIDDEN_MIN } from '@/lib/gameLogic/wikiler';
 import { eraFits } from '@/lib/timler/eras';
+import { CATEGORIES as SONG_CATEGORIES, SONGLER_CATEGORIES } from '@/data/songler/categories';
 import type { TimlerEra, TimlerMedium } from '@/types/timler';
 import { GAMES, type GameId, type Locale } from './registry';
 
@@ -725,6 +726,68 @@ export const GAME_OPTIONS: Record<GameId, GameOption[]> = {
           )
         }
       ]
+    }
+  ],
+
+  // docs/songler-spec.md, section 6.
+  songler: [
+    {
+      kind: 'choice',
+      key: 'category',
+      label: { ru: 'Категория', en: 'Category' },
+      icon: Disc3,
+      default: 'all',
+      display: 'select',
+      previewLabel: { ru: 'Что попадётся', en: 'What comes up' },
+      choices: SONGLER_CATEGORIES.map((id) => ({
+        value: id,
+        emoji: SONG_CATEGORIES[id].emoji,
+        label: SONG_CATEGORIES[id].label,
+        group: SONG_CATEGORIES[id].group,
+        ...(id === 'all' ? { preview: { ru: ['Любая песня из всех категорий'], en: ['Any song from every category'] } } : {})
+      }))
+    },
+    {
+      kind: 'choice',
+      key: 'difficulty',
+      label: { ru: 'Сложность', en: 'Difficulty' },
+      icon: Gauge,
+      default: 'any',
+      previewLabel: { ru: 'Что попадётся', en: 'What comes up' },
+      choices: WIKILER_DIFFICULTIES.map((level) => ({
+        value: level,
+        emoji: DIFFICULTIES[level].emoji,
+        label: DIFFICULTIES[level].label,
+        preview: {
+          any: { ru: ['Все песни категории вперемешку'], en: ['Every song of the category, mixed'] },
+          easy: { ru: ['Самая популярная треть: то, что знают все'], en: ['The most played third: songs everyone knows'] },
+          medium: { ru: ['Средняя треть: известное, но не самое'], en: ['The middle third: known, but not the most'] },
+          hard: { ru: ['Наименее популярная треть — для меломанов'], en: ['The least played third — for music buffs'] }
+        }[level]
+      }))
+    },
+    {
+      kind: 'slider',
+      key: 'rounds',
+      label: { ru: 'Раунды', en: 'Rounds' },
+      icon: Layers,
+      min: 1,
+      max: 20,
+      step: 1,
+      default: 5
+    },
+    {
+      kind: 'slider',
+      key: 'roundSeconds',
+      label: { ru: 'Время раунда', en: 'Round time' },
+      icon: Clock,
+      min: 15,
+      max: 180,
+      step: 15,
+      default: 60,
+      format: (value, locale) => value < 60
+        ? `${value} ${seconds[locale]}`
+        : `${Math.floor(value / 60)}:${String(value % 60).padStart(2, '0')}`
     }
   ]
 };

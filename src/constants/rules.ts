@@ -520,6 +520,67 @@ export const GAME_RULES: Record<Locale, Record<GameId, GameRulesData>> = {
           type: 'text'
         }
       ]
+    },
+    songler: {
+      title: 'Songler',
+      description: 'Угадайте песню по отрывку',
+      sections: [
+        {
+          title: 'Цель игры',
+          icon: Trophy,
+          content: 'Всем играет одна и та же песня — сначала полсекунды. Назовите её: чем короче отрывок, по которому вы её узнали, тем больше очков.',
+          type: 'text'
+        },
+        {
+          title: 'Как играть',
+          icon: Search,
+          content: [
+            'Нажмите ▶ — прозвучит отрывок. Слушать его можно сколько угодно раз.',
+            'Начните вводить название или исполнителя и выберите песню из подсказок. Подсказки — из всех песен игры, не только из категории.',
+            'Не угадали или нажали «Пропустить» — отрывок становится длиннее: 0,5 → 1 → 2 → 4 → 8 → 15 секунд. Всего шесть попыток.',
+            'Раунд кончается, когда все угадали или исчерпали попытки, или вышло время. После раунда — обложка, название, исполнитель, весь 30-секундный отрывок и ответы всех.'
+          ],
+          type: 'list'
+        },
+        {
+          title: 'Очки',
+          icon: Target,
+          content: [
+            'Угадали с первой попытки — 1000, со второй — 800, дальше 600, 400, 250 и 100.',
+            'Назвали другую песню того же исполнителя, но так и не угадали — 100 утешительных.',
+            'Места: трём угадавшим за меньше всего попыток (при равенстве — кто быстрее) +100, +60 и +30; последнему месту бонуса нет.',
+            'Время: очки тают с первой секунды, к концу раунда — до −200.',
+            'Очки раунда не бывают меньше 0. Итог — сумма раундов.'
+          ],
+          type: 'list'
+        },
+        {
+          title: 'Настройки',
+          icon: Clock,
+          content: [
+            'Категория: всё подряд, хиты сейчас, десятилетия от 60-х до 2020-х, жанры (поп, рок, метал, хип-хоп, электроника, латино, K-pop, джаз, классика и другие), музыка из кино, игр и аниме, Евровидение, Рождество, а также русская поп-музыка, русский рок и рэп, советская эстрада и украинская музыка.',
+            'Сложность: самая популярная треть песен категории — «Легко», наименее популярная — «Сложно».',
+            'Раунды и время на раунд.'
+          ],
+          type: 'list'
+        },
+        {
+          title: 'Управление',
+          icon: Keyboard,
+          content: [
+            'Пробел — проиграть отрывок (когда курсор не в поле ввода).',
+            '↑ и ↓ — выбрать подсказку, Enter — ответить ею, Esc — скрыть подсказки.',
+            'После раунда Enter нажимает «Далее».'
+          ],
+          type: 'list'
+        },
+        {
+          title: 'Откуда музыка',
+          icon: Eye,
+          content: 'Песни и 30-секундные отрывки — из Deezer: редакторские плейлисты по десятилетиям и жанрам и самые популярные треки известных исполнителей. Отрывок выбирает Deezer — обычно это середина песни или припев, а не самое начало. Звук загружается прямо с серверов Deezer. Songler не связан с Deezer.',
+          type: 'text'
+        }
+      ]
     }
   },
   en: {
@@ -1027,6 +1088,67 @@ export const GAME_RULES: Record<Locale, Record<GameId, GameRulesData>> = {
           title: 'Where the pictures come from',
           icon: Eye,
           content: 'The photographs come from Wikimedia Commons — given to it by museums, libraries and archives (the Library of Congress, the National Archives of the Netherlands, the German Federal Archives and others) — and from Wikidata. The paintings come from Wikidata: only those written about on at least two Wikipedias whose year is known for certain, not "circa" or "between"; their images are on Wikimedia Commons. Everything loads straight from Wikimedia’s sites; after each round you see the author, the licence and a link to the file. Timler is not affiliated with the Wikimedia Foundation.',
+          type: 'text'
+        }
+      ]
+    },
+    songler: {
+      title: 'Songler',
+      description: 'Name the song from a snippet',
+      sections: [
+        {
+          title: 'Goal',
+          icon: Trophy,
+          content: 'Everyone hears the same song — half a second of it at first. Name it: the shorter the snippet you knew it from, the more points.',
+          type: 'text'
+        },
+        {
+          title: 'How to play',
+          icon: Search,
+          content: [
+            'Press ▶ to hear the snippet. Play it as often as you like.',
+            'Start typing the title or the artist and pick the song from the suggestions. They come from every song in the game, not just the category.',
+            'A miss or a Skip makes the snippet longer: 0.5 → 1 → 2 → 4 → 8 → 15 seconds. Six tries in all.',
+            'A round ends when everyone has named it or run out of tries, or when time is up. Afterwards: the cover, title, artist, the whole 30-second preview and everyone’s answers.'
+          ],
+          type: 'list'
+        },
+        {
+          title: 'Score',
+          icon: Target,
+          content: [
+            'Named on the first try — 1,000; on the second — 800; then 600, 400, 250 and 100.',
+            'Named another song by the same artist but never this one — 100 as a consolation.',
+            'Places: the three who named it in the fewest tries (ties go to the quicker) get +100, +60 and +30; the last place never does.',
+            'Time: points melt from the first second, up to −200 by the end of the round.',
+            'A round never scores below 0. The match adds up the rounds.'
+          ],
+          type: 'list'
+        },
+        {
+          title: 'Settings',
+          icon: Clock,
+          content: [
+            'Category: everything, current hits, the decades from the 1960s to the 2020s, genres (pop, rock, metal, hip-hop, electronic, Latin, K-pop, jazz, classical and more), film, game and anime music, Eurovision, Christmas, and Russian pop, Russian rock and rap, Soviet pop and Ukrainian music.',
+            'Difficulty: the most played third of the category is Easy, the least played Hard.',
+            'Rounds and time per round.'
+          ],
+          type: 'list'
+        },
+        {
+          title: 'Controls',
+          icon: Keyboard,
+          content: [
+            'Space — play the snippet (when the cursor is not in the input).',
+            '↑ and ↓ — pick a suggestion, Enter — answer with it, Esc — hide the suggestions.',
+            'After a round, Enter presses Next.'
+          ],
+          type: 'list'
+        },
+        {
+          title: 'Where the music comes from',
+          icon: Eye,
+          content: 'The songs and their 30-second previews come from Deezer: its editors’ playlists by decade and genre, and the most played tracks of well-known artists. Deezer picks the preview — usually the middle of the song or the chorus, not its very start. The audio loads straight from Deezer’s servers. Songler is not affiliated with Deezer.',
           type: 'text'
         }
       ]

@@ -53,7 +53,8 @@ describe('every game', () => {
     spyfall: 'useSpyfallGame', minesweeper: 'useMinesweeperGame', flager: 'useFlagerGame',
     battleship: 'useBattleshipGame', coup: 'useCoupGame', wallrush: 'useWallRushGame',
     dots: 'useDotsGame', reversi: 'useReversiGame', wikiler: 'useWikilerGame',
-    timler: 'useTimlerGame'
+    timler: 'useTimlerGame',
+    songler: 'useSonglerGame'
   };
 
   it.each(GAME_IDS.map((id) => [id]))('%s records through recordMatch and counts a walk-out as a loss', (id) => {
