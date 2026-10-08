@@ -24,7 +24,7 @@ interface DotsGameProps {
   drawLine: (edge: Edge) => void;
   handleTimeout: () => void;
   leaveGame: () => void;
-  lang: 'ru' | 'en';
+  lang: 'ru' | 'en' | 'uk';
 }
 
 const UI_TEXT = {
@@ -43,6 +43,14 @@ const UI_TEXT = {
     thinking: 'is thinking',
     boxes: (n: number) => pluralEn(n, 'box', 'boxes'),
     hint: 'Tap a line between two dots. Close a box and you go again'
+  },
+  uk: {
+    youWin: 'Перемога',
+    draw: 'Нічия',
+    winner: 'Переможець',
+    thinking: 'обмірковує хід',
+    boxes: (n: number) => pluralRu(n, ['квадрат', 'квадрати', 'квадратів']),
+    hint: 'Натисніть на лінію між точками. Закрили квадрат — ходите ще раз'
   }
 };
 
@@ -171,7 +179,7 @@ export default function DotsGame({
             orientation === 'h'
               ? justPlayed ? 'h-[7px] w-[92%]' : 'h-[4px] w-[86%]'
               : justPlayed ? 'w-[7px] h-[92%]' : 'w-[4px] h-[86%]'
-          } ${open ? 'bg-[#E6E1DC]' : ''}`}
+          } ${open ? 'bg-line' : ''}`}
           style={color ? { backgroundColor: color } : open ? { } : { backgroundColor: 'transparent' }}
         />
 
@@ -203,7 +211,7 @@ export default function DotsGame({
           key={`d${row},${col}`}
           aria-hidden
           style={{ gridColumn: 2 * col + 1, gridRow: 2 * row + 1 }}
-          className="rounded-full bg-[#1A1F26] pointer-events-none"
+          className="rounded-full bg-ink pointer-events-none"
         />
       );
     }
@@ -222,7 +230,7 @@ export default function DotsGame({
         isOpen={showRules}
         onClose={() => setShowRules(false)}
         rules={GAME_RULES[lang].dots}
-        themeColor="text-[#1A1F26]"
+        themeColor="text-ink"
       />
 
       <GameHeader
@@ -239,7 +247,7 @@ export default function DotsGame({
         board={
           // A white square with a hairline edge: the board, strict at the
           // corners like every other.
-          <div className="bg-white border border-[#E6E1DC] p-[5%]">
+          <div className="bg-surface border border-line p-[5%]">
             <div
               className="w-full grid aspect-square"
               style={{ gridTemplateColumns: track, gridTemplateRows: track }}

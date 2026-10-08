@@ -19,7 +19,7 @@
  * rest.
  */
 
-export type Locale = 'ru' | 'en';
+export type Locale = 'ru' | 'en' | 'uk';
 
 /**
  * Every game the platform ships, in the order players see them.
@@ -68,86 +68,92 @@ export interface GameDefinition {
 export const GAMES: readonly GameDefinition[] = [
   {
     id: 'spyfall',
-    name: { ru: 'Шпион', en: 'Spyfall' },
+    name: { ru: 'Шпион', en: 'Spyfall', uk: 'Шпигун' },
     tagline: {
       ru: 'Вычислите шпиона в своих рядах или не выдайте себя.',
-      en: 'Find the spy among you or blend in without being caught.'
+      en: 'Find the spy among you or blend in without being caught.',
+      uk: 'Обчисліть шпигуна у своїх лавах або не видайте себе.'
     },
     players: { min: 3, max: 12 },
     playtimeMinutes: 10,
-    genre: { ru: 'Социальная дедукция', en: 'Social deduction' },
+    genre: { ru: 'Социальная дедукция', en: 'Social deduction', uk: 'Соціальна дедукція' },
     accent: '#7c3aed',
     tint: 'bg-purple-50 text-purple-600',
     hasSoloMode: false
   },
   {
     id: 'minesweeper',
-    name: { ru: 'Сапёр', en: 'Minesweeper' },
+    name: { ru: 'Сапёр', en: 'Minesweeper', uk: 'Сапер' },
     tagline: {
       ru: 'Скоростное разминирование. Кто быстрее очистит поле?',
-      en: 'Speed defusal. Who clears the grid first?'
+      en: 'Speed defusal. Who clears the grid first?',
+      uk: 'Швидкісне розмінування. Хто швидше очистить поле?'
     },
     players: { min: 1, max: 4 },
     playtimeMinutes: 10,
-    genre: { ru: 'Головоломка', en: 'Puzzle' },
+    genre: { ru: 'Головоломка', en: 'Puzzle', uk: 'Головоломка' },
     accent: '#dc2626',
     tint: 'bg-red-50 text-red-600',
     hasSoloMode: true
   },
   {
     id: 'flager',
-    name: { ru: 'Флагер', en: 'Flager' },
+    name: { ru: 'Флагер', en: 'Flager', uk: 'Флагер' },
     tagline: {
       ru: 'Географическая викторина. Угадай флаг по пикселям.',
-      en: 'Geography quiz. Guess the flag pixel by pixel.'
+      en: 'Geography quiz. Guess the flag pixel by pixel.',
+      uk: 'Географічна вікторина. Вгадай прапор за пікселями.'
     },
     // Everyone answers the same flag at once, so a whole class can play.
     players: { min: 1, max: 20 },
     playtimeMinutes: 10,
-    genre: { ru: 'Викторина', en: 'Quiz' },
+    genre: { ru: 'Викторина', en: 'Quiz', uk: 'Вікторина' },
     accent: '#0891b2',
     tint: 'bg-blue-50 text-blue-600',
     hasSoloMode: true,
-    bestScore: { ru: 'Лучший счёт', en: 'Best score' }
+    bestScore: { ru: 'Лучший счёт', en: 'Best score', uk: 'Найкращий рахунок' }
   },
   {
     id: 'battleship',
-    name: { ru: 'Морской бой', en: 'Battleship' },
+    name: { ru: 'Морской бой', en: 'Battleship', uk: 'Морський бій' },
     tagline: {
       ru: 'Классическая тактика. Потопи флот противника.',
-      en: 'Classic tactics. Sink the enemy fleet.'
+      en: 'Classic tactics. Sink the enemy fleet.',
+      uk: 'Класична тактика. Потопи флот суперника.'
     },
     players: { min: 2, max: 2 },
     playtimeMinutes: 15,
-    genre: { ru: 'Стратегия', en: 'Strategy' },
+    genre: { ru: 'Стратегия', en: 'Strategy', uk: 'Стратегія' },
     accent: '#1d4ed8',
     tint: 'bg-sky-50 text-sky-600',
     hasSoloMode: false
   },
   {
     id: 'coup',
-    name: { ru: 'Переворот', en: 'Coup' },
+    name: { ru: 'Переворот', en: 'Coup', uk: 'Переворот' },
     tagline: {
       ru: 'Блеф, интриги и влияние. Останься последним.',
-      en: 'Bluff, intrigue, influence. Be the last one standing.'
+      en: 'Bluff, intrigue, influence. Be the last one standing.',
+      uk: 'Блеф, інтриги й вплив. Залишся останнім.'
     },
     players: { min: 2, max: 6 },
     playtimeMinutes: 15,
-    genre: { ru: 'Карточная игра', en: 'Card game' },
+    genre: { ru: 'Карточная игра', en: 'Card game', uk: 'Карткова гра' },
     accent: '#b45309',
     tint: 'bg-orange-50 text-orange-600',
     hasSoloMode: false
   },
   {
     id: 'wallrush',
-    name: { ru: 'Стены', en: 'Wall Rush' },
+    name: { ru: 'Стены', en: 'Wall Rush', uk: 'Стіни' },
     tagline: {
       ru: 'Добегите до другого края — или поставьте стену и отправьте соперника в обход.',
-      en: 'Race to the far side — or drop a wall and send your rival the long way around.'
+      en: 'Race to the far side — or drop a wall and send your rival the long way around.',
+      uk: 'Добіжіть до іншого краю — або поставте стіну й відправте суперника в обхід.'
     },
     players: { min: 2, max: 4 },
     playtimeMinutes: 10,
-    genre: { ru: 'Абстрактная стратегия', en: 'Abstract strategy' },
+    genre: { ru: 'Абстрактная стратегия', en: 'Abstract strategy', uk: 'Абстрактна стратегія' },
     accent: '#15803d',
     tint: 'bg-emerald-50 text-emerald-600',
     hasSoloMode: false,
@@ -155,84 +161,89 @@ export const GAMES: readonly GameDefinition[] = [
   },
   {
     id: 'dots',
-    name: { ru: 'Точки и квадраты', en: 'Dots & Boxes' },
+    name: { ru: 'Точки и квадраты', en: 'Dots & Boxes', uk: 'Точки й квадрати' },
     tagline: {
       ru: 'Чертите линии между точками и закрывайте квадраты. Закрыл — ходишь снова.',
-      en: 'Draw a line between two dots and close a box. Close one and you go again.'
+      en: 'Draw a line between two dots and close a box. Close one and you go again.',
+      uk: 'Кресліть лінії між точками й закривайте квадрати. Закрив — ходиш знову.'
     },
     players: { min: 2, max: 4 },
     playtimeMinutes: 10,
-    genre: { ru: 'Абстрактная стратегия', en: 'Abstract strategy' },
+    genre: { ru: 'Абстрактная стратегия', en: 'Abstract strategy', uk: 'Абстрактна стратегія' },
     accent: '#0d9488',
     tint: 'bg-teal-50 text-teal-600',
     hasSoloMode: false,
-    bestScore: { ru: 'Больше всего квадратов', en: 'Most boxes' }
+    bestScore: { ru: 'Больше всего квадратов', en: 'Most boxes', uk: 'Найбільше квадратів' }
   },
   {
     id: 'reversi',
-    name: { ru: 'Реверси', en: 'Reversi' },
+    name: { ru: 'Реверси', en: 'Reversi', uk: 'Реверсі' },
     tagline: {
       ru: 'Зажмите чужие фишки между двумя своими — и они перевернутся.',
-      en: 'Trap a line of your rival between two of yours and the discs turn over.'
+      en: 'Trap a line of your rival between two of yours and the discs turn over.',
+      uk: 'Затисніть чужі фішки між двома своїми — і вони перевернуться.'
     },
     players: { min: 2, max: 2 },
     playtimeMinutes: 15,
-    genre: { ru: 'Абстрактная стратегия', en: 'Abstract strategy' },
+    genre: { ru: 'Абстрактная стратегия', en: 'Abstract strategy', uk: 'Абстрактна стратегія' },
     accent: '#334155',
     tint: 'bg-slate-100 text-slate-600',
     hasSoloMode: false,
-    bestScore: { ru: 'Больше всего фишек', en: 'Most discs' }
+    bestScore: { ru: 'Больше всего фишек', en: 'Most discs', uk: 'Найбільше фішок' }
   },
   {
     id: 'wikiler',
     // One name in both languages, like a word game's.
-    name: { ru: 'Wikiler', en: 'Wikiler' },
+    name: { ru: 'Wikiler', en: 'Wikiler', uk: 'Wikiler' },
     tagline: {
       ru: 'Угадайте статью Википедии, открывая в ней слово за словом.',
-      en: 'Name the Wikipedia article by opening it word by word.'
+      en: 'Name the Wikipedia article by opening it word by word.',
+      uk: 'Вгадайте статтю Вікіпедії, відкриваючи в ній слово за словом.'
     },
     // Everyone reads the same article at once, so the room holds a crowd.
     players: { min: 1, max: 20 },
     playtimeMinutes: 10,
-    genre: { ru: 'Словесная викторина', en: 'Word quiz' },
+    genre: { ru: 'Словесная викторина', en: 'Word quiz', uk: 'Словесна вікторина' },
     accent: '#4338ca',
     tint: 'bg-indigo-50 text-indigo-600',
     hasSoloMode: true,
-    bestScore: { ru: 'Лучший счёт', en: 'Best score' }
+    bestScore: { ru: 'Лучший счёт', en: 'Best score', uk: 'Найкращий рахунок' }
   },
   {
     id: 'timler',
     // One name in both languages, like Wikiler's.
-    name: { ru: 'Timler', en: 'Timler' },
+    name: { ru: 'Timler', en: 'Timler', uk: 'Timler' },
     tagline: {
       ru: 'Угадайте, когда снята фотография — год или даже день.',
-      en: 'Guess when the photo was taken — the year, or even the day.'
+      en: 'Guess when the photo was taken — the year, or even the day.',
+      uk: 'Вгадайте, коли знято фотографію, — рік або навіть день.'
     },
     // Everyone looks at the same photo at once, so the room holds a crowd.
     players: { min: 1, max: 20 },
     playtimeMinutes: 8,
-    genre: { ru: 'Историческая викторина', en: 'History quiz' },
+    genre: { ru: 'Историческая викторина', en: 'History quiz', uk: 'Історична вікторина' },
     accent: '#b45309',
     tint: 'bg-amber-50 text-amber-700',
     hasSoloMode: true,
-    bestScore: { ru: 'Лучший счёт', en: 'Best score' }
+    bestScore: { ru: 'Лучший счёт', en: 'Best score', uk: 'Найкращий рахунок' }
   },
   {
     id: 'songler',
     // One name in both languages, like Wikiler's and Timler's.
-    name: { ru: 'Songler', en: 'Songler' },
+    name: { ru: 'Songler', en: 'Songler', uk: 'Songler' },
     tagline: {
       ru: 'Угадайте песню по отрывку — с каждой попыткой он длиннее.',
-      en: 'Name the song from a snippet that grows with every try.'
+      en: 'Name the song from a snippet that grows with every try.',
+      uk: 'Вгадайте пісню за уривком — з кожною спробою він довшає.'
     },
     // Everyone hears the same song at once, so the room holds a crowd.
     players: { min: 1, max: 20 },
     playtimeMinutes: 8,
-    genre: { ru: 'Музыкальная викторина', en: 'Music quiz' },
+    genre: { ru: 'Музыкальная викторина', en: 'Music quiz', uk: 'Музична вікторина' },
     accent: '#be185d',
     tint: 'bg-pink-50 text-pink-700',
     hasSoloMode: true,
-    bestScore: { ru: 'Лучший счёт', en: 'Best score' }
+    bestScore: { ru: 'Лучший счёт', en: 'Best score', uk: 'Найкращий рахунок' }
   }
 ];
 

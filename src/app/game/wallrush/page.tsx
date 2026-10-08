@@ -28,6 +28,11 @@ const UI_TEXT = {
     lobbyNotFound: 'LOBBY NOT FOUND',
     gameFinished: 'Game Finished',
     toMenu: 'Main Menu'
+  },
+  uk: {
+    lobbyNotFound: 'Лобі не знайдено',
+    gameFinished: 'Гру завершено',
+    toMenu: 'У меню'
   }
 };
 
@@ -90,16 +95,16 @@ function WallRushContent() {
   const t = UI_TEXT[lang];
 
   if (authLoading || loading || isLeaving) {
-    return <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]"><Loader2 className="animate-spin text-[#15803d] w-8 h-8" /></div>;
+    return <div className="min-h-screen flex items-center justify-center bg-page"><Loader2 className="animate-spin text-green-700 w-8 h-8" /></div>;
   }
 
   if (!userId) return null;
 
   if (lobbyDeleted) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center font-bold text-gray-400 bg-[#F8FAFC]">
-        <span className="mb-4 text-xl text-[#1A1F26] uppercase">{t.gameFinished}</span>
-        <button onClick={() => router.push('/play')} className="px-6 py-3 bg-[#1A1F26] text-white rounded-xl font-bold uppercase tracking-widest hover:bg-[#15803d] transition-colors shadow-lg">
+      <div className="min-h-screen flex flex-col items-center justify-center font-bold text-gray-400 bg-page">
+        <span className="mb-4 text-xl text-ink uppercase">{t.gameFinished}</span>
+        <button onClick={() => router.push('/play')} className="px-6 py-3 bg-ink text-on-ink rounded-xl font-bold uppercase tracking-widest hover:bg-green-700 transition-colors shadow-lg">
           {t.toMenu}
         </button>
       </div>
@@ -176,7 +181,7 @@ function WallRushContent() {
 
 export default function WallRushPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]"><Loader2 className="animate-spin text-[#15803d] w-8 h-8" /></div>}>
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-page"><Loader2 className="animate-spin text-green-700 w-8 h-8" /></div>}>
       <WallRushContent />
     </Suspense>
   );

@@ -32,13 +32,20 @@ const UI_TEXT = {
     toMenu: 'Main Menu',
     choosing: 'Choosing a song…',
     noSong: 'The songs did not load — try starting again'
+  },
+  uk: {
+    lobbyNotFound: 'Лобі не знайдено',
+    gameFinished: 'Гру завершено',
+    toMenu: 'У меню',
+    choosing: 'Обираємо пісню…',
+    noSong: 'Не вдалося завантажити пісні — спробуйте почати ще раз'
   }
 };
 
 const Spinner = ({ label }: { label?: string }) => (
-  <div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-[#F8FAFC]">
-    <Loader2 className="animate-spin text-[#9e1316] w-8 h-8" />
-    {label && <span className="text-sm font-bold text-[#8A9099]">{label}</span>}
+  <div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-page">
+    <Loader2 className="animate-spin text-accent w-8 h-8" />
+    {label && <span className="text-sm font-bold text-muted">{label}</span>}
   </div>
 );
 
@@ -111,9 +118,9 @@ function SonglerContent() {
 
   if (lobbyDeleted) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center font-bold text-gray-400 bg-[#F8FAFC]">
-        <span className="mb-4 text-xl text-[#1A1F26] uppercase">{t.gameFinished}</span>
-        <button onClick={() => router.push('/play')} className="px-6 py-3 bg-[#1A1F26] text-white rounded-xl font-bold uppercase tracking-widest hover:bg-[#9e1316] transition-colors shadow-lg">
+      <div className="min-h-screen flex flex-col items-center justify-center font-bold text-gray-400 bg-page">
+        <span className="mb-4 text-xl text-ink uppercase">{t.gameFinished}</span>
+        <button onClick={() => router.push('/play')} className="px-6 py-3 bg-ink text-on-ink rounded-xl font-bold uppercase tracking-widest hover:bg-accent transition-colors shadow-lg">
           {t.toMenu}
         </button>
       </div>

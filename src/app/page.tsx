@@ -17,5 +17,5 @@ export const metadata: Metadata = homeMetadata('en');
  * the sign-in card plus this content for everyone else.
  */
 export default function Home() {
-  return <HomeClient landing={<HomeLanding locale="en" />} />;
+  return <HomeClient locale="en" landing={<HomeLanding locale="en" />} />;
 }

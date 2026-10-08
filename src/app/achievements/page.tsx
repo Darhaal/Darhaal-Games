@@ -20,8 +20,8 @@ import { loadProgress, syncUnlocks, type LoadedProgress } from '@/achievements/l
  */
 
 const Spinner = () => (
-  <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]">
-    <Loader2 className="w-8 h-8 animate-spin text-[#9e1316]" />
+  <div className="min-h-screen flex items-center justify-center bg-page">
+    <Loader2 className="w-8 h-8 animate-spin text-accent" />
   </div>
 );
 
@@ -70,23 +70,23 @@ function ProgressContent() {
   if (!user || (!loaded && !failed)) return <Spinner />;
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] font-sans text-[#1A1F26] overflow-x-hidden flex flex-col relative">
+    <div className="min-h-screen bg-page font-sans text-ink overflow-x-clip flex flex-col relative">
       <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-30 mix-blend-overlay pointer-events-none fixed" />
-      <div className="absolute -top-32 right-0 w-[28rem] h-[28rem] bg-[#9e1316]/5 rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute -top-32 right-0 w-[28rem] h-[28rem] bg-accent/5 rounded-full blur-[100px] pointer-events-none" />
 
-      <header className="sticky top-0 z-30 w-full bg-[#F8FAFC]/90 backdrop-blur-xl border-b border-[#E6E1DC] shadow-sm">
+      <header className="sticky top-0 z-30 w-full bg-page/90 backdrop-blur-xl border-b border-line shadow-sm">
         <div className="max-w-5xl mx-auto px-4 py-3 md:py-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 md:gap-4 min-w-0">
             <button
               onClick={() => router.push('/')}
               aria-label={t.back}
-              className="group p-2.5 bg-white border border-[#E6E1DC] rounded-xl hover:border-[#9e1316]/30 hover:shadow-sm transition-all"
+              className="group p-2.5 bg-surface border border-line rounded-xl hover:border-accent/30 hover:shadow-sm transition-all"
             >
-              <ArrowLeft className="w-4 h-4 md:w-5 md:h-5 text-[#8A9099] group-hover:text-[#9e1316]" />
+              <ArrowLeft className="w-4 h-4 md:w-5 md:h-5 text-muted group-hover:text-accent" />
             </button>
             <div className="min-w-0">
-              <h1 className="text-lg md:text-xl font-bold text-[#1A1F26] tracking-tight leading-none">{t.title}</h1>
-              <p className="text-xs text-[#8A9099] font-medium hidden sm:block mt-1">{t.subtitle}</p>
+              <h1 className="text-lg md:text-xl font-bold text-ink tracking-tight leading-none">{t.title}</h1>
+              <p className="text-xs text-muted font-medium hidden sm:block mt-1">{t.subtitle}</p>
             </div>
           </div>
           <SettingsButton />
@@ -97,11 +97,11 @@ function ProgressContent() {
         {loaded ? (
           <ProgressView user={user} loaded={loaded} lang={lang} initialTab={initialTab} />
         ) : (
-          <div className="flex flex-col items-center justify-center py-20 border-2 border-dashed border-[#E6E1DC] rounded-3xl bg-white/50 text-center px-6">
-            <div className="text-base font-black text-[#1A1F26]">{t.loadError}</div>
+          <div className="flex flex-col items-center justify-center py-20 border-2 border-dashed border-line rounded-3xl bg-surface/50 text-center px-6">
+            <div className="text-base font-black text-ink">{t.loadError}</div>
             <button
               onClick={() => load(user.id)}
-              className="mt-4 px-4 py-2 bg-[#1A1F26] text-white rounded-lg font-bold text-xs uppercase tracking-wide hover:bg-[#9e1316] transition-all flex items-center gap-2"
+              className="mt-4 px-4 py-2 bg-ink text-on-ink rounded-lg font-bold text-xs uppercase tracking-wide hover:bg-accent transition-all flex items-center gap-2"
             >
               <RotateCcw className="w-3.5 h-3.5" /> {t.retry}
             </button>

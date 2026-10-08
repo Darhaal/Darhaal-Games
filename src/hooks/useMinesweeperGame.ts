@@ -114,7 +114,7 @@ export function useMinesweeperGame(lobbyId: string | null, userId: string | unde
   /** Tells the others, in a shared match, that somebody is out. */
   const hitAMine = (state: MinesweeperState, player: MinesweeperPlayer) => {
       if (Object.keys(state.players).length < 2) return;
-      pushNotice(state, { ru: `${player.name} подорвался на мине`, en: `${player.name} hit a mine` }, 'alert');
+      pushNotice(state, { ru: `${player.name} подорвался на мине`, en: `${player.name} hit a mine`, uk: `${player.name} підірвався на міні` }, 'alert');
   };
 
   /**

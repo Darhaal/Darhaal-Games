@@ -1,6 +1,6 @@
 // types/coup.ts
 
-export type Lang = 'ru' | 'en';
+export type Lang = 'ru' | 'en' | 'uk';
 export type Role = 'duke' | 'assassin' | 'captain' | 'ambassador' | 'contessa';
 
 export type GamePhase =
@@ -53,6 +53,8 @@ export interface PendingAction {
 export interface LocalizedText {
   ru: string;
   en: string;
+  /** Optional: a log written by a client from before Ukrainian falls back to English. */
+  uk?: string;
 }
 
 /** `GameLog.user` for entries the game itself writes, shown as «Система» / "System". */

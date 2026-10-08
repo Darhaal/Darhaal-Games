@@ -53,10 +53,10 @@ const DIRECTION_BY_CODE: Record<string, Direction> = {
   ArrowRight: 'right', KeyD: 'right'
 };
 
-/** The same, by character — Latin and the Russian letters on those keys. */
+/** The same, by character — Latin, and the Russian and Ukrainian letters on those keys (only S differs: ы / і). */
 const DIRECTION_BY_KEY: Record<string, Direction> = {
   arrowup: 'up', w: 'up', 'ц': 'up',
-  arrowdown: 'down', s: 'down', 'ы': 'down',
+  arrowdown: 'down', s: 'down', 'ы': 'down', 'і': 'down',
   arrowleft: 'left', a: 'left', 'ф': 'left',
   arrowright: 'right', d: 'right', 'в': 'right'
 };

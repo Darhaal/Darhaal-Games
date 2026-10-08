@@ -101,7 +101,7 @@ export const imageUrl = (file: string, width = 1280) =>
 /** The file's page on Commons: its author, licence and history. */
 export const filePage = (file: string) => `https://commons.wikimedia.org/wiki/File:${encodeURIComponent(file.replaceAll(' ', '_'))}`;
 
-export const articleUrl = (lang: 'ru' | 'en', title: string) =>
+export const articleUrl = (lang: 'ru' | 'en' | 'uk', title: string) =>
   `https://${lang}.wikipedia.org/wiki/${encodeURIComponent(title.replaceAll(' ', '_'))}`;
 
 /** Starts loading a photo before its round, so it is on screen when guessing opens. */

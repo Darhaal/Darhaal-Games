@@ -43,6 +43,7 @@ auction.
 | `/` | App entry (client, auth wall), EN landing | ✅ |
 | `/games`, `/games/[slug]`, `/privacy`, `/changelog` | Public pages, EN | ✅ |
 | `/ru`, `/ru/games`, `/ru/games/[slug]`, `/ru/privacy`, `/ru/changelog` | The same in Russian | ✅ |
+| `/uk`, `/uk/games`, `/uk/games/[slug]`, `/uk/privacy`, `/uk/changelog` | The same in Ukrainian | ✅ |
 | `/en`, `/en/*` | Where English used to live | 308 → the bare path |
 | `/play`, `/create`, `/achievements`, `/reset-password`, `/game/*` | App screens | ❌ noindex |
 
@@ -75,15 +76,17 @@ braces — `Disallow` alone does not remove a URL that is already indexed.
 ## Locale strategy
 
 English is the default and served from the bare path, like the app itself
-(it starts in English until a player picks Russian); Russian lives under `/ru`.
+(it starts in English until a player picks another language); Russian lives
+under `/ru` and Ukrainian under `/uk`.
 Until 2026-10-05 it was the other way round — Russian at the root, English
 under `/en` — and `/en/*` now redirects permanently to the bare path.
 
-**Both languages are indexed.** `INDEXED_LOCALES` in `lib/seo.ts` is the one
-switch:
+**All three languages are indexed.** `INDEXED_LOCALES` in `lib/seo.ts` is the
+one switch:
 
-- every indexed page declares the `/games/coup` ⇄ `/ru/games/coup` pair with
-  `x-default` → English, and both are in `sitemap.xml`;
+- every indexed page declares `/games/coup`, `/ru/games/coup` and
+  `/uk/games/coup` as one page with `x-default` → English, and all are in
+  `sitemap.xml`;
 - a locale taken out renders `noindex, follow` — its links still count, the
   page is just not listed — leaves the sitemap, and no page declares
   `hreflang` while only one locale is left: a pair that points at a
@@ -96,6 +99,10 @@ Belarus 11), nearly all for Russian Spyfall queries at positions 9–15 — the
 Russian Spyfall page alone had 100 of them — while English queries sat at 34–63.
 Since the move Russian ranks under new URLs (`/ru/…`); the old bare URLs are
 English now, and hreflang is what tells Google the two are one page.
+
+Ukrainian was added on 2026-10-07 (the developer is Ukrainian, and Ukraine
+was already about a sixth of the Russian-language impressions) — the whole interface,
+every game's content and the public pages, under `/uk`.
 
 The document element is `<html lang="en">`; the Russian subtree overrides it
 with `lang="ru"` on the `PublicShell` / `HomeLanding` root, which is valid

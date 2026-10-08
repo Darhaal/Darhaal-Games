@@ -12,7 +12,8 @@ import { BUTTON_PRIMARY, BUTTON_SECONDARY, DIALOG_OVERLAY, DIALOG_PANEL, LABEL }
 
 const T = {
   ru: { over: 'Партия окончена', menu: 'В меню', viewBoard: 'Посмотреть доску' },
-  en: { over: 'Match over', menu: 'Main menu', viewBoard: 'View the board' }
+  en: { over: 'Match over', menu: 'Main menu', viewBoard: 'View the board' },
+  uk: { over: 'Партію завершено', menu: 'У меню', viewBoard: 'Подивитися дошку' }
 };
 
 export interface ResultWinner {
@@ -33,7 +34,7 @@ export interface ResultWinner {
 export default function ResultDialog<T extends GameId>({
   lang, open, onHide, won, title, note, winners, gameId, parentState, onMenu, wide = false, children
 }: {
-  lang: 'ru' | 'en';
+  lang: 'ru' | 'en' | 'uk';
   open: boolean;
   onHide: () => void;
   won: boolean;
@@ -57,26 +58,26 @@ export default function ResultDialog<T extends GameId>({
       <div className={`${DIALOG_PANEL} ${wide ? 'max-w-lg' : 'max-w-sm'} text-center max-h-[90vh] overflow-y-auto`}>
         <div
           className={`w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 border ${
-            won ? 'bg-amber-50 text-amber-500 border-amber-100' : 'bg-[#F8FAFC] text-[#1A1F26] border-[#E6E1DC]'
+            won ? 'bg-amber-50 text-amber-500 border-amber-100' : 'bg-page text-ink border-line'
           }`}
         >
           <Trophy className="w-7 h-7" />
         </div>
 
         <div className={`${LABEL} mb-1`}>{t.over}</div>
-        <h3 className="text-2xl font-black text-[#1A1F26]">{title}</h3>
-        {note && <p className="mt-1 text-sm font-medium text-[#8A9099] leading-snug">{note}</p>}
+        <h3 className="text-2xl font-black text-ink">{title}</h3>
+        {note && <p className="mt-1 text-sm font-medium text-muted leading-snug">{note}</p>}
 
         {winners.length > 0 && (
           <div className="flex flex-wrap justify-center gap-2 mt-4">
             {winners.map((w) => (
-              <span key={w.id} className="flex items-center gap-2 bg-[#F8FAFC] border border-[#E6E1DC] rounded-xl px-3 py-2">
+              <span key={w.id} className="flex items-center gap-2 bg-page border border-line rounded-xl px-3 py-2">
                 {w.token ? (
                   <PlayerToken className="w-5 h-5" color={w.token.color} seat={w.token.seat} />
                 ) : w.avatarUrl ? (
                   <Image src={w.avatarUrl} alt="" width={20} height={20} className="w-5 h-5 rounded-full object-cover" />
                 ) : null}
-                <span className="text-sm font-bold text-[#1A1F26]">{w.name}</span>
+                <span className="text-sm font-bold text-ink">{w.name}</span>
               </span>
             ))}
           </div>
@@ -92,7 +93,7 @@ export default function ResultDialog<T extends GameId>({
 
         <button
           onClick={onHide}
-          className="mt-4 text-2xs font-bold uppercase tracking-widest text-[#8A9099] hover:text-[#9e1316] transition-colors"
+          className="mt-4 text-2xs font-bold uppercase tracking-widest text-muted hover:text-accent transition-colors"
         >
           {t.viewBoard}
         </button>

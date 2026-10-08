@@ -105,7 +105,7 @@ export function resignPlayer(
   delete state.pawns[playerId];
   state.resigned = [...(state.resigned ?? []), playerId];
 
-  pushNotice(state, { ru: `${player.name} сдался`, en: `${player.name} resigned` }, 'leave', at);
+  pushNotice(state, { ru: `${player.name} сдался`, en: `${player.name} resigned`, uk: `${player.name} здався` }, 'leave', at);
 
   const over = finishIfUncontested(state);
   if (over) return over;

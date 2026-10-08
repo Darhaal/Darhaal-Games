@@ -52,28 +52,31 @@ describe('absoluteUrl', () => {
 
 describe('indexed locales', () => {
   // English at the bare path, Russian under /ru, both indexed (2026-10-07).
-  it('offers English and Russian', () => {
-    expect(INDEXED_LOCALES).toEqual(['en', 'ru']);
+  it('offers English, Russian and Ukrainian', () => {
+    expect(INDEXED_LOCALES).toEqual(['en', 'ru', 'uk']);
   });
 
   it('points canonical at the current locale', () => {
     expect(buildAlternates('en', '/games/spyfall')?.canonical).toBe('https://games.okhten.com/games/spyfall');
     expect(buildAlternates('ru', '/games/spyfall')?.canonical).toBe('https://games.okhten.com/ru/games/spyfall');
+    expect(buildAlternates('uk', '/games/spyfall')?.canonical).toBe('https://games.okhten.com/uk/games/spyfall');
   });
 
-  it('pairs the two as translations, English the default', () => {
+  it('pairs the three as translations, English the default', () => {
     const langs = buildAlternates('ru', '/games/coup')?.languages as Record<string, string>;
     expect(langs).toEqual({
       en: 'https://games.okhten.com/games/coup',
       ru: 'https://games.okhten.com/ru/games/coup',
+      uk: 'https://games.okhten.com/uk/games/coup',
       'x-default': 'https://games.okhten.com/games/coup'
     });
     expect(buildAlternates('en', '/games/coup')?.languages).toEqual(langs);
+    expect(buildAlternates('uk', '/games/coup')?.languages).toEqual(langs);
   });
 
   it('leaves every page to the root layout robots (index, follow)', () => {
     const coup = getGameContent('coup')!;
-    for (const locale of ['en', 'ru'] as const) {
+    for (const locale of ['en', 'ru', 'uk'] as const) {
       for (const meta of [homeMetadata(locale), hubMetadata(locale), gameMetadata(coup, locale)]) {
         expect(meta.robots).toBeUndefined();
       }

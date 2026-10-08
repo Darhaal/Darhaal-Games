@@ -3,13 +3,15 @@
 import { Crown, Skull, Swords, RefreshCw, Shield, LucideIcon } from 'lucide-react';
 import { Role } from '@/types/coup';
 
-// Visual configuration for roles (Colors & Icons)
+// Visual configuration for roles (Colors & Icons).
+// Each colour is a deep tone on a light card and a lighter one on a dark card
+// (light-dark() follows the page's color-scheme); used only in inline styles.
 export const ROLE_CONFIG: Record<Role, { color: string; icon: LucideIcon }> = {
-  duke: { color: '#6B21A8', icon: Crown },       // Royal Purple
-  assassin: { color: '#9F1239', icon: Skull },    // Crimson Blood
-  captain: { color: '#1E3A8A', icon: Swords },    // Imperial Blue
-  ambassador: { color: '#065F46', icon: RefreshCw }, // Deep Emerald
-  contessa: { color: '#78350F', icon: Shield }    // Ancient Bronze
+  duke: { color: 'light-dark(#6B21A8, #C084FC)', icon: Crown },       // Royal Purple
+  assassin: { color: 'light-dark(#9F1239, #FB7185)', icon: Skull },    // Crimson Blood
+  captain: { color: 'light-dark(#1E3A8A, #60A5FA)', icon: Swords },    // Imperial Blue
+  ambassador: { color: 'light-dark(#065F46, #34D399)', icon: RefreshCw }, // Deep Emerald
+  contessa: { color: 'light-dark(#78350F, #F59E0B)', icon: Shield }    // Ancient Bronze
 };
 
 // Localization dictionary
@@ -161,6 +163,81 @@ export const DICTIONARY = {
       challenge: {
         title: 'Bluff & Challenge',
         text: 'Any character action can be challenged. If proven true, challenger loses a card. If false, actor loses a card.'
+      }
+    }
+  },
+  uk: {
+    roles: {
+      duke: { name: 'Герцог', action: 'Податок (+3)', block: 'Допомога', desc: 'Бере 3 монети. Блокує іноземну допомогу.' },
+      assassin: { name: 'Асасин', action: 'Убивство (-3)', block: '-', desc: 'Платить 3 монети. Змушує жертву скинути карту. Блокується Графинею.' },
+      captain: { name: 'Капітан', action: 'Крадіжка (+2)', block: 'Крадіжка', desc: 'Краде 2 монети в іншого гравця. Блокує крадіжку.' },
+      ambassador: { name: 'Посол', action: 'Обмін', block: 'Крадіжка', desc: 'Бере 2 карти з колоди, обирає 2, повертає решту. Блокує крадіжку.' },
+      contessa: { name: 'Графиня', action: '-', block: 'Убивство', desc: 'Не має дії. Блокує спробу вбивства Асасином.' },
+    },
+    actions: {
+      income: 'Дохід (+1)',
+      aid: 'Допомога (+2)',
+      tax: 'Податок (+3)',
+      steal: 'Крадіжка (+2)',
+      assassinate: 'Убивство (-3)',
+      exchange: 'Обмін',
+      coup: 'Переворот (-7)'
+    },
+    ui: {
+      waiting: 'Очікування гравців...',
+      startGame: 'Почати гру',
+      yourTurn: 'ВАШ ХІД',
+      winner: 'Переможець',
+      playAgain: 'Грати знову',
+      leave: 'Вийти',
+      targetSelect: 'Оберіть ціль:',
+      cancel: 'Скасувати',
+      challenge: 'Оскаржити',
+      pass: 'Пропустити',
+      block: 'Блок',
+      waitingForResponse: 'Очікування реакції...',
+      actionBlocked: 'Вашу дію заблоковано!',
+      table: 'Стіл',
+      pickTarget: 'оберіть гравця',
+      responseLabel: 'Відповідь на хід',
+      turnHint: 'Оберіть дію внизу екрана',
+      thinking: 'обмірковує хід',
+      waitingAnswers: 'чекаємо на відповідь гравців',
+      loseHint: 'Оберіть карту, яку скинути',
+      exchangeHint: 'Залиште стільки карт, скільки у вас життів. Решта піде в колоду',
+      youWin: 'Перемога',
+      noLogs: 'Поки нічого не сталося',
+      coins: 'Монети',
+      logs: 'Історія',
+      code: 'Код кімнати',
+      players: 'Гравці',
+      loseInfluence: 'СКИДАННЯ КАРТИ',
+      exchange: 'ОБМІН КАРТ',
+      confirm: 'Готово'
+    },
+    rules: {
+      title: 'Правила Coup',
+      objective: {
+        title: 'Мета гри',
+        text: 'Залишитися останнім гравцем, у якого є хоча б одна карта впливу.'
+      },
+      general: {
+        title: 'Хід гри',
+        text: 'У свій хід оберіть одну дію. Вам не обов’язково мати карту, щоб виконати її дію (блеф!). Інші гравці можуть оскаржити дію або заблокувати її.'
+      },
+      actions: [
+        { name: 'Income (Дохід)', effect: '+1 монета. Не можна заблокувати.' },
+        { name: 'Foreign Aid (Допомога)', effect: '+2 монети. Блокується Герцогом.' },
+        { name: 'Coup (Переворот)', effect: '-7 монет. Обраний гравець втрачає карту. Не можна заблокувати. (Обов’язково, якщо маєте 10+ монет).' },
+        { name: 'Duke (Герцог)', effect: 'Податок: +3 монети. Блокує допомогу.' },
+        { name: 'Assassin (Асасин)', effect: 'Убивство (-3 монети): ціль втрачає карту. Блокується Графинею.' },
+        { name: 'Captain (Капітан)', effect: 'Крадіжка: +2 монети в іншого гравця. Блокується Капітаном або Послом.' },
+        { name: 'Ambassador (Посол)', effect: 'Обмін карт із колодою. Блокує крадіжку.' },
+        { name: 'Contessa (Графиня)', effect: 'Блокує вбивство.' }
+      ],
+      challenge: {
+        title: 'Блеф і виклик',
+        text: 'Будь-яку дію карти можна оскаржити. Якщо гравець довів, що має карту, — той, хто оскаржив, втрачає вплив (карту замішують і беруть нову). Якщо не довів — брехун втрачає вплив.'
       }
     }
   }

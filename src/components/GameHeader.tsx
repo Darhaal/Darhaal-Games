@@ -17,7 +17,7 @@ interface GameHeaderProps {
   onLeave: () => void;
   onShowRules?: () => void;
   onShowGuide?: () => void;
-  lang: 'ru' | 'en';
+  lang: 'ru' | 'en' | 'uk';
   accentColor?: string;
 }
 
@@ -41,11 +41,12 @@ export default function GameHeader({
 
   const t = {
     ru: { leave: 'Выйти', rules: 'Правила', guide: 'Гайд' },
-    en: { leave: 'Leave', rules: 'Rules', guide: 'Guide' }
+    en: { leave: 'Leave', rules: 'Rules', guide: 'Guide' },
+    uk: { leave: 'Вийти', rules: 'Правила', guide: 'Гайд' }
   }[lang];
 
   return (
-    <header className="sticky top-0 z-40 w-full bg-white/95 backdrop-blur-xl border-b border-[#E6E1DC] transition-all">
+    <header className="sticky top-0 z-40 w-full bg-surface/95 backdrop-blur-xl border-b border-line transition-all">
       <div className="max-w-7xl mx-auto px-4 h-20 flex justify-between items-center">
 
         {/* Left: Identity */}
@@ -53,16 +54,16 @@ export default function GameHeader({
             squeezing the controls instead pushed "leave" off the screen on a
             phone, and a longer game name would do it again. */}
         <div className="flex items-center gap-3 md:gap-4 group cursor-default min-w-0">
-          <div className="w-10 h-10 md:w-12 md:h-12 bg-[#F5F5F0] rounded-2xl flex items-center justify-center border border-[#E6E1DC] shadow-sm group-hover:border-[#9e1316]/20 transition-colors">
-            <Icon className="w-5 h-5 md:w-6 md:h-6 text-[#1A1F26] group-hover:text-[#9e1316] transition-colors" />
+          <div className="w-10 h-10 md:w-12 md:h-12 bg-warm rounded-2xl flex items-center justify-center border border-line shadow-sm group-hover:border-accent/20 transition-colors">
+            <Icon className="w-5 h-5 md:w-6 md:h-6 text-ink group-hover:text-accent transition-colors" />
           </div>
           <div className="flex flex-col min-w-0">
-            <h1 className="text-lg md:text-xl font-black text-[#1A1F26] uppercase tracking-tight leading-none truncate">
+            <h1 className="text-lg md:text-xl font-black text-ink uppercase tracking-tight leading-none truncate">
               {title}
             </h1>
             <div className="hidden sm:flex items-center gap-1.5 mt-1">
-               <span className="w-1.5 h-1.5 rounded-full bg-[#9e1316]" />
-               <span className="text-2xs font-bold text-[#8A9099] uppercase tracking-[0.2em] group-hover:text-[#1A1F26] transition-colors">
+               <span className="w-1.5 h-1.5 rounded-full bg-accent" />
+               <span className="text-2xs font-bold text-muted uppercase tracking-[0.2em] group-hover:text-ink transition-colors">
                  by Darhaal
                </span>
             </div>
@@ -72,11 +73,11 @@ export default function GameHeader({
         {/* Center: Timer */}
         {showTime && timeLeft !== undefined && (
           <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 hidden md:flex flex-col items-center pointer-events-none">
-            <div className={`text-3xl font-black tabular-nums tracking-tight leading-none ${timeLeft < HURRY_SECONDS ? 'text-[#9e1316] animate-pulse' : 'text-[#1A1F26]'}`}>
+            <div className={`text-3xl font-black tabular-nums tracking-tight leading-none ${timeLeft < HURRY_SECONDS ? 'text-accent animate-pulse' : 'text-ink'}`}>
                {formatTime(timeLeft)}
             </div>
             {timeCaption && (
-              <div className="mt-1 text-3xs font-black uppercase tracking-widest text-[#8A9099]">{timeCaption}</div>
+              <div className="mt-1 text-3xs font-black uppercase tracking-widest text-muted">{timeCaption}</div>
             )}
           </div>
         )}
@@ -87,7 +88,7 @@ export default function GameHeader({
           {showTime && timeLeft !== undefined && (
              <div
                title={timeCaption}
-               className={`md:hidden font-mono font-black text-lg mr-2 ${timeLeft < HURRY_SECONDS ? 'text-[#9e1316] animate-pulse' : 'text-[#1A1F26]'}`}
+               className={`md:hidden font-mono font-black text-lg mr-2 ${timeLeft < HURRY_SECONDS ? 'text-accent animate-pulse' : 'text-ink'}`}
              >
                 {formatTime(timeLeft)}
              </div>
@@ -102,7 +103,7 @@ export default function GameHeader({
               onClick={onShowGuide}
               aria-label={t.guide}
               title={t.guide}
-              className="flex items-center gap-1.5 px-2 md:px-3 py-2.5 rounded-xl text-[#8A9099] hover:bg-[#F5F5F0] hover:text-[#1A1F26] transition-all border border-transparent hover:border-[#E6E1DC]"
+              className="flex items-center gap-1.5 px-2 md:px-3 py-2.5 rounded-xl text-muted hover:bg-warm hover:text-ink transition-all border border-transparent hover:border-line"
             >
               <Book className="w-5 h-5 shrink-0" />
               <span className="font-bold uppercase text-2xs tracking-wide md:tracking-widest">{t.guide}</span>
@@ -114,18 +115,18 @@ export default function GameHeader({
               onClick={onShowRules}
               aria-label={t.rules}
               title={t.rules}
-              className="flex items-center gap-1.5 px-2 md:px-3 py-2.5 rounded-xl text-[#8A9099] hover:bg-[#F5F5F0] hover:text-[#1A1F26] transition-all border border-transparent hover:border-[#E6E1DC]"
+              className="flex items-center gap-1.5 px-2 md:px-3 py-2.5 rounded-xl text-muted hover:bg-warm hover:text-ink transition-all border border-transparent hover:border-line"
             >
               <HelpCircle className="w-5 h-5 shrink-0" />
               <span className="font-bold uppercase text-2xs tracking-wide md:tracking-widest">{t.rules}</span>
             </button>
           )}
 
-          <div className="h-8 w-px bg-[#E6E1DC] mx-2 hidden md:block" />
+          <div className="h-8 w-px bg-line mx-2 hidden md:block" />
 
           <button
             onClick={onLeave}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white border border-[#E6E1DC] text-[#1A1F26] rounded-xl font-bold uppercase text-2xs tracking-widest hover:bg-[#F5F5F0] hover:text-[#9e1316] hover:border-[#9e1316]/20 transition-all shadow-sm active:scale-95"
+            className="flex items-center gap-2 px-4 py-2.5 bg-surface border border-line text-ink rounded-xl font-bold uppercase text-2xs tracking-widest hover:bg-warm hover:text-accent hover:border-accent/20 transition-all shadow-sm active:scale-95"
           >
             <LogOut className="w-4 h-4" />
             <span className="hidden md:inline">{t.leave}</span>

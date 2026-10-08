@@ -8,7 +8,7 @@ import { HOME_CONTENT } from '@/content/games';
  * listed eight. These tests are the reason it cannot happen a fourth time.
  */
 
-const LOCALES: Locale[] = ['ru', 'en'];
+const LOCALES: Locale[] = ['ru', 'en', 'uk'];
 
 /**
  * Whole-word match, done by hand.
@@ -36,7 +36,9 @@ const NUMERAL = {
   ru: ['ноль', 'одна', 'две', 'три', 'четыре', 'пять', 'шесть',
        'семь', 'восемь', 'девять', 'десять', 'одиннадцать', 'двенадцать'],
   en: ['zero', 'one', 'two', 'three', 'four', 'five', 'six',
-       'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve']
+       'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve'],
+  uk: ['нуль', 'одна', 'дві', 'три', 'чотири', 'п’ять', 'шість',
+       'сім', 'вісім', 'дев’ять', 'десять', 'одинадцять', 'дванадцять']
 };
 
 describe('hasWord', () => {
@@ -91,7 +93,7 @@ describe('the /games search snippet', () => {
 
       // Either everything fits, or the sentence ends by saying it does not.
       if (missing.length > 0) {
-        expect(text).toContain(lang === 'ru' ? 'и другие' : 'and more');
+        expect(text).toContain({ ru: 'и другие', en: 'and more', uk: 'та інші' }[lang]);
       }
       expect(missing.length).toBeLessThan(GAMES.length);
     });
@@ -106,7 +108,7 @@ describe('the "how many people" answer', () => {
     it(`names every game in ${lang}`, () => {
       const answer = HOME_CONTENT[lang].faq
         .map((item) => item.a)
-        .find((a) => /до двенадцати|up to twelve/.test(a));
+        .find((a) => /до двенадцати|до дванадцяти|up to twelve/.test(a));
 
       expect(answer, 'the player-count answer went missing').toBeTruthy();
 

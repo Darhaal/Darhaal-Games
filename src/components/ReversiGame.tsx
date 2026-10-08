@@ -25,7 +25,7 @@ interface ReversiGameProps {
   placeDisc: (index: number) => void;
   handleTimeout: () => void;
   leaveGame: () => void;
-  lang: 'ru' | 'en';
+  lang: 'ru' | 'en' | 'uk';
 }
 
 const UI_TEXT = {
@@ -46,6 +46,15 @@ const UI_TEXT = {
     discs: (n: number) => pluralEn(n, 'disc', 'discs'),
     hint: 'Tap a highlighted square',
     passed: 'Turn passed — nowhere to play'
+  },
+  uk: {
+    youWin: 'Перемога',
+    draw: 'Нічия',
+    winner: 'Переможець',
+    thinking: 'обмірковує хід',
+    discs: (n: number) => pluralRu(n, ['фішка', 'фішки', 'фішок']),
+    hint: 'Натисніть на підсвічену клітинку',
+    passed: 'Хід пропущено — ставити нікуди'
   }
 };
 
@@ -118,7 +127,7 @@ export default function ReversiGame({
         isOpen={showRules}
         onClose={() => setShowRules(false)}
         rules={GAME_RULES[lang].reversi}
-        themeColor="text-[#1A1F26]"
+        themeColor="text-ink"
       />
 
       <GameHeader
@@ -134,7 +143,7 @@ export default function ReversiGame({
       <GameLayout
         board={
           <div
-            className="w-full grid aspect-square bg-[#E6E1DC]"
+            className="w-full grid aspect-square bg-line"
             style={{ gridTemplateColumns: `repeat(${size}, minmax(0, 1fr))`, gap: `calc(${GAP} / ${size})`, padding: `calc(${GAP} / ${size})` }}
           >
             {gameState.board.map((seat, index) => {
@@ -147,8 +156,8 @@ export default function ReversiGame({
                   type="button"
                   disabled={!playable}
                   onClick={() => playable && placeDisc(index)}
-                  style={playable ? { backgroundColor: `color-mix(in srgb, ${myColor} 14%, white)` } : undefined}
-                  className={`relative aspect-square bg-white transition-[filter] ${
+                  style={playable ? { backgroundColor: `color-mix(in srgb, ${myColor} 14%, var(--surface))` } : undefined}
+                  className={`relative aspect-square bg-surface transition-[filter] ${
                     playable ? 'cursor-pointer hover:brightness-95' : ''
                   }`}
                   aria-label={`${(index % size) + 1},${Math.floor(index / size) + 1}`}
@@ -163,7 +172,7 @@ export default function ReversiGame({
 
                   {/* The disc just placed, ringed so it can be found. */}
                   {isLast && seat != null && (
-                    <span aria-hidden className="absolute inset-[6%] rounded-full border-2 border-[#1A1F26]" />
+                    <span aria-hidden className="absolute inset-[6%] rounded-full border-2 border-ink" />
                   )}
 
                   {/* Where you may play, in your own colour. */}

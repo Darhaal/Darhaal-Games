@@ -35,7 +35,7 @@ interface WallRushGameProps {
   resign: () => void;
   handleTimeout: () => void;
   leaveGame: () => void;
-  lang: 'ru' | 'en';
+  lang: 'ru' | 'en' | 'uk';
 }
 
 const UI_TEXT = {
@@ -96,6 +96,35 @@ const UI_TEXT = {
     resignDesc: 'Your pawn leaves the board. You stay in the room and can watch the match out.',
     resignDescDuel: 'Your rival wins at once. You stay in the room.',
     cancel: 'Cancel'
+  },
+  uk: {
+    turnLabel: 'Хід',
+    wallsLabel: 'Ваші стіни',
+    playersLabel: 'Гравці',
+    yourTurn: 'Ваш хід',
+    moveHint: 'Ступіть на підсвічену клітинку або поставте стіну',
+    thinking: 'обмірковує хід',
+    dragHowTo: 'Перетягніть стіну на дошку. R або пробіл — повернути',
+    dropHint: 'Відпустіть над проміжком між клітинками',
+    wallsOnYourTurn: 'Стіни ставлять у свій хід',
+    noWalls: 'Стіни скінчилися',
+    you: 'ви',
+    youWin: 'Перемога',
+    teamWins: 'Перемогла пара',
+    winner: 'Переможець',
+    matchOver: 'Партію завершено',
+    viewBoard: 'Подивитися дошку',
+    showResult: 'Підсумки',
+    toMenu: 'У меню',
+    teamA: 'Пара A',
+    teamB: 'Пара B',
+    resign: 'Здатися',
+    resigned: 'здався',
+    watching: 'Ви здалися — додивляєтеся партію',
+    resignTitle: 'Здатися?',
+    resignDesc: 'Ваш пішак зникне з дошки. Ви залишитеся в кімнаті й зможете додивитися партію.',
+    resignDescDuel: 'Суперник одразу переможе. Ви залишитеся в кімнаті.',
+    cancel: 'Скасувати'
   }
 };
 
@@ -116,8 +145,8 @@ const GROOVE_OF_WALL_PCT = (GUTTER_FR / (2 + GUTTER_FR)) * 100;
  * White squares on a grey grid — the grey is the site's own border colour,
  * so the board belongs to the same page as the lobby around it.
  */
-const GRID_BG = '#E6E1DC';
-const CELL_BG = '#FFFFFF';
+const GRID_BG = 'var(--line)';
+const CELL_BG = 'var(--surface)';
 
 
 /**
@@ -149,7 +178,7 @@ function TrayWall({ o, color, lit }: { o: WallOrientation; color: string; lit: b
   return (
     <span
       className={`block rounded-[3px] ${o === 'h' ? 'w-16 h-3.5' : 'w-3.5 h-12'}`}
-      style={{ backgroundColor: lit ? softTone(color) : '#DAD7D1' }}
+      style={{ backgroundColor: lit ? softTone(color) : 'color-mix(in srgb, var(--line) 92%, var(--ink))' }}
     />
   );
 }
@@ -375,7 +404,7 @@ export default function WallRushGame({
             // Square: a wall is square-ended and fills the gap, so any
             // rounding here shows as a notch of grey between the two.
             backgroundColor: isCentre
-              ? '#FEF3C7'
+              ? 'light-dark(#FEF3C7, #3B2F12)'
               : isTarget
                 ? `color-mix(in srgb, ${myColor} 14%, ${CELL_BG})`
                 : CELL_BG,
@@ -466,9 +495,9 @@ export default function WallRushGame({
       className={`flex-1 h-16 rounded-xl border flex items-center justify-center transition-all ${
         canBuild
           ? dragging === o
-            ? 'bg-white border-[#1A1F26]/25 shadow-sm cursor-grabbing'
-            : 'bg-[#F8FAFC] border-[#E6E1DC] hover:bg-white hover:border-[#9e1316]/30 hover:shadow-sm cursor-grab'
-          : 'bg-[#F8FAFC] border-transparent cursor-not-allowed'
+            ? 'bg-surface border-ink/25 shadow-sm cursor-grabbing'
+            : 'bg-page border-line hover:bg-surface hover:border-accent/30 hover:shadow-sm cursor-grab'
+          : 'bg-page border-transparent cursor-not-allowed'
       }`}
       aria-label={o === 'h' ? 'horizontal wall' : 'vertical wall'}
     >
@@ -492,7 +521,7 @@ export default function WallRushGame({
         isOpen={showRules}
         onClose={() => setShowRules(false)}
         rules={GAME_RULES[lang].wallrush}
-        themeColor="text-[#1A1F26]"
+        themeColor="text-ink"
       />
 
       <GameHeader
@@ -503,7 +532,7 @@ export default function WallRushGame({
         onLeave={leaveGame}
         onShowRules={() => setShowRules(true)}
         lang={lang}
-        accentColor="text-[#1A1F26]"
+        accentColor="text-ink"
       />
 
       <GameLayout
@@ -545,10 +574,10 @@ export default function WallRushGame({
               // updating, only the controls go.
               <GameCard>
                 <div className="flex items-center gap-3">
-                  <span className="w-10 h-10 rounded-xl bg-[#F8FAFC] border border-[#E6E1DC] flex items-center justify-center text-[#8A9099] shrink-0">
+                  <span className="w-10 h-10 rounded-xl bg-page border border-line flex items-center justify-center text-muted shrink-0">
                     <Eye className="w-5 h-5" />
                   </span>
-                  <p className="text-sm font-bold text-[#8A9099] leading-snug">{t.watching}</p>
+                  <p className="text-sm font-bold text-muted leading-snug">{t.watching}</p>
                 </div>
               </GameCard>
             ) : me && !isFinished && (
@@ -557,7 +586,7 @@ export default function WallRushGame({
                 aside={
                   <span
                     className={`text-xs font-bold px-2 py-0.5 rounded tabular-nums ${
-                      me.wallsLeft > 0 ? 'text-white bg-[#1A1F26]' : 'text-[#8A9099] bg-[#F1F5F9]'
+                      me.wallsLeft > 0 ? 'text-on-ink bg-ink' : 'text-muted bg-divider'
                     }`}
                   >
                     {me.wallsLeft}
@@ -569,14 +598,14 @@ export default function WallRushGame({
                   {trayPiece('v')}
                 </div>
 
-                <p className="mt-3 text-xs font-medium text-[#8A9099] leading-snug">
+                <p className="mt-3 text-xs font-medium text-muted leading-snug">
                   {me.wallsLeft === 0
                     ? t.noWalls
                     : dragging ? t.dropHint : canBuild ? t.dragHowTo : t.wallsOnYourTurn}
                 </p>
 
                 {canResign && (
-                  <div className="mt-4 pt-4 border-t border-[#F1F5F9] flex justify-end">
+                  <div className="mt-4 pt-4 border-t border-divider flex justify-end">
                     <button onClick={() => setPendingResign(true)} className={`flex items-center gap-1.5 px-3.5 py-2 ${BUTTON_DANGER_QUIET}`}>
                       <Flag className="w-3.5 h-3.5" />
                       {t.resign}
@@ -603,7 +632,7 @@ export default function WallRushGame({
                   stat: (
                     <>
                       {out ? (
-                        <span className="uppercase tracking-wider text-[#B5B3AD]">{t.resigned}</span>
+                        <span className="uppercase tracking-wider text-faded">{t.resigned}</span>
                       ) : (
                         <>
                           {/* Walls as pips: read every turn, and faster than a number. */}
@@ -643,8 +672,8 @@ export default function WallRushGame({
             <div className="w-14 h-14 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-red-100">
               <Flag className="w-6 h-6" />
             </div>
-            <h3 className="text-xl font-black text-[#1A1F26] mb-1">{t.resignTitle}</h3>
-            <p className="text-sm font-medium text-[#8A9099] mb-6 leading-snug">
+            <h3 className="text-xl font-black text-ink mb-1">{t.resignTitle}</h3>
+            <p className="text-sm font-medium text-muted mb-6 leading-snug">
               {/* Say what actually happens: in a duel it ends the match. */}
               {stillRacing <= 2 && !teams ? t.resignDescDuel : t.resignDesc}
             </p>

@@ -25,16 +25,17 @@ export interface TimelineGuess {
 
 const MONTHS = {
   ru: ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'],
-  en: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  en: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+  uk: ['січ', 'лют', 'бер', 'кві', 'тра', 'чер', 'лип', 'сер', 'вер', 'жов', 'лис', 'гру']
 };
 
 /** How a date reads under the photo: "1 сентября 1939", or the year alone. */
-export function formatDate(d: TimlerDate, lang: 'ru' | 'en'): string {
+export function formatDate(d: TimlerDate, lang: 'ru' | 'en' | 'uk'): string {
   if (d.month === undefined || d.day === undefined) return String(d.year);
   return formatReleaseDate(`${d.year}-${String(d.month).padStart(2, '0')}-${String(d.day).padStart(2, '0')}`, lang);
 }
 
-function tickLabel(at: number, step: number, lang: 'ru' | 'en'): string {
+function tickLabel(at: number, step: number, lang: 'ru' | 'en' | 'uk'): string {
   if (step >= 1) return String(Math.round(at));
   const year = Math.floor(at + 1e-9);
   const month = Math.round((at - year) * 12) % 12;
@@ -49,7 +50,7 @@ const ROW = BUBBLE + 6;
 export default function Timeline({ answer, guesses, lang }: {
   answer: TimlerDate;
   guesses: TimelineGuess[];
-  lang: 'ru' | 'en';
+  lang: 'ru' | 'en' | 'uk';
 }) {
   const answerAt = toYears(answer);
   const points = [
@@ -72,7 +73,7 @@ export default function Timeline({ answer, guesses, lang }: {
       <div className="relative mx-5" style={{ height: height + 34 }}>
         {/* The right date */}
         <div
-          className="absolute top-0 bottom-6 w-0.5 bg-[#9e1316] -translate-x-1/2"
+          className="absolute top-0 bottom-6 w-0.5 bg-accent -translate-x-1/2"
           style={{ left: `${along(axis, answerAt) * 100}%` }}
           aria-hidden
         />
@@ -91,7 +92,7 @@ export default function Timeline({ answer, guesses, lang }: {
             title={`${g.name}: ${formatDate(g.date, lang)}`}
           >
             <div
-              className={`rounded-full overflow-hidden bg-white shrink-0 ${g.best ? 'ring-2 ring-offset-2 ring-[#9e1316]' : ''}`}
+              className={`rounded-full overflow-hidden bg-surface shrink-0 ${g.best ? 'ring-2 ring-offset-2 ring-accent' : ''}`}
               style={{ width: BUBBLE, height: BUBBLE, border: `3px solid ${g.color}` }}
             >
               <Image src={g.avatarUrl} alt={g.name} width={BUBBLE} height={BUBBLE} className="w-full h-full object-cover" unoptimized />
@@ -101,15 +102,15 @@ export default function Timeline({ answer, guesses, lang }: {
         ))}
 
         {/* The scale */}
-        <div className="absolute left-0 right-0 h-0.5 bg-[#1A1F26] rounded-full" style={{ bottom: 32 }} aria-hidden />
+        <div className="absolute left-0 right-0 h-0.5 bg-ink rounded-full" style={{ bottom: 32 }} aria-hidden />
         {axis.ticks.map((tick) => (
           <div
             key={tick}
             className="absolute -translate-x-1/2 flex flex-col items-center"
             style={{ left: `${along(axis, tick) * 100}%`, bottom: 0 }}
           >
-            <div className="w-px h-2 bg-[#1A1F26] mb-1" aria-hidden />
-            <span className="text-2xs font-bold text-[#8A9099] tabular-nums whitespace-nowrap">{tickLabel(tick, axis.step, lang)}</span>
+            <div className="w-px h-2 bg-ink mb-1" aria-hidden />
+            <span className="text-2xs font-bold text-muted tabular-nums whitespace-nowrap">{tickLabel(tick, axis.step, lang)}</span>
           </div>
         ))}
       </div>

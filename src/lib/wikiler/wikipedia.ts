@@ -27,9 +27,11 @@ export const historyUrl = (lang: WikilerLang, title: string) =>
   `${host(lang)}/w/index.php?title=${slug(title)}&action=history`;
 export const wikipediaHome = (lang: WikilerLang) => `${host(lang)}/`;
 
+/** The licence page in the reader's interface language. */
 export const CC_BY_SA_URL = {
   ru: 'https://creativecommons.org/licenses/by-sa/4.0/deed.ru',
-  en: 'https://creativecommons.org/licenses/by-sa/4.0/'
+  en: 'https://creativecommons.org/licenses/by-sa/4.0/',
+  uk: 'https://creativecommons.org/licenses/by-sa/4.0/deed.uk'
 } as const;
 
 export const WIKIMEDIA_PRIVACY_URL = {

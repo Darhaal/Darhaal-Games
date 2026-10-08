@@ -33,7 +33,7 @@ describe('pushNotice', () => {
     for (let i = 1; i <= 5; i++) pushNotice(state, leftTheGame(`P${i}`), 'leave', i);
 
     expect(state.notifications?.map((n) => n.id)).toEqual([3, 4, 5]);
-    expect(state.notifications?.at(-1)?.message).toEqual({ ru: 'P5 покинул игру', en: 'P5 left the game' });
+    expect(state.notifications?.at(-1)?.message).toEqual({ ru: 'P5 покинул игру', en: 'P5 left the game', uk: 'P5 залишив гру' });
   });
 
   it('starts the list on a state that has none', () => {

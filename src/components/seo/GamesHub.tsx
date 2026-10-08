@@ -37,6 +37,19 @@ const T = {
     ctaButton: 'Open the platform',
     faqTitle: 'Frequently asked questions',
     crumbGames: 'Games'
+  },
+  uk: {
+    h1: 'Ігри онлайн із друзями',
+    lead: GAME_COUNT_COPY.uk.hubLead,
+    players: 'гравців',
+    player: 'гравці',
+    minutes: 'хв',
+    readMore: 'Правила й опис',
+    ctaTitle: 'Готові почати?',
+    ctaText: 'Створіть кімнату за кілька секунд і покличте друзів за посиланням.',
+    ctaButton: 'Відкрити платформу',
+    faqTitle: 'Часті запитання',
+    crumbGames: 'Ігри'
   }
 } as const;
 
@@ -80,7 +93,7 @@ export default function GamesHub({ locale }: { locale: Locale }) {
             return (
               <article
                 key={game.slug}
-                className="group relative bg-white border border-gray-200 rounded-[24px] p-6 flex flex-col transition-all duration-300 hover:border-[#9e1316]/30 hover:shadow-xl hover:shadow-[#9e1316]/5 hover:-translate-y-1"
+                className="group relative bg-surface border border-gray-200 rounded-[24px] p-6 flex flex-col transition-all duration-300 hover:border-accent/30 hover:shadow-xl hover:shadow-accent/5 hover:-translate-y-1"
               >
                 <div
                   className="w-10 h-1.5 rounded-full mb-5"
@@ -115,7 +128,7 @@ export default function GamesHub({ locale }: { locale: Locale }) {
                   </div>
                 </dl>
 
-                <span className="mt-4 text-xs font-bold uppercase tracking-wider text-[#9e1316] opacity-0 group-hover:opacity-100 transition-opacity">
+                <span className="mt-4 text-xs font-bold uppercase tracking-wider text-accent opacity-0 group-hover:opacity-100 transition-opacity">
                   {t.readMore} →
                 </span>
               </article>
@@ -130,7 +143,7 @@ export default function GamesHub({ locale }: { locale: Locale }) {
         </h2>
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
           {hub.choose.map((item, i) => (
-            <div key={i} className="bg-white border border-gray-200 rounded-[24px] p-6">
+            <div key={i} className="bg-surface border border-gray-200 rounded-[24px] p-6">
               <h3 className="text-lg font-black tracking-tight text-gray-900">{item.title}</h3>
               <p className="mt-2 text-sm text-gray-600 leading-relaxed">{item.body}</p>
             </div>
@@ -151,16 +164,16 @@ export default function GamesHub({ locale }: { locale: Locale }) {
       </section>
 
       <section className="max-w-6xl mx-auto px-4 md:px-6 pt-14">
-        <div className="bg-[#1A1F26] rounded-[28px] px-8 py-10 md:px-12 md:py-14 text-center">
+        <div className="bg-night rounded-[28px] px-8 py-10 md:px-12 md:py-14 text-center">
           <h2 className="text-2xl md:text-4xl font-black tracking-tighter text-white">
             {t.ctaTitle}
           </h2>
-          <p className="mt-3 text-sm md:text-base text-gray-400 font-medium max-w-xl mx-auto">
+          <p className="mt-3 text-sm md:text-base text-white/60 font-medium max-w-xl mx-auto">
             {t.ctaText}
           </p>
           <Link
             href="/"
-            className="inline-block mt-7 bg-[#9e1316] text-white text-xs font-bold uppercase tracking-widest px-8 py-4 rounded-full hover:bg-white hover:text-[#1A1F26] transition-colors"
+            className="inline-block mt-7 bg-accent text-white text-xs font-bold uppercase tracking-widest px-8 py-4 rounded-full hover:bg-surface hover:text-ink transition-colors"
           >
             {t.ctaButton}
           </Link>

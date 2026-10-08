@@ -117,17 +117,61 @@ const T = {
     youWin: 'You win!',
     winnerLabel: 'Winner',
     named: 'named'
+  },
+  uk: {
+    roundOf: (n: number, total: number) => `Раунд ${n} з ${total}`,
+    roundClock: 'раунд',
+    whatSong: 'Що за пісня?',
+    solved: 'Вгадано!',
+    outOfTries: 'Спроби скінчилися',
+    roundOver: 'Раунд закінчено',
+    hintPick: 'Слухайте й обирайте пісню з підказок',
+    hintWait: 'Чекаємо на решту',
+    startsIn: 'Починаємо через',
+    loading: 'Завантажуємо уривок…',
+    loadError: 'Уривок не завантажився — спроби можна пропускати',
+    play: 'Слухати',
+    stop: 'Стоп',
+    snippet: (s: string) => `Уривок: ${s} с`,
+    whole: 'Увесь уривок',
+    placeholder: 'Назва або виконавець…',
+    noMatches: 'Такої пісні в грі немає',
+    skip: (s: string) => `Пропустити · +${s} с`,
+    giveUp: 'Здатися',
+    volume: 'Гучність',
+    tries: 'Спроби',
+    right: 'вгадано',
+    artist: 'виконавець правильний',
+    wrong: 'повз',
+    skipped: 'пропуск',
+    yourScore: 'Ваш рахунок',
+    triesOf: (n: number) => `спроба ${n} з ${MAX_ATTEMPTS}`,
+    guessed: 'вгадав ✓',
+    missed: 'не вгадав',
+    solvedOn: (n: number) => `з ${n}-ї спроби`,
+    artistOnly: 'лише виконавець',
+    noSolve: 'не вгадав',
+    onDeezer: 'Deezer',
+    next: 'Далі',
+    total: 'Підсумки',
+    waitingGroup: 'Чекаємо на решту…',
+    finishing: 'Підбиваємо підсумки…',
+    nextRoundIn: (s: number) => `Наступний раунд через ${s} с`,
+    youWin: 'Ви перемогли!',
+    winnerLabel: 'Переможець',
+    named: 'вгадано'
   }
 };
 type Texts = (typeof T)['ru'];
 
 /** Seconds as the reader writes them: 0,5 in Russian, 0.5 in English. */
-const secs = (s: number, lang: 'ru' | 'en') => (lang === 'ru' ? String(s).replace('.', ',') : String(s));
+// A decimal comma in Russian and Ukrainian
+const secs = (s: number, lang: 'ru' | 'en' | 'uk') => (lang === 'en' ? String(s) : String(s).replace('.', ','));
 
 interface SonglerGameProps {
   gameState: SonglerState;
   userId: string;
-  lang: 'ru' | 'en';
+  lang: 'ru' | 'en' | 'uk';
   attempt: (guess: { id: number; title: string; artist: string } | null) => Promise<void>;
   forceRoundEnd: () => void;
   readyNextRound: () => void;
@@ -278,12 +322,12 @@ export default function SonglerGame({
     : t.snippet(secs(unlocked, lang));
 
   const board = (
-    <div className="bg-white rounded-2xl border border-[#E6E1DC] shadow-sm overflow-hidden">
+    <div className="bg-surface rounded-2xl border border-line shadow-sm overflow-hidden">
       <div className="relative p-5 md:p-7">
         {isPlaying && startsIn > 0 && (
-          <div className="absolute inset-0 z-10 bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center">
+          <div className="absolute inset-0 z-10 bg-surface/90 backdrop-blur-sm flex flex-col items-center justify-center">
             <div className={LABEL}>{t.startsIn}</div>
-            <div className="text-6xl font-black text-[#1A1F26] tabular-nums mt-2">{startsIn}</div>
+            <div className="text-6xl font-black text-ink tabular-nums mt-2">{startsIn}</div>
           </div>
         )}
 
@@ -293,7 +337,7 @@ export default function SonglerGame({
             onClick={togglePlay}
             disabled={!canPlay}
             aria-label={player.playing ? t.stop : t.play}
-            className="w-16 h-16 shrink-0 rounded-full bg-[#1A1F26] text-white flex items-center justify-center hover:bg-[#9e1316] disabled:opacity-40 disabled:hover:bg-[#1A1F26] transition-colors shadow-md"
+            className="w-16 h-16 shrink-0 rounded-full bg-ink text-on-ink flex items-center justify-center hover:bg-accent disabled:opacity-40 disabled:hover:bg-ink transition-colors shadow-md"
           >
             {player.status === 'loading' ? <Loader2 className="w-6 h-6 animate-spin" />
               : player.playing ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6 ml-1" />}
@@ -301,15 +345,15 @@ export default function SonglerGame({
           <div className="flex-1 min-w-0">
             <SnippetBar unlocked={unlocked} scale={scale} elapsed={player.playing ? player.elapsed : 0} showSteps={isPlaying && !done} />
             <div className="mt-2 flex items-center justify-between gap-3">
-              <span className="text-xs font-bold text-[#8A9099] tabular-nums truncate">{status}</span>
-              <label className="flex items-center gap-1.5 text-[#8A9099] shrink-0" title={t.volume}>
+              <span className="text-xs font-bold text-muted tabular-nums truncate">{status}</span>
+              <label className="flex items-center gap-1.5 text-muted shrink-0" title={t.volume}>
                 <Volume2 className="w-3.5 h-3.5" />
                 <input
                   type="range" min={0} max={1} step={0.05}
                   value={player.volume}
                   onChange={(e) => player.setVolume(Number(e.target.value))}
                   aria-label={t.volume}
-                  className="w-20 h-1 accent-[#1A1F26] cursor-pointer"
+                  className="w-20 h-1 accent-ink cursor-pointer"
                 />
               </label>
             </div>
@@ -332,12 +376,12 @@ export default function SonglerGame({
                     placeholder={t.placeholder}
                     aria-label={t.placeholder}
                     autoComplete="off"
-                    className="w-full bg-[#F8FAFC] border border-gray-200 focus:bg-white focus:border-[#1A1F26] rounded-xl py-3 px-4 font-bold text-sm text-[#1A1F26] outline-none transition-all disabled:opacity-50"
+                    className="w-full bg-page border border-gray-200 focus:bg-surface focus:border-ink rounded-xl py-3 px-4 font-bold text-sm text-ink outline-none transition-all disabled:opacity-50"
                   />
                   {draft.open && draft.query && (
-                    <ul role="listbox" className="absolute z-20 left-0 right-0 bottom-full mb-2 bg-white border border-[#E6E1DC] rounded-xl shadow-lg overflow-hidden max-h-72 overflow-y-auto">
+                    <ul role="listbox" className="absolute z-20 left-0 right-0 bottom-full mb-2 bg-surface border border-line rounded-xl shadow-lg overflow-hidden max-h-72 overflow-y-auto">
                       {options.length === 0 && (
-                        <li className="px-4 py-3 text-xs font-bold text-[#8A9099]">{pool ? t.noMatches : t.loading}</li>
+                        <li className="px-4 py-3 text-xs font-bold text-muted">{pool ? t.noMatches : t.loading}</li>
                       )}
                       {options.map((o, i) => (
                         <li key={o.id} role="option" aria-selected={i === draft.active}>
@@ -345,10 +389,10 @@ export default function SonglerGame({
                             type="button"
                             onMouseDown={(e) => e.preventDefault()}
                             onClick={() => send(o)}
-                            className={`w-full text-left px-4 py-2.5 transition-colors ${i === draft.active ? 'bg-[#F8FAFC]' : 'hover:bg-[#F8FAFC]'}`}
+                            className={`w-full text-left px-4 py-2.5 transition-colors ${i === draft.active ? 'bg-page' : 'hover:bg-page'}`}
                           >
-                            <span className="block text-sm font-bold text-[#1A1F26] truncate">{o.title}</span>
-                            <span className="block text-2xs font-bold text-[#8A9099] truncate">{o.artist}</span>
+                            <span className="block text-sm font-bold text-ink truncate">{o.title}</span>
+                            <span className="block text-2xs font-bold text-muted truncate">{o.artist}</span>
                           </button>
                         </li>
                       ))}
@@ -368,11 +412,11 @@ export default function SonglerGame({
                 </button>
               </div>
             ) : (
-              <div className="mt-4 flex items-center gap-2 text-sm font-black text-[#1A1F26]">
+              <div className="mt-4 flex items-center gap-2 text-sm font-black text-ink">
                 {myAttempts.some((a) => a.verdict === 'right')
                   ? <><Check className="w-5 h-5 text-emerald-600" /> {t.solved}</>
                   : <><X className="w-5 h-5 text-red-500" /> {t.outOfTries}</>}
-                <span className="text-xs font-bold text-[#8A9099]">· {t.hintWait}</span>
+                <span className="text-xs font-bold text-muted">· {t.hintWait}</span>
               </div>
             )}
           </>
@@ -402,7 +446,7 @@ export default function SonglerGame({
       />
 
       <GameCard label={t.yourScore}>
-        <div className="text-4xl font-black text-[#1A1F26] tabular-nums leading-none">{me?.score ?? 0}</div>
+        <div className="text-4xl font-black text-ink tabular-nums leading-none">{me?.score ?? 0}</div>
       </GameCard>
 
       {/* A leaderboard, as in Flager and Timler: everyone's total at all times. */}
@@ -424,7 +468,7 @@ export default function SonglerGame({
                 {pDone ? (pRight ? t.guessed : t.missed) : t.triesOf(p.attempts.length + 1)}
               </span>
             ) : undefined,
-            aside: <span className="text-sm font-black text-[#1A1F26] tabular-nums">{p.score}</span>
+            aside: <span className="text-sm font-black text-ink tabular-nums">{p.score}</span>
           };
         })}
       />
@@ -463,32 +507,32 @@ export default function SonglerGame({
             <div className="flex items-center gap-4 mt-3 mb-5">
               <Cover song={song} size={88} />
               <div className="min-w-0 flex-1">
-                <h2 className="text-xl font-black text-[#1A1F26] leading-tight">{song.title}</h2>
-                <p className="text-sm font-bold text-[#8A9099] truncate">{song.artist}{song.year ? ` · ${song.year}` : ''}</p>
+                <h2 className="text-xl font-black text-ink leading-tight">{song.title}</h2>
+                <p className="text-sm font-bold text-muted truncate">{song.artist}{song.year ? ` · ${song.year}` : ''}</p>
                 <button
                   type="button"
                   onClick={togglePlay}
                   disabled={!canPlay}
-                  className="mt-2 inline-flex items-center gap-1.5 text-2xs font-black uppercase tracking-widest text-[#8A9099] hover:text-[#9e1316] disabled:opacity-40 transition-colors"
+                  className="mt-2 inline-flex items-center gap-1.5 text-2xs font-black uppercase tracking-widest text-muted hover:text-accent disabled:opacity-40 transition-colors"
                 >
                   {player.playing ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />} {player.playing ? t.stop : t.whole}
                 </button>
               </div>
             </div>
 
-            <div className="divide-y divide-[#F1F5F9] border-y border-[#F1F5F9] mb-5">
+            <div className="divide-y divide-divider border-y border-divider mb-5">
               {roundRows.map(({ p, r }) => (
                 <div key={p.id} className="flex items-center gap-3 py-2.5">
-                  <span className={`w-2 h-2 rounded-full shrink-0 ${p.isReadyForNextRound ? 'bg-emerald-500' : 'bg-[#E6E1DC]'}`} />
+                  <span className={`w-2 h-2 rounded-full shrink-0 ${p.isReadyForNextRound ? 'bg-emerald-500' : 'bg-line'}`} />
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-bold text-[#1A1F26] truncate">{p.name}</div>
-                    <div className="text-2xs font-bold text-[#8A9099] tabular-nums">
+                    <div className="text-sm font-bold text-ink truncate">{p.name}</div>
+                    <div className="text-2xs font-bold text-muted tabular-nums">
                       {r.solvedOn !== null
-                        ? <>{t.solvedOn(r.solvedOn + 1)}{typeof r.seconds === 'number' ? ` · ${r.seconds} ${lang === 'ru' ? 'с' : 's'}` : ''}</>
+                        ? <>{t.solvedOn(r.solvedOn + 1)}{typeof r.seconds === 'number' ? ` · ${r.seconds} ${lang === 'en' ? 's' : 'с'}` : ''}</>
                         : r.artist ? t.artistOnly : t.noSolve}
                     </div>
                   </div>
-                  <div className="w-14 text-right text-sm font-black tabular-nums text-[#1A1F26]">+{r.score}</div>
+                  <div className="w-14 text-right text-sm font-black tabular-nums text-ink">+{r.score}</div>
                 </div>
               ))}
             </div>
@@ -498,12 +542,12 @@ export default function SonglerGame({
                 {roundNumber >= settings.rounds ? t.total : t.next} <ArrowRight className="w-4 h-4" />
               </button>
             ) : (
-              <div className="w-full py-3.5 bg-[#F8FAFC] border border-[#E6E1DC] text-[#8A9099] rounded-xl font-bold uppercase text-xs tracking-wide text-center flex items-center justify-center gap-2">
+              <div className="w-full py-3.5 bg-page border border-line text-muted rounded-xl font-bold uppercase text-xs tracking-wide text-center flex items-center justify-center gap-2">
                 <Loader2 className="w-4 h-4 animate-spin" /> {roundNumber >= settings.rounds ? t.finishing : t.waitingGroup}
               </div>
             )}
             {nextRoundIn !== null && (
-              <p className="mt-3 text-center text-xs font-bold text-[#8A9099] tabular-nums">{t.nextRoundIn(nextRoundIn)}</p>
+              <p className="mt-3 text-center text-xs font-bold text-muted tabular-nums">{t.nextRoundIn(nextRoundIn)}</p>
             )}
           </div>
         </div>
@@ -521,14 +565,14 @@ export default function SonglerGame({
         onMenu={leaveGame}
         wide
       >
-        <div className="divide-y divide-[#F1F5F9] border-y border-[#F1F5F9]">
+        <div className="divide-y divide-divider border-y border-divider">
           {ranked.map((p, i) => {
             const named = p.history.filter((h) => h.solvedOn !== null).length;
             return (
               <div key={p.id} className="flex items-center gap-3 py-3">
-                <span className="w-5 text-xs font-black text-[#8A9099] tabular-nums">{i + 1}</span>
-                <span className="flex-1 text-sm font-bold text-[#1A1F26] truncate text-left">{p.name}</span>
-                <span className="text-xs font-bold text-[#8A9099] tabular-nums" title={t.named}>{named}/{p.history.length}</span>
+                <span className="w-5 text-xs font-black text-muted tabular-nums">{i + 1}</span>
+                <span className="flex-1 text-sm font-bold text-ink truncate text-left">{p.name}</span>
+                <span className="text-xs font-bold text-muted tabular-nums" title={t.named}>{named}/{p.history.length}</span>
                 <span className="w-14 text-right text-sm font-black tabular-nums">{p.score}</span>
               </div>
             );
@@ -546,11 +590,11 @@ export default function SonglerGame({
 function SnippetBar({ unlocked, scale, elapsed, showSteps }: { unlocked: number; scale: number; elapsed: number; showSteps: boolean }) {
   const pct = (s: number) => `${Math.min(100, (s / scale) * 100)}%`;
   return (
-    <div className="relative h-3 rounded-full bg-[#F1F5F9] overflow-hidden" aria-hidden>
-      <div className="absolute inset-y-0 left-0 bg-[#E6E1DC]" style={{ width: pct(unlocked) }} />
-      <div className="absolute inset-y-0 left-0 bg-[#9e1316]" style={{ width: pct(elapsed) }} />
+    <div className="relative h-3 rounded-full bg-divider overflow-hidden" aria-hidden>
+      <div className="absolute inset-y-0 left-0 bg-line" style={{ width: pct(unlocked) }} />
+      <div className="absolute inset-y-0 left-0 bg-accent" style={{ width: pct(elapsed) }} />
       {showSteps && SNIPPET_SECONDS.slice(0, -1).map((s) => (
-        <div key={s} className="absolute inset-y-0 w-px bg-white" style={{ left: pct(s) }} />
+        <div key={s} className="absolute inset-y-0 w-px bg-surface" style={{ left: pct(s) }} />
       ))}
     </div>
   );
@@ -562,7 +606,7 @@ function AttemptRows({ attempts, t }: { attempts: readonly SonglerAttempt[]; t: 
     right: 'border-emerald-200 bg-emerald-50 text-emerald-700',
     artist: 'border-amber-200 bg-amber-50 text-amber-700',
     wrong: 'border-red-100 bg-red-50 text-red-600',
-    skip: 'border-[#E6E1DC] bg-[#F8FAFC] text-[#8A9099]'
+    skip: 'border-line bg-page text-muted'
   };
   const label = { right: t.right, artist: t.artist, wrong: t.wrong, skip: t.skipped };
   return (
@@ -571,7 +615,7 @@ function AttemptRows({ attempts, t }: { attempts: readonly SonglerAttempt[]; t: 
       <ol className="space-y-1.5">
         {Array.from({ length: MAX_ATTEMPTS }, (_, i) => {
           const a = attempts[i];
-          if (!a) return <li key={i} className="h-9 rounded-lg border border-dashed border-[#E6E1DC]" />;
+          if (!a) return <li key={i} className="h-9 rounded-lg border border-dashed border-line" />;
           return (
             <li key={i} className={`h-9 px-3 rounded-lg border flex items-center gap-2 text-xs font-bold ${tone[a.verdict]}`}>
               <span className="truncate flex-1">{a.guess ? `${a.guess.title} — ${a.guess.artist}` : '—'}</span>
@@ -588,23 +632,23 @@ function Cover({ song, size }: { song: SonglerSong; size: number }) {
   const src = coverUrl(song.cover, 250);
   return src ? (
     // eslint-disable-next-line @next/next/no-img-element -- a Deezer cover, sized by Deezer
-    <img src={src} alt="" width={size} height={size} className="rounded-xl shrink-0 bg-[#F1F5F9] object-cover" style={{ width: size, height: size }} />
+    <img src={src} alt="" width={size} height={size} className="rounded-xl shrink-0 bg-divider object-cover" style={{ width: size, height: size }} />
   ) : (
-    <div className="rounded-xl shrink-0 bg-[#F1F5F9] flex items-center justify-center text-[#8A9099]" style={{ width: size, height: size }}>
+    <div className="rounded-xl shrink-0 bg-divider flex items-center justify-center text-muted" style={{ width: size, height: size }}>
       <Music className="w-8 h-8" />
     </div>
   );
 }
 
 /** What the song was, with its cover and a link to it on Deezer. */
-function SongCaption({ song, lang, t }: { song: SonglerSong; lang: 'ru' | 'en'; t: Texts }) {
+function SongCaption({ song, lang, t }: { song: SonglerSong; lang: 'ru' | 'en' | 'uk'; t: Texts }) {
   return (
-    <div className="px-5 md:px-7 py-4 border-t border-[#F1F5F9] flex items-center gap-4">
+    <div className="px-5 md:px-7 py-4 border-t border-divider flex items-center gap-4">
       <Cover song={song} size={64} />
       <div className="min-w-0 flex-1">
-        <div className="text-base font-black text-[#1A1F26] truncate">{song.title}</div>
-        <div className="text-sm font-bold text-[#8A9099] truncate">{song.artist}{song.year ? ` · ${song.year}` : ''}</div>
-        <a href={deezerUrl(song.id)} target="_blank" rel="noopener noreferrer" className="mt-1 inline-flex items-center gap-1 text-2xs font-bold text-[#8A9099] hover:text-[#9e1316]" lang={lang}>
+        <div className="text-base font-black text-ink truncate">{song.title}</div>
+        <div className="text-sm font-bold text-muted truncate">{song.artist}{song.year ? ` · ${song.year}` : ''}</div>
+        <a href={deezerUrl(song.id)} target="_blank" rel="noopener noreferrer" className="mt-1 inline-flex items-center gap-1 text-2xs font-bold text-muted hover:text-accent" lang={lang}>
           <ExternalLink className="w-3 h-3" /> {t.onDeezer}
         </a>
       </div>

@@ -29,7 +29,7 @@ type WinReason = SpyfallState['winReason'];
  * Sends the room back to the round with the accusation dropped — pure, so the
  * rejected-vote path and the timed-out-vote path cannot drift apart.
  */
-function rejectNomination(next: SpyfallState, message: { ru: string; en: string }): SpyfallState {
+function rejectNomination(next: SpyfallState, message: { ru: string; en: string; uk: string }): SpyfallState {
   const startedAt = next.nomination?.startTime ?? Date.now();
   next.status = 'playing';
   // Compensate the pause: shift the round start by the voting duration
@@ -199,7 +199,8 @@ export function useSpyfallGame(lobbyId: string | null, userId: string | undefine
 
       return rejectNomination(next, {
         ru: 'Голосование отклонено',
-        en: 'Accusation rejected'
+        en: 'Accusation rejected',
+        uk: 'Голосування відхилено'
       });
     });
   };
@@ -219,7 +220,8 @@ export function useSpyfallGame(lobbyId: string | null, userId: string | undefine
 
       return rejectNomination(clone(current), {
         ru: 'Время голосования вышло',
-        en: 'Voting time ran out'
+        en: 'Voting time ran out',
+        uk: 'Час голосування вийшов'
       });
     });
   };

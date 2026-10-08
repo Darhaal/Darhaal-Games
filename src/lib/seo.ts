@@ -17,6 +17,7 @@ import type { GameContent, GameFaq, Locale } from '@/content/games';
 import { GAME_COUNT_COPY } from '@/content/gameCount';
 import { PRIVACY_CONTENT } from '@/content/privacy';
 import { CHANGELOG_COPY } from '@/content/changelog';
+import { localizedPath } from './locale';
 
 /** Absolute URL for a site-relative path (`/games` → `https://…/games`). */
 export const absoluteUrl = (path = '/'): string =>
@@ -29,18 +30,11 @@ export const absoluteUrl = (path = '/'): string =>
  * Spyfall queries, ranking 9th to 15th, while the English queries sat on the
  * fourth page and below.
  */
-export const INDEXED_LOCALES: readonly Locale[] = ['en', 'ru'];
+export const INDEXED_LOCALES: readonly Locale[] = ['en', 'ru', 'uk'];
 
 export const isIndexed = (locale: Locale): boolean => INDEXED_LOCALES.includes(locale);
 
-/**
- * Locale-aware path. English keeps the bare path, Russian is prefixed with
- * `/ru`. Passing `/` yields `/` and `/ru` respectively.
- */
-export const localizedPath = (locale: Locale, path = '/'): string => {
-  const clean = path === '/' ? '' : path.startsWith('/') ? path : `/${path}`;
-  return locale === DEFAULT_LOCALE ? clean || '/' : `/${locale}${clean}`;
-};
+export { localizedPath } from './locale';
 
 /**
  * `alternates` block for a public page: canonical for the current locale, plus
@@ -92,7 +86,7 @@ export const personJsonLd = () => ({
   '@type': 'Person',
   '@id': PERSON_ID,
   name: AUTHOR.name.en,
-  alternateName: [AUTHOR.name.ru, AUTHOR.handle],
+  alternateName: [...new Set([AUTHOR.name.uk, AUTHOR.name.ru, AUTHOR.handle])],
   nationality: { '@type': 'Country', name: 'Ukraine' },
   url: AUTHOR.url,
   sameAs: [AUTHOR.github, AUTHOR.linkedin]
@@ -194,7 +188,7 @@ export const howToJsonLd = (game: GameContent, locale: Locale) => {
     '@context': 'https://schema.org',
     '@type': 'HowTo',
     // Russian needs the title in quotes to stay grammatical ("играть в «Шпион»")
-    name: locale === 'en' ? `How to play ${copy.name}` : `Как играть в «${copy.name}»`,
+    name: { en: `How to play ${copy.name}`, ru: `Как играть в «${copy.name}»`, uk: `Як грати в «${copy.name}»` }[locale],
     inLanguage: htmlLang(locale),
     totalTime: `PT${game.playtimeMinutes}M`,
     step: copy.howToPlay.map((text, i) => ({
@@ -231,14 +225,19 @@ const HUB_COPY = {
   en: {
     title: 'Online games with friends — free',
     description: GAME_COUNT_COPY.en.hubDescription
+  },
+  uk: {
+    title: 'Ігри онлайн із друзями — безкоштовно',
+    description: GAME_COUNT_COPY.uk.hubDescription
   }
 } as const;
 
-const OG_LOCALE: Record<Locale, string> = { ru: 'ru_RU', en: 'en_US' };
+const OG_LOCALE: Record<Locale, string> = { ru: 'ru_RU', en: 'en_US', uk: 'uk_UA' };
 
 const HOME_TITLE: Record<Locale, string> = {
   ru: `${APP_NAME} — настольные и логические игры онлайн с друзьями`,
-  en: `${APP_NAME} — board and logic games online with friends`
+  en: `${APP_NAME} — board and logic games online with friends`,
+  uk: `${APP_NAME} — настільні та логічні ігри онлайн із друзями`
 };
 
 /**
@@ -257,7 +256,7 @@ export const homeMetadata = (locale: Locale): Metadata => ({
     description: APP_TAGLINE[locale],
     url: absoluteUrl(localizedPath(locale, '/')),
     locale: OG_LOCALE[locale],
-    alternateLocale: [OG_LOCALE[locale === 'ru' ? 'en' : 'ru']]
+    alternateLocale: INDEXED_LOCALES.filter((l) => l !== locale).map((l) => OG_LOCALE[l])
   },
   twitter: {
     card: 'summary_large_image',

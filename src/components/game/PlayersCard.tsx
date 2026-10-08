@@ -9,7 +9,8 @@ import { defaultAvatar } from '@/constants/app';
 
 const T = {
   ru: { players: 'Игроки', you: 'вы' },
-  en: { players: 'Players', you: 'you' }
+  en: { players: 'Players', you: 'you' },
+  uk: { players: 'Гравці', you: 'ви' }
 };
 
 export interface PlayerRow {
@@ -40,7 +41,7 @@ export interface PlayerRow {
 export default function PlayersCard({
   lang, rows, label
 }: {
-  lang: 'ru' | 'en';
+  lang: 'ru' | 'en' | 'uk';
   rows: PlayerRow[];
   label?: string;
 }) {
@@ -56,14 +57,14 @@ export default function PlayersCard({
           <div
             key={p.id}
             className={`relative flex items-center gap-3 py-2.5 pl-3.5 pr-3 rounded-xl border transition-colors ${
-              p.active ? 'bg-[#F8FAFC] border-[#E6E1DC]' : 'border-transparent'
+              p.active ? 'bg-page border-line' : 'border-transparent'
             }`}
           >
             {p.active && (
               <span
                 aria-hidden
                 className="absolute left-1 top-3 bottom-3 w-1 rounded-full"
-                style={{ backgroundColor: p.token?.color ?? '#1A1F26' }}
+                style={{ backgroundColor: p.token?.color ?? 'var(--ink)' }}
               />
             )}
 
@@ -73,10 +74,10 @@ export default function PlayersCard({
                 alt=""
                 width={36}
                 height={36}
-                className={`w-full h-full object-cover rounded-full bg-[#F8FAFC] ${p.out ? 'grayscale opacity-60' : ''}`}
+                className={`w-full h-full object-cover rounded-full bg-page ${p.out ? 'grayscale opacity-60' : ''}`}
               />
               {p.token && (
-                <span className="absolute -bottom-1 -right-1 rounded-full bg-white p-[2px]">
+                <span className="absolute -bottom-1 -right-1 rounded-full bg-surface p-[2px]">
                   <PlayerToken className="w-4 h-4" color={p.token.color} seat={p.token.seat} />
                 </span>
               )}
@@ -84,17 +85,17 @@ export default function PlayersCard({
 
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5">
-                <span className={`text-sm font-bold truncate ${p.out ? 'text-[#B5B3AD] line-through' : ''}`}>{p.name}</span>
+                <span className={`text-sm font-bold truncate ${p.out ? 'text-faded line-through' : ''}`}>{p.name}</span>
                 {p.isMe && (
-                  <span className="text-3xs font-bold uppercase tracking-wider text-[#8A9099] shrink-0">{t.you}</span>
+                  <span className="text-3xs font-bold uppercase tracking-wider text-muted shrink-0">{t.you}</span>
                 )}
                 {p.isHost && <Crown className="w-3 h-3 text-amber-500 fill-current shrink-0" />}
                 {p.won && <Trophy className="w-3.5 h-3.5 text-amber-500 shrink-0" />}
               </div>
-              {p.stat && <div className="flex items-center gap-2 mt-1 min-h-3 text-2xs font-bold text-[#8A9099]">{p.stat}</div>}
+              {p.stat && <div className="flex items-center gap-2 mt-1 min-h-3 text-2xs font-bold text-muted">{p.stat}</div>}
             </div>
 
-            {p.aside && <div className="shrink-0 text-2xs font-bold text-[#8A9099] tabular-nums">{p.aside}</div>}
+            {p.aside && <div className="shrink-0 text-2xs font-bold text-muted tabular-nums">{p.aside}</div>}
           </div>
         ))}
       </div>

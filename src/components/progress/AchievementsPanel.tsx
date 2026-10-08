@@ -8,6 +8,7 @@ import { GROUPS, TIERS, type AchievementGroup } from '@/achievements/definitions
 import type { AchievementStatus } from '@/achievements/evaluate';
 import { TIER_STYLE } from '@/achievements/tiers';
 import { formatDate, type ProgressStrings } from './strings';
+import { INTL_LOCALE } from '@/lib/locale';
 
 /**
  * Every achievement, grouped: general first, then each game. A card shows
@@ -15,12 +16,12 @@ import { formatDate, type ProgressStrings } from './strings';
  * it is — rather than only whether it is done.
  */
 
-const LABEL = 'text-2xs font-black text-[#8A9099] uppercase tracking-widest';
+const LABEL = 'text-2xs font-black text-muted uppercase tracking-widest';
 
 function AchievementCard({ status, unlocks, lang, t }: {
   status: AchievementStatus;
   unlocks: Record<string, string>;
-  lang: 'ru' | 'en';
+  lang: 'ru' | 'en' | 'uk';
   t: ProgressStrings;
 }) {
   const { achievement, tier, value, target, complete } = status;
@@ -35,18 +36,18 @@ function AchievementCard({ status, unlocks, lang, t }: {
   const latest = status.reachedIds.map((id) => unlocks[id]).filter(Boolean).sort().at(-1);
 
   // Hours are the one ladder counted in fractions.
-  const shown = (Math.floor(value * 10) / 10).toLocaleString(lang === 'ru' ? 'ru-RU' : 'en-GB');
+  const shown = (Math.floor(value * 10) / 10).toLocaleString(INTL_LOCALE[lang]);
   const share = target === null ? 1 : Math.min(1, value / target);
 
   return (
-    <div className={`bg-white p-4 rounded-2xl border shadow-sm flex gap-4 transition-all ${tier ? 'border-[#E6E1DC]' : 'border-[#EEF0F2]'}`}>
-      <div className={`w-12 h-12 shrink-0 rounded-xl border flex items-center justify-center ${style ? style.well : 'bg-[#F8FAFC] border-[#E6E1DC]'}`}>
-        {tier ? <Icon className={`w-6 h-6 ${style!.icon}`} /> : <Icon className="w-6 h-6 text-[#C5CAD1]" />}
+    <div className={`bg-surface p-4 rounded-2xl border shadow-sm flex gap-4 transition-all ${tier ? 'border-line' : 'border-divider'}`}>
+      <div className={`w-12 h-12 shrink-0 rounded-xl border flex items-center justify-center ${style ? style.well : 'bg-page border-line'}`}>
+        {tier ? <Icon className={`w-6 h-6 ${style!.icon}`} /> : <Icon className="w-6 h-6 text-gray-300" />}
       </div>
 
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-2">
-          <div className={`text-sm font-black leading-tight ${tier ? 'text-[#1A1F26]' : 'text-[#5B6470]'}`}>
+          <div className={`text-sm font-black leading-tight ${tier ? 'text-ink' : 'text-ink/70'}`}>
             {achievement.title[lang]}
           </div>
           {achievement.kind === 'ladder' ? (
@@ -55,34 +56,34 @@ function AchievementCard({ status, unlocks, lang, t }: {
                 <span
                   key={step}
                   title={TIER_STYLE[step].name[lang]}
-                  className={`w-2 h-2 rounded-full ${value >= achievement.steps[i] ? TIER_STYLE[step].dot : 'bg-[#E6E1DC]'}`}
+                  className={`w-2 h-2 rounded-full ${value >= achievement.steps[i] ? TIER_STYLE[step].dot : 'bg-line'}`}
                 />
               ))}
             </div>
           ) : (
-            <span className={`shrink-0 text-3xs font-black uppercase tracking-widest px-1.5 py-0.5 rounded ${tier ? `${TIER_STYLE[achievement.tier].well} ${TIER_STYLE[achievement.tier].icon} border` : 'bg-[#F8FAFC] text-[#8A9099]'}`}>
+            <span className={`shrink-0 text-3xs font-black uppercase tracking-widest px-1.5 py-0.5 rounded ${tier ? `${TIER_STYLE[achievement.tier].well} ${TIER_STYLE[achievement.tier].icon} border` : 'bg-page text-muted'}`}>
               {TIER_STYLE[achievement.tier].name[lang]}
             </span>
           )}
         </div>
 
-        <p className="text-xs font-medium text-[#8A9099] mt-1 leading-snug">{description}</p>
+        <p className="text-xs font-medium text-muted mt-1 leading-snug">{description}</p>
 
         {achievement.kind === 'ladder' && !complete && (
           <div className="mt-2.5">
-            <div className="h-1.5 w-full bg-[#F1F5F9] rounded-full overflow-hidden">
+            <div className="h-1.5 w-full bg-divider rounded-full overflow-hidden">
               <div
-                className={`h-full rounded-full ${style ? style.bar : 'bg-[#1A1F26]'}`}
+                className={`h-full rounded-full ${style ? style.bar : 'bg-ink'}`}
                 style={{ width: `${Math.round(share * 100)}%` }}
               />
             </div>
-            <div className="text-3xs font-bold text-[#8A9099] mt-1 tabular-nums">
+            <div className="text-3xs font-bold text-muted mt-1 tabular-nums">
               {t.progressOf(shown, target!)}
             </div>
           </div>
         )}
 
-        <div className="text-3xs font-bold uppercase tracking-wider mt-2 flex items-center gap-1 text-[#8A9099]">
+        <div className="text-3xs font-bold uppercase tracking-wider mt-2 flex items-center gap-1 text-muted">
           {complete ? (
             <><Star className="w-3 h-3" /> {achievement.kind === 'ladder' ? t.complete : t.reached}{latest ? ` · ${formatDate(latest, lang)}` : ''}</>
           ) : tier && latest ? (
@@ -99,7 +100,7 @@ function AchievementCard({ status, unlocks, lang, t }: {
 export default function AchievementsPanel({ statuses, unlocks, lang, t }: {
   statuses: AchievementStatus[];
   unlocks: Record<string, string>;
-  lang: 'ru' | 'en';
+  lang: 'ru' | 'en' | 'uk';
   t: ProgressStrings;
 }) {
   const [filter, setFilter] = useState<AchievementGroup | 'all'>('all');
@@ -130,7 +131,7 @@ export default function AchievementsPanel({ statuses, unlocks, lang, t }: {
               aria-selected={selected}
               onClick={() => setFilter(g)}
               className={`shrink-0 flex items-center gap-1.5 py-2 px-3 rounded-lg text-xs font-bold transition-all border ${
-                selected ? 'bg-[#1A1F26] text-white border-[#1A1F26]' : 'bg-white text-[#5B6470] border-[#E6E1DC] hover:border-[#9e1316]/30'
+                selected ? 'bg-ink text-on-ink border-ink' : 'bg-surface text-ink/70 border-line hover:border-accent/30'
               }`}
             >
               {GameIcon && <GameIcon className="w-3.5 h-3.5" />}
@@ -151,7 +152,7 @@ export default function AchievementsPanel({ statuses, unlocks, lang, t }: {
                   {GameIcon && <GameIcon className="w-3.5 h-3.5" />}
                   {groupName(group)}
                 </h3>
-                <span className="text-xs font-bold text-[#8A9099] tabular-nums">{done}/{total}</span>
+                <span className="text-xs font-bold text-muted tabular-nums">{done}/{total}</span>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {own.map((s) => (

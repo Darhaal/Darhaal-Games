@@ -46,15 +46,16 @@ export const PRIVACY_CONTENT: Record<Locale, PolicyCopy> = {
         body: [
           'Комната и партия. Пока комната существует, в ней хранится её состояние: кто за столом, ход игры, счёт. Никнейм и аватарка видны другим игрокам в той же комнате — в этом и смысл.',
           'Чат. Сообщения в чате комнаты видят только те, кто в ней сидит, — у остальных, даже со ссылкой, доступа к ним нет на уровне базы данных. Сообщение подписывается вашим никнеймом из комнаты и удаляется вместе с комнатой, по тем же срокам, что ниже. В аналитику текст сообщений не попадает.',
-          'Завершённые комнаты удаляются автоматически через сутки, брошенное лобби — через десять минут после того, как его закрыл последний игрок, прерванный матч — через семь дней.',
+          'Завершённые комнаты удаляются автоматически через сутки, брошенное лобби — через десять минут после того, как его закрыл последний игрок, прерванный матч — через полчаса, если его никто не открывал и в нём не было ходов.',
           'Статистика. Если вы вошли в аккаунт, каждая сыгранная партия записывается в профиль: какая игра, выиграна ли, сколько длилась, когда была, и немного о её ходе (например, сколько кораблей потеряно или флагов угадано). Из этого складываются история матчей, достижения и уровень на странице прогресса. Эти записи видите только вы.',
-          'Гостевые аккаунты. Гостевой вход создаёт временную учётную запись без почты и пароля. Если ею не пользоваться 30 дней, она удаляется вместе со статистикой.'
+          'Гостевые аккаунты. Гостевой вход создаёт временную учётную запись без почты и пароля. Если ею не пользоваться 30 дней, она удаляется вместе со статистикой. Чтобы этого не случилось, гостевой профиль можно сделать постоянным: привязать почту или Google в настройках — статистика и достижения останутся с вами.',
+          'Настройки — тема, язык, громкость, уведомления, чат — хранятся только в вашем браузере. Системные уведомления о ходе показывает сам браузер, и только если вы их разрешили; на наш сервер при этом ничего не уходит.'
         ]
       },
       {
         title: 'Аккаунт',
         body: [
-          'При регистрации хранятся адрес почты, никнейм и аватарка, если вы её загрузили. Почта нужна для входа и восстановления пароля; другим игрокам она не видна — доступ к этому полю закрыт на уровне базы данных.',
+          'При регистрации хранятся адрес почты, никнейм и аватарка, если вы её загрузили. Почта нужна для входа и восстановления пароля; другим игрокам она не видна — доступ к этому полю закрыт на уровне базы данных. Сменить почту можно в настройках; подтверждение приходит и на старый, и на новый адрес.',
           'Паролей мы не храним и не видим: аутентификацией занимается Supabase, пароль передаётся туда напрямую.',
           'Вход через Google передаёт нам имя, адрес почты и ссылку на аватарку из вашего профиля Google. Больше ничего.'
         ]
@@ -84,7 +85,7 @@ export const PRIVACY_CONTENT: Record<Locale, PolicyCopy> = {
       {
         title: 'Ваши права',
         body: [
-          'Аккаунт можно удалить в настройках профиля — вместе с ним удаляются профиль и вся статистика.',
+          'Аккаунт можно удалить в настройках: «Аккаунт» → «Удалить аккаунт». Вместе с ним сразу и навсегда удаляются профиль, статистика, история матчей, достижения, загруженные аватарки и комнаты, которые вы создали.',
           'От аналитики можно отказаться: при первом визите или позже, очистив данные сайта.',
           'Чтобы получить копию своих данных или удалить их вручную, напишите нам.'
         ]
@@ -116,15 +117,16 @@ export const PRIVACY_CONTENT: Record<Locale, PolicyCopy> = {
         body: [
           'The room and the match. For as long as a room exists it holds its state: who is at the table, the position, the score. Your nickname and avatar are visible to the other players in that room, which is the point of them.',
           'Chat. A room’s chat can be read only by the people seated in it — anyone else, even holding the link, is refused at the database level. A message is signed with your nickname from the room and is deleted along with the room, on the schedule below. The text of messages is never sent to analytics.',
-          'Finished rooms are deleted automatically after a day, an abandoned lobby ten minutes after the last player closed it, and an interrupted match after seven days.',
+          'Finished rooms are deleted automatically after a day, an abandoned lobby ten minutes after the last player closed it, and an interrupted match after half an hour in which nobody had it open and nobody moved.',
           'Statistics. If you are signed in, every match you finish is recorded against your profile: which game, whether you won, how long it took, when, and a little about how it went (ships lost, flags named). Your match history, achievements and level on the progress page are built from these. Only you can see them.',
-          'Guest accounts. Guest sign-in creates a temporary account with no email and no password. Left unused for 30 days, it is deleted along with its statistics.'
+          'Guest accounts. Guest sign-in creates a temporary account with no email and no password. Left unused for 30 days, it is deleted along with its statistics. To keep it, make the guest profile permanent by adding an email or Google in the settings — the statistics and achievements stay with you.',
+          'Settings — theme, language, volume, notifications, chat — are kept only in your browser. System notifications about your turn are shown by the browser itself, and only if you allowed them; nothing is sent to our server for them.'
         ]
       },
       {
         title: 'Your account',
         body: [
-          'If you register we keep your email address, your nickname and your avatar if you uploaded one. The email is used for signing in and password recovery; other players cannot see it — access to that column is closed at the database level.',
+          'If you register we keep your email address, your nickname and your avatar if you uploaded one. The email is used for signing in and password recovery; other players cannot see it — access to that column is closed at the database level. You can change it in the settings; the change is confirmed at both the old and the new address.',
           'We neither store nor see passwords: authentication is handled by Supabase, and the password goes to it directly.',
           'Signing in with Google gives us the name, email address and avatar URL from your Google profile. Nothing else.'
         ]
@@ -154,7 +156,7 @@ export const PRIVACY_CONTENT: Record<Locale, PolicyCopy> = {
       {
         title: 'Your rights',
         body: [
-          'You can delete your account from the profile settings — your profile and all of your statistics go with it.',
+          'You can delete your account in the settings: Account → Delete account. Your profile, statistics, match history, achievements, uploaded avatars and the rooms you created go with it, at once and for good.',
           'You can decline analytics, on your first visit or later by clearing the site data.',
           'For a copy of your data, or to have it removed by hand, write to us.'
         ]
@@ -168,5 +170,76 @@ export const PRIVACY_CONTENT: Record<Locale, PolicyCopy> = {
     ],
     contactTitle: 'Contact',
     contact: ['For anything about your data, write to okhtengroup@gmail.com.']
+  },
+
+  uk: {
+    metaTitle: 'Політика конфіденційності',
+    metaDescription:
+      'Які дані збирає Darhaal Games, навіщо, скільки вони зберігаються і як їх видалити. Аналітика — лише з вашої згоди.',
+    title: 'Політика конфіденційності',
+    updated: 'Оновлено',
+    intro: [
+      'Darhaal Games — платформа для ігор із друзями в браузері. Тут описано, які дані ми збираємо, навіщо і що з ними можна зробити.',
+      'Коротко: щоб грати, акаунт не потрібен — гостьовий вхід не питає ні пошти, ні імені. Аналітика не вмикається, доки ви не дозволите, і без неї сайт працює так само.'
+    ],
+    sections: [
+      {
+        title: 'Що зберігається, поки ви граєте',
+        body: [
+          'Кімната й партія. Поки кімната існує, у ній зберігається її стан: хто за столом, хід гри, рахунок. Нікнейм і аватарку бачать інші гравці в тій самій кімнаті — у цьому й сенс.',
+          'Чат. Повідомлення в чаті кімнати бачать лише ті, хто в ній сидить, — решта, навіть маючи посилання, доступу до них не має на рівні бази даних. Повідомлення підписується вашим нікнеймом із кімнати й видаляється разом із кімнатою, у ті самі терміни, що нижче. В аналітику текст повідомлень не потрапляє.',
+          'Завершені кімнати видаляються автоматично через добу, покинуте лобі — через десять хвилин після того, як його закрив останній гравець, перерваний матч — через пів години, якщо його ніхто не відкривав і в ньому не було ходів.',
+          'Статистика. Якщо ви ввійшли в акаунт, кожна зіграна партія записується в профіль: яка гра, чи виграна, скільки тривала, коли була, і трохи про її хід (наприклад, скільки кораблів втрачено чи прапорів вгадано). З цього складаються історія матчів, досягнення й рівень на сторінці прогресу. Ці записи бачите лише ви.',
+          'Гостьові акаунти. Гостьовий вхід створює тимчасовий обліковий запис без пошти й пароля. Якщо ним не користуватися 30 днів, він видаляється разом зі статистикою. Щоб цього не сталося, гостьовий профіль можна зробити постійним: прив’язати пошту або Google у налаштуваннях — статистика й досягнення залишаться з вами.',
+          'Налаштування — тема, мова, гучність, сповіщення, чат — зберігаються лише у вашому браузері. Системні сповіщення про хід показує сам браузер, і лише якщо ви їх дозволили; на наш сервер при цьому нічого не надходить.'
+        ]
+      },
+      {
+        title: 'Акаунт',
+        body: [
+          'Під час реєстрації зберігаються адреса пошти, нікнейм і аватарка, якщо ви її завантажили. Пошта потрібна для входу й відновлення пароля; іншим гравцям вона не видна — доступ до цього поля закрито на рівні бази даних. Змінити пошту можна в налаштуваннях; підтвердження надходить і на стару, і на нову адресу.',
+          'Паролів ми не зберігаємо й не бачимо: автентифікацією займається Supabase, пароль передається туди напряму.',
+          'Вхід через Google передає нам ім’я, адресу пошти й посилання на аватарку з вашого профілю Google. Більше нічого.'
+        ]
+      },
+      {
+        title: 'Аналітика',
+        body: [
+          'Ми рахуємо, у що грають і що ламається. Збір не починається, доки ви не натиснули «Дозволити».',
+          'Google Analytics не завантажується у ваш браузер. Скриптів Google на сторінках немає, cookie Google не встановлюються. Сторінка надсилає подію на нашу власну адресу, а далі її передаємо ми, зі свого сервера.',
+          'Тому ваша IP-адреса до Google не потрапляє: з їхнього боку видно адресу нашого сервера, а не вашу.',
+          'Що надсилається: яка гра, скільки гравців, скільки тривала партія, яка помилка сталася і на якій сторінці це було. Перелік допустимих полів зафіксовано в коді, усе інше сервер відкидає, не передаючи. Ваш ідентифікатор, нікнейм, пошта й вміст партії не надсилаються.',
+          'Окремо про посилання: посилання на кімнату — це запрошення, а для приватної кімнати воно єдине, що відділяє її від сторонніх. Ідентифікатори кімнат вирізаються з адреси двічі — у браузері та ще раз на сервері, який не довіряє тому, що прийшло. Саму адресу сторінки для Google збирає наш сервер, а не браузер.',
+          'Щоб відрізняти одного відвідувача від іншого, за згоди створюється випадковий ідентифікатор і зберігається у вашому браузері. Він ні з чого не виводиться, нічого про вас не означає і зникає, коли ви очищаєте дані сайту. У разі відмови його буде видалено.'
+        ]
+      },
+      {
+        title: 'Кому передаються дані',
+        body: [
+          'Supabase — база даних і автентифікація, зберігає все перелічене вище.',
+          'Vercel — хостинг, обробляє запити до сайту й веде технічні журнали.',
+          'Google Analytics — лише з вашої згоди й лише знеособлені події.',
+          'Вікіпедія та Wikimedia Commons (фонд Вікімедіа) — лише в іграх Wikiler і Timler: ваш браузер сам завантажує звідти статті й фотографії, тому Вікімедіа бачить вашу IP-адресу та що завантажено, як під час звичайного читання Вікіпедії. Ваш ідентифікатор, нікнейм і ходи в грі туди не передаються. Як Вікіпедія поводиться з цими даними — у її політиці конфіденційності: foundation.wikimedia.org/wiki/Policy:Privacy_policy/uk.',
+          'Deezer — лише в грі Songler: ваш браузер сам завантажує звідти 30-секундні уривки пісень і обкладинки, тому Deezer бачить вашу IP-адресу та які пісні завантажено. Посилання на уривок для кожного раунду наш сервер запитує в Deezer за номером пісні — без ваших даних. Ваш ідентифікатор, нікнейм і відповіді туди не передаються. Політика Deezer: deezer.com/legal/personal-datas.',
+          'Ми не продаємо дані й не передаємо їх рекламним мережам.'
+        ]
+      },
+      {
+        title: 'Ваші права',
+        body: [
+          'Акаунт можна видалити в налаштуваннях: «Акаунт» → «Видалити акаунт». Разом із ним одразу й назавжди видаляються профіль, статистика, історія матчів, досягнення, завантажені аватарки та кімнати, які ви створили.',
+          'Від аналітики можна відмовитися: під час першого візиту або пізніше, очистивши дані сайту.',
+          'Щоб отримати копію своїх даних або видалити їх вручну, напишіть нам.'
+        ]
+      },
+      {
+        title: 'Діти',
+        body: [
+          'Сервіс не призначений для дітей до 13 років, і ми свідомо не збираємо їхніх даних.'
+        ]
+      }
+    ],
+    contactTitle: 'Зв’язатися',
+    contact: ['З будь-яких питань щодо даних пишіть на okhtengroup@gmail.com.']
   }
 };

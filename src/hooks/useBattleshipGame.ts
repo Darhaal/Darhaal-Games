@@ -128,7 +128,7 @@ export function useBattleshipGame(
       const playersArr = Object.values(newState.players);
       // The one still placing ships learns the other side is waiting on them.
       if (playersArr.some(p => !p.isReady)) {
-        pushNotice(newState, { ru: `${newState.players[user.id].name} расставил флот`, en: `${newState.players[user.id].name} has placed their fleet` }, 'info');
+        pushNotice(newState, { ru: `${newState.players[user.id].name} расставил флот`, en: `${newState.players[user.id].name} has placed their fleet`, uk: `${newState.players[user.id].name} розставив флот` }, 'info');
       }
       if (playersArr.length === 2 && playersArr.every(p => p.isReady)) {
         newState.phase = 'playing';
@@ -227,7 +227,7 @@ export function useBattleshipGame(
       const next: BattleshipState = { ...current, turn: opponentId, turnDeadline: Date.now() + TURN_MS };
       const late = current.turn ? current.players[current.turn]?.name : undefined;
       if (late) {
-        pushNotice(next, { ru: `${late} не успел — ход переходит`, en: `${late} ran out of time — the turn passes` }, 'alert');
+        pushNotice(next, { ru: `${late} не успел — ход переходит`, en: `${late} ran out of time — the turn passes`, uk: `${late} не встиг — хід переходить` }, 'alert');
       }
       return next;
     });

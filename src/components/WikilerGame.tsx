@@ -134,10 +134,62 @@ const T = {
     total: 'Total',
     guessed: 'solved',
     missed: 'missed'
+  },
+  uk: {
+    roundOf: (n: number, m: number) => `Раунд ${n} з ${m}`,
+    roundClock: 'раунд',
+    whatArticle: 'Що це за стаття?',
+    solved: 'Вгадано!',
+    notSolved: 'Не вгадано',
+    waitOthers: 'Чекаємо на решту…',
+    loading: 'Завантажуємо статтю…',
+    loadError: 'Не вдалося завантажити статтю',
+    loadErrorNote: 'Вікіпедія не відповіла. Раунд закінчиться за часом.',
+    startsIn: 'Раунд почнеться через',
+    yourScore: 'Ваш рахунок',
+    attempts: (n: number) => `${n} ${pluralRu(n, ['спроба', 'спроби', 'спроб'])}`,
+    attemptsOf: (n: number, max: number) => `${n} з ${max} спроб`,
+    unlimitedHint: 'Спроби без обмежень',
+    leftHint: (n: number) => `Залишилося ${n} ${pluralRu(n, ['спроба', 'спроби', 'спроб'])}`,
+    guessLabel: 'Вгадати',
+    word: 'Слово',
+    article: 'Стаття',
+    wordPlaceholder: 'Напишіть слово…',
+    titlePlaceholder: 'Назва статті…',
+    send: 'Надіслати',
+    switchHint: 'Tab — перемкнути',
+    guesses: 'Ваші спроби',
+    noGuesses: 'Поки порожньо — почніть із будь-якого слова',
+    feedbackWord: (text: string, n: number, cost: number) =>
+      n === 0 ? `«${text}» — немає в статті (−${cost})` : `«${text}» — ${n} ${pluralRu(n, ['раз', 'рази', 'разів'])}${cost ? ` (−${cost})` : ''}`,
+    repeat: 'Це слово вже відкрите',
+    empty: 'Напишіть слово',
+    several: 'По одному слову — назву пишіть у вкладці «Стаття»',
+    open: 'Це слово й так видно',
+    titleWrong: (text: string) => `«${text}» — не та стаття (−50)`,
+    wait: 'Зачекайте…',
+    checking: 'Перевіряємо…',
+    letters: (n: number) => `${n} ${pluralRu(n, ['літера', 'літери', 'літер'])}`,
+    fromWikipedia: 'Стаття з Вікіпедії',
+    authors: 'автори',
+    roundOver: 'Раунд завершено',
+    itWas: 'Це була стаття',
+    alsoIn: 'Іншими мовами',
+    openInWikipedia: 'Відкрити у Вікіпедії',
+    yourResult: 'Ваш результат',
+    next: 'Далі',
+    waitingGroup: 'Чекаємо на решту…',
+    nextRoundIn: (s: number) => `Наступний раунд через ${s} с`,
+    finishing: 'Рахуємо підсумки…',
+    youWin: 'Перемога',
+    winnerLabel: 'Переможець',
+    total: 'Підсумок',
+    guessed: 'вгадав',
+    missed: 'не вгадав'
   }
 };
 
-type Texts = (typeof T)['ru' | 'en'];
+type Texts = (typeof T)['ru' | 'en' | 'uk'];
 
 function describe(feedback: Feedback, t: Texts): { text: string; good: boolean } | null {
   switch (feedback.kind) {
@@ -197,10 +249,10 @@ function Hidden({ text, width, peek, onPeek, label }: { text: string; width: num
       onClick={onPeek}
       title={label}
       aria-label={label}
-      className="inline-flex items-center justify-center align-baseline bg-[#E6E1DC] hover:bg-[#D9D3CC] rounded-[3px] h-[1.05em] translate-y-[0.12em] transition-colors"
+      className="inline-flex items-center justify-center align-baseline bg-line hover:bg-[#D9D3CC] dark:hover:bg-[#363D46] rounded-[3px] h-[1.05em] translate-y-[0.12em] transition-colors"
       style={{ width: `${Math.max(0.5, width)}em` }}
     >
-      {peek && <span className="text-[0.62em] font-black text-[#8A9099] tabular-nums leading-none">{n}</span>}
+      {peek && <span className="text-[0.62em] font-black text-muted tabular-nums leading-none">{n}</span>}
     </button>
   );
 }
@@ -232,14 +284,14 @@ function Tokens({ tokens, revealed, showAll, lastKey, peekId, onPeek, letters, m
               key={i}
               data-key={token.key}
               className={`rounded-[3px] animate-word-in motion-reduce:animate-none transition-[background-color,box-shadow] duration-700 ease-out ${
-                token.key === lastKey ? 'bg-[#9e1316]/10 shadow-[0_0_0_2px_rgba(158,19,22,0.1)]' : 'bg-transparent shadow-[0_0_0_2px_rgba(158,19,22,0)]'
+                token.key === lastKey ? 'bg-accent/10 shadow-[0_0_0_2px_rgba(158,19,22,0.1)]' : 'bg-transparent shadow-[0_0_0_2px_rgba(158,19,22,0)]'
               }`}
             >
               {token.text}
             </span>
           );
         }
-        if (showAll) return <span key={i} className="text-[#B5B3AD]">{token.text}</span>;
+        if (showAll) return <span key={i} className="text-faded">{token.text}</span>;
         const id = `${idPrefix}-${i}`;
         return <Hidden key={i} text={token.text} width={measure(token.text, weight)} peek={letters || peekId === id} onPeek={() => onPeek(id)} label={t.letters(letterCount(token.text))} />;
       })}
@@ -251,7 +303,7 @@ interface WikilerGameProps {
   gameState: WikilerState;
   userId: string;
   lobbyId: string;
-  lang: 'ru' | 'en';
+  lang: 'ru' | 'en' | 'uk';
   reportProgress: (attempts: number, tabLeaves: number) => void;
   finishRound: (result: WikilerRoundResult, tabLeaves: number) => void;
   forceRoundEnd: () => void;
@@ -416,7 +468,7 @@ export default function WikilerGame({
 
   const inputForm = (
     <form onSubmit={submit} className="space-y-2">
-      <div className="grid grid-cols-2 gap-1 p-1 bg-[#F8FAFC] rounded-xl border border-[#E6E1DC]" role="tablist">
+      <div className="grid grid-cols-2 gap-1 p-1 bg-page rounded-xl border border-line" role="tablist">
         {(['word', 'title'] as const).map((m) => (
           <button
             key={m}
@@ -425,7 +477,7 @@ export default function WikilerGame({
             aria-selected={mode === m}
             onClick={() => setMode(m)}
             className={`py-1.5 rounded-lg text-2xs font-black uppercase tracking-widest transition-all ${
-              mode === m ? 'bg-[#1A1F26] text-white shadow-sm' : 'text-[#8A9099] hover:text-[#1A1F26]'
+              mode === m ? 'bg-ink text-on-ink shadow-sm' : 'text-muted hover:text-ink'
             }`}
           >
             {m === 'word' ? t.word : t.article}
@@ -443,22 +495,22 @@ export default function WikilerGame({
           autoComplete="off"
           autoCapitalize="off"
           spellCheck={false}
-          className="min-w-0 flex-1 bg-[#F8FAFC] border border-gray-200 focus:bg-white focus:border-[#1A1F26] rounded-xl py-2.5 px-3 font-bold text-[#1A1F26] outline-none transition-all placeholder:text-gray-400 text-sm disabled:opacity-50"
+          className="min-w-0 flex-1 bg-page border border-gray-200 focus:bg-surface focus:border-ink rounded-xl py-2.5 px-3 font-bold text-ink outline-none transition-all placeholder:text-gray-400 text-sm disabled:opacity-50"
         />
         <button type="submit" disabled={!r.canGuess || r.pending} aria-label={t.send} className={`px-3.5 ${BUTTON_PRIMARY} disabled:opacity-50`}>
           {r.pending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
         </button>
       </div>
       <div className="min-h-4 text-2xs font-bold">
-        {r.pending ? <span className="text-[#8A9099]">{t.checking}</span>
-          : described ? <span className={described.good ? 'text-emerald-600' : 'text-[#8A9099]'}>{described.text}</span>
-          : <span className="text-[#B5B3AD] hidden lg:inline">{t.switchHint}</span>}
+        {r.pending ? <span className="text-muted">{t.checking}</span>
+          : described ? <span className={described.good ? 'text-emerald-600' : 'text-muted'}>{described.text}</span>
+          : <span className="text-faded hidden lg:inline">{t.switchHint}</span>}
       </div>
     </form>
   );
 
   const board = (
-    <div className="bg-white rounded-2xl border border-[#E6E1DC] shadow-sm overflow-hidden">
+    <div className="bg-surface rounded-2xl border border-line shadow-sm overflow-hidden">
       <div className="p-5 md:p-7">
         {/* Once the round is over for this player — above all after a miss — what the article was. */}
         {showAll && round && (
@@ -466,30 +518,30 @@ export default function WikilerGame({
             <ArticlePreview wikiLang={wiki} title={readTitle} label={t.itWas} openLabel={t.openInWikipedia} />
           </div>
         )}
-        <h2 className="text-2xl md:text-3xl font-black text-[#1A1F26] leading-snug mb-5">
+        <h2 className="text-2xl md:text-3xl font-black text-ink leading-snug mb-5">
           {r.article ? (
             <Tokens tokens={r.article.titleTokens} revealed={r.revealed} showAll={showAll} lastKey={lastKey} peekId={peekId} onPeek={togglePeek} letters={settings.showLetters} measure={measure} weight={900} idPrefix="t" t={t} />
-          ) : <span className="text-[#B5B3AD]">· · ·</span>}
+          ) : <span className="text-faded">· · ·</span>}
         </h2>
 
         {r.loadError ? (
           <div className="py-10 text-center">
-            <div className="font-black text-[#1A1F26]">{t.loadError}</div>
-            <div className="text-sm text-[#8A9099] mt-1">{t.loadErrorNote}</div>
+            <div className="font-black text-ink">{t.loadError}</div>
+            <div className="text-sm text-muted mt-1">{t.loadErrorNote}</div>
           </div>
         ) : !r.article ? (
-          <div className="py-16 flex items-center justify-center gap-2 text-sm font-bold text-[#8A9099]">
-            <Loader2 className="w-4 h-4 animate-spin text-[#9e1316]" /> {t.loading}
+          <div className="py-16 flex items-center justify-center gap-2 text-sm font-bold text-muted">
+            <Loader2 className="w-4 h-4 animate-spin text-accent" /> {t.loading}
           </div>
         ) : (
           <div className="relative">
             {isPlaying && startsIn > 0 && (
-              <div className="absolute inset-0 z-10 bg-white/85 backdrop-blur-[2px] flex flex-col items-center justify-start pt-16">
+              <div className="absolute inset-0 z-10 bg-surface/85 backdrop-blur-[2px] flex flex-col items-center justify-start pt-16">
                 <div className={LABEL}>{t.startsIn}</div>
-                <div className="text-6xl font-black text-[#1A1F26] tabular-nums mt-2">{startsIn}</div>
+                <div className="text-6xl font-black text-ink tabular-nums mt-2">{startsIn}</div>
               </div>
             )}
-            <div className="text-sm md:text-base leading-7 text-[#1A1F26] space-y-4 break-words">
+            <div className="text-sm md:text-base leading-7 text-ink space-y-4 break-words">
               {r.article.blocks.map((block, i) =>
                 block.heading ? (
                   <h3 key={i} className="text-lg font-black pt-2">
@@ -507,18 +559,18 @@ export default function WikilerGame({
       </div>
 
       {/* CC BY-SA credit. During a round it cannot name the article — that would give it away. */}
-      <div className="px-5 md:px-7 py-3 border-t border-[#F1F5F9] text-2xs font-medium text-[#8A9099]">
+      <div className="px-5 md:px-7 py-3 border-t border-divider text-2xs font-medium text-muted">
         {showAll && round ? (
           <>
-            <a href={articleUrl(wiki, readTitle)} target="_blank" rel="noopener noreferrer" className="underline hover:text-[#9e1316]">{readTitle}</a>
+            <a href={articleUrl(wiki, readTitle)} target="_blank" rel="noopener noreferrer" className="underline hover:text-accent">{readTitle}</a>
             {' · '}{t.fromWikipedia}{' · '}
-            <a href={CC_BY_SA_URL[lang]} target="_blank" rel="noopener noreferrer" className="underline hover:text-[#9e1316]">CC BY-SA 4.0</a>
+            <a href={CC_BY_SA_URL[lang]} target="_blank" rel="noopener noreferrer" className="underline hover:text-accent">CC BY-SA 4.0</a>
             {' · '}
-            <a href={historyUrl(wiki, readTitle)} target="_blank" rel="noopener noreferrer" className="underline hover:text-[#9e1316]">{t.authors}</a>
+            <a href={historyUrl(wiki, readTitle)} target="_blank" rel="noopener noreferrer" className="underline hover:text-accent">{t.authors}</a>
           </>
         ) : (
           <>
-            {t.fromWikipedia} · <a href={CC_BY_SA_URL[lang]} target="_blank" rel="noopener noreferrer" className="underline hover:text-[#9e1316]">CC BY-SA 4.0</a>
+            {t.fromWikipedia} · <a href={CC_BY_SA_URL[lang]} target="_blank" rel="noopener noreferrer" className="underline hover:text-accent">CC BY-SA 4.0</a>
           </>
         )}
       </div>
@@ -548,8 +600,8 @@ export default function WikilerGame({
 
       <GameCard label={t.yourScore}>
         <div className="flex items-end justify-between">
-          <div className="text-4xl font-black text-[#1A1F26] tabular-nums leading-none">{isPlaying ? liveScore : me?.score ?? 0}</div>
-          <div className="text-xs font-bold text-[#8A9099] tabular-nums">
+          <div className="text-4xl font-black text-ink tabular-nums leading-none">{isPlaying ? liveScore : me?.score ?? 0}</div>
+          <div className="text-xs font-bold text-muted tabular-nums">
             {limit !== null ? t.attemptsOf(attempts, limit) : t.attempts(attempts)}
           </div>
         </div>
@@ -561,7 +613,7 @@ export default function WikilerGame({
 
       <GameCard label={t.guesses}>
         {r.guesses.length === 0 ? (
-          <p className="text-xs font-medium text-[#8A9099]">{t.noGuesses}</p>
+          <p className="text-xs font-medium text-muted">{t.noGuesses}</p>
         ) : (
           <div className="flex flex-wrap gap-1.5 max-h-56 overflow-y-auto">
             {[...r.guesses].reverse().map((g: GuessEntry, i) => (
@@ -572,12 +624,12 @@ export default function WikilerGame({
                 className={`inline-flex items-center gap-1 px-2 py-1 rounded-md border text-xs font-bold transition-colors ${
                   g.kind === 'title'
                     ? g.correct ? 'bg-emerald-50 border-emerald-100 text-emerald-700' : 'bg-red-50 border-red-100 text-red-600'
-                    : g.occurrences ? 'bg-white border-[#E6E1DC] text-[#1A1F26] hover:border-[#9e1316]/30' : 'bg-[#F8FAFC] border-[#E6E1DC] text-[#B5B3AD]'
+                    : g.occurrences ? 'bg-surface border-line text-ink hover:border-accent/30' : 'bg-page border-line text-faded'
                 }`}
               >
                 {g.kind === 'title' && (g.correct ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />)}
                 {g.text}
-                {g.kind === 'word' && <span className="tabular-nums text-[#8A9099]">{g.occurrences}</span>}
+                {g.kind === 'word' && <span className="tabular-nums text-muted">{g.occurrences}</span>}
               </button>
             ))}
           </div>
@@ -596,12 +648,12 @@ export default function WikilerGame({
             isMe: p.id === userId,
             won: isFinished && winners.some((w) => w.id === p.id),
             stat: isFinished ? undefined : (
-              <span className={p.done ? (p.result?.solved ? 'text-emerald-600' : 'text-[#B5B3AD]') : ''}>
+              <span className={p.done ? (p.result?.solved ? 'text-emerald-600' : 'text-faded') : ''}>
                 {/* During a round, others see attempts and a tick — not scores. */}
                 {p.done && isPlaying ? (p.result?.solved ? `✓ ${t.guessed}` : t.missed) : t.attempts(p.attempts)}
               </span>
             ),
-            aside: after ? <span className="text-sm font-black text-[#1A1F26] tabular-nums">{p.score}</span> : undefined
+            aside: after ? <span className="text-sm font-black text-ink tabular-nums">{p.score}</span> : undefined
           };
         })}
       />
@@ -633,7 +685,7 @@ export default function WikilerGame({
 
       {/* On a phone the input stays under the thumb instead of below the article. */}
       {isPlaying && !me?.done && (
-        <div className="lg:hidden fixed inset-x-0 bottom-0 z-30 bg-white/95 backdrop-blur border-t border-[#E6E1DC] px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-8px_24px_-12px_rgba(26,31,38,0.15)]">
+        <div className="lg:hidden fixed inset-x-0 bottom-0 z-30 bg-surface/95 backdrop-blur border-t border-line px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-8px_24px_-12px_rgba(26,31,38,0.15)]">
           {inputForm}
         </div>
       )}
@@ -643,17 +695,17 @@ export default function WikilerGame({
         <div role="dialog" aria-modal="true" aria-label={t.roundOver} className={DIALOG_OVERLAY}>
           <div className={`${DIALOG_PANEL} max-w-lg max-h-[90vh] overflow-y-auto`}>
             <div className={LABEL}>{t.roundOf(roundNumber, settings.rounds)}</div>
-            <h2 className="text-2xl font-black text-[#1A1F26] mt-1 mb-4">{t.roundOver}</h2>
+            <h2 className="text-2xl font-black text-ink mt-1 mb-4">{t.roundOver}</h2>
 
             <div className="mb-4">
               <ArticlePreview wikiLang={wiki} title={readTitle} label={t.itWas} openLabel={t.openInWikipedia} compact />
               {otherVersions.length > 0 && (
-                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs font-bold text-[#8A9099]">
+                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs font-bold text-muted">
                   <span>{t.alsoIn}:</span>
                   {otherVersions.map((v) => (
-                    <a key={v.lang} href={articleUrl(v.lang, v.title)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 bg-[#F8FAFC] border border-[#E6E1DC] px-2 py-1 rounded-md hover:border-[#9e1316]/30 hover:text-[#9e1316] transition-colors">
+                    <a key={v.lang} href={articleUrl(v.lang, v.title)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 bg-page border border-line px-2 py-1 rounded-md hover:border-accent/30 hover:text-accent transition-colors">
                       <span className="text-2xs font-black uppercase">{v.lang}</span>
-                      <span className="text-[#1A1F26]">{v.title}</span>
+                      <span className="text-ink">{v.title}</span>
                     </a>
                   ))}
                 </div>
@@ -662,22 +714,22 @@ export default function WikilerGame({
 
             <div className={`p-4 rounded-xl border mb-4 flex items-center justify-between ${lastResult?.solved ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'}`}>
               <div>
-                <div className="font-bold text-[#1A1F26] text-sm">{t.yourResult}</div>
+                <div className="font-bold text-ink text-sm">{t.yourResult}</div>
                 <div className={`text-xs font-bold ${lastResult?.solved ? 'text-emerald-700' : 'text-red-600'}`}>
                   {lastResult?.solved ? t.solved : t.notSolved} · {t.attempts(lastResult?.attempts ?? 0)}
                 </div>
               </div>
-              <div className="font-black text-xl text-[#1A1F26] tabular-nums">+{lastResult?.score ?? 0}</div>
+              <div className="font-black text-xl text-ink tabular-nums">+{lastResult?.score ?? 0}</div>
             </div>
 
-            <div className="divide-y divide-[#F1F5F9] border-y border-[#F1F5F9] mb-4">
+            <div className="divide-y divide-divider border-y border-divider mb-4">
               {roundRanked.map((p) => {
                 const res = p.history[p.history.length - 1];
                 return (
                   <div key={p.id} className="flex items-center gap-3 py-2">
-                    <span className={`w-2 h-2 rounded-full ${p.isReadyForNextRound ? 'bg-emerald-500' : 'bg-[#E6E1DC]'}`} />
-                    <span className="flex-1 text-sm font-bold text-[#1A1F26] truncate">{p.name}</span>
-                    <span className="text-xs font-bold text-[#8A9099]">{res?.solved ? '✓' : '—'}</span>
+                    <span className={`w-2 h-2 rounded-full ${p.isReadyForNextRound ? 'bg-emerald-500' : 'bg-line'}`} />
+                    <span className="flex-1 text-sm font-bold text-ink truncate">{p.name}</span>
+                    <span className="text-xs font-bold text-muted">{res?.solved ? '✓' : '—'}</span>
                     <span className="w-12 text-right text-sm font-black tabular-nums">+{res?.score ?? 0}</span>
                   </div>
                 );
@@ -689,12 +741,12 @@ export default function WikilerGame({
                 {roundNumber >= settings.rounds ? t.total : t.next} <ArrowRight className="w-4 h-4" />
               </button>
             ) : (
-              <div className="w-full py-3.5 bg-[#F8FAFC] border border-[#E6E1DC] text-[#8A9099] rounded-xl font-bold uppercase text-xs tracking-wide text-center flex items-center justify-center gap-2">
+              <div className="w-full py-3.5 bg-page border border-line text-muted rounded-xl font-bold uppercase text-xs tracking-wide text-center flex items-center justify-center gap-2">
                 <Loader2 className="w-4 h-4 animate-spin" /> {roundNumber >= settings.rounds ? t.finishing : t.waitingGroup}
               </div>
             )}
             {nextRoundIn !== null && (
-              <p className="mt-3 text-center text-xs font-bold text-[#8A9099] tabular-nums">{t.nextRoundIn(nextRoundIn)}</p>
+              <p className="mt-3 text-center text-xs font-bold text-muted tabular-nums">{t.nextRoundIn(nextRoundIn)}</p>
             )}
           </div>
         </div>
@@ -712,12 +764,12 @@ export default function WikilerGame({
         onMenu={leaveGame}
         wide
       >
-        <div className="divide-y divide-[#F1F5F9] border-y border-[#F1F5F9]">
+        <div className="divide-y divide-divider border-y border-divider">
           {ranked.map((p, i) => (
             <div key={p.id} className="flex items-center gap-3 py-3">
-              <span className="w-5 text-xs font-black text-[#8A9099] tabular-nums">{i + 1}</span>
-              <span className="flex-1 text-sm font-bold text-[#1A1F26] truncate text-left">{p.name}</span>
-              <span className="text-xs font-bold text-[#8A9099] tabular-nums">{p.history.filter((h) => h.solved).length}/{p.history.length}</span>
+              <span className="w-5 text-xs font-black text-muted tabular-nums">{i + 1}</span>
+              <span className="flex-1 text-sm font-bold text-ink truncate text-left">{p.name}</span>
+              <span className="text-xs font-bold text-muted tabular-nums">{p.history.filter((h) => h.solved).length}/{p.history.length}</span>
               <span className="w-14 text-right text-sm font-black tabular-nums">{p.score}</span>
             </div>
           ))}

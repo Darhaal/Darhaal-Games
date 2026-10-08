@@ -113,6 +113,51 @@ const UI_TEXT = {
     winnerLabel: 'Winner',
     guessTitle: 'Guess the flag',
     guessHint: 'Type any country: matching colours show through'
+  },
+  uk: {
+    title: 'FLAGGER',
+    pro: 'by Darhaal',
+    round: 'Раунд',
+    of: 'з',
+    time: 'Таймер',
+    score: 'Очки',
+    accuracy: 'Точність',
+    status: 'Статус гравців',
+    targetFound: 'Правильно!',
+    missionFailedShort: 'Помилка',
+    searching: 'Думає...',
+    roundOver: 'Раунд завершено',
+    results: 'Підсумки раунду',
+    correctAnswer: 'Це був прапор',
+    yourResult: 'Ваш результат',
+    success: 'Вгадано',
+    fail: 'Не вгадано',
+    accepted: 'Зрозуміло',
+    missionFailed: 'Спроби вичерпано',
+    timeUp: 'Час вийшов',
+    waitingOthers: 'Чекаємо на решту...',
+    inputPlaceholder: 'Введіть назву країни...',
+    notFound: 'Країну не знайдено або вона вже була',
+    nextRound: 'Далі',
+    waitingGroup: 'Очікування групи...',
+    nextRoundIn: (s: number) => `Наступний раунд через ${s} с`,
+    gameOver: 'Гру завершено',
+    sessionResults: 'Підсумкова таблиця',
+    player: 'Гравець',
+    guessed: 'Прапорів',
+    returnMenu: 'У головне меню',
+    you: '(Ви)',
+    pixelMatch: 'PIXEL MATCH',
+    noData: 'Введіть будь-яку країну',
+    leaveGame: 'Вийти',
+    close: 'Закрити',
+    roundClock: 'раунд',
+    roundOf: (n: number, total: number) => `Раунд ${n} з ${total}`,
+    yourScore: 'Ваш рахунок',
+    youWin: 'Перемога',
+    winnerLabel: 'Переможець',
+    guessTitle: 'Вгадайте прапор',
+    guessHint: 'Вводьте будь-які країни: кольори, що збіглися, проявляться на прапорі'
   }
 };
 
@@ -125,7 +170,7 @@ interface FlagerGameProps {
   forceNextRound?: () => void;
   readyNextRound: () => void;
   leaveGame: () => void;
-  lang: 'ru' | 'en';
+  lang: 'ru' | 'en' | 'uk';
 }
 
 
@@ -242,15 +287,15 @@ const FlagRevealCanvas = ({ targetCode, guesses, isRoundDone, t }: { targetCode:
   }, [targetCode, guesses, isRoundDone, t]);
 
   return (
-    <div className="relative w-full aspect-[3/2] bg-[#1A1F26] overflow-hidden border border-[#1A1F26] shadow-sm group">
-       {isLoading && <div className="absolute inset-0 flex items-center justify-center"><Loader2 className="w-8 h-8 text-[#9e1316] animate-spin" /></div>}
+    <div className="relative w-full aspect-[3/2] bg-night overflow-hidden border border-night shadow-sm group">
+       {isLoading && <div className="absolute inset-0 flex items-center justify-center"><Loader2 className="w-8 h-8 text-accent animate-spin" /></div>}
        <canvas ref={canvasRef} width={640} height={426} className="w-full h-full object-contain z-10 relative transition-all duration-500" />
 
        <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] z-20 bg-[length:100%_2px,3px_100%] pointer-events-none opacity-20" />
        <div className="absolute inset-0 shadow-[inset_0_0_50px_rgba(0,0,0,0.5)] z-30 pointer-events-none" />
 
        {!isRoundDone && (
-         <div className="absolute top-3 right-3 bg-black/60 text-[#9e1316] text-2xs font-mono px-2 py-1 rounded backdrop-blur-sm z-40 border border-[#9e1316]/40 animate-pulse">
+         <div className="absolute top-3 right-3 bg-black/60 text-accent text-2xs font-mono px-2 py-1 rounded backdrop-blur-sm z-40 border border-accent/40 animate-pulse">
             {t.pixelMatch}
          </div>
        )}
@@ -346,19 +391,20 @@ export default function FlagerGame({ gameState, userId, makeGuess, handleTimeout
 
   const filteredCountries = useMemo(() => {
     if (!input) return [];
-    const lowerInput = input.toLowerCase().trim();
+    // Ukrainian names carry an apostrophe (В'єтнам), typed as ', ’ or ʼ
+    const fold = (s: string) => s.toLowerCase().replace(/[’ʼ`]/g, "'");
+    const lowerInput = fold(input.trim());
 
     return COUNTRY_CODES.filter(code => {
       const c = COUNTRIES[code.toLowerCase()];
       if (!c) return false;
 
-      const matchRu = c.name.ru.toLowerCase().includes(lowerInput);
-      const matchEn = c.name.en.toLowerCase().includes(lowerInput);
-      const matchAlias = c.aliases?.some(a => a.toLowerCase().includes(lowerInput));
+      const matchName = [c.name.ru, c.name.en, c.name.uk].some(n => fold(n).includes(lowerInput));
+      const matchAlias = c.aliases?.some(a => fold(a).includes(lowerInput));
 
       const notGuessed = !me?.guesses.includes(code.toLowerCase());
 
-      return (matchRu || matchEn || matchAlias) && notGuessed;
+      return (matchName || matchAlias) && notGuessed;
     }).slice(0, 5);
   }, [input, me?.guesses]);
 
@@ -419,15 +465,15 @@ export default function FlagerGame({ gameState, userId, makeGuess, handleTimeout
        <GameRulesModal
           isOpen={showRules}
           onClose={() => setShowRules(false)}
-          rules={GAME_RULES[lang as 'ru' | 'en'].flager}
+          rules={GAME_RULES[lang as 'ru' | 'en' | 'uk'].flager}
        />
        <GameNotificationToast notifications={gameState.notifications || []} lang={lang} />
 
        {/* COUNTDOWN before a round */}
        {isCountingDown && (
            <div className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-none">
-               <div key={countdownValue} className="w-32 h-32 md:w-40 md:h-40 bg-white rounded-full shadow-2xl border border-[#E6E1DC] flex items-center justify-center animate-in zoom-in-50 fade-in duration-200">
-                   <span className="text-5xl md:text-7xl font-black text-[#1A1F26] tabular-nums select-none">{countdownValue}</span>
+               <div key={countdownValue} className="w-32 h-32 md:w-40 md:h-40 bg-surface rounded-full shadow-2xl border border-line flex items-center justify-center animate-in zoom-in-50 fade-in duration-200">
+                   <span className="text-5xl md:text-7xl font-black text-ink tabular-nums select-none">{countdownValue}</span>
                </div>
            </div>
        )}
@@ -456,17 +502,17 @@ export default function FlagerGame({ gameState, userId, makeGuess, handleTimeout
                  />
 
                  {isRoundDone && !isRoundEnd && !isFinished && (
-                     <div className="absolute inset-0 bg-[#1A1F26]/40 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-500">
+                     <div className="absolute inset-0 bg-scrim/40 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-500">
                          <div className={`${DIALOG_PANEL} max-w-xs text-center !p-6`}>
                              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3 border ${isRoundFailed ? 'bg-red-50 border-red-100' : 'bg-emerald-50 border-emerald-100'}`}>
                                  {isRoundFailed ? (
                                      isTimeFailed ? <Clock className="w-7 h-7 text-red-600" /> : <X className="w-7 h-7 text-red-600" />
                                  ) : <Check className="w-7 h-7 text-emerald-600" />}
                              </div>
-                             <h3 className="text-xl font-black text-[#1A1F26] mb-1">
+                             <h3 className="text-xl font-black text-ink mb-1">
                                  {isRoundFailed ? (isTimeFailed ? t.timeUp : t.missionFailed) : t.accepted}
                              </h3>
-                             <p className="text-sm font-medium text-[#8A9099]">{t.waitingOthers}</p>
+                             <p className="text-sm font-medium text-muted">{t.waitingOthers}</p>
                          </div>
                      </div>
                  )}
@@ -497,32 +543,32 @@ export default function FlagerGame({ gameState, userId, makeGuess, handleTimeout
                                 }
                             }}
                             placeholder={isCountingDown ? '…' : t.inputPlaceholder}
-                            className={`w-full bg-white border rounded-xl py-4 pl-12 pr-16 font-bold text-lg text-[#1A1F26] placeholder:text-gray-400 placeholder:font-medium outline-none transition-colors shadow-sm ${
-                                shake ? 'border-red-400 text-red-600' : 'border-[#E6E1DC] focus:border-[#1A1F26]'
+                            className={`w-full bg-surface border rounded-xl py-4 pl-12 pr-16 font-bold text-lg text-ink placeholder:text-gray-400 placeholder:font-medium outline-none transition-colors shadow-sm ${
+                                shake ? 'border-red-400 text-red-600' : 'border-line focus:border-ink'
                             }`}
                             disabled={isCountingDown}
                             autoFocus
                         />
                         <Search className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 ${shake ? 'text-red-500' : 'text-gray-400'}`} />
-                        <kbd className="absolute right-4 top-1/2 -translate-y-1/2 hidden md:block bg-[#F8FAFC] border border-[#E6E1DC] rounded-md px-2 py-0.5 text-2xs font-bold text-[#8A9099]">Tab</kbd>
+                        <kbd className="absolute right-4 top-1/2 -translate-y-1/2 hidden md:block bg-page border border-line rounded-md px-2 py-0.5 text-2xs font-bold text-muted">Tab</kbd>
                    </div>
 
                    {showDropdown && input.length > 0 && (
-                      <div className="absolute bottom-full left-0 right-0 mb-2 bg-white border border-[#E6E1DC] rounded-2xl shadow-xl z-[60] overflow-hidden max-h-60 md:max-h-80 overflow-y-auto animate-in slide-in-from-bottom-2">
+                      <div className="absolute bottom-full left-0 right-0 mb-2 bg-surface border border-line rounded-2xl shadow-xl z-[60] overflow-hidden max-h-60 md:max-h-80 overflow-y-auto animate-in slide-in-from-bottom-2">
                           {filteredCountries.map((code, idx) => (
                               <button
                                   key={code}
                                   onClick={() => handleGuess(code)}
                                   onMouseEnter={() => setHighlightIdx(idx)}
-                                  className={`w-full text-left px-5 py-3 font-bold text-sm flex items-center gap-4 border-b border-[#F1F5F9] last:border-0 transition-colors ${idx === highlightIdx ? 'bg-[#F8FAFC]' : 'hover:bg-[#F8FAFC]'}`}
+                                  className={`w-full text-left px-5 py-3 font-bold text-sm flex items-center gap-4 border-b border-divider last:border-0 transition-colors ${idx === highlightIdx ? 'bg-page' : 'hover:bg-page'}`}
                               >
-                                  <Image src={COUNTRIES[code.toLowerCase()]?.flagPath || ""} alt="" width={40} height={28} className="w-9 h-6 object-cover rounded-sm border border-[#E6E1DC]" />
-                                  <span className="text-[#1A1F26] truncate">{COUNTRIES[code.toLowerCase()]?.name[lang]}</span>
-                                  <ArrowRight className={`w-4 h-4 ml-auto hidden sm:block ${idx === highlightIdx ? 'text-[#9e1316]' : 'text-gray-300'}`} />
+                                  <Image src={COUNTRIES[code.toLowerCase()]?.flagPath || ""} alt="" width={40} height={28} className="w-9 h-6 object-cover rounded-sm border border-line" />
+                                  <span className="text-ink truncate">{COUNTRIES[code.toLowerCase()]?.name[lang]}</span>
+                                  <ArrowRight className={`w-4 h-4 ml-auto hidden sm:block ${idx === highlightIdx ? 'text-accent' : 'text-gray-300'}`} />
                               </button>
                           ))}
                           {filteredCountries.length === 0 && (
-                              <div className="p-5 text-center text-[#8A9099] text-xs font-bold">{t.notFound}</div>
+                              <div className="p-5 text-center text-muted text-xs font-bold">{t.notFound}</div>
                           )}
                       </div>
                    )}
@@ -536,11 +582,11 @@ export default function FlagerGame({ gameState, userId, makeGuess, handleTimeout
                       const isTarget = code === currentFlagCode.toLowerCase();
                       const cData = COUNTRIES[code];
                       return (
-                          <div key={i} className={`flex items-center gap-3 p-2.5 rounded-xl border animate-in fade-in slide-in-from-bottom-2 duration-300 ${isTarget ? 'bg-emerald-50 border-emerald-100' : 'bg-white border-[#E6E1DC]'}`}>
-                              <Image src={cData?.flagPath || ""} alt="" width={40} height={28} className="w-9 h-6 object-cover rounded-sm border border-[#E6E1DC]" />
+                          <div key={i} className={`flex items-center gap-3 p-2.5 rounded-xl border animate-in fade-in slide-in-from-bottom-2 duration-300 ${isTarget ? 'bg-emerald-50 border-emerald-100' : 'bg-surface border-line'}`}>
+                              <Image src={cData?.flagPath || ""} alt="" width={40} height={28} className="w-9 h-6 object-cover rounded-sm border border-line" />
                               <div className="flex flex-col min-w-0">
-                                  <span className={`font-bold text-sm truncate ${isTarget ? 'text-emerald-800' : 'text-[#1A1F26]'}`}>{cData?.name[lang]}</span>
-                                  <span className="text-2xs text-[#8A9099] font-bold uppercase">{continentName(cData?.continent, lang)}</span>
+                                  <span className={`font-bold text-sm truncate ${isTarget ? 'text-emerald-800' : 'text-ink'}`}>{cData?.name[lang]}</span>
+                                  <span className="text-2xs text-muted font-bold uppercase">{continentName(cData?.continent, lang)}</span>
                               </div>
                           </div>
                       );
@@ -572,7 +618,7 @@ export default function FlagerGame({ gameState, userId, makeGuess, handleTimeout
                   <div className="text-3xl font-black tabular-nums leading-none">{me?.score || 0}</div>
                   <div className="text-right">
                     <div className={LABEL}>{t.accuracy}</div>
-                    <div className={`mt-1 text-base font-black flex items-center gap-1 justify-end tabular-nums ${calculateAccuracy(me) > 80 ? 'text-emerald-600' : 'text-[#1A1F26]'}`}>
+                    <div className={`mt-1 text-base font-black flex items-center gap-1 justify-end tabular-nums ${calculateAccuracy(me) > 80 ? 'text-emerald-600' : 'text-ink'}`}>
                       <Target className="w-4 h-4" /> {calculateAccuracy(me)}%
                     </div>
                   </div>
@@ -601,7 +647,7 @@ export default function FlagerGame({ gameState, userId, makeGuess, handleTimeout
                     ),
                     aside: (
                       <span className="flex flex-col items-end">
-                        <span className="text-sm font-black text-[#1A1F26]">{p.score}</span>
+                        <span className="text-sm font-black text-ink">{p.score}</span>
                         {!isFinished && isDone && p.roundScore > 0 && <span className="text-emerald-600">+{p.roundScore}</span>}
                       </span>
                     )
@@ -619,11 +665,11 @@ export default function FlagerGame({ gameState, userId, makeGuess, handleTimeout
                     <div className="flex items-center justify-between mb-5">
                         <div>
                             <div className={LABEL}>{t.roundOf(roundNumber, gameState.targetChain.length)}</div>
-                            <h2 className="text-2xl font-black text-[#1A1F26] mt-1">{t.roundOver}</h2>
+                            <h2 className="text-2xl font-black text-ink mt-1">{t.roundOver}</h2>
                         </div>
                     </div>
 
-                    <div className="relative h-40 md:h-48 rounded-xl overflow-hidden mb-5 border border-[#E6E1DC]">
+                    <div className="relative h-40 md:h-48 rounded-xl overflow-hidden mb-5 border border-line">
                         <Image src={COUNTRIES[currentFlagCode.toLowerCase()]?.flagPath || ""} alt="" fill sizes="(max-width: 768px) 100vw, 512px" className="object-cover" />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/75 to-transparent" />
                         <div className="absolute bottom-4 left-5">
@@ -634,12 +680,12 @@ export default function FlagerGame({ gameState, userId, makeGuess, handleTimeout
 
                     <div className={`p-4 rounded-xl border mb-5 flex items-center justify-between ${lastResult?.isCorrect ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'}`}>
                          <div>
-                             <div className="font-bold text-[#1A1F26] text-sm">{t.yourResult}</div>
+                             <div className="font-bold text-ink text-sm">{t.yourResult}</div>
                              <div className={`text-xs font-bold ${lastResult?.isCorrect ? 'text-emerald-700' : 'text-red-600'}`}>
                                  {lastResult?.isCorrect ? t.success : t.fail}
                              </div>
                          </div>
-                         <div className="font-black text-xl text-[#1A1F26] tabular-nums">+{lastResult?.points || 0}</div>
+                         <div className="font-black text-xl text-ink tabular-nums">+{lastResult?.points || 0}</div>
                     </div>
 
                     {!me?.isReadyForNextRound ? (
@@ -649,18 +695,18 @@ export default function FlagerGame({ gameState, userId, makeGuess, handleTimeout
                             {t.nextRound} <ArrowRight className="w-4 h-4" />
                         </button>
                     ) : (
-                        <div className="w-full py-3.5 bg-[#F8FAFC] border border-[#E6E1DC] text-[#8A9099] rounded-xl font-bold uppercase text-xs tracking-wide text-center flex items-center justify-center gap-2">
+                        <div className="w-full py-3.5 bg-page border border-line text-muted rounded-xl font-bold uppercase text-xs tracking-wide text-center flex items-center justify-center gap-2">
                             <Loader2 className="w-4 h-4 animate-spin" /> {t.waitingGroup}
                         </div>
                     )}
 
                     <div className="mt-4 flex justify-center gap-2">
                         {gameState.players.map(p => (
-                            <div key={p.id} className={`w-2 h-2 rounded-full transition-colors ${p.isReadyForNextRound ? 'bg-emerald-500' : 'bg-[#E6E1DC]'}`} title={p.name} />
+                            <div key={p.id} className={`w-2 h-2 rounded-full transition-colors ${p.isReadyForNextRound ? 'bg-emerald-500' : 'bg-line'}`} title={p.name} />
                         ))}
                     </div>
                     {nextRoundIn !== null && (
-                        <p className="mt-3 text-center text-xs font-bold text-[#8A9099] tabular-nums">{t.nextRoundIn(nextRoundIn)}</p>
+                        <p className="mt-3 text-center text-xs font-bold text-muted tabular-nums">{t.nextRoundIn(nextRoundIn)}</p>
                     )}
                 </div>
             </div>
@@ -678,19 +724,19 @@ export default function FlagerGame({ gameState, userId, makeGuess, handleTimeout
           onMenu={handleEmergencyExit}
           wide
        >
-          <div className="divide-y divide-[#F1F5F9] border-y border-[#F1F5F9]">
+          <div className="divide-y divide-divider border-y border-divider">
               {ranked.map((p, idx) => (
                   <div key={p.id} className="flex items-center gap-3 py-3">
-                      <span className="w-5 text-sm font-black text-[#8A9099] tabular-nums">{idx + 1}</span>
-                      <Image src={p.avatarUrl || defaultAvatar(p.id)} alt="" width={32} height={32} className="w-8 h-8 rounded-full object-cover bg-[#F8FAFC] shrink-0" />
+                      <span className="w-5 text-sm font-black text-muted tabular-nums">{idx + 1}</span>
+                      <Image src={p.avatarUrl || defaultAvatar(p.id)} alt="" width={32} height={32} className="w-8 h-8 rounded-full object-cover bg-page shrink-0" />
                       <span className="text-sm font-bold truncate flex-1">
                           {p.name}
-                          {p.id === userId && <span className="ml-1.5 text-3xs font-bold uppercase tracking-wider text-[#8A9099]">{t.you}</span>}
+                          {p.id === userId && <span className="ml-1.5 text-3xs font-bold uppercase tracking-wider text-muted">{t.you}</span>}
                       </span>
-                      <span className="hidden sm:flex items-center gap-1 text-xs font-bold text-[#8A9099] tabular-nums">
+                      <span className="hidden sm:flex items-center gap-1 text-xs font-bold text-muted tabular-nums">
                           <Target className="w-3 h-3" /> {calculateAccuracy(p)}%
                       </span>
-                      <span className="text-xs font-bold text-[#8A9099] tabular-nums w-14 text-right">
+                      <span className="text-xs font-bold text-muted tabular-nums w-14 text-right">
                           {p.history.filter(h => h.isCorrect).length}/{gameState.targetChain.length}
                       </span>
                       <span className="text-base font-black tabular-nums w-14 text-right">{p.score}</span>

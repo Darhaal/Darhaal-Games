@@ -3,6 +3,7 @@ import type { Locale } from '@/games/registry';
 import PublicShell from './PublicShell';
 import { breadcrumbJsonLd } from '@/lib/seo';
 import JsonLd from './JsonLd';
+import { INTL_LOCALE } from '@/lib/locale';
 
 /**
  * The privacy policy page, shared by the RU route and its /en counterpart.
@@ -18,7 +19,7 @@ export default function PrivacyPolicy({ locale }: { locale: Locale }) {
   // anyone west of it. The policy would then claim a date it does not have.
   const [year, month, day] = POLICY_UPDATED.split('-').map(Number);
   const updated = new Date(year, month - 1, day).toLocaleDateString(
-    locale === 'ru' ? 'ru-RU' : 'en-GB',
+    INTL_LOCALE[locale],
     { year: 'numeric', month: 'long', day: 'numeric' }
   );
 

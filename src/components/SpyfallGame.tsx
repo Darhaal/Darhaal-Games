@@ -36,7 +36,7 @@ interface SpyfallGameProps {
   startNomination: (targetId: string) => void;
   resolveVoteTimeout: () => void;
   vote: (agree: boolean) => void;
-  lang: 'ru' | 'en';
+  lang: 'ru' | 'en' | 'uk';
 }
 
 const UI_TEXT = {
@@ -145,6 +145,59 @@ const UI_TEXT = {
     spy: 'Spy',
     loc: 'Location',
     score: 'Score'
+  },
+  uk: {
+    waiting: 'Очікування гравців...',
+    minPlayers: 'Потрібно 3+ гравці',
+    start: 'Почати місію',
+    roleTitle: 'ВАША РОЛЬ',
+    youAreSpy: 'ВИ ШПИГУН',
+    spyTask: 'Не видайте себе. Ваше завдання — вгадати поточну локацію.',
+    youAreLocal: 'МИРНИЙ МЕШКАНЕЦЬ',
+    localTask: 'Обчисліть шпигуна серед гравців.',
+    locations: 'Локації',
+    timeLeft: 'Таймер',
+    reveal: 'Показати',
+    hide: 'Сховати',
+    spyWins: 'Перемога шпигуна',
+    localsWin: 'Перемога мирних',
+    round: 'Раунд',
+    roundClock: 'раунд',
+    spyShort: 'Ви шпигун',
+    localShort: 'Ви мирний мешканець',
+    spyHint: 'Слухайте запитання й вгадайте локацію, поки вас не обчислили',
+    localHint: 'Ставте запитання й знайдіть шпигуна. Звинуватити можна в списку гравців',
+    secret: 'Цілком таємно',
+    playAgain: 'Новий раунд',
+    leave: 'Покинути',
+    players: 'Гравці',
+    accuse: 'Звинуватити',
+    guessLoc: 'Назвати локацію',
+    guessTitle: 'Де ми перебуваємо?',
+    confirmAccuse: 'Почати голосування?',
+    confirmDesc: 'Потрібне одностайне рішення всіх гравців, крім звинуваченого.',
+    voteTitle: 'ГОЛОСУВАННЯ',
+    voteDesc: 'підозрюється в шпигунстві',
+    voteYes: 'Шпигун!',
+    voteNo: 'Мирний',
+    cancel: 'Скасувати',
+    confirm: 'Підтвердити',
+    waitingVote: 'Очікування голосів...',
+    rulesTitle: 'Правила гри',
+    branding: 'Darhaal',
+    pro: 'Spyfall',
+    reasons: {
+        time: 'Час вичерпано (переміг шпигун)',
+        guessed_loc: 'Шпигун правильно назвав локацію',
+        spy_failed_guess: 'Шпигун помилився з локацією',
+        spy_caught: 'Шпигуна викрили на голосуванні',
+        innocent_killed: 'Мирні помилилися й стратили свого',
+        spy_left: 'Шпигун утік з місця'
+    },
+    unknown: 'Невідомо',
+    spy: 'Шпигун',
+    loc: 'Локація',
+    score: 'Очки'
   }
 };
 
@@ -264,22 +317,22 @@ export default function SpyfallGame({ gameState, userId, startGame, endGame, lea
   // --- WAITING LOBBY ---
   if (gameState.status === 'waiting') {
       return (
-          <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center p-4 font-sans relative overflow-hidden">
+          <div className="min-h-screen bg-page flex flex-col items-center justify-center p-4 font-sans relative overflow-hidden">
               <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-30 mix-blend-overlay pointer-events-none" />
 
               <div className="text-center mb-12 relative z-10">
-                  <div className="inline-flex items-center gap-2 bg-white px-4 py-2 rounded-full border border-[#E6E1DC] shadow-sm mb-4">
-                      <Fingerprint className="w-4 h-4 text-[#9e1316]" />
-                      <span className="text-2xs font-black text-[#1A1F26] uppercase tracking-[0.2em]">{t.branding}</span>
+                  <div className="inline-flex items-center gap-2 bg-surface px-4 py-2 rounded-full border border-line shadow-sm mb-4">
+                      <Fingerprint className="w-4 h-4 text-accent" />
+                      <span className="text-2xs font-black text-ink uppercase tracking-[0.2em]">{t.branding}</span>
                   </div>
-                  <h1 className="text-6xl md:text-8xl font-black text-[#1A1F26] tracking-tighter leading-none mb-4">{t.pro}</h1>
-                  <p className="text-[#8A9099] font-bold text-xs uppercase tracking-[0.3em]">{t.waiting}</p>
+                  <h1 className="text-6xl md:text-8xl font-black text-ink tracking-tighter leading-none mb-4">{t.pro}</h1>
+                  <p className="text-muted font-bold text-xs uppercase tracking-[0.3em]">{t.waiting}</p>
               </div>
 
               <div className="flex flex-wrap justify-center gap-6 max-w-4xl mb-16 relative z-10">
                   {gameState.players.map(p => (
                       <div key={p.id} className="flex flex-col items-center group animate-in zoom-in duration-300">
-                          <div className="w-20 h-20 rounded-[24px] bg-white border-4 border-white shadow-lg overflow-hidden relative group-hover:scale-105 transition-transform duration-300">
+                          <div className="w-20 h-20 rounded-[24px] bg-surface border-4 border-surface shadow-lg overflow-hidden relative group-hover:scale-105 transition-transform duration-300">
                               <Image src={p.avatarUrl} alt="" width={80} height={80} className="w-full h-full object-cover" />
                               {p.isHost && (
                                   <div className="absolute top-0 right-0 bg-[#FBBF24] p-1.5 rounded-bl-xl shadow-sm">
@@ -288,32 +341,32 @@ export default function SpyfallGame({ gameState, userId, startGame, endGame, lea
                               )}
                           </div>
                           <div className="mt-3 flex flex-col items-center">
-                              <span className="text-xs font-black text-[#1A1F26] bg-white px-3 py-1.5 rounded-full border border-[#E6E1DC] shadow-sm tracking-wide">{p.name}</span>
-                              <span className="text-3xs font-bold text-[#9e1316] mt-1 flex items-center gap-1"><Star className="w-3 h-3 fill-current"/> {p.score || 0}</span>
+                              <span className="text-xs font-black text-ink bg-surface px-3 py-1.5 rounded-full border border-line shadow-sm tracking-wide">{p.name}</span>
+                              <span className="text-3xs font-bold text-accent mt-1 flex items-center gap-1"><Star className="w-3 h-3 fill-current"/> {p.score || 0}</span>
                           </div>
                       </div>
                   ))}
                   {Array.from({ length: Math.max(0, 3 - gameState.players.length) }).map((_, i) => (
-                      <div key={i} className="w-20 h-20 rounded-[24px] border-2 border-dashed border-[#E6E1DC] flex items-center justify-center bg-transparent opacity-50">
-                          <User className="w-8 h-8 text-[#E6E1DC]" />
+                      <div key={i} className="w-20 h-20 rounded-[24px] border-2 border-dashed border-line flex items-center justify-center bg-transparent opacity-50">
+                          <User className="w-8 h-8 text-line" />
                       </div>
                   ))}
               </div>
 
               <div className="flex gap-4 relative z-10 w-full max-w-md">
-                  <button onClick={leaveGame} className="flex-1 py-4 bg-white border border-[#E6E1DC] rounded-2xl font-bold uppercase text-xs hover:bg-[#F8FAFC] hover:text-[#9e1316] transition-colors">
+                  <button onClick={leaveGame} className="flex-1 py-4 bg-surface border border-line rounded-2xl font-bold uppercase text-xs hover:bg-page hover:text-accent transition-colors">
                       {t.leave}
                   </button>
                   {isHost ? (
                       <button
                           onClick={startGame}
                           disabled={gameState.players.length < 3}
-                          className="flex-[2] py-4 bg-[#1A1F26] text-white rounded-2xl font-black uppercase text-xs hover:bg-[#9e1316] transition-all shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                          className="flex-[2] py-4 bg-ink text-on-ink rounded-2xl font-black uppercase text-xs hover:bg-accent transition-all shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                       >
                           <Play className="w-4 h-4" /> {t.start}
                       </button>
                   ) : (
-                      <div className="flex-[2] py-4 bg-[#E6E1DC]/30 border border-[#E6E1DC] text-[#8A9099] rounded-2xl font-bold uppercase text-xs flex items-center justify-center gap-2">
+                      <div className="flex-[2] py-4 bg-line/30 border border-line text-muted rounded-2xl font-bold uppercase text-xs flex items-center justify-center gap-2">
                           <Clock className="w-4 h-4 animate-spin" /> {t.waiting}
                       </div>
                   )}
@@ -340,7 +393,7 @@ export default function SpyfallGame({ gameState, userId, startGame, endGame, lea
         <GameRulesModal
           isOpen={showRules}
           onClose={() => setShowRules(false)}
-          rules={GAME_RULES[lang as 'ru' | 'en'].spyfall}
+          rules={GAME_RULES[lang as 'ru' | 'en' | 'uk'].spyfall}
         />
 
         <GameHeader
@@ -369,12 +422,12 @@ export default function SpyfallGame({ gameState, userId, startGame, endGame, lea
                                 <div className={`transition-all duration-500 ${showRole ? 'blur-0 opacity-100' : 'blur-md opacity-0 pointer-events-none'}`}>
                                     {me?.isSpy ? (
                                         <>
-                                            <h2 className="text-3xl md:text-4xl font-black text-[#9e1316] tracking-tight mb-3">{t.youAreSpy}</h2>
-                                            <p className="text-sm font-medium text-[#1A1F26] bg-red-50 py-2 px-4 rounded-xl inline-block border border-red-100">{t.spyTask}</p>
+                                            <h2 className="text-3xl md:text-4xl font-black text-accent tracking-tight mb-3">{t.youAreSpy}</h2>
+                                            <p className="text-sm font-medium text-ink bg-red-50 py-2 px-4 rounded-xl inline-block border border-red-100">{t.spyTask}</p>
                                         </>
                                     ) : (
                                         <>
-                                            <h2 className="text-3xl md:text-4xl font-black text-[#1A1F26] tracking-tight leading-tight">{getLocationData(gameState.currentLocationId || '')?.name[lang]}</h2>
+                                            <h2 className="text-3xl md:text-4xl font-black text-ink tracking-tight leading-tight">{getLocationData(gameState.currentLocationId || '')?.name[lang]}</h2>
                                             <div className="inline-block bg-emerald-50 text-emerald-800 px-3 py-1 rounded-lg text-sm font-bold mt-3 border border-emerald-100">
                                                 {getRoleName(me?.role || '')}
                                             </div>
@@ -384,7 +437,7 @@ export default function SpyfallGame({ gameState, userId, startGame, endGame, lea
 
                                 {!showRole && (
                                     <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                        <div className="w-14 h-14 bg-[#1A1F26] rounded-2xl flex items-center justify-center mb-3">
+                                        <div className="w-14 h-14 bg-night rounded-2xl flex items-center justify-center mb-3">
                                             <Target className="w-7 h-7 text-white" />
                                         </div>
                                         <div className={LABEL}>{t.secret}</div>
@@ -406,7 +459,7 @@ export default function SpyfallGame({ gameState, userId, startGame, endGame, lea
                     <GameCard
                         label={<span className="inline-flex items-center gap-2"><Map className="w-3.5 h-3.5" /> {t.locations}</span>}
                         aside={me?.isSpy && gameState.status === 'playing' ? (
-                            <button onClick={() => setShowGuessModal(true)} className={`flex items-center gap-2 px-3.5 py-2 ${BUTTON_PRIMARY} !bg-[#9e1316] hover:!bg-[#1A1F26]`}>
+                            <button onClick={() => setShowGuessModal(true)} className={`flex items-center gap-2 px-3.5 py-2 ${BUTTON_PRIMARY} !bg-accent hover:!bg-ink`}>
                                 <Target className="w-3.5 h-3.5" /> {t.guessLoc}
                             </button>
                         ) : undefined}
@@ -416,7 +469,7 @@ export default function SpyfallGame({ gameState, userId, startGame, endGame, lea
                                 <button
                                     key={loc.id}
                                     onClick={() => toggleCross(loc.id)}
-                                    className={`relative rounded-xl overflow-hidden aspect-[16/10] group transition-all duration-300 border border-[#E6E1DC] bg-[#1A1F26] ${
+                                    className={`relative rounded-xl overflow-hidden aspect-[16/10] group transition-all duration-300 border border-line bg-night ${
                                         crossedOut.includes(loc.id) ? 'opacity-40 grayscale scale-95' : 'hover:shadow-md hover:-translate-y-0.5'
                                     }`}
                                 >
@@ -427,7 +480,7 @@ export default function SpyfallGame({ gameState, userId, startGame, endGame, lea
                                     </div>
                                     {crossedOut.includes(loc.id) && (
                                         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                            <div className="w-[80%] h-1 bg-[#9e1316] -rotate-[15deg] rounded-full" />
+                                            <div className="w-[80%] h-1 bg-accent -rotate-[15deg] rounded-full" />
                                         </div>
                                     )}
                                 </button>
@@ -465,7 +518,7 @@ export default function SpyfallGame({ gameState, userId, startGame, endGame, lea
                             won: isFinished && winners.some(w => w.id === p.id),
                             stat: (
                                 <span className="flex items-center gap-1 tabular-nums">
-                                    <Star className="w-3 h-3 fill-current text-[#9e1316]" /> {p.score || 0}
+                                    <Star className="w-3 h-3 fill-current text-accent" /> {p.score || 0}
                                 </span>
                             ),
                             aside: p.id !== userId && gameState.status === 'playing' && !alreadyNominated ? (
@@ -483,16 +536,16 @@ export default function SpyfallGame({ gameState, userId, startGame, endGame, lea
         {showGuessModal && (
             <div role="dialog" aria-modal="true" aria-label={t.guessTitle} className={DIALOG_OVERLAY} onClick={() => setShowGuessModal(false)}>
                 <div className={`${DIALOG_PANEL} max-w-2xl !p-0 overflow-hidden flex flex-col max-h-[80vh]`} onClick={(e) => e.stopPropagation()}>
-                    <div className="px-6 py-4 border-b border-[#F1F5F9] flex justify-between items-center">
-                        <h3 className="font-black text-lg text-[#1A1F26] flex items-center gap-2"><Target className="w-5 h-5 text-[#9e1316]"/> {t.guessTitle}</h3>
-                        <button onClick={() => setShowGuessModal(false)} className="p-2 hover:bg-[#F8FAFC] rounded-full transition-colors" aria-label={t.cancel}><XCircle className="w-5 h-5 text-[#8A9099]" /></button>
+                    <div className="px-6 py-4 border-b border-divider flex justify-between items-center">
+                        <h3 className="font-black text-lg text-ink flex items-center gap-2"><Target className="w-5 h-5 text-accent"/> {t.guessTitle}</h3>
+                        <button onClick={() => setShowGuessModal(false)} className="p-2 hover:bg-page rounded-full transition-colors" aria-label={t.cancel}><XCircle className="w-5 h-5 text-muted" /></button>
                     </div>
-                    <div className="p-6 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 gap-3 custom-scrollbar bg-[#F8FAFC]">
+                    <div className="p-6 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 gap-3 custom-scrollbar bg-page">
                         {activeLocations.map(loc => (
                             <button
                                 key={loc.id}
                                 onClick={() => handleSpyGuess(loc.id)}
-                                className="relative rounded-xl border border-[#E6E1DC] font-bold text-sm text-white hover:-translate-y-0.5 hover:shadow-md transition-all text-center overflow-hidden h-24 flex items-center justify-center group bg-[#1A1F26]"
+                                className="relative rounded-xl border border-line font-bold text-sm text-white hover:-translate-y-0.5 hover:shadow-md transition-all text-center overflow-hidden h-24 flex items-center justify-center group bg-night"
                             >
                                 <LocationArt locationId={loc.id} className="opacity-60 group-hover:opacity-40 transition-opacity" />
                                 <span className="relative z-10 uppercase tracking-wide drop-shadow-md">{loc.name[lang]}</span>
@@ -507,11 +560,11 @@ export default function SpyfallGame({ gameState, userId, startGame, endGame, lea
         {accuseTarget && (
             <div role="dialog" aria-modal="true" aria-label={t.confirmAccuse} className={DIALOG_OVERLAY} onClick={() => setAccuseTarget(null)}>
                 <div className={`${DIALOG_PANEL} max-w-sm text-center`} onClick={(e) => e.stopPropagation()}>
-                    <div className="w-14 h-14 bg-red-50 text-[#9e1316] rounded-2xl flex items-center justify-center mx-auto mb-4 border border-red-100">
+                    <div className="w-14 h-14 bg-red-50 text-accent rounded-2xl flex items-center justify-center mx-auto mb-4 border border-red-100">
                         <Siren className="w-7 h-7" />
                     </div>
-                    <h3 className="text-xl font-black text-[#1A1F26] mb-1">{t.confirmAccuse}</h3>
-                    <p className="text-sm font-medium text-[#8A9099] mb-6 leading-snug">{t.confirmDesc}</p>
+                    <h3 className="text-xl font-black text-ink mb-1">{t.confirmAccuse}</h3>
+                    <p className="text-sm font-medium text-muted mb-6 leading-snug">{t.confirmDesc}</p>
                     <div className="flex gap-3">
                         <button onClick={() => setAccuseTarget(null)} className={`flex-1 py-3 ${BUTTON_SECONDARY}`}>{t.cancel}</button>
                         <button onClick={handleConfirmAccuse} className={`flex-1 py-3 ${BUTTON_PRIMARY}`}>{t.confirm}</button>
@@ -524,19 +577,19 @@ export default function SpyfallGame({ gameState, userId, startGame, endGame, lea
         {gameState.status === 'voting' && gameState.nomination && (
             <div role="dialog" aria-modal="true" aria-label={t.voteTitle} className={DIALOG_OVERLAY}>
                 <div className={`${DIALOG_PANEL} max-w-sm text-center`}>
-                    <div className="w-14 h-14 bg-red-50 text-[#9e1316] rounded-2xl flex items-center justify-center mx-auto mb-4 border border-red-100">
+                    <div className="w-14 h-14 bg-red-50 text-accent rounded-2xl flex items-center justify-center mx-auto mb-4 border border-red-100">
                         <Siren className="w-7 h-7 animate-pulse" />
                     </div>
                     <div className={`${LABEL} mb-1`}>{t.voteTitle}</div>
-                    <div className="text-xs font-black tabular-nums text-[#9e1316] mb-3">{voteTimeLeft}s</div>
-                    <p className="text-sm font-medium text-[#8A9099] mb-6 leading-relaxed">
-                        <span className="text-[#1A1F26] font-bold">{gameState.players.find(p => p.id === gameState.nomination?.authorId)?.name}</span> {t.accuse.toLowerCase()}<br/>
-                        <span className="text-[#9e1316] font-black text-lg block my-1">{gameState.players.find(p => p.id === gameState.nomination?.targetId)?.name}</span>
+                    <div className="text-xs font-black tabular-nums text-accent mb-3">{voteTimeLeft}s</div>
+                    <p className="text-sm font-medium text-muted mb-6 leading-relaxed">
+                        <span className="text-ink font-bold">{gameState.players.find(p => p.id === gameState.nomination?.authorId)?.name}</span> {t.accuse.toLowerCase()}<br/>
+                        <span className="text-accent font-black text-lg block my-1">{gameState.players.find(p => p.id === gameState.nomination?.targetId)?.name}</span>
                         {t.voteDesc}
                     </p>
 
                     {userId === gameState.nomination.targetId ? (
-                        <div className="py-4 bg-[#F8FAFC] rounded-xl border border-[#E6E1DC] text-[#8A9099] text-xs font-bold uppercase tracking-widest animate-pulse">
+                        <div className="py-4 bg-page rounded-xl border border-line text-muted text-xs font-bold uppercase tracking-widest animate-pulse">
                             {t.waitingVote}
                         </div>
                     ) : gameState.nomination.votes[userId] !== undefined ? (
@@ -548,7 +601,7 @@ export default function SpyfallGame({ gameState, userId, startGame, endGame, lea
                             <button onClick={() => vote(false)} className={`flex-1 py-3 flex flex-col items-center gap-1 ${BUTTON_SECONDARY}`}>
                                 <ThumbsDown className="w-5 h-5" /> {t.voteNo}
                             </button>
-                            <button onClick={() => vote(true)} className={`flex-1 py-3 flex flex-col items-center gap-1 ${BUTTON_PRIMARY} !bg-[#9e1316] hover:!bg-[#1A1F26]`}>
+                            <button onClick={() => vote(true)} className={`flex-1 py-3 flex flex-col items-center gap-1 ${BUTTON_PRIMARY} !bg-accent hover:!bg-ink`}>
                                 <ThumbsUp className="w-5 h-5" /> {t.voteYes}
                             </button>
                         </div>
@@ -570,17 +623,17 @@ export default function SpyfallGame({ gameState, userId, startGame, endGame, lea
             onMenu={leaveGame}
         >
             <div className="grid grid-cols-2 gap-3">
-                <div className="bg-[#F8FAFC] p-3 rounded-xl border border-[#E6E1DC] flex flex-col items-center gap-2">
+                <div className="bg-page p-3 rounded-xl border border-line flex flex-col items-center gap-2">
                     <span className={LABEL}>{t.loc}</span>
-                    <div className="w-full h-16 rounded-lg overflow-hidden relative bg-[#1A1F26]">
+                    <div className="w-full h-16 rounded-lg overflow-hidden relative bg-night">
                         {actualLocation && <LocationArt locationId={actualLocation.id} />}
                     </div>
-                    <span className="font-black text-sm text-[#1A1F26] text-center leading-tight">{actualLocation?.name[lang] ?? t.unknown}</span>
+                    <span className="font-black text-sm text-ink text-center leading-tight">{actualLocation?.name[lang] ?? t.unknown}</span>
                 </div>
-                <div className="bg-[#F8FAFC] p-3 rounded-xl border border-[#E6E1DC] flex flex-col items-center gap-2">
+                <div className="bg-page p-3 rounded-xl border border-line flex flex-col items-center gap-2">
                     <span className={LABEL}>{t.spy}</span>
-                    <Image src={spyPlayer?.avatarUrl || '/logo512.png'} alt="" width={64} height={64} className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-sm" />
-                    <span className="font-black text-sm text-[#9e1316] text-center leading-tight">{spyPlayer?.name || t.unknown}</span>
+                    <Image src={spyPlayer?.avatarUrl || '/logo512.png'} alt="" width={64} height={64} className="w-16 h-16 rounded-full object-cover border-2 border-surface shadow-sm" />
+                    <span className="font-black text-sm text-accent text-center leading-tight">{spyPlayer?.name || t.unknown}</span>
                 </div>
             </div>
         </ResultDialog>

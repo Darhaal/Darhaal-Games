@@ -1,15 +1,17 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import Image from 'next/image';
 import { Trophy } from 'lucide-react';
 import PlayerToken from '../PlayerToken';
 import GameCard from './GameCard';
 import { HURRY_SECONDS, softTone } from './ui';
+import { callAttention, stopAttention } from '@/lib/attention';
 
 const T = {
   ru: { turn: 'Ход', yourTurn: 'Ваш ход', over: 'Партия окончена', results: 'Итоги' },
-  en: { turn: 'Turn', yourTurn: 'Your turn', over: 'Match over', results: 'Results' }
+  en: { turn: 'Turn', yourTurn: 'Your turn', over: 'Match over', results: 'Results' },
+  uk: { turn: 'Хід', yourTurn: 'Ваш хід', over: 'Партію завершено', results: 'Підсумки' }
 };
 
 export interface TurnHolder {
@@ -36,7 +38,7 @@ export interface TurnHolder {
 export default function TurnCard({
   lang, label, title, who, hint, secondsLeft, turnSeconds, result
 }: {
-  lang: 'ru' | 'en';
+  lang: 'ru' | 'en' | 'uk';
   /** Replaces «Ход» — «Раунд», for a Status card. */
   label?: string;
   /** Replaces the player's name — what is going on right now. */
@@ -55,25 +57,34 @@ export default function TurnCard({
 }) {
   const t = T[lang];
 
+  // Every turn-based game shows this card, so calling a player back to a
+  // background tab when their move comes up lives here, once.
+  const myTurn = !result && !!who?.isMe;
+  useEffect(() => {
+    if (!myTurn) return;
+    callAttention('turn');
+    return () => stopAttention('turn');
+  }, [myTurn]);
+
   if (result) {
     return (
       <GameCard label={t.over}>
         <div className="flex items-center gap-3">
           <span
             className={`w-9 h-9 rounded-xl border flex items-center justify-center shrink-0 ${
-              result.won ? 'bg-amber-50 text-amber-500 border-amber-100' : 'bg-[#F8FAFC] text-[#1A1F26] border-[#E6E1DC]'
+              result.won ? 'bg-amber-50 text-amber-500 border-amber-100' : 'bg-page text-ink border-line'
             }`}
           >
             <Trophy className="w-4 h-4" />
           </span>
           <div className="min-w-0 flex-1">
             <div className="text-lg font-black leading-tight truncate">{result.title}</div>
-            {result.detail && <div className="text-xs font-medium text-[#8A9099] mt-0.5 leading-snug">{result.detail}</div>}
+            {result.detail && <div className="text-xs font-medium text-muted mt-0.5 leading-snug">{result.detail}</div>}
           </div>
           {result.hidden && (
             <button
               onClick={result.onShow}
-              className="px-3 py-2 bg-[#1A1F26] text-white rounded-lg font-bold text-2xs uppercase tracking-wide hover:bg-[#9e1316] transition-colors shrink-0"
+              className="px-3 py-2 bg-ink text-on-ink rounded-lg font-bold text-2xs uppercase tracking-wide hover:bg-accent transition-colors shrink-0"
             >
               {t.results}
             </button>
@@ -83,7 +94,7 @@ export default function TurnCard({
     );
   }
 
-  const color = who?.color ?? '#1A1F26';
+  const color = who?.color ?? 'var(--ink)';
   const share = secondsLeft !== undefined && turnSeconds
     ? Math.max(0, Math.min(1, secondsLeft / turnSeconds))
     : null;
@@ -100,22 +111,22 @@ export default function TurnCard({
             alt=""
             width={36}
             height={36}
-            className="w-9 h-9 rounded-full object-cover bg-[#F8FAFC] shrink-0"
+            className="w-9 h-9 rounded-full object-cover bg-page shrink-0"
           />
         ) : null)}
         <div className="min-w-0 flex-1">
           <div className="text-lg font-black leading-tight truncate">
             {title ?? (who ? (who.isMe ? t.yourTurn : who.name) : '')}
           </div>
-          {hint && <div className="text-xs font-medium text-[#8A9099] mt-0.5 leading-snug">{hint}</div>}
+          {hint && <div className="text-xs font-medium text-muted mt-0.5 leading-snug">{hint}</div>}
         </div>
       </div>
 
       {share !== null && (
-        <div className="mt-4 h-1.5 rounded-full bg-[#F1F5F9] overflow-hidden">
+        <div className="mt-4 h-1.5 rounded-full bg-divider overflow-hidden">
           <div
             className="h-full rounded-full transition-[width] duration-1000 ease-linear"
-            style={{ width: `${share * 100}%`, backgroundColor: hurry ? '#9e1316' : softTone(color) }}
+            style={{ width: `${share * 100}%`, backgroundColor: hurry ? 'var(--accent)' : softTone(color) }}
           />
         </div>
       )}

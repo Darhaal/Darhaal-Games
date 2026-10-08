@@ -31,7 +31,7 @@ export default function GameNotificationToast({
   lang
 }: {
   notifications: GameNotification[];
-  lang: 'ru' | 'en';
+  lang: 'ru' | 'en' | 'uk';
 }) {
   // The visible note is derived: the latest one that is not dismissed yet
   const [hiddenUpToId, setHiddenUpToId] = useState(0);
@@ -57,11 +57,11 @@ export default function GameNotificationToast({
       role="status"
       aria-live="polite"
     >
-      <div className="bg-white/90 backdrop-blur-md border border-[#E6E1DC] shadow-xl rounded-full px-6 py-3 flex items-center gap-3">
+      <div className="bg-surface/90 backdrop-blur-md border border-line shadow-xl rounded-full px-6 py-3 flex items-center gap-3">
         <div className={`${tone} p-1.5 rounded-full`}>
           <Icon className="w-4 h-4" />
         </div>
-        <span className="text-xs font-bold uppercase tracking-wider text-[#1A1F26]">
+        <span className="text-xs font-bold uppercase tracking-wider text-ink">
           {visibleNote.message[lang]}
         </span>
       </div>

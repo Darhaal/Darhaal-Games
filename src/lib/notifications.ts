@@ -23,5 +23,6 @@ export function pushNotice(
 /** "X left the game", which every game posts. */
 export const leftTheGame = (name: string): GameNotification['message'] => ({
   ru: `${name} покинул игру`,
-  en: `${name} left the game`
+  en: `${name} left the game`,
+  uk: `${name} залишив гру`
 });

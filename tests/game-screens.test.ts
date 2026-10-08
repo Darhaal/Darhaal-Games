@@ -45,7 +45,7 @@ describe.each(GAME_IDS.map((id) => [id]))('%s', (id) => {
   it('sits on the shared page, not plain white', () => {
     // Minesweeper keeps a full-height page of its own for the pan/zoom boards,
     // on the same background.
-    if (id === 'minesweeper') expect(code).toContain('bg-[#F8FAFC]');
+    if (id === 'minesweeper') expect(code).toContain('bg-page');
     else expect(code).toContain('GAME_PAGE');
   });
 

@@ -7,11 +7,11 @@
 export const DIFFICULTY_LEVELS = ['any', 'easy', 'medium', 'hard'] as const;
 export type Difficulty = (typeof DIFFICULTY_LEVELS)[number];
 
-export const DIFFICULTIES: Record<Difficulty, { emoji: string; label: { ru: string; en: string } }> = {
-  any: { emoji: '🎲', label: { ru: 'Любая', en: 'Any' } },
-  easy: { emoji: '🟢', label: { ru: 'Легко', en: 'Easy' } },
-  medium: { emoji: '🟡', label: { ru: 'Средне', en: 'Medium' } },
-  hard: { emoji: '🔴', label: { ru: 'Сложно', en: 'Hard' } }
+export const DIFFICULTIES: Record<Difficulty, { emoji: string; label: { ru: string; en: string; uk: string } }> = {
+  any: { emoji: '🎲', label: { ru: 'Любая', en: 'Any', uk: 'Будь-яка' } },
+  easy: { emoji: '🟢', label: { ru: 'Легко', en: 'Easy', uk: 'Легко' } },
+  medium: { emoji: '🟡', label: { ru: 'Средне', en: 'Medium', uk: 'Середньо' } },
+  hard: { emoji: '🔴', label: { ru: 'Сложно', en: 'Hard', uk: 'Складно' } }
 };
 
 /** The third of `items` a difficulty asks for, ranked by `fame` — most known first. */

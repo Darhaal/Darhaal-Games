@@ -54,11 +54,11 @@ export default function SettingsButton() {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="group p-2.5 md:p-3 bg-white border border-[#E6E1DC] rounded-xl hover:border-[#9e1316]/30 hover:shadow-sm transition-all"
+        className="group p-2.5 md:p-3 bg-surface border border-line rounded-xl hover:border-accent/30 hover:shadow-sm transition-all"
         title="Settings"
         aria-label="Settings"
       >
-        <SettingsIcon className="w-4 h-4 md:w-5 md:h-5 text-[#8A9099] group-hover:text-[#9e1316] group-hover:rotate-90 transition-all duration-500" />
+        <SettingsIcon className="w-4 h-4 md:w-5 md:h-5 text-muted group-hover:text-accent group-hover:rotate-90 transition-all duration-500" />
       </button>
 
       <Settings

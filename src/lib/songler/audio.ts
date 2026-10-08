@@ -14,6 +14,7 @@ import { previewPath } from './pool';
 let context: AudioContext | null = null;
 let gain: GainNode | null = null;
 const VOLUME_KEY = 'songler-volume';
+const VOLUME_EVENT = 'dg:music-volume';
 
 function audio(): { ctx: AudioContext; out: GainNode } {
   if (!context) {
@@ -25,13 +26,23 @@ function audio(): { ctx: AudioContext; out: GainNode } {
   return { ctx: context, out: gain! };
 }
 
-function storedVolume(): number {
+/** Songler's music volume, 0–1; the settings and the game's own slider share it. */
+export function storedVolume(): number {
   try {
-    const v = Number(localStorage.getItem(VOLUME_KEY));
-    return Number.isFinite(v) && v > 0 && v <= 1 ? v : 0.8;
+    const raw = localStorage.getItem(VOLUME_KEY);
+    if (raw === null) return 0.8;
+    const v = Number(raw);
+    return Number.isFinite(v) && v >= 0 && v <= 1 ? v : 0.8;
   } catch {
     return 0.8;
   }
+}
+
+export function setMusicVolume(v: number) {
+  const clamped = Math.min(1, Math.max(0, v));
+  if (gain) gain.gain.value = clamped;
+  try { localStorage.setItem(VOLUME_KEY, String(clamped)); } catch { /* private mode */ }
+  window.dispatchEvent(new Event(VOLUME_EVENT));
 }
 
 const buffers = new Map<number, Promise<AudioBuffer>>();
@@ -121,10 +132,15 @@ export function useSnippetPlayer(songId: number | null) {
   }, [buffer, stop]);
 
   const setVolume = useCallback((v: number) => {
-    const clamped = Math.min(1, Math.max(0, v));
-    setVolumeState(clamped);
-    if (gain) gain.gain.value = clamped;
-    try { localStorage.setItem(VOLUME_KEY, String(clamped)); } catch { /* private mode */ }
+    setVolumeState(Math.min(1, Math.max(0, v)));
+    setMusicVolume(v);
+  }, []);
+
+  // The settings can change it while a round is on
+  useEffect(() => {
+    const sync = () => setVolumeState(storedVolume());
+    window.addEventListener(VOLUME_EVENT, sync);
+    return () => window.removeEventListener(VOLUME_EVENT, sync);
   }, []);
 
   // A new song, or leaving the page, silences the old one.

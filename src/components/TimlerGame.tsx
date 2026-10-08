@@ -38,7 +38,8 @@ const THIS_YEAR = new Date().getFullYear();
 
 const MONTH_NAMES = {
   ru: ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'],
-  en: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+  en: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
+  uk: ['січня', 'лютого', 'березня', 'квітня', 'травня', 'червня', 'липня', 'серпня', 'вересня', 'жовтня', 'листопада', 'грудня']
 };
 
 const T = {
@@ -139,6 +140,55 @@ const T = {
     points: 'points',
     fullScreen: 'Full screen',
     close: 'Close'
+  },
+  uk: {
+    roundOf: (n: number, total: number) => `Раунд ${n} з ${total}`,
+    roundClock: 'раунд',
+    whenTaken: 'Коли знято фото?',
+    whenPainted: 'Коли написано картину?',
+    adultOnly: 'Лише 18+',
+    answered: 'Відповідь прийнято',
+    roundOver: 'Раунд закінчено',
+    hintPick: 'Рік — обов’язково, день і місяць — якщо знаєте',
+    hintWait: 'Чекаємо на решту',
+    startsIn: 'Починаємо через',
+    loading: 'Завантажуємо фото…',
+    loadingPainting: 'Завантажуємо картину…',
+    loadError: 'Фото не завантажилося',
+    loadErrorPainting: 'Картина не завантажилася',
+    yourAnswer: 'Ваша відповідь',
+    openAnswer: 'Відповісти',
+    hideAnswer: 'Згорнути',
+    year: 'Рік',
+    addDate: '+ день і місяць',
+    removeDate: 'лише рік',
+    onlyYear: 'У цього фото відомий лише рік',
+    onlyYearPainting: 'У цієї картини відомий лише рік',
+    day: 'День',
+    month: 'Місяць',
+    submit: 'Відповісти',
+    yourScore: 'Ваш рахунок',
+    thinking: 'думає…',
+    done: 'відповів ✓',
+    noAnswer: 'немає відповіді',
+    exact: 'точно',
+    sameDay: 'день у день',
+    years: (n: number) => `${n} ${pluralRu(n, ['рік', 'роки', 'років'])}`,
+    days: (n: number) => `${n} ${pluralRu(n, ['день', 'дні', 'днів'])}`,
+    readMore: 'Стаття у Вікіпедії',
+    photoBy: 'Фото',
+    painter: 'Художник',
+    fileBy: 'Файл',
+    next: 'Далі',
+    total: 'Підсумки',
+    waitingGroup: 'Чекаємо на решту…',
+    finishing: 'Підбиваємо підсумки…',
+    nextRoundIn: (s: number) => `Наступний раунд через ${s} с`,
+    youWin: 'Ви перемогли!',
+    winnerLabel: 'Переможець',
+    points: 'очок',
+    fullScreen: 'На весь екран',
+    close: 'Закрити'
   }
 };
 type Texts = (typeof T)['ru'];
@@ -155,13 +205,19 @@ function describeError(guess: TimlerDate, answer: TimlerDate, t: Texts): string 
   return `${years > 0 ? '+' : '−'}${t.years(Math.abs(years))}`;
 }
 
-/** A name in the reader's language, the other one as a fallback. */
-const pick = <V,>(both: { ru: V | null; en: V | null }, lang: 'ru' | 'en') => both[lang] ?? both[lang === 'ru' ? 'en' : 'ru'];
+/** The pool's two languages, in the order a reader would want them: their own, then the other. */
+const poolOrder = (lang: 'ru' | 'en' | 'uk'): ['ru' | 'en', 'ru' | 'en'] => (lang === 'ru' ? ['ru', 'en'] : ['en', 'ru']);
+
+/** A caption from the pool (Russian and English only): a Ukrainian reader gets English first. */
+const pick = <V,>(both: { ru: V | null; en: V | null }, lang: 'ru' | 'en' | 'uk') => {
+  const [first, second] = poolOrder(lang);
+  return both[first] ?? both[second];
+};
 
 interface TimlerGameProps {
   gameState: TimlerState;
   userId: string;
-  lang: 'ru' | 'en';
+  lang: 'ru' | 'en' | 'uk';
   answer: (guess: TimlerDate) => void;
   forceRoundEnd: () => void;
   readyNextRound: () => void;
@@ -318,8 +374,8 @@ export default function TimlerGame({
   // ------------------------------------------------------------- the board --
 
   const board = (
-    <div className="bg-white rounded-2xl border border-[#E6E1DC] shadow-sm overflow-hidden">
-      <div className="relative bg-[#F1F5F9] min-h-[45vh] flex items-center justify-center">
+    <div className="bg-surface rounded-2xl border border-line shadow-sm overflow-hidden">
+      <div className="relative bg-divider min-h-[45vh] flex items-center justify-center">
         {photo && (
           // eslint-disable-next-line @next/next/no-img-element -- a Commons thumbnail, scaled by Commons
           <img
@@ -331,17 +387,17 @@ export default function TimlerGame({
           />
         )}
         {!photoReady && !photoFailed && (
-          <div className="absolute inset-0 flex items-center justify-center gap-2 text-sm font-bold text-[#8A9099]">
-            <Loader2 className="w-4 h-4 animate-spin text-[#9e1316]" /> {painting ? t.loadingPainting : t.loading}
+          <div className="absolute inset-0 flex items-center justify-center gap-2 text-sm font-bold text-muted">
+            <Loader2 className="w-4 h-4 animate-spin text-accent" /> {painting ? t.loadingPainting : t.loading}
           </div>
         )}
         {photoFailed && (
-          <div className="absolute inset-0 flex items-center justify-center text-sm font-bold text-[#8A9099]">{painting ? t.loadErrorPainting : t.loadError}</div>
+          <div className="absolute inset-0 flex items-center justify-center text-sm font-bold text-muted">{painting ? t.loadErrorPainting : t.loadError}</div>
         )}
         {isPlaying && startsIn > 0 && (
-          <div className="absolute inset-0 z-10 bg-white/85 backdrop-blur-sm flex flex-col items-center justify-center">
+          <div className="absolute inset-0 z-10 bg-surface/85 backdrop-blur-sm flex flex-col items-center justify-center">
             <div className={LABEL}>{t.startsIn}</div>
-            <div className="text-6xl font-black text-[#1A1F26] tabular-nums mt-2">{startsIn}</div>
+            <div className="text-6xl font-black text-ink tabular-nums mt-2">{startsIn}</div>
           </div>
         )}
         {photoReady && (
@@ -350,7 +406,7 @@ export default function TimlerGame({
             onClick={() => setFullScreen(true)}
             aria-label={t.fullScreen}
             title={t.fullScreen}
-            className="absolute top-3 right-3 p-2 rounded-xl bg-white/90 border border-[#E6E1DC] text-[#8A9099] hover:text-[#9e1316] hover:border-[#9e1316]/30 transition-colors"
+            className="absolute top-3 right-3 p-2 rounded-xl bg-surface/90 border border-line text-muted hover:text-accent hover:border-accent/30 transition-colors"
           >
             <Maximize2 className="w-4 h-4" />
           </button>
@@ -374,7 +430,7 @@ export default function TimlerGame({
         inputMode="numeric"
         aria-label={t.year}
         disabled={!canAnswer}
-        className="min-w-0 flex-1 text-center bg-[#F8FAFC] border border-gray-200 focus:bg-white focus:border-[#1A1F26] rounded-xl py-2 px-3 font-black text-2xl text-[#1A1F26] tabular-nums outline-none transition-all disabled:opacity-50"
+        className="min-w-0 flex-1 text-center bg-page border border-gray-200 focus:bg-surface focus:border-ink rounded-xl py-2 px-3 font-black text-2xl text-ink tabular-nums outline-none transition-all disabled:opacity-50"
       />
       <button type="button" onClick={() => nudge(1)} disabled={!canAnswer} aria-label="+1" className={`p-2.5 ${BUTTON_SECONDARY}`}>
         <Plus className="w-4 h-4" />
@@ -389,7 +445,7 @@ export default function TimlerGame({
         onChange={(e) => setDraft({ day: Number(e.target.value) })}
         aria-label={t.day}
         disabled={!canAnswer}
-        className="bg-[#F8FAFC] border border-gray-200 focus:border-[#1A1F26] rounded-xl py-2 px-2 font-bold text-sm text-[#1A1F26] outline-none"
+        className="bg-page border border-gray-200 focus:border-ink rounded-xl py-2 px-2 font-bold text-sm text-ink outline-none"
       >
         {Array.from({ length: maxDay }, (_, i) => i + 1).map((d) => <option key={d} value={d}>{d}</option>)}
       </select>
@@ -398,7 +454,7 @@ export default function TimlerGame({
         onChange={(e) => setDraft({ month: Number(e.target.value) })}
         aria-label={t.month}
         disabled={!canAnswer}
-        className="bg-[#F8FAFC] border border-gray-200 focus:border-[#1A1F26] rounded-xl py-2 px-2 font-bold text-sm text-[#1A1F26] outline-none"
+        className="bg-page border border-gray-200 focus:border-ink rounded-xl py-2 px-2 font-bold text-sm text-ink outline-none"
       >
         {MONTH_NAMES[lang].map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
       </select>
@@ -410,19 +466,19 @@ export default function TimlerGame({
       type="button"
       onClick={() => setDraft({ withDate: !draft.withDate })}
       disabled={!canAnswer}
-      className="inline-flex items-center gap-1.5 text-2xs font-black uppercase tracking-widest text-[#8A9099] hover:text-[#9e1316] disabled:opacity-50 transition-colors"
+      className="inline-flex items-center gap-1.5 text-2xs font-black uppercase tracking-widest text-muted hover:text-accent disabled:opacity-50 transition-colors"
     >
       <CalendarPlus className="w-3.5 h-3.5" /> {withDate ? t.removeDate : t.addDate}
     </button>
   ) : (
-    <span className="text-2xs font-bold text-[#B5B3AD]">{painting ? t.onlyYearPainting : t.onlyYear}</span>
+    <span className="text-2xs font-bold text-faded">{painting ? t.onlyYearPainting : t.onlyYear}</span>
   );
 
   const answerForm = me?.guess ? (
     <div className="flex items-center justify-between gap-3">
       <div>
-        <div className="text-2xl font-black text-[#1A1F26] tabular-nums">{formatDate(me.guess, lang)}</div>
-        <div className="text-xs font-bold text-[#8A9099]">{t.hintWait}</div>
+        <div className="text-2xl font-black text-ink tabular-nums">{formatDate(me.guess, lang)}</div>
+        <div className="text-xs font-bold text-muted">{t.hintWait}</div>
       </div>
       <Check className="w-6 h-6 text-emerald-600" />
     </div>
@@ -438,7 +494,7 @@ export default function TimlerGame({
         onChange={(e) => setDraft({ year: e.target.value })}
         disabled={!canAnswer}
         aria-label={t.year}
-        className="w-full h-1.5 bg-gray-100 rounded-full appearance-none cursor-pointer accent-[#1A1F26] disabled:opacity-50"
+        className="w-full h-1.5 bg-gray-100 rounded-full appearance-none cursor-pointer accent-ink disabled:opacity-50"
       />
       <div className="flex justify-between text-2xs font-medium text-gray-400 tabular-nums -mt-1">
         <span>{minYear}</span><span>{maxYear}</span>
@@ -476,7 +532,7 @@ export default function TimlerGame({
       )}
 
       <GameCard label={t.yourScore}>
-        <div className="text-4xl font-black text-[#1A1F26] tabular-nums leading-none">{me?.score ?? 0}</div>
+        <div className="text-4xl font-black text-ink tabular-nums leading-none">{me?.score ?? 0}</div>
       </GameCard>
 
       {/* A leaderboard, as in Flager: everyone's total at all times, best first. */}
@@ -493,7 +549,7 @@ export default function TimlerGame({
             // During a round, the others see that you answered — not what.
             <span className={p.guess ? 'text-emerald-600' : ''}>{p.guess ? t.done : t.thinking}</span>
           ) : undefined,
-          aside: <span className="text-sm font-black text-[#1A1F26] tabular-nums">{p.score}</span>
+          aside: <span className="text-sm font-black text-ink tabular-nums">{p.score}</span>
         }))}
       />
     </>
@@ -529,14 +585,14 @@ export default function TimlerGame({
       {/* On a phone the answer stays under the thumb instead of below the photo —
           folded to one line until tapped. */}
       {isPlaying && (
-        <div className="lg:hidden fixed inset-x-0 bottom-0 z-30 bg-white/95 backdrop-blur border-t border-[#E6E1DC] px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-8px_24px_-12px_rgba(26,31,38,0.15)]">
+        <div className="lg:hidden fixed inset-x-0 bottom-0 z-30 bg-surface/95 backdrop-blur border-t border-line px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-8px_24px_-12px_rgba(26,31,38,0.15)]">
           {barOpen ? (
             <>
               <button
                 type="button"
                 onClick={() => setAnswerOpenFor(null)}
                 aria-expanded
-                className="w-full flex items-center justify-between mb-3 text-2xs font-black uppercase tracking-widest text-[#8A9099] hover:text-[#9e1316] transition-colors"
+                className="w-full flex items-center justify-between mb-3 text-2xs font-black uppercase tracking-widest text-muted hover:text-accent transition-colors"
               >
                 {t.yourAnswer}
                 <span className="inline-flex items-center gap-1">{t.hideAnswer} <ChevronDown className="w-3.5 h-3.5" /></span>
@@ -552,8 +608,8 @@ export default function TimlerGame({
               className="w-full flex items-center justify-between gap-3 text-left disabled:cursor-default"
             >
               <span className="min-w-0">
-                <span className="block text-2xs font-black uppercase tracking-widest text-[#8A9099]">{me?.guess ? t.answered : t.yourAnswer}</span>
-                <span className="block text-xl font-black text-[#1A1F26] tabular-nums leading-tight">
+                <span className="block text-2xs font-black uppercase tracking-widest text-muted">{me?.guess ? t.answered : t.yourAnswer}</span>
+                <span className="block text-xl font-black text-ink tabular-nums leading-tight">
                   {me?.guess ? formatDate(me.guess, lang) : yearValid ? draft.year : middle}
                 </span>
               </span>
@@ -570,10 +626,10 @@ export default function TimlerGame({
       )}
 
       {fullScreen && photo && (
-        <div role="dialog" aria-modal="true" aria-label={t.fullScreen} className={`${DIALOG_OVERLAY} bg-[#1A1F26]/90`} onClick={() => setFullScreen(false)}>
+        <div role="dialog" aria-modal="true" aria-label={t.fullScreen} className={`${DIALOG_OVERLAY} bg-scrim/90`} onClick={() => setFullScreen(false)}>
           {/* eslint-disable-next-line @next/next/no-img-element -- a Commons thumbnail, scaled by Commons */}
           <img src={imageUrl(photo.file, 2048)} alt="" className="max-w-full max-h-full object-contain rounded-xl" />
-          <button type="button" onClick={() => setFullScreen(false)} aria-label={t.close} className="absolute top-4 right-4 p-2 rounded-xl bg-white text-[#1A1F26] hover:text-[#9e1316]">
+          <button type="button" onClick={() => setFullScreen(false)} aria-label={t.close} className="absolute top-4 right-4 p-2 rounded-xl bg-surface text-ink hover:text-accent">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -584,8 +640,8 @@ export default function TimlerGame({
         <div role="dialog" aria-modal="true" aria-label={t.roundOver} className={DIALOG_OVERLAY}>
           <div className={`${DIALOG_PANEL} max-w-2xl max-h-[92vh] overflow-y-auto`}>
             <div className={LABEL}>{t.roundOf(roundNumber, settings.rounds)}</div>
-            <h2 className="text-2xl font-black text-[#1A1F26] mt-1">{formatDate(photoDate, lang)}</h2>
-            <p className="text-sm font-bold text-[#8A9099] mb-5">{[pick(photo.title, lang), painterOf(photo, lang)].filter(Boolean).join(' · ')}</p>
+            <h2 className="text-2xl font-black text-ink mt-1">{formatDate(photoDate, lang)}</h2>
+            <p className="text-sm font-bold text-muted mb-5">{[pick(photo.title, lang), painterOf(photo, lang)].filter(Boolean).join(' · ')}</p>
 
             <Timeline
               answer={photoDate}
@@ -600,20 +656,20 @@ export default function TimlerGame({
               }] : []))}
             />
 
-            <div className="divide-y divide-[#F1F5F9] border-y border-[#F1F5F9] my-5">
+            <div className="divide-y divide-divider border-y border-divider my-5">
               {roundRows.map(({ p, r }) => (
                 <div key={p.id} className="flex items-center gap-3 py-2.5">
-                  <span className={`w-2 h-2 rounded-full shrink-0 ${p.isReadyForNextRound ? 'bg-emerald-500' : 'bg-[#E6E1DC]'}`} />
+                  <span className={`w-2 h-2 rounded-full shrink-0 ${p.isReadyForNextRound ? 'bg-emerald-500' : 'bg-line'}`} />
                   <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: colorOf(p.id) }} aria-hidden />
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-bold text-[#1A1F26] truncate">{p.name}</div>
-                    <div className="text-2xs font-bold text-[#8A9099] tabular-nums">
+                    <div className="text-sm font-bold text-ink truncate">{p.name}</div>
+                    <div className="text-2xs font-bold text-muted tabular-nums">
                       {r.guess
                         ? <>{formatDate(r.guess, lang)} · {describeError(r.guess, photoDate, t)}</>
                         : t.noAnswer}
                     </div>
                   </div>
-                  <div className="w-14 text-right text-sm font-black tabular-nums text-[#1A1F26]">+{r.score}</div>
+                  <div className="w-14 text-right text-sm font-black tabular-nums text-ink">+{r.score}</div>
                 </div>
               ))}
             </div>
@@ -623,12 +679,12 @@ export default function TimlerGame({
                 {roundNumber >= settings.rounds ? t.total : t.next} <ArrowRight className="w-4 h-4" />
               </button>
             ) : (
-              <div className="w-full py-3.5 bg-[#F8FAFC] border border-[#E6E1DC] text-[#8A9099] rounded-xl font-bold uppercase text-xs tracking-wide text-center flex items-center justify-center gap-2">
+              <div className="w-full py-3.5 bg-page border border-line text-muted rounded-xl font-bold uppercase text-xs tracking-wide text-center flex items-center justify-center gap-2">
                 <Loader2 className="w-4 h-4 animate-spin" /> {roundNumber >= settings.rounds ? t.finishing : t.waitingGroup}
               </div>
             )}
             {nextRoundIn !== null && (
-              <p className="mt-3 text-center text-xs font-bold text-[#8A9099] tabular-nums">{t.nextRoundIn(nextRoundIn)}</p>
+              <p className="mt-3 text-center text-xs font-bold text-muted tabular-nums">{t.nextRoundIn(nextRoundIn)}</p>
             )}
           </div>
         </div>
@@ -646,14 +702,14 @@ export default function TimlerGame({
         onMenu={leaveGame}
         wide
       >
-        <div className="divide-y divide-[#F1F5F9] border-y border-[#F1F5F9]">
+        <div className="divide-y divide-divider border-y border-divider">
           {ranked.map((p, i) => {
             const exact = p.history.filter((h) => { const a = parseDate(h.answer); return a && h.guess?.year === a.year; }).length;
             return (
               <div key={p.id} className="flex items-center gap-3 py-3">
-                <span className="w-5 text-xs font-black text-[#8A9099] tabular-nums">{i + 1}</span>
-                <span className="flex-1 text-sm font-bold text-[#1A1F26] truncate text-left">{p.name}</span>
-                <span className="text-xs font-bold text-[#8A9099] tabular-nums" title={t.exact}>{exact}/{p.history.length}</span>
+                <span className="w-5 text-xs font-black text-muted tabular-nums">{i + 1}</span>
+                <span className="flex-1 text-sm font-bold text-ink truncate text-left">{p.name}</span>
+                <span className="text-xs font-bold text-muted tabular-nums" title={t.exact}>{exact}/{p.history.length}</span>
                 <span className="w-14 text-right text-sm font-black tabular-nums">{p.score}</span>
               </div>
             );
@@ -665,7 +721,7 @@ export default function TimlerGame({
 }
 
 /** A painting's painter in the reader's language; null for a photo. */
-const painterOf = (photo: TimlerPhoto, lang: 'ru' | 'en') => (photo.creator ? pick(photo.creator, lang) : null);
+const painterOf = (photo: TimlerPhoto, lang: 'ru' | 'en' | 'uk') => (photo.creator ? pick(photo.creator, lang) : null);
 
 /**
  * What the picture shows, when, a few lines about it, a link, and its credit:
@@ -674,26 +730,26 @@ const painterOf = (photo: TimlerPhoto, lang: 'ru' | 'en') => (photo.creator ? pi
 function PhotoCaption({ photo, date, lang, t }: {
   photo: TimlerPhoto;
   date: TimlerDate;
-  lang: 'ru' | 'en';
+  lang: 'ru' | 'en' | 'uk';
   t: Texts;
 }) {
   const title = pick(photo.title, lang);
   const painter = painterOf(photo, lang);
   const description = pick(photo.description, lang);
-  const articleLang: 'ru' | 'en' | null = photo.article[lang] ? lang : photo.article[lang === 'ru' ? 'en' : 'ru'] ? (lang === 'ru' ? 'en' : 'ru') : null;
+  const articleLang = poolOrder(lang).find((l) => photo.article[l]) ?? null;
   return (
-    <div className="px-5 md:px-7 py-4 border-t border-[#F1F5F9]">
-      <div className="text-xl font-black text-[#1A1F26]">{formatDate(date, lang)}</div>
-      {title && <div className="text-sm font-bold text-[#1A1F26] mt-0.5">{title}</div>}
-      {painter && <div className="text-sm font-bold text-[#8A9099]">{t.painter}: {painter}</div>}
+    <div className="px-5 md:px-7 py-4 border-t border-divider">
+      <div className="text-xl font-black text-ink">{formatDate(date, lang)}</div>
+      {title && <div className="text-sm font-bold text-ink mt-0.5">{title}</div>}
+      {painter && <div className="text-sm font-bold text-muted">{t.painter}: {painter}</div>}
       {description && <div className="text-sm text-gray-600 mt-1">{description}</div>}
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-2xs font-bold text-[#8A9099]">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-2xs font-bold text-muted">
         {articleLang && (
-          <a href={articleUrl(articleLang, photo.article[articleLang]!)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 hover:text-[#9e1316]">
+          <a href={articleUrl(articleLang, photo.article[articleLang]!)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 hover:text-accent">
             <ExternalLink className="w-3 h-3" /> {t.readMore}
           </a>
         )}
-        <a href={filePage(photo.file)} target="_blank" rel="noopener noreferrer" className="underline hover:text-[#9e1316]">
+        <a href={filePage(photo.file)} target="_blank" rel="noopener noreferrer" className="underline hover:text-accent">
           {photo.kind === 'painting' ? t.fileBy : t.photoBy}: {photo.author || 'Wikimedia Commons'}{photo.license ? ` · ${photo.license}` : ''}
         </a>
       </div>

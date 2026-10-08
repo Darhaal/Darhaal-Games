@@ -4,6 +4,7 @@ import AppToaster from "@/components/AppToaster";
 import AchievementToaster from "@/components/AchievementToaster";
 import Analytics from "@/components/Analytics";
 import ConsentBanner from "@/components/ConsentBanner";
+import ThemeController, { THEME_SCRIPT } from "@/components/ThemeController";
 import { Suspense } from "react";
 import JsonLd from "@/components/seo/JsonLd";
 import { APP_NAME, APP_TAGLINE, COMPANY_NAME, SITE_URL } from "@/constants/app";
@@ -109,8 +110,12 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#9e1316",
-  colorScheme: "light",
+  // The page colour of each theme; ThemeController keeps it in step with the setting
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#F8FAFC" },
+    { media: "(prefers-color-scheme: dark)", color: "#0E1116" },
+  ],
+  colorScheme: "light dark",
   width: "device-width",
   initialScale: 1,
 };
@@ -121,10 +126,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    // The theme script sets class="dark" before React hydrates, so the
+    // server's <html> and the browser's legitimately differ in that one attribute.
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[#F0F2F5] text-[#334155]`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-page text-ink`}
       >
+        <ThemeController />
         <JsonLd data={organizationJsonLd()} />
         <JsonLd data={websiteJsonLd()} />
         {children}

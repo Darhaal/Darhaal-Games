@@ -44,6 +44,17 @@ const T = {
     taken: 'Username taken',
     tooShort: 'At least 2 characters',
     saved: 'All set!'
+  },
+  uk: {
+    title: 'Як вас звати?',
+    lead: 'Це ім’я побачать інші гравці в лобі. Його можна змінити будь-коли в налаштуваннях.',
+    placeholder: 'Ваш нікнейм',
+    reroll: 'Інша аватарка',
+    save: 'Зберегти',
+    skip: 'Пропустити',
+    taken: 'Ім’я зайняте',
+    tooShort: 'Мінімум 2 символи',
+    saved: 'Готово!'
   }
 } as const;
 
@@ -106,25 +117,20 @@ export default function WelcomeSetup({
     setError(null);
 
     try {
-      // Same uniqueness check the sign-up form performs.
-      const { data: taken } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('username', trimmed)
-        .neq('id', user.id)
-        .maybeSingle();
+      // The profile row goes first: its trigger refuses a registered player's name.
+      const { data: taken } = await supabase.rpc('username_taken', { p_username: trimmed });
+      const { error: updateError } = taken
+        ? { error: null }
+        : await supabase.from('profiles').update({ username: trimmed, avatar_url: avatar }).eq('id', user.id);
 
-      if (taken) {
+      if (taken || updateError?.code === '23505') {
         setError(t.taken);
         setSaving(false);
         return;
       }
+      if (updateError) throw updateError;
 
       await markOnboarded({ username: trimmed, avatar_url: avatar });
-      await supabase
-        .from('profiles')
-        .update({ username: trimmed, avatar_url: avatar })
-        .eq('id', user.id);
 
       showToast(t.saved, 'success');
       onDone({ name: trimmed, avatarUrl: avatar });
@@ -135,27 +141,27 @@ export default function WelcomeSetup({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#1A1F26]/40 backdrop-blur-sm">
-      <div className="w-full max-w-[380px] bg-white border border-[#E6E1DC] rounded-[32px] shadow-2xl p-8 relative">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-scrim/40 backdrop-blur-sm">
+      <div className="w-full max-w-[380px] bg-surface border border-line rounded-[32px] shadow-2xl p-8 relative">
         <div className="flex flex-col items-center text-center">
           <div className="relative">
-            <div className="w-24 h-24 rounded-full bg-[#F8FAFC] border-4 border-white shadow-lg overflow-hidden flex items-center justify-center">
+            <div className="w-24 h-24 rounded-full bg-page border-4 border-surface shadow-lg overflow-hidden flex items-center justify-center">
               <Image src={avatar} alt="" width={96} height={96} className="w-full h-full object-cover" unoptimized />
             </div>
-            <Sparkles className="w-5 h-5 text-[#9e1316] absolute -top-1 -right-1 animate-pulse" />
+            <Sparkles className="w-5 h-5 text-accent absolute -top-1 -right-1 animate-pulse" />
           </div>
 
           <button
             type="button"
             onClick={reroll}
             disabled={saving}
-            className="mt-3 inline-flex items-center gap-1.5 text-2xs font-bold uppercase tracking-wider text-[#8A9099] hover:text-[#9e1316] transition-colors disabled:opacity-50"
+            className="mt-3 inline-flex items-center gap-1.5 text-2xs font-bold uppercase tracking-wider text-muted hover:text-accent transition-colors disabled:opacity-50"
           >
             <RefreshCw className="w-3 h-3" /> {t.reroll}
           </button>
 
-          <h2 className="mt-5 text-2xl font-black tracking-tighter text-[#1A1F26]">{t.title}</h2>
-          <p className="mt-2 text-sm text-[#8A9099] font-medium leading-relaxed">{t.lead}</p>
+          <h2 className="mt-5 text-2xl font-black tracking-tighter text-ink">{t.title}</h2>
+          <p className="mt-2 text-sm text-muted font-medium leading-relaxed">{t.lead}</p>
         </div>
 
         <div className="mt-6">
@@ -172,17 +178,17 @@ export default function WelcomeSetup({
             maxLength={20}
             placeholder={t.placeholder}
             disabled={saving}
-            className="w-full bg-[#F8FAFC] border border-[#E6E1DC] rounded-2xl px-4 py-3.5 text-center text-base font-bold text-[#1A1F26] placeholder:text-[#8A9099]/60 placeholder:font-medium focus:outline-none focus:border-[#9e1316]/40 focus:bg-white transition-colors disabled:opacity-60"
+            className="w-full bg-page border border-line rounded-2xl px-4 py-3.5 text-center text-base font-bold text-ink placeholder:text-muted/60 placeholder:font-medium focus:outline-none focus:border-accent/40 focus:bg-surface transition-colors disabled:opacity-60"
           />
           {error && (
-            <p className="mt-2 text-center text-xs font-bold text-[#9e1316]">{error}</p>
+            <p className="mt-2 text-center text-xs font-bold text-accent">{error}</p>
           )}
         </div>
 
         <button
           onClick={handleSave}
           disabled={saving}
-          className="mt-4 w-full bg-[#1A1F26] text-white py-3.5 rounded-2xl font-bold text-xs uppercase tracking-widest hover:bg-[#9e1316] transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+          className="mt-4 w-full bg-ink text-on-ink py-3.5 rounded-2xl font-bold text-xs uppercase tracking-widest hover:bg-accent transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
         >
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : t.save}
         </button>
@@ -190,7 +196,7 @@ export default function WelcomeSetup({
         <button
           onClick={handleSkip}
           disabled={saving}
-          className="mt-2 w-full py-2 text-2xs font-bold uppercase tracking-widest text-[#8A9099] hover:text-[#1A1F26] transition-colors disabled:opacity-50"
+          className="mt-2 w-full py-2 text-2xs font-bold uppercase tracking-widest text-muted hover:text-ink transition-colors disabled:opacity-50"
         >
           {t.skip}
         </button>

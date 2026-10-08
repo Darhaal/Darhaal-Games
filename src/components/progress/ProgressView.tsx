@@ -9,6 +9,7 @@ import AchievementsPanel from './AchievementsPanel';
 import GamesPanel from './GamesPanel';
 import HistoryPanel from './HistoryPanel';
 import { formatDate, formatDuration, STRINGS } from './strings';
+import { INTL_LOCALE } from '@/lib/locale';
 
 /**
  * The progress page's body: who the player is and their level, four totals,
@@ -28,8 +29,8 @@ export interface ProgressUser {
 export type ProgressTab = 'achievements' | 'games' | 'history';
 export const PROGRESS_TABS: readonly ProgressTab[] = ['achievements', 'games', 'history'];
 
-const LABEL = 'text-2xs font-black text-[#8A9099] uppercase tracking-widest';
-const CARD = 'bg-white rounded-2xl border border-[#E6E1DC] shadow-sm';
+const LABEL = 'text-2xs font-black text-muted uppercase tracking-widest';
+const CARD = 'bg-surface rounded-2xl border border-line shadow-sm';
 
 function Stat({ icon: Icon, label, value, note }: {
   icon: React.ElementType; label: string; value: string | number; note?: string;
@@ -39,8 +40,8 @@ function Stat({ icon: Icon, label, value, note }: {
       <div className={`${LABEL} flex items-center gap-1.5`}>
         <Icon className="w-3.5 h-3.5" /> {label}
       </div>
-      <div className="text-xl sm:text-2xl md:text-3xl font-black text-[#1A1F26] tabular-nums mt-2 leading-none whitespace-nowrap">{value}</div>
-      {note && <div className="text-xs font-medium text-[#8A9099] mt-1.5">{note}</div>}
+      <div className="text-xl sm:text-2xl md:text-3xl font-black text-ink tabular-nums mt-2 leading-none whitespace-nowrap">{value}</div>
+      {note && <div className="text-xs font-medium text-muted mt-1.5">{note}</div>}
     </div>
   );
 }
@@ -48,7 +49,7 @@ function Stat({ icon: Icon, label, value, note }: {
 export default function ProgressView({ user, loaded, lang, initialTab = 'achievements' }: {
   user: ProgressUser;
   loaded: LoadedProgress;
-  lang: 'ru' | 'en';
+  lang: 'ru' | 'en' | 'uk';
   /** From the address, `?tab=history`, so a link can open the right tab. */
   initialTab?: ProgressTab;
 }) {
@@ -71,21 +72,21 @@ export default function ProgressView({ user, loaded, lang, initialTab = 'achieve
       {/* Who, and how far along */}
       <section className={`${CARD} p-5 md:p-6 flex flex-col md:flex-row md:items-center gap-5 md:gap-8`}>
         <div className="flex items-center gap-4 md:gap-5 min-w-0">
-          <div className="relative w-16 h-16 md:w-20 md:h-20 shrink-0 rounded-full overflow-hidden bg-[#F1F5F9] border border-[#E6E1DC]">
+          <div className="relative w-16 h-16 md:w-20 md:h-20 shrink-0 rounded-full overflow-hidden bg-divider border border-line">
             {user.avatarUrl ? (
               <Image src={user.avatarUrl} alt="" fill sizes="80px" className="object-cover" />
             ) : (
-              <User className="w-8 h-8 text-[#8A9099] absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+              <User className="w-8 h-8 text-muted absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
             )}
           </div>
           <div className="min-w-0">
-            <h2 className="text-2xl md:text-3xl font-black text-[#1A1F26] tracking-tight leading-none truncate">{user.name}</h2>
+            <h2 className="text-2xl md:text-3xl font-black text-ink tracking-tight leading-none truncate">{user.name}</h2>
             <div className="flex flex-wrap items-center gap-2 mt-2">
-              <span className="inline-flex items-center gap-1.5 bg-[#F8FAFC] px-2 py-1 rounded-md text-xs font-medium text-[#8A9099]">
+              <span className="inline-flex items-center gap-1.5 bg-page px-2 py-1 rounded-md text-xs font-medium text-muted">
                 <Calendar className="w-3.5 h-3.5" /> {t.registered} {formatDate(user.createdAt, lang)}
               </span>
               {user.isGuest && (
-                <span className="text-xs font-bold text-white bg-[#1A1F26] px-2 py-0.5 rounded">{t.guest}</span>
+                <span className="text-xs font-bold text-on-ink bg-ink px-2 py-0.5 rounded">{t.guest}</span>
               )}
             </div>
           </div>
@@ -95,28 +96,28 @@ export default function ProgressView({ user, loaded, lang, initialTab = 'achieve
           <div className="flex items-end justify-between mb-2">
             <div>
               <div className={LABEL}>{t.level}</div>
-              <div className="text-4xl font-black text-[#1A1F26] tabular-nums leading-none mt-1">{level.level}</div>
+              <div className="text-4xl font-black text-ink tabular-nums leading-none mt-1">{level.level}</div>
             </div>
             <div className="text-right">
-              <div className="text-sm font-black text-[#1A1F26] tabular-nums">{xp.toLocaleString(lang === 'ru' ? 'ru-RU' : 'en-GB')} {t.xp}</div>
-              <div className="text-xs font-medium text-[#8A9099] tabular-nums">{t.toNext(level.span - level.into, level.level + 1)}</div>
+              <div className="text-sm font-black text-ink tabular-nums">{xp.toLocaleString(INTL_LOCALE[lang])} {t.xp}</div>
+              <div className="text-xs font-medium text-muted tabular-nums">{t.toNext(level.span - level.into, level.level + 1)}</div>
             </div>
           </div>
           <div
-            className="h-2 w-full bg-[#F1F5F9] rounded-full overflow-hidden"
+            className="h-2 w-full bg-divider rounded-full overflow-hidden"
             role="progressbar"
             aria-valuemin={0}
             aria-valuemax={level.span}
             aria-valuenow={level.into}
             aria-label={`${t.level} ${level.level}`}
           >
-            <div className="h-full bg-[#9e1316] rounded-full transition-all duration-700" style={{ width: `${levelShare}%` }} />
+            <div className="h-full bg-accent rounded-full transition-all duration-700" style={{ width: `${levelShare}%` }} />
           </div>
         </div>
       </section>
 
       {user.isGuest && (
-        <p className="text-xs font-medium text-[#8A9099] -mt-3 px-1">{t.guestNote}</p>
+        <p className="text-xs font-medium text-muted -mt-3 px-1">{t.guestNote}</p>
       )}
 
       {/* Totals */}
@@ -145,13 +146,13 @@ export default function ProgressView({ user, loaded, lang, initialTab = 'achieve
               aria-selected={selected}
               onClick={() => setTab(id)}
               className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-2 rounded-xl text-xs md:text-sm font-bold transition-all ${
-                selected ? 'bg-[#1A1F26] text-white shadow-sm' : 'text-[#5B6470] hover:bg-[#F8FAFC]'
+                selected ? 'bg-ink text-on-ink shadow-sm' : 'text-ink/70 hover:bg-page'
               }`}
             >
               <Icon className="w-4 h-4 hidden sm:block" />
               {label}
               {count && (
-                <span className={`text-2xs font-black tabular-nums px-1.5 py-0.5 rounded ${selected ? 'bg-white/15' : 'bg-[#F1F5F9] text-[#8A9099]'}`}>
+                <span className={`text-2xs font-black tabular-nums px-1.5 py-0.5 rounded ${selected ? 'bg-white/15' : 'bg-divider text-muted'}`}>
                   {count}
                 </span>
               )}

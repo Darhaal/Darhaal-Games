@@ -22,6 +22,11 @@ const T = {
     title: 'Every Spyfall location',
     lead: (locations: number, packs: number) =>
       `${locations} ${pluralEn(locations, 'location', 'locations')} in ${packs} ${pluralEn(packs, 'pack', 'packs')}. The host picks a pack when creating the room; each location comes with twenty roles, so everyone has something to talk about.`
+  },
+  uk: {
+    title: 'Усі локації «Шпигуна»',
+    lead: (locations: number, packs: number) =>
+      `${locations} ${pluralRu(locations, ['локація', 'локації', 'локацій'])} у ${packs} ${pluralRu(packs, ['наборі', 'наборах', 'наборах'])}. Хост обирає набір під час створення кімнати; у кожної локації — двадцять ролей, щоб гравцям було про що розповісти.`
   }
 };
 
@@ -35,7 +40,7 @@ export default function SpyfallLocations({ locale }: { locale: Locale }) {
       <p className="mt-3 text-sm text-gray-600 leading-relaxed">{t.lead(total, SPYFALL_PACKS.length)}</p>
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
         {SPYFALL_PACKS.map((pack) => (
-          <div key={pack.id} className="bg-white border border-gray-200 rounded-2xl p-5">
+          <div key={pack.id} className="bg-surface border border-gray-200 rounded-2xl p-5">
             <h3 className="text-base font-black tracking-tight text-gray-900">
               <span aria-hidden className="mr-1.5">{pack.emoji}</span>
               {pack.name[locale]}

@@ -5,6 +5,7 @@ import { MessageCircle, Send, Smile, X } from 'lucide-react';
 import { useLobbyChat } from '@/hooks/useLobbyChat';
 import { useEscape } from '@/hooks/useEscape';
 import { CHAT_EMOJI, CHAT_MAX_LENGTH, unreadCount } from '@/lib/chat';
+import { usePreference } from '@/lib/preferences';
 
 const T = {
   ru: {
@@ -30,6 +31,18 @@ const T = {
     emoji: 'Emoji',
     close: 'Close',
     unread: (n: number) => `Chat, ${n} unread`
+  },
+  uk: {
+    open: 'Чат',
+    title: 'Чат кімнати',
+    placeholder: 'Повідомлення…',
+    send: 'Надіслати',
+    empty: 'Тут поки тихо. Напишіть першим.',
+    slow: 'Не так швидко — зачекайте кілька секунд.',
+    failed: 'Не надіслалося. Спробуйте ще раз.',
+    emoji: 'Смайлики',
+    close: 'Закрити',
+    unread: (n: number) => `Чат, непрочитаних: ${n}`
   }
 } as const;
 
@@ -103,10 +116,12 @@ export default function LobbyChat({
 }: {
   lobbyId: string | null;
   userId: string;
-  lang: 'ru' | 'en';
+  lang: 'ru' | 'en' | 'uk';
   anchor?: ChatAnchor;
 }) {
   const t = T[lang];
+  // Turned off in the settings: no button, nothing to read
+  const [chatPreference] = usePreference('chat');
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState('');
   const [showEmoji, setShowEmoji] = useState(false);
@@ -165,7 +180,7 @@ export default function LobbyChat({
     inputRef.current?.focus();
   };
 
-  if (!lobbyId) return null;
+  if (!lobbyId || chatPreference === 'off') return null;
 
   const corner = BUTTON_CORNER[anchor];
 
@@ -176,11 +191,11 @@ export default function LobbyChat({
           onClick={() => setOpen(true)}
           aria-label={unread > 0 ? t.unread(unread) : t.open}
           title={t.open}
-          className={`fixed right-4 ${corner} z-[220] w-14 h-14 rounded-full bg-[#1A1F26] text-white ring-2 ring-white shadow-xl shadow-[#1A1F26]/25 hover:bg-[#9e1316] active:scale-95 transition-all flex items-center justify-center`}
+          className={`fixed right-4 ${corner} z-[220] w-14 h-14 rounded-full bg-ink text-on-ink ring-2 ring-surface shadow-xl shadow-shade/25 hover:bg-accent active:scale-95 transition-all flex items-center justify-center`}
         >
           <MessageCircle className="w-6 h-6" />
           {unread > 0 && (
-            <span className="absolute -top-1 -right-1 min-w-6 h-6 px-1.5 rounded-full bg-[#9e1316] text-white text-2xs font-black flex items-center justify-center ring-2 ring-white tabular-nums">
+            <span className="absolute -top-1 -right-1 min-w-6 h-6 px-1.5 rounded-full bg-accent text-white text-2xs font-black flex items-center justify-center ring-2 ring-surface tabular-nums">
               {unread > 99 ? '99+' : unread}
             </span>
           )}
@@ -191,14 +206,14 @@ export default function LobbyChat({
         <div
           role="dialog"
           aria-label={t.title}
-          className={`fixed z-[220] inset-x-2 bottom-2 sm:inset-x-auto sm:right-4 ${PANEL_CORNER[anchor]} sm:w-[360px] h-[min(70vh,520px)] flex flex-col bg-white border border-[#E6E1DC] rounded-3xl shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-200`}
+          className={`fixed z-[220] inset-x-2 bottom-2 sm:inset-x-auto sm:right-4 ${PANEL_CORNER[anchor]} sm:w-[360px] h-[min(70vh,520px)] flex flex-col bg-surface border border-line rounded-3xl shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-200`}
         >
-          <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#E6E1DC]">
-            <span className="text-sm font-black uppercase tracking-wider text-[#1A1F26]">{t.title}</span>
+          <div className="flex items-center justify-between px-5 py-3.5 border-b border-line">
+            <span className="text-sm font-black uppercase tracking-wider text-ink">{t.title}</span>
             <button
               onClick={close}
               aria-label={t.close}
-              className="p-1.5 rounded-lg text-[#8A9099] hover:bg-[#F4F3F0] hover:text-[#1A1F26] transition-colors"
+              className="p-1.5 rounded-lg text-muted hover:bg-warm hover:text-ink transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
@@ -206,7 +221,7 @@ export default function LobbyChat({
 
           <div ref={listRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-2.5">
             {messages.length === 0 && (
-              <p className="h-full flex items-center justify-center text-sm text-[#8A9099] text-center px-6">
+              <p className="h-full flex items-center justify-center text-sm text-muted text-center px-6">
                 {t.empty}
               </p>
             )}
@@ -215,31 +230,31 @@ export default function LobbyChat({
               return (
                 <div key={m.id} className={`flex flex-col ${mine ? 'items-end' : 'items-start'}`}>
                   {!mine && (
-                    <span className="text-2xs font-bold text-[#8A9099] mb-0.5 px-1">{m.authorName}</span>
+                    <span className="text-2xs font-bold text-muted mb-0.5 px-1">{m.authorName}</span>
                   )}
                   {/* A text node only: React escapes it, so a message cannot carry markup. */}
                   <div
                     className={`max-w-[85%] px-3.5 py-2 rounded-2xl text-sm leading-snug break-words whitespace-pre-wrap ${
-                      mine ? 'bg-[#1A1F26] text-white rounded-br-md' : 'bg-[#F4F3F0] text-[#1A1F26] rounded-bl-md'
+                      mine ? 'bg-ink text-on-ink rounded-br-md' : 'bg-warm text-ink rounded-bl-md'
                     }`}
                   >
                     {m.body}
                   </div>
-                  <span className="text-3xs text-[#B5B3AD] mt-0.5 px-1 tabular-nums">{timeOf(m.createdAt)}</span>
+                  <span className="text-3xs text-faded mt-0.5 px-1 tabular-nums">{timeOf(m.createdAt)}</span>
                 </div>
               );
             })}
           </div>
 
           {showEmoji && (
-            <div className="grid grid-cols-10 gap-0.5 px-3 py-2 border-t border-[#E6E1DC]">
+            <div className="grid grid-cols-10 gap-0.5 px-3 py-2 border-t border-line">
               {CHAT_EMOJI.map((e) => (
                 <button
                   key={e}
                   type="button"
                   onClick={() => addEmoji(e)}
                   aria-label={e}
-                  className="aspect-square rounded-lg text-xl flex items-center justify-center hover:bg-[#F4F3F0] active:scale-90 transition-all"
+                  className="aspect-square rounded-lg text-xl flex items-center justify-center hover:bg-warm active:scale-90 transition-all"
                 >
                   {e}
                 </button>
@@ -248,21 +263,21 @@ export default function LobbyChat({
           )}
 
           {notice && (
-            <div role="status" className="px-4 py-1.5 text-2xs font-bold text-[#9e1316] bg-red-50 border-t border-red-100">
+            <div role="status" className="px-4 py-1.5 text-2xs font-bold text-accent bg-red-50 border-t border-red-100">
               {notice}
             </div>
           )}
 
           <form
             onSubmit={(e) => { e.preventDefault(); submit(); }}
-            className="flex items-center gap-1.5 p-2.5 border-t border-[#E6E1DC]"
+            className="flex items-center gap-1.5 p-2.5 border-t border-line"
           >
             <button
               type="button"
               onClick={() => setShowEmoji((v) => !v)}
               aria-label={t.emoji}
               aria-pressed={showEmoji}
-              className={`p-2 rounded-xl transition-colors ${showEmoji ? 'bg-[#F4F3F0] text-[#1A1F26]' : 'text-[#8A9099] hover:bg-[#F4F3F0]'}`}
+              className={`p-2 rounded-xl transition-colors ${showEmoji ? 'bg-warm text-ink' : 'text-muted hover:bg-warm'}`}
             >
               <Smile className="w-5 h-5" />
             </button>
@@ -274,13 +289,13 @@ export default function LobbyChat({
               maxLength={CHAT_MAX_LENGTH}
               autoFocus
               enterKeyHint="send"
-              className="flex-1 min-w-0 px-3 py-2.5 rounded-xl bg-[#F8FAFC] border border-[#E6E1DC] text-sm focus:outline-none focus:border-[#1A1F26]/30"
+              className="flex-1 min-w-0 px-3 py-2.5 rounded-xl bg-page border border-line text-sm focus:outline-none focus:border-ink/30"
             />
             <button
               type="submit"
               disabled={!draft.trim()}
               aria-label={t.send}
-              className="p-2.5 rounded-xl bg-[#1A1F26] text-white disabled:opacity-30 hover:bg-[#9e1316] transition-colors"
+              className="p-2.5 rounded-xl bg-ink text-on-ink disabled:opacity-30 hover:bg-accent transition-colors"
             >
               <Send className="w-4 h-4" />
             </button>

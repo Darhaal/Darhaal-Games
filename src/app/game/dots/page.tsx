@@ -28,6 +28,11 @@ const UI_TEXT = {
     lobbyNotFound: 'LOBBY NOT FOUND',
     gameFinished: 'Game Finished',
     toMenu: 'Main Menu'
+  },
+  uk: {
+    lobbyNotFound: 'Лобі не знайдено',
+    gameFinished: 'Гру завершено',
+    toMenu: 'У меню'
   }
 };
 
@@ -90,16 +95,16 @@ function DotsContent() {
   const t = UI_TEXT[lang];
 
   if (authLoading || loading || isLeaving) {
-    return <div className="min-h-screen flex items-center justify-center bg-white"><Loader2 className="animate-spin text-[#0d9488] w-8 h-8" /></div>;
+    return <div className="min-h-screen flex items-center justify-center bg-surface"><Loader2 className="animate-spin text-teal-600 w-8 h-8" /></div>;
   }
 
   if (!userId) return null;
 
   if (lobbyDeleted) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center font-bold text-gray-400 bg-white">
-        <span className="mb-4 text-xl text-[#1A1F26] uppercase">{t.gameFinished}</span>
-        <button onClick={() => router.push('/play')} className="px-6 py-3 bg-[#1A1F26] text-white rounded-xl font-bold uppercase tracking-widest hover:opacity-90 transition-opacity shadow-lg">
+      <div className="min-h-screen flex flex-col items-center justify-center font-bold text-gray-400 bg-surface">
+        <span className="mb-4 text-xl text-ink uppercase">{t.gameFinished}</span>
+        <button onClick={() => router.push('/play')} className="px-6 py-3 bg-ink text-on-ink rounded-xl font-bold uppercase tracking-widest hover:opacity-90 transition-opacity shadow-lg">
           {t.toMenu}
         </button>
       </div>
@@ -170,7 +175,7 @@ function DotsContent() {
 
 export default function DotsPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-white"><Loader2 className="animate-spin text-[#0d9488] w-8 h-8" /></div>}>
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-surface"><Loader2 className="animate-spin text-teal-600 w-8 h-8" /></div>}>
       <DotsContent />
     </Suspense>
   );

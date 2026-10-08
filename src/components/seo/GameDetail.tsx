@@ -50,6 +50,22 @@ const T = {
     playButton: 'Play now',
     playNote: 'Opens the platform — create a room and invite friends with a link.',
     other: 'More games'
+  },
+  uk: {
+    crumbGames: 'Ігри',
+    players: 'Гравці',
+    duration: 'Тривалість',
+    genre: 'Жанр',
+    minutes: 'хв',
+    howTo: 'Як грати',
+    features: 'Особливості',
+    strategy: 'Тактика й поради',
+    mistakes: 'Часті помилки',
+    faq: 'Часті запитання',
+    play: 'Грати в',
+    playButton: 'Грати',
+    playNote: 'Відкриється платформа — створіть кімнату й покличте друзів за посиланням.',
+    other: 'Інші ігри'
   }
 } as const;
 
@@ -68,7 +84,7 @@ export default function GameDetail({
       : `${game.players.min}–${game.players.max}`;
   const others = GAMES_CONTENT.filter((g) => g.slug !== game.slug);
   // "Играть в «Шпион»" — Russian needs the quotes; English reads fine without.
-  const playLabel = locale === 'ru' ? `${t.play} «${copy.name}»` : `${t.play} ${copy.name}`;
+  const playLabel = locale === 'en' ? `${t.play} ${copy.name}` : `${t.play} «${copy.name}»`;
 
   return (
     <PublicShell locale={locale}>
@@ -86,7 +102,7 @@ export default function GameDetail({
         <nav aria-label="Breadcrumb" className="mb-8">
           <ol className="flex items-center gap-2 text-2xs font-bold uppercase tracking-wider text-gray-400">
             <li>
-              <Link href={localizedPath(locale, '/games')} className="hover:text-[#9e1316] transition-colors">
+              <Link href={localizedPath(locale, '/games')} className="hover:text-accent transition-colors">
                 {t.crumbGames}
               </Link>
             </li>
@@ -134,7 +150,7 @@ export default function GameDetail({
           <ol className="mt-5 space-y-3">
             {copy.howToPlay.map((step, i) => (
               <li key={i} className="flex gap-4">
-                <span className="shrink-0 w-7 h-7 rounded-full bg-[#1A1F26] text-white text-xs font-black flex items-center justify-center mt-0.5">
+                <span className="shrink-0 w-7 h-7 rounded-full bg-ink text-on-ink text-xs font-black flex items-center justify-center mt-0.5">
                   {i + 1}
                 </span>
                 <span className="text-base text-gray-600 leading-relaxed pt-0.5">{step}</span>
@@ -149,7 +165,7 @@ export default function GameDetail({
             {copy.features.map((feature, i) => (
               <li
                 key={i}
-                className="bg-white border border-gray-200 rounded-2xl px-4 py-3 text-sm text-gray-600 font-medium leading-snug"
+                className="bg-surface border border-gray-200 rounded-2xl px-4 py-3 text-sm text-gray-600 font-medium leading-snug"
               >
                 {feature}
               </li>
@@ -179,7 +195,7 @@ export default function GameDetail({
             {copy.mistakes.map((item, i) => (
               <li
                 key={i}
-                className="bg-[#FEF2F2] border border-[#FECACA] rounded-2xl px-4 py-3 text-sm text-[#7F1D1D] leading-snug"
+                className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 text-sm text-red-900 leading-snug"
               >
                 {item}
               </li>
@@ -202,14 +218,14 @@ export default function GameDetail({
         </section>
 
         <section className="mt-12">
-          <div className="bg-[#1A1F26] rounded-[28px] px-8 py-10 text-center">
+          <div className="bg-night rounded-[28px] px-8 py-10 text-center">
             <h2 className="text-2xl md:text-3xl font-black tracking-tighter text-white">
               {playLabel}
             </h2>
-            <p className="mt-3 text-sm text-gray-400 font-medium max-w-md mx-auto">{t.playNote}</p>
+            <p className="mt-3 text-sm text-white/60 font-medium max-w-md mx-auto">{t.playNote}</p>
             <Link
               href="/"
-              className="inline-block mt-7 bg-[#9e1316] text-white text-xs font-bold uppercase tracking-widest px-8 py-4 rounded-full hover:bg-white hover:text-[#1A1F26] transition-colors"
+              className="inline-block mt-7 bg-accent text-white text-xs font-bold uppercase tracking-widest px-8 py-4 rounded-full hover:bg-surface hover:text-ink transition-colors"
             >
               {t.playButton}
             </Link>
@@ -223,7 +239,7 @@ export default function GameDetail({
               <Link
                 key={other.slug}
                 href={localizedPath(locale, `/games/${other.slug}`)}
-                className="bg-white border border-gray-200 rounded-full px-4 py-2 text-xs font-bold text-gray-600 hover:border-[#9e1316]/30 hover:text-[#9e1316] transition-colors"
+                className="bg-surface border border-gray-200 rounded-full px-4 py-2 text-xs font-bold text-gray-600 hover:border-accent/30 hover:text-accent transition-colors"
               >
                 {other.locales[locale].name}
               </Link>

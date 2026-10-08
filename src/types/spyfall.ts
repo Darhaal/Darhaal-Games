@@ -3,12 +3,12 @@ import type { GameNotification } from './notification';
 export type SpyfallStatus = 'waiting' | 'playing' | 'voting' | 'finished';
 
 export interface SpyfallRole {
-  name: { ru: string; en: string };
+  name: { ru: string; en: string; uk: string };
 }
 
 export interface SpyfallLocation {
   id: string;
-  name: { ru: string; en: string };
+  name: { ru: string; en: string; uk: string };
   roles: SpyfallRole[];
   /**
    * Optional artwork path. No location currently ships one: every reader
@@ -20,7 +20,7 @@ export interface SpyfallLocation {
 
 export interface SpyfallPack {
   id: string;
-  name: { ru: string; en: string };
+  name: { ru: string; en: string; uk: string };
   locations: SpyfallLocation[];
   emoji: string;
 }

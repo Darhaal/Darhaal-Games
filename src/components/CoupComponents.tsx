@@ -15,7 +15,7 @@ import { Role, Lang, GameLog, SYSTEM } from '@/types/coup';
  * older rooms stored one Russian string, which is shown as it was.
  */
 export const logUser = (user: string, lang: Lang) =>
-  user === SYSTEM || user === 'Система' ? (lang === 'ru' ? 'Система' : 'System') : user;
+  user === SYSTEM || user === 'Система' ? (lang === 'en' ? 'System' : 'Система') : user;
 export const logText = (action: GameLog['action'], lang: Lang) =>
   typeof action === 'string' ? action : action[lang];
 
@@ -52,14 +52,14 @@ export const GameCard = ({ role, revealed, isMe, onClick, selected, lang, small 
         >
         <div className={`relative w-full h-full duration-500 preserve-3d transition-transform shadow-xl rounded-2xl ${(isMe || revealed) ? 'rotate-y-0' : ''}`}>
             {/* FACE */}
-            <div className={`absolute inset-0 backface-hidden rounded-2xl border-[3px] overflow-hidden bg-white flex flex-col p-1.5 sm:p-2 ${revealed ? 'grayscale brightness-90' : ''}`} style={{ borderColor: config.color }}>
+            <div className={`absolute inset-0 backface-hidden rounded-2xl border-[3px] overflow-hidden bg-surface flex flex-col p-1.5 sm:p-2 ${revealed ? 'grayscale brightness-90' : ''}`} style={{ borderColor: config.color }}>
             <div className="absolute inset-0 opacity-5 pointer-events-none bg-black" />
             <div className="w-full flex justify-between items-start z-10 mb-1">
                 <span className="font-black text-[8px] sm:text-2xs uppercase tracking-wider truncate" style={{ color: config.color }}>{info.name}</span>
                 <config.icon className="w-3 h-3 sm:w-4 sm:h-4 opacity-50" style={{ color: config.color }} />
             </div>
             <div className="flex-1 flex flex-col items-center justify-center z-10">
-                <div className="p-2 sm:p-3 rounded-full bg-white border-2 shadow-sm relative" style={{ borderColor: config.color }}>
+                <div className="p-2 sm:p-3 rounded-full bg-surface border-2 shadow-sm relative" style={{ borderColor: config.color }}>
                     <div className="absolute inset-0 rounded-full opacity-10" style={{ backgroundColor: config.color }} />
                     <config.icon className={`${small ? 'w-5 h-5 sm:w-6 sm:h-6' : 'w-8 h-8 sm:w-10 sm:h-10'}`} style={{ color: config.color }} />
                 </div>
@@ -87,10 +87,10 @@ export const GameCard = ({ role, revealed, isMe, onClick, selected, lang, small 
             </div>
             {/* BACK */}
             {!revealed && !isMe && (
-            <div className="absolute inset-0 backface-hidden rounded-2xl bg-[#1A1F26] border-4 border-[#333] flex flex-col items-center justify-center shadow-inner">
-                <div className="absolute inset-4 border border-[#E6E1DC]/20 rounded-xl" />
-                <div className="w-12 h-12 rounded-full border-2 border-[#E6E1DC]/20 flex items-center justify-center bg-[#E6E1DC]/5">
-                    <Crown className="w-6 h-6 text-[#E6E1DC]" />
+            <div className="absolute inset-0 backface-hidden rounded-2xl bg-night border-4 border-[#333] flex flex-col items-center justify-center shadow-inner">
+                <div className="absolute inset-4 border border-white/20 rounded-xl" />
+                <div className="w-12 h-12 rounded-full border-2 border-white/20 flex items-center justify-center bg-white/5">
+                    <Crown className="w-6 h-6 text-white/85" />
                 </div>
             </div>
             )}
@@ -109,8 +109,8 @@ interface ActionBtnProps {
   icon?: LucideIcon;
 }
 
-export const ActionBtn = ({ label, onClick, disabled, color = 'bg-white', icon: Icon }: ActionBtnProps) => (
-  <button onClick={onClick} disabled={disabled} className={`flex flex-col items-center justify-center gap-1 p-2 rounded-xl border-b-[3px] transition-all active:translate-y-0.5 active:border-b-0 h-full relative overflow-hidden w-full ${disabled ? 'opacity-40 cursor-not-allowed bg-gray-100 border-gray-200 text-gray-400' : `${color} hover:brightness-95 text-[#1A1F26] shadow-sm`}`}>
+export const ActionBtn = ({ label, onClick, disabled, color = 'bg-surface', icon: Icon }: ActionBtnProps) => (
+  <button onClick={onClick} disabled={disabled} className={`flex flex-col items-center justify-center gap-1 p-2 rounded-xl border-b-[3px] transition-all active:translate-y-0.5 active:border-b-0 h-full relative overflow-hidden w-full ${disabled ? 'opacity-40 cursor-not-allowed bg-gray-100 border-gray-200 text-gray-400' : `${color} hover:brightness-95 text-ink shadow-sm`}`}>
     {Icon && <Icon className="w-4 h-4 mb-0.5" />}
     <span className="text-3xs font-black uppercase leading-none text-center">{label}</span>
   </button>
@@ -125,9 +125,9 @@ export const GuideModal = ({ onClose, lang }: { onClose: () => void, lang: Lang 
 
   return (
     <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in" onClick={onClose}>
-      <div className="bg-white rounded-[32px] w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95" onClick={(e) => e.stopPropagation()}>
-        <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-white">
-          <h2 className="text-xl font-black uppercase flex items-center gap-2"><Book className="w-6 h-6 text-[#9e1316]" /> {lang === 'ru' ? 'Справочник' : 'Guide'}</h2>
+      <div className="bg-surface rounded-[32px] w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95" onClick={(e) => e.stopPropagation()}>
+        <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-surface">
+          <h2 className="text-xl font-black uppercase flex items-center gap-2"><Book className="w-6 h-6 text-accent" /> {{ ru: 'Справочник', en: 'Guide', uk: 'Довідник' }[lang]}</h2>
           <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full"><X className="w-5 h-5 text-gray-400" /></button>
         </div>
         <div className="flex-1 overflow-y-auto p-6 custom-scrollbar bg-gray-50">
@@ -136,7 +136,7 @@ export const GuideModal = ({ onClose, lang }: { onClose: () => void, lang: Lang 
               const info = DICTIONARY[lang].roles[role];
               const config = ROLE_CONFIG[role];
               return (
-                <div key={role} className="bg-white p-4 rounded-2xl border border-gray-200 flex items-center gap-4 hover:shadow-md transition-shadow">
+                <div key={role} className="bg-surface p-4 rounded-2xl border border-gray-200 flex items-center gap-4 hover:shadow-md transition-shadow">
                    <div className="shrink-0"><GameCard role={role} revealed={false} isMe={true} lang={lang} small={true} /></div>
                    <div className="flex-1 min-w-0">
                       <div className="font-black text-sm uppercase truncate" style={{ color: config.color }}>{info.name}</div>

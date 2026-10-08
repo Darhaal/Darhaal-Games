@@ -7,23 +7,23 @@ import { ACHIEVEMENTS, type Achievement, type Text, type Tier } from './definiti
  */
 export const TIER_STYLE: Record<Tier, { name: Text; well: string; icon: string; bar: string; dot: string }> = {
   bronze: {
-    name: { ru: 'Бронза', en: 'Bronze' },
-    well: 'bg-[#F6EDE4] border-[#E9D5C1]',
-    icon: 'text-[#A0673A]',
+    name: { ru: 'Бронза', en: 'Bronze', uk: 'Бронза' },
+    well: 'bg-[#F6EDE4] border-[#E9D5C1] dark:bg-[#2A1E14] dark:border-[#4A3322]',
+    icon: 'text-[#A0673A] dark:text-[#D29A6B]',
     bar: 'bg-[#A0673A]',
     dot: 'bg-[#A0673A]'
   },
   silver: {
-    name: { ru: 'Серебро', en: 'Silver' },
-    well: 'bg-[#EEF1F4] border-[#D9DEE5]',
-    icon: 'text-[#6B7480]',
+    name: { ru: 'Серебро', en: 'Silver', uk: 'Срібло' },
+    well: 'bg-[#EEF1F4] border-[#D9DEE5] dark:bg-[#1E242C] dark:border-[#38414C]',
+    icon: 'text-[#6B7480] dark:text-[#A9B2BD]',
     bar: 'bg-[#8A939E]',
     dot: 'bg-[#8A939E]'
   },
   gold: {
-    name: { ru: 'Золото', en: 'Gold' },
-    well: 'bg-[#FBF3DC] border-[#EEDCA6]',
-    icon: 'text-[#A77B06]',
+    name: { ru: 'Золото', en: 'Gold', uk: 'Золото' },
+    well: 'bg-[#FBF3DC] border-[#EEDCA6] dark:bg-[#2A2310] dark:border-[#4D3F17]',
+    icon: 'text-[#A77B06] dark:text-[#E0B23C]',
     bar: 'bg-[#C99A2E]',
     dot: 'bg-[#C99A2E]'
   }

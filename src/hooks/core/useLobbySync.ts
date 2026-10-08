@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { notifyConflict, writeGameState } from '@/lib/gameStateSync';
 import { useLobbyTouch } from '@/hooks/useLobbyTouch';
+import { callAttention } from '@/lib/attention';
 
 /** How many times a retryable write is rebuilt on fresh state before giving up. */
 const MAX_WRITE_RETRIES = 3;
@@ -57,6 +58,17 @@ export function useLobbySync<T extends { version?: number; status?: string; last
   // While this client has the room open — lobby or match — the database
   // knows somebody is here (useLobbyTouch); a room nobody has open is swept.
   useLobbyTouch(lobbyId, !!userId && !lobbyDeleted);
+
+  // A match that starts while this tab is in the background calls the player
+  // back (the host pressed Start, so their own tab is in front and stays quiet).
+  const status = gameState?.status;
+  const previousStatus = useRef(status);
+  useEffect(() => {
+    if (previousStatus.current === 'waiting' && status && status !== 'waiting' && status !== 'finished') {
+      callAttention('started');
+    }
+    previousStatus.current = status;
+  }, [status]);
 
   // Fresh references for async handlers
   const gameStateRef = useRef<T | null>(null);

@@ -1,6 +1,6 @@
 import type { GameNotification } from './notification';
 
-export type Lang = 'ru' | 'en';
+export type Lang = 'ru' | 'en' | 'uk';
 
 export type ShipType = 'battleship' | 'cruiser' | 'destroyer' | 'submarine';
 export type Orientation = 'horizontal' | 'vertical';

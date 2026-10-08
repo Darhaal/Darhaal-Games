@@ -41,5 +41,23 @@ export const CHANGELOG_COPY = {
       minor: 'Update',
       patch: 'Patch'
     } satisfies Record<VersionType, string>
+  },
+  uk: {
+    metaTitle: 'Історія змін',
+    metaDescription:
+      'Усі версії Darhaal Games із датами: нові ігри, функції та виправлення — від запуску в січні 2026 року до сьогодні.',
+    title: 'Історія змін',
+    lead: 'Усі версії Darhaal Games із датами — що з’явилося і що виправлено, від запуску в січні 2026 року до сьогодні.',
+    current: 'Зараз',
+    count: ['версія', 'версії', 'версій'] as const,
+    lines: 'Лінійки',
+    major: (n: number) => `Версія ${n}`,
+    fixed: 'Виправлено',
+    types: {
+      init: 'Запуск',
+      major: 'Велике оновлення',
+      minor: 'Оновлення',
+      patch: 'Патч'
+    } satisfies Record<VersionType, string>
   }
 } satisfies Record<Locale, unknown>;

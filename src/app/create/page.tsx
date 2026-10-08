@@ -59,14 +59,32 @@ const TRANSLATIONS = {
     advanced: 'Advanced settings',
     changed: (n: number) => `${n} changed`,
     footer: COPYRIGHT
+  },
+  uk: {
+    select: 'Вибір гри',
+    selectSub: 'Доступні режими',
+    settings: 'Налаштування',
+    settingsSub: 'Параметри лобі',
+    create: 'Створити',
+    private: 'Закрита гра',
+    password: 'Пароль',
+    players: 'Гравці',
+    error: 'Помилка',
+    lobbyName: 'Назва',
+    enterName: 'Назва кімнати...',
+    enterPass: '••••••',
+    lobbySuffix: 'Лобі',
+    advanced: 'Додатково',
+    changed: (n: number) => `змінено: ${n}`,
+    footer: COPYRIGHT
   }
 };
 
 const LABEL_CLASS =
-  'text-2xs font-black text-[#8A9099] uppercase tracking-widest ml-1 flex items-center gap-2';
-const BADGE_CLASS = 'text-xs font-bold text-white bg-[#1A1F26] px-2 py-0.5 rounded tabular-nums';
+  'text-2xs font-black text-muted uppercase tracking-widest ml-1 flex items-center gap-2';
+const BADGE_CLASS = 'text-xs font-bold text-on-ink bg-ink px-2 py-0.5 rounded tabular-nums';
 const RANGE_CLASS =
-  'w-full h-1.5 bg-gray-100 rounded-full appearance-none cursor-pointer accent-[#1A1F26]';
+  'w-full h-1.5 bg-gray-100 rounded-full appearance-none cursor-pointer accent-ink';
 
 /**
  * Renders one declared option from `src/games/options.ts`.
@@ -76,7 +94,7 @@ const RANGE_CLASS =
  * unmount and remount each control — which loses the drag on a slider.
  */
 /** Consecutive choices under the same heading, for `<optgroup>`s; ungrouped ones stand alone. */
-function groupChoices(choices: ChoiceOption['choices'], lang: 'ru' | 'en') {
+function groupChoices(choices: ChoiceOption['choices'], lang: 'ru' | 'en' | 'uk') {
   const runs: Array<{ group: string | null; choices: ChoiceOption['choices'] }> = [];
   for (const choice of choices) {
     const group = choice.group?.[lang] ?? null;
@@ -92,7 +110,7 @@ function OptionControl({
 }: {
   option: GameOption;
   values: OptionValues;
-  lang: 'ru' | 'en';
+  lang: 'ru' | 'en' | 'uk';
   onChange: (key: string, value: number | string) => void;
 }) {
   if (option.kind === 'slider') {
@@ -121,7 +139,7 @@ function OptionControl({
           className={RANGE_CLASS}
         />
         {note && (
-          <div className="text-2xs font-bold text-gray-500 px-2 bg-[#F8FAFC] py-1.5 rounded text-center">
+          <div className="text-2xs font-bold text-gray-500 px-2 bg-page py-1.5 rounded text-center">
             {note}
           </div>
         )}
@@ -145,7 +163,7 @@ function OptionControl({
           id={`option-${option.key}`}
           value={String(values[option.key] ?? option.default)}
           onChange={(e) => onChange(option.key, e.target.value)}
-          className="w-full bg-[#F8FAFC] border border-gray-200 focus:bg-white focus:border-[#1A1F26] rounded-xl py-3 px-4 font-bold text-[#1A1F26] outline-none transition-all text-sm cursor-pointer"
+          className="w-full bg-page border border-gray-200 focus:bg-surface focus:border-ink rounded-xl py-3 px-4 font-bold text-ink outline-none transition-all text-sm cursor-pointer"
         >
           {groupChoices(choices, lang).map(({ group, choices }, i) => {
             const items = choices.map((choice) => (
@@ -157,7 +175,7 @@ function OptionControl({
           })}
         </select>
         {preview && (
-          <p className="text-2xs font-bold text-[#8A9099] px-1">{preview[lang].join(' · ')}</p>
+          <p className="text-2xs font-bold text-muted px-1">{preview[lang].join(' · ')}</p>
         )}
       </div>
     );
@@ -176,8 +194,8 @@ function OptionControl({
             onClick={() => onChange(option.key, choice.value)}
             className={`p-3 rounded-xl border flex items-center gap-2 transition-all ${
               values[option.key] === choice.value
-                ? 'bg-[#1A1F26] text-white border-[#1A1F26] shadow-md'
-                : 'bg-white text-[#1A1F26] border-[#E6E1DC] hover:border-[#1A1F26]'
+                ? 'bg-ink text-on-ink border-ink shadow-md'
+                : 'bg-surface text-ink border-line hover:border-ink'
             }`}
           >
             {choice.emoji && <span className="text-lg">{choice.emoji}</span>}
@@ -187,15 +205,15 @@ function OptionControl({
       </div>
 
       {preview && (
-        <div className="bg-[#F8FAFC] p-4 rounded-xl border border-[#E6E1DC]">
-          <div className="text-2xs font-bold text-[#8A9099] uppercase tracking-widest mb-3">
+        <div className="bg-page p-4 rounded-xl border border-line">
+          <div className="text-2xs font-bold text-muted uppercase tracking-widest mb-3">
             {option.previewLabel[lang]}
           </div>
           <div className="flex flex-wrap gap-2">
             {preview[lang].map((item) => (
               <span
                 key={item}
-                className="text-2xs font-bold bg-white px-2 py-1 rounded-md border border-[#E6E1DC] text-[#1A1F26]"
+                className="text-2xs font-bold bg-surface px-2 py-1 rounded-md border border-line text-ink"
               >
                 {item}
               </span>
@@ -341,7 +359,7 @@ export default function CreatePage() {
     }
   };
 
-  if (authLoading) return <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]"><Loader2 className="animate-spin text-[#9e1316] w-8 h-8" /></div>;
+  if (authLoading) return <div className="min-h-screen flex items-center justify-center bg-page"><Loader2 className="animate-spin text-accent w-8 h-8" /></div>;
   if (!user) return null;
 
   const SelectedIcon = selectedGame ? GAME_ICONS[selectedGame.id] : null;
@@ -353,20 +371,21 @@ export default function CreatePage() {
         return (
           <button
             key={game.id}
+            data-game-id={game.id}
             onClick={() => { setSelectedGame(game); setStep('settings'); }}
-            className="group relative overflow-hidden rounded-[32px] p-1 text-left transition-all duration-300 hover:scale-[1.01] hover:shadow-xl hover:shadow-[#1A1F26]/5 border border-[#E6E1DC] bg-white hover:border-[#9e1316]/20"
+            className="group relative overflow-hidden rounded-[32px] p-1 text-left transition-all duration-300 hover:scale-[1.01] hover:shadow-xl hover:shadow-shade/5 border border-line bg-surface hover:border-accent/20"
           >
             <div className="relative z-20 p-5 sm:p-6 flex flex-col h-full">
                 <div className="flex justify-between items-start mb-4">
-                   <div className="w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-300 bg-[#F8FAFC] border border-[#E6E1DC] text-[#1A1F26] group-hover:bg-[#1A1F26] group-hover:text-white group-hover:border-[#1A1F26]">
+                   <div className="w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-300 bg-page border border-line text-ink group-hover:bg-ink group-hover:text-on-ink group-hover:border-ink">
                      <Icon className="w-8 h-8 sm:w-10 sm:h-10" />
                    </div>
                 </div>
 
                 <div className="mt-auto">
-                    <h3 className="text-xl font-black text-[#1A1F26] mb-1 group-hover:text-[#9e1316] transition-colors">{game.name[lang]}</h3>
+                    <h3 className="text-xl font-black text-ink mb-1 group-hover:text-accent transition-colors">{game.name[lang]}</h3>
                     <p className="text-xs font-medium text-gray-500 leading-relaxed min-h-[40px]">{game.tagline[lang]}</p>
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-[#1A1F26] mt-4 pt-4 border-t border-[#F1F5F9]">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-ink mt-4 pt-4 border-t border-divider">
                       <Users className="w-3.5 h-3.5 text-gray-400" />
                       {playerRange(game)}
                     </div>
@@ -388,14 +407,14 @@ export default function CreatePage() {
   const advancedChanged = advancedOptions.filter((option) => String(optionValues[option.key] ?? option.default) !== String(option.default)).length;
 
   const renderSettings = () => (
-    <form onSubmit={handleCreate} className="w-full max-w-lg bg-white border border-[#E6E1DC] rounded-[40px] p-8 shadow-2xl shadow-[#1A1F26]/5 animate-in slide-in-from-right-8 duration-500 relative overflow-hidden mb-8">
+    <form onSubmit={handleCreate} className="w-full max-w-lg bg-surface border border-line rounded-[40px] p-8 shadow-2xl shadow-shade/5 animate-in slide-in-from-right-8 duration-500 relative overflow-hidden mb-8">
        <div className="flex items-center gap-4 mb-8 relative z-10">
-          <div className="w-16 h-16 bg-[#1A1F26] rounded-2xl flex items-center justify-center text-white shadow-lg shadow-[#1A1F26]/20">
+          <div className="w-16 h-16 bg-ink rounded-2xl flex items-center justify-center text-on-ink shadow-lg shadow-shade/20">
              {SelectedIcon && <SelectedIcon className="w-8 h-8" />}
           </div>
           <div>
-              <h2 className="text-2xl font-black text-[#1A1F26] leading-tight">{selectedGame?.name[lang]}</h2>
-              <p className="text-xs font-bold text-[#8A9099] uppercase tracking-wider">{t.settingsSub}</p>
+              <h2 className="text-2xl font-black text-ink leading-tight">{selectedGame?.name[lang]}</h2>
+              <p className="text-xs font-bold text-muted uppercase tracking-wider">{t.settingsSub}</p>
           </div>
        </div>
 
@@ -407,7 +426,7 @@ export default function CreatePage() {
                    value={lobbyName}
                    onChange={e => setLobbyName(e.target.value)}
                    placeholder={t.enterName}
-                   className="w-full bg-[#F8FAFC] border border-gray-200 focus:bg-white focus:border-[#1A1F26] rounded-xl py-3 px-4 font-bold text-[#1A1F26] outline-none transition-all placeholder:text-gray-400 text-sm"
+                   className="w-full bg-page border border-gray-200 focus:bg-surface focus:border-ink rounded-xl py-3 px-4 font-bold text-ink outline-none transition-all placeholder:text-gray-400 text-sm"
                    required
                />
           </div>
@@ -440,7 +459,7 @@ export default function CreatePage() {
 
           {/* Whatever this game declares in GAME_OPTIONS — no per-game JSX here. */}
           {mainOptions.length > 0 && (
-            <div className="space-y-6 pt-5 border-t border-[#F1F5F9] animate-in fade-in">
+            <div className="space-y-6 pt-5 border-t border-divider animate-in fade-in">
               {mainOptions.map(option => (
                 <OptionControl
                   key={option.key}
@@ -453,33 +472,33 @@ export default function CreatePage() {
             </div>
           )}
 
-          <div className="h-px bg-[#F1F5F9] w-full" />
+          <div className="h-px bg-divider w-full" />
 
-          <div className="flex items-center justify-between p-3 bg-[#F8FAFC] rounded-xl cursor-pointer border border-transparent hover:border-gray-200 transition-all group" onClick={() => setIsPrivate(!isPrivate)}>
+          <div className="flex items-center justify-between p-3 bg-page rounded-xl cursor-pointer border border-transparent hover:border-gray-200 transition-all group" onClick={() => setIsPrivate(!isPrivate)}>
              <div className="flex items-center gap-3">
-               <div className={`p-1.5 rounded-lg transition-colors ${isPrivate ? 'bg-[#1A1F26] text-white' : 'bg-gray-200 text-gray-500'}`}>
+               <div className={`p-1.5 rounded-lg transition-colors ${isPrivate ? 'bg-ink text-on-ink' : 'bg-gray-200 text-gray-500'}`}>
                    {isPrivate ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
                </div>
-               <span className="font-bold text-[#1A1F26] text-xs uppercase tracking-wide">{t.private}</span>
+               <span className="font-bold text-ink text-xs uppercase tracking-wide">{t.private}</span>
              </div>
-             <div className={`w-10 h-6 rounded-full transition-colors relative ${isPrivate ? 'bg-[#1A1F26]' : 'bg-gray-200'}`}>
-               <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform shadow-sm ${isPrivate ? 'translate-x-4' : ''}`} />
+             <div className={`w-10 h-6 rounded-full transition-colors relative ${isPrivate ? 'bg-ink' : 'bg-gray-200'}`}>
+               <div className={`absolute top-1 left-1 w-4 h-4 rounded-full transition-transform shadow-sm ${isPrivate ? 'translate-x-4 bg-on-ink' : 'bg-surface dark:bg-gray-500'}`} />
              </div>
           </div>
 
           {isPrivate && (
             <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
-               <label className="text-xs font-bold text-[#1A1F26] ml-1">{t.password}</label>
+               <label className="text-xs font-bold text-ink ml-1">{t.password}</label>
                <div className="relative">
                  <input
                    type={showPassword ? "text" : "password"}
                    value={password}
                    onChange={e => setPassword(e.target.value)}
                    placeholder={t.enterPass}
-                   className="w-full bg-[#F8FAFC] border border-gray-200 focus:bg-white focus:border-[#1A1F26] rounded-xl py-3 px-4 font-bold text-[#1A1F26] outline-none transition-all placeholder:text-gray-400 text-sm text-center"
+                   className="w-full bg-page border border-gray-200 focus:bg-surface focus:border-ink rounded-xl py-3 px-4 font-bold text-ink outline-none transition-all placeholder:text-gray-400 text-sm text-center"
                    required={isPrivate}
                  />
-                 <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-3.5 text-gray-400 hover:text-[#1A1F26]">
+                 <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-3.5 text-gray-400 hover:text-ink">
                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                  </button>
                </div>
@@ -494,18 +513,18 @@ export default function CreatePage() {
                 onClick={() => setAdvancedOpen((open) => !open)}
                 aria-expanded={advancedOpen}
                 aria-controls="advanced-options"
-                className="group w-full flex items-center justify-between p-3 bg-[#F8FAFC] rounded-xl border border-transparent hover:border-[#9e1316]/20 transition-all"
+                className="group w-full flex items-center justify-between p-3 bg-page rounded-xl border border-transparent hover:border-accent/20 transition-all"
               >
                 <span className="flex items-center gap-3">
-                  <span className={`p-1.5 rounded-lg transition-colors ${advancedOpen ? 'bg-[#1A1F26] text-white' : 'bg-gray-200 text-gray-500 group-hover:text-[#9e1316]'}`}>
+                  <span className={`p-1.5 rounded-lg transition-colors ${advancedOpen ? 'bg-ink text-on-ink' : 'bg-gray-200 text-gray-500 group-hover:text-accent'}`}>
                     <SlidersHorizontal className="w-4 h-4" />
                   </span>
-                  <span className="font-bold text-[#1A1F26] text-xs uppercase tracking-wide">{t.advanced}</span>
+                  <span className="font-bold text-ink text-xs uppercase tracking-wide">{t.advanced}</span>
                   {!advancedOpen && advancedChanged > 0 && (
-                    <span className="bg-white border border-[#E6E1DC] px-2 py-0.5 rounded-md text-2xs font-bold text-[#8A9099]">{t.changed(advancedChanged)}</span>
+                    <span className="bg-surface border border-line px-2 py-0.5 rounded-md text-2xs font-bold text-muted">{t.changed(advancedChanged)}</span>
                   )}
                 </span>
-                <ChevronDown className={`w-4 h-4 text-[#8A9099] group-hover:text-[#9e1316] transition-transform ${advancedOpen ? 'rotate-180' : ''}`} />
+                <ChevronDown className={`w-4 h-4 text-muted group-hover:text-accent transition-transform ${advancedOpen ? 'rotate-180' : ''}`} />
               </button>
               {advancedOpen && (
                 <div id="advanced-options" className="space-y-6 animate-in fade-in slide-in-from-top-2">
@@ -526,7 +545,7 @@ export default function CreatePage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-[#1A1F26] text-white py-4 rounded-xl font-black uppercase tracking-wide hover:bg-[#9e1316] hover:shadow-lg transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-3 mt-2"
+            className="w-full bg-ink text-on-ink py-4 rounded-xl font-black uppercase tracking-wide hover:bg-accent hover:shadow-lg transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-3 mt-2"
           >
             {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <> {t.create} <ArrowRight className="w-4 h-4" /> </>}
           </button>
@@ -535,20 +554,20 @@ export default function CreatePage() {
   );
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex flex-col font-sans relative overflow-hidden">
+    <div className="min-h-screen bg-page flex flex-col font-sans relative overflow-clip">
       <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-40 mix-blend-overlay pointer-events-none" />
-      <div className="absolute top-[-20%] right-[-10%] w-[600px] h-[600px] bg-[#9e1316]/5 rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute top-[-20%] right-[-10%] w-[600px] h-[600px] bg-accent/5 rounded-full blur-[100px] pointer-events-none" />
 
       {/* HEADER: STICKY & UNIFIED */}
-      <header className="sticky top-0 z-30 w-full bg-[#F8FAFC]/90 backdrop-blur-xl border-b border-[#E6E1DC] shadow-sm">
+      <header className="sticky top-0 z-30 w-full bg-page/90 backdrop-blur-xl border-b border-line shadow-sm">
         <div className="max-w-6xl mx-auto px-4 py-3 md:py-4 flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-4">
           <div className="flex items-center gap-3 md:gap-4 w-full md:w-auto">
-            <button onClick={() => { if (step === 'selection') router.push('/'); else setStep('selection'); }} className="group p-2.5 md:p-3 bg-white border border-[#E6E1DC] rounded-xl hover:border-[#9e1316]/30 hover:shadow-sm transition-all">
-                <ArrowLeft className="w-4 h-4 md:w-5 md:h-5 text-[#8A9099] group-hover:text-[#9e1316]" />
+            <button onClick={() => { if (step === 'selection') router.push('/'); else setStep('selection'); }} className="group p-2.5 md:p-3 bg-surface border border-line rounded-xl hover:border-accent/30 hover:shadow-sm transition-all">
+                <ArrowLeft className="w-4 h-4 md:w-5 md:h-5 text-muted group-hover:text-accent" />
             </button>
             <div className="flex flex-col">
-                <h1 className="text-lg md:text-xl font-bold text-[#1A1F26] tracking-tight leading-none">{step === 'selection' ? t.select : t.settings}</h1>
-                <p className="text-xs text-[#8A9099] font-medium hidden sm:block">
+                <h1 className="text-lg md:text-xl font-bold text-ink tracking-tight leading-none">{step === 'selection' ? t.select : t.settings}</h1>
+                <p className="text-xs text-muted font-medium hidden sm:block">
                     {step === 'selection' ? t.selectSub : (selectedGame ? selectedGame.name[lang] : t.settingsSub)}
                 </p>
             </div>
@@ -565,8 +584,8 @@ export default function CreatePage() {
       </div>
 
       <footer className="w-full p-8 text-center z-10 opacity-40 hover:opacity-100 transition-opacity">
-        <p className="text-[#1A1F26] text-2xs font-black uppercase tracking-[0.3em] cursor-default flex items-center justify-center gap-2">
-            <Zap className="w-3 h-3 text-[#9e1316]" /> {t.footer}
+        <p className="text-ink text-2xs font-black uppercase tracking-[0.3em] cursor-default flex items-center justify-center gap-2">
+            <Zap className="w-3 h-3 text-accent" /> {t.footer}
         </p>
       </footer>
     </div>

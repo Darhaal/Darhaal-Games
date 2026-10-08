@@ -1,6 +1,6 @@
 # Darhaal Games
 
-![Version](https://img.shields.io/badge/version-2.15.0-blue.svg) ![License](https://img.shields.io/badge/license-View%20%26%20Study%20Only-red.svg) ![Tests](https://img.shields.io/badge/tests-1139-brightgreen.svg)
+![Version](https://img.shields.io/badge/version-2.15.1-blue.svg) ![License](https://img.shields.io/badge/license-View%20%26%20Study%20Only-red.svg) ![Tests](https://img.shields.io/badge/tests-1151-brightgreen.svg)
 
 Eleven board, logic and quiz games you can play with friends in a browser. One person
 creates a room, shares the link, everyone else joins — no install, no account
@@ -35,8 +35,8 @@ hooks, several players at once, against an in-memory copy of the room
 
 **A public layer bolted onto an auth-walled app.** Every application route is a
 client component behind a login screen, so search engines saw nothing. The fix
-was a separate server-rendered tree (`/games`, `/ru/games`) plus a landing on the
-root, English by default with Russian ready to index, per-page Open Graph cards and structured data — all
+was a separate server-rendered tree (`/games`, `/ru/games`, `/uk/games`) plus a landing on the
+root, English by default with Russian and Ukrainian beside it, per-page Open Graph cards and structured data — all
 generated from one content module. See [`docs/seo.md`](docs/seo.md).
 
 **One registry instead of six copies of each game.** Every game used to be

@@ -40,7 +40,7 @@ interface UniversalLobbyProps {
   maxPlayers: number;
   onStart: () => void;
   onLeave: () => void;
-  lang: 'ru' | 'en';
+  lang: 'ru' | 'en' | 'uk';
 }
 
 const Toast = ({ msg, type }: { msg: string, type: 'join' | 'leave' | 'info' }) => (
@@ -157,6 +157,31 @@ export default function UniversalLobby({
       closeConfirm: 'Close',
       autoKick: 'Kick in',
       sec: 's'
+    },
+    uk: {
+      waiting: 'Очікування гравців...',
+      start: 'Почати гру',
+      leave: 'Покинути',
+      code: 'Код кімнати',
+      copyLink: 'Скопіювати посилання',
+      linkCopied: 'Посилання скопійовано',
+      minPlayers: `Потрібно ${minPlayers}+ гравців`,
+      host: 'Хост',
+      you: 'Ви',
+      playersTitle: 'Гравці',
+      joined: 'приєднався',
+      left: 'вийшов',
+      offline: 'Не в мережі',
+      kick: 'Виключити',
+      kicked: 'Гравця виключено',
+      series: 'Рахунок серії',
+      hostClosed: 'Хост залишив кімнату — лобі закрито',
+      closeTitle: 'Закрити кімнату?',
+      closeDesc: 'Кімната зникне, решту гравців буде відключено.',
+      closeCancel: 'Скасувати',
+      closeConfirm: 'Закрити',
+      autoKick: 'Кік через',
+      sec: 'с'
     }
   }[lang];
 
@@ -483,7 +508,7 @@ export default function UniversalLobby({
   return (
     // Bottom padding is room for the chat button: without it, on a phone the
     // start button scrolls no further than underneath it.
-    <div className="min-h-screen bg-[#F8FAFC] text-[#1A1F26] flex flex-col font-sans relative overflow-hidden pb-24">
+    <div className="min-h-screen bg-page text-ink flex flex-col font-sans relative overflow-hidden pb-24">
       <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-50 mix-blend-overlay pointer-events-none" />
 
       <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] flex flex-col gap-2 w-full max-w-sm px-4 pointer-events-none">
@@ -493,20 +518,20 @@ export default function UniversalLobby({
       </div>
 
       <header className="w-full max-w-6xl mx-auto p-6 flex justify-between items-center z-10 relative">
-        <button onClick={handleLeaveOrClose} className="group flex items-center gap-2 px-4 py-2 bg-white border border-[#E6E1DC] rounded-xl hover:border-red-200 hover:bg-red-50 transition-all shadow-sm">
-            <LogOut className="w-4 h-4 text-[#8A9099] group-hover:text-[#9e1316] transition-colors" />
-            <span className="text-xs font-bold uppercase tracking-widest text-[#8A9099] group-hover:text-[#9e1316] hidden sm:block">{t.leave}</span>
+        <button onClick={handleLeaveOrClose} className="group flex items-center gap-2 px-4 py-2 bg-surface border border-line rounded-xl hover:border-red-200 hover:bg-red-50 transition-all shadow-sm">
+            <LogOut className="w-4 h-4 text-muted group-hover:text-accent transition-colors" />
+            <span className="text-xs font-bold uppercase tracking-widest text-muted group-hover:text-accent hidden sm:block">{t.leave}</span>
         </button>
 
         <div className="flex flex-col items-center">
             <h1 className="text-2xl font-black uppercase tracking-tight flex items-center gap-3">
-               <div className="p-2 bg-[#1A1F26] text-white rounded-lg shadow-md">
+               <div className="p-2 bg-ink text-on-ink rounded-lg shadow-md">
                  <GameIcon className="w-5 h-5" />
                </div>
                {roomName}
             </h1>
             <div className="flex items-center gap-2 mt-2">
-                <div className="text-2xs font-bold text-[#9e1316] uppercase tracking-[0.2em] bg-[#9e1316]/5 px-3 py-1 rounded-full border border-[#9e1316]/10 animate-pulse">
+                <div className="text-2xs font-bold text-accent uppercase tracking-[0.2em] bg-accent/5 px-3 py-1 rounded-full border border-accent/10 animate-pulse">
                     {t.waiting}
                 </div>
             </div>
@@ -516,11 +541,11 @@ export default function UniversalLobby({
       </header>
 
       <main className="flex-1 w-full max-w-5xl mx-auto p-4 z-10 flex flex-col lg:flex-row gap-8 items-start justify-center pt-8 lg:pt-16">
-        <div className="w-full lg:w-2/3 bg-white border border-[#E6E1DC] rounded-[32px] p-8 shadow-xl shadow-[#1A1F26]/5 relative overflow-hidden transition-all">
-          <div className="flex justify-between items-center mb-8 border-b border-[#F5F5F0] pb-4">
-              <h2 className="text-xl font-black uppercase tracking-wide flex items-center gap-2 text-[#1A1F26]">
-                  <Users className="w-5 h-5 text-[#9e1316]" />
-                  {t.playersTitle} <span className="bg-[#F5F5F0] px-2 py-0.5 rounded-md text-base text-[#8A9099]">{players.length}/{maxPlayers}</span>
+        <div className="w-full lg:w-2/3 bg-surface border border-line rounded-[32px] p-8 shadow-xl shadow-shade/5 relative overflow-hidden transition-all">
+          <div className="flex justify-between items-center mb-8 border-b border-warm pb-4">
+              <h2 className="text-xl font-black uppercase tracking-wide flex items-center gap-2 text-ink">
+                  <Users className="w-5 h-5 text-accent" />
+                  {t.playersTitle} <span className="bg-warm px-2 py-0.5 rounded-md text-base text-muted">{players.length}/{maxPlayers}</span>
               </h2>
           </div>
 
@@ -534,27 +559,27 @@ export default function UniversalLobby({
               const kickTime = kickTimers[p.id] && nowTick ? Math.ceil((kickTimers[p.id] - nowTick) / 1000) : null;
 
               return (
-                <div key={p.id} className={`group relative p-4 rounded-2xl border flex items-center justify-between gap-4 transition-all ${isOnline ? 'bg-[#F8FAFC] border-[#E6E1DC] hover:border-[#9e1316]/30 hover:shadow-md' : 'bg-red-50 border-red-100 opacity-90'}`}>
+                <div key={p.id} className={`group relative p-4 rounded-2xl border flex items-center justify-between gap-4 transition-all ${isOnline ? 'bg-page border-line hover:border-accent/30 hover:shadow-md' : 'bg-red-50 border-red-100 opacity-90'}`}>
                   <div className="flex items-center gap-4 min-w-0">
                       <div className="relative">
-                          <div className="w-14 h-14 rounded-full bg-white border-2 border-white shadow-sm overflow-hidden bg-[#F5F5F0]">
+                          <div className="w-14 h-14 rounded-full bg-surface border-2 border-surface shadow-sm overflow-hidden bg-warm">
                               {p.avatarUrl ? <Image src={p.avatarUrl} alt={p.name} width={56} height={56} className={`w-full h-full object-cover ${!isOnline ? 'grayscale' : ''}`} /> : <User className="w-8 h-8 text-gray-400 m-auto mt-3" />}
                           </div>
                           {p.isHost && (
-                              <div className="absolute -top-1 -right-1 bg-[#9e1316] text-white p-1 rounded-full border-2 border-white shadow-sm z-10" title={t.host}>
+                              <div className="absolute -top-1 -right-1 bg-accent text-white p-1 rounded-full border-2 border-surface shadow-sm z-10" title={t.host}>
                                   <Crown className="w-3 h-3" />
                               </div>
                           )}
-                          <div className={`absolute -bottom-1 -right-1 p-1 rounded-full border-2 border-white shadow-sm z-10 ${isOnline ? 'bg-emerald-500' : 'bg-red-500'}`}>
+                          <div className={`absolute -bottom-1 -right-1 p-1 rounded-full border-2 border-surface shadow-sm z-10 ${isOnline ? 'bg-emerald-500' : 'bg-red-500'}`}>
                               {isOnline ? <Wifi className="w-2.5 h-2.5 text-white" /> : <WifiOff className="w-2.5 h-2.5 text-white" />}
                           </div>
                       </div>
 
                       <div className="flex flex-col overflow-hidden">
-                          <div className="font-black text-[#1A1F26] text-sm truncate">{p.name}</div>
+                          <div className="font-black text-ink text-sm truncate">{p.name}</div>
                           <div className="flex items-center gap-2">
-                            <div className="text-2xs font-bold text-[#8A9099] uppercase tracking-wider">
-                                {isMe ? <span className="text-[#9e1316]">{t.you}</span> : (p.isHost ? t.host : 'Player')}
+                            <div className="text-2xs font-bold text-muted uppercase tracking-wider">
+                                {isMe ? <span className="text-accent">{t.you}</span> : (p.isHost ? t.host : 'Player')}
                             </div>
                             {!isOnline && (
                                 <span className="text-3xs font-bold text-red-500 uppercase tracking-wider flex items-center gap-1 animate-pulse">
@@ -569,7 +594,7 @@ export default function UniversalLobby({
                   {isHost && !isMe && (
                       <button
                         onClick={() => handleKickPlayer(p.id)}
-                        className="p-2 bg-white rounded-xl border border-transparent hover:border-red-200 text-gray-300 hover:text-red-500 hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100 focus:opacity-100 shadow-sm"
+                        className="p-2 bg-surface rounded-xl border border-transparent hover:border-red-200 text-gray-300 hover:text-red-500 hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100 focus:opacity-100 shadow-sm"
                         title={t.kick}
                       >
                           <XCircle className="w-5 h-5" />
@@ -579,9 +604,9 @@ export default function UniversalLobby({
               );
             })}
             {Array.from({ length: Math.max(0, minPlayers - players.length) }).map((_, i) => (
-                <div key={`empty-${i}`} className="border-2 border-dashed border-[#E6E1DC] bg-transparent p-4 rounded-2xl flex items-center justify-center gap-4 opacity-50 min-h-[88px]">
-                    <div className="w-14 h-14 rounded-full bg-[#E6E1DC]/30 animate-pulse" />
-                    <div className="h-4 w-24 bg-[#E6E1DC]/30 rounded animate-pulse" />
+                <div key={`empty-${i}`} className="border-2 border-dashed border-line bg-transparent p-4 rounded-2xl flex items-center justify-center gap-4 opacity-50 min-h-[88px]">
+                    <div className="w-14 h-14 rounded-full bg-line/30 animate-pulse" />
+                    <div className="h-4 w-24 bg-line/30 rounded animate-pulse" />
                 </div>
             ))}
           </div>
@@ -591,15 +616,15 @@ export default function UniversalLobby({
             {/* The chain this room belongs to. "Play again" opens a new room
                 every time, so without this a fourth match looks like a first. */}
             {series.length > 0 && (
-              <div className="bg-white border border-[#E6E1DC] rounded-[24px] p-5 shadow-sm">
+              <div className="bg-surface border border-line rounded-[24px] p-5 shadow-sm">
                 <div className="text-2xs font-bold text-gray-400 uppercase tracking-[0.2em] mb-3">
                   {t.series}
                 </div>
                 <div className="space-y-2">
                   {series.map(({ id, name, wins }) => (
                     <div key={id} className="flex items-center justify-between gap-3">
-                      <span className="text-sm font-bold text-[#1A1F26] truncate">{name}</span>
-                      <span className="text-lg font-black tabular-nums text-[#9e1316]">{wins}</span>
+                      <span className="text-sm font-bold text-ink truncate">{name}</span>
+                      <span className="text-lg font-black tabular-nums text-accent">{wins}</span>
                     </div>
                   ))}
                 </div>
@@ -608,11 +633,11 @@ export default function UniversalLobby({
 
             <div
                 onClick={handleCopy}
-                className="bg-[#1A1F26] text-white p-8 rounded-[32px] shadow-2xl shadow-[#1A1F26]/20 text-center cursor-pointer group relative overflow-hidden transition-transform active:scale-[0.98]"
+                className="bg-night text-white p-8 rounded-[32px] shadow-2xl shadow-shade/20 text-center cursor-pointer group relative overflow-hidden transition-transform active:scale-[0.98]"
             >
-                <div className="absolute inset-0 bg-gradient-to-tr from-[#9e1316]/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="absolute inset-0 bg-gradient-to-tr from-accent/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                 <div className="relative z-10">
-                    <div className="text-2xs font-bold text-gray-400 uppercase tracking-[0.2em] mb-4 group-hover:text-white/80 transition-colors">{t.code}</div>
+                    <div className="text-2xs font-bold text-white/50 uppercase tracking-[0.2em] mb-4 group-hover:text-white/80 transition-colors">{t.code}</div>
                     <div className="text-5xl font-black tracking-widest font-mono group-hover:scale-110 transition-transform duration-300">
                         {roomCode}
                     </div>
@@ -627,26 +652,26 @@ export default function UniversalLobby({
 
             <button
                 onClick={handleCopyLink}
-                className="w-full py-4 bg-white border border-[#E6E1DC] text-[#1A1F26] rounded-[20px] font-bold uppercase tracking-wider text-xs hover:border-[#1A1F26] hover:shadow-sm transition-all active:scale-[0.99] flex items-center justify-center gap-2"
+                className="w-full py-4 bg-surface border border-line text-ink rounded-[20px] font-bold uppercase tracking-wider text-xs hover:border-ink hover:shadow-sm transition-all active:scale-[0.99] flex items-center justify-center gap-2"
             >
                 {linkCopied
                     ? <><Check className="w-4 h-4 text-emerald-600" /> {t.linkCopied}</>
-                    : <><LinkIcon className="w-4 h-4 text-[#8A9099]" /> {t.copyLink}</>}
+                    : <><LinkIcon className="w-4 h-4 text-muted" /> {t.copyLink}</>}
             </button>
 
             {isHost ? (
                 <button
                     onClick={handleStart}
                     disabled={players.length < minPlayers}
-                    className="w-full py-5 bg-white border-2 border-[#1A1F26] text-[#1A1F26] rounded-[24px] font-black uppercase tracking-[0.15em] text-sm hover:bg-[#1A1F26] hover:text-white hover:shadow-xl hover:shadow-[#1A1F26]/20 disabled:opacity-50 disabled:hover:bg-white disabled:hover:text-[#1A1F26] disabled:cursor-not-allowed transition-all active:translate-y-1 flex items-center justify-center gap-3"
+                    className="w-full py-5 bg-surface border-2 border-ink text-ink rounded-[24px] font-black uppercase tracking-[0.15em] text-sm hover:bg-ink hover:text-on-ink hover:shadow-xl hover:shadow-shade/20 disabled:opacity-50 disabled:hover:bg-surface disabled:hover:text-ink disabled:cursor-not-allowed transition-all active:translate-y-1 flex items-center justify-center gap-3"
                 >
                     {players.length < minPlayers ? t.minPlayers : <><Play className="w-4 h-4" /> {t.start}</>}
                 </button>
             ) : (
-                <div className="w-full py-5 bg-[#F5F5F0] border border-[#E6E1DC] text-[#8A9099] rounded-[24px] font-bold uppercase tracking-widest text-xs text-center flex items-center justify-center gap-3">
-                    <div className="w-2 h-2 bg-[#9e1316] rounded-full animate-bounce" />
+                <div className="w-full py-5 bg-warm border border-line text-muted rounded-[24px] font-bold uppercase tracking-widest text-xs text-center flex items-center justify-center gap-3">
+                    <div className="w-2 h-2 bg-accent rounded-full animate-bounce" />
                     {t.waiting}
-                    <div className="w-2 h-2 bg-[#9e1316] rounded-full animate-bounce delay-75" />
+                    <div className="w-2 h-2 bg-accent rounded-full animate-bounce delay-75" />
                 </div>
             )}
         </div>
@@ -657,22 +682,22 @@ export default function UniversalLobby({
           browser's. */}
       {pendingClose && (
         <div
-          className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-[#1A1F26]/50 backdrop-blur-sm animate-in fade-in duration-200"
+          className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-scrim/50 backdrop-blur-sm animate-in fade-in duration-200"
           onClick={() => setPendingClose(false)}
         >
           <div
-            className="bg-white p-7 rounded-3xl w-full max-w-xs text-center shadow-2xl border border-[#E6E1DC] animate-in zoom-in-95"
+            className="bg-surface p-7 rounded-3xl w-full max-w-xs text-center shadow-2xl border border-line animate-in zoom-in-95"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="w-14 h-14 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-red-100">
               <LogOut className="w-6 h-6" />
             </div>
-            <h3 className="text-lg font-black text-[#1A1F26] uppercase mb-1">{t.closeTitle}</h3>
-            <p className="text-xs font-bold text-[#8A9099] mb-6">{t.closeDesc}</p>
+            <h3 className="text-lg font-black text-ink uppercase mb-1">{t.closeTitle}</h3>
+            <p className="text-xs font-bold text-muted mb-6">{t.closeDesc}</p>
             <div className="flex gap-3">
               <button
                 onClick={() => setPendingClose(false)}
-                className="flex-1 py-3 bg-[#F8FAFC] text-[#1A1F26] border border-[#E6E1DC] rounded-xl font-bold uppercase text-xs hover:bg-[#E6E1DC] transition-colors"
+                className="flex-1 py-3 bg-page text-ink border border-line rounded-xl font-bold uppercase text-xs hover:bg-line transition-colors"
               >
                 {t.closeCancel}
               </button>

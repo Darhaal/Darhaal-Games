@@ -2,60 +2,148 @@
 
 import Image from 'next/image';
 import React, { useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation'; 
-import { Mail, Lock, User, LogIn, Ghost, Globe, Loader2, AlertCircle, ArrowRight, Eye, EyeOff } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Mail, Lock, User, Ghost, Loader2, AlertCircle, CheckCircle2, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import { useLang } from '@/hooks/useLang';
+import { useLang, type Lang } from '@/hooks/useLang';
 import { errorMessage } from '@/lib/errors';
 import { SITE_URL, defaultAvatar } from '@/constants/app';
+import { BUTTON_PRIMARY, BUTTON_SECONDARY, LABEL } from '@/components/game/ui';
+import GoogleMark from '@/components/GoogleMark';
+import { LANGUAGE_LINKS } from '@/lib/locale';
 
 const translations = {
   ru: {
     titleLogin: 'Вход',
     titleSignup: 'Регистрация',
+    subLogin: 'Войдите, чтобы играть с друзьями',
+    subSignup: 'Аккаунт хранит статистику, достижения и аватарки',
+    identifierLabel: 'Имя или email',
     usernameLabel: 'Имя пользователя',
     emailLabel: 'Email',
     passLabel: 'Пароль',
     btnLogin: 'Войти',
     btnSignup: 'Создать аккаунт',
-    btnGoogle: 'Google',
-    btnGuest: 'Гость',
-    switchSignup: 'Создать аккаунт',
-    switchLogin: 'Уже есть аккаунт?',
+    btnGoogle: 'Войти через Google',
+    btnGuest: 'Играть как гость',
+    or: 'или',
+    noAccount: 'Нет аккаунта?',
+    createOne: 'Создать',
+    haveAccount: 'Уже есть аккаунт?',
+    signIn: 'Войти',
     guestInfo: 'Прогресс гостя не сохраняется',
-    successReg: 'Проверьте почту',
-    errorUserNotFound: 'Не найдено',
+    successReg: 'Проверьте почту, чтобы подтвердить аккаунт',
+    errorUserNotFound: 'Такой игрок не найден',
+    usernameTaken: 'Имя занято',
+    guestDisabled: 'Гостевой вход сейчас недоступен',
+    wrongCredentials: 'Неверное имя или пароль',
+    emailNotConfirmed: 'Подтвердите почту — ссылка в письме',
+    alreadyRegistered: 'Этот email уже зарегистрирован',
+    shortPassword: 'Пароль — не короче 6 символов',
     forgotPass: 'Забыли пароль?',
     resetSent: 'Ссылка для сброса отправлена на почту',
     enterIdentifier: 'Введите имя или email выше',
+    showPassword: 'Показать пароль',
+    hidePassword: 'Скрыть пароль',
+    language: 'Язык',
   },
   en: {
-    titleLogin: 'Sign In',
-    titleSignup: 'Create Account',
+    titleLogin: 'Sign in',
+    titleSignup: 'Create account',
+    subLogin: 'Sign in to play with your friends',
+    subSignup: 'An account keeps your stats, achievements and avatars',
+    identifierLabel: 'Username or email',
     usernameLabel: 'Username',
     emailLabel: 'Email',
     passLabel: 'Password',
-    btnLogin: 'Sign In',
-    btnSignup: 'Sign Up',
-    btnGoogle: 'Google',
-    btnGuest: 'Guest',
-    switchSignup: 'No account? Create one',
-    switchLogin: 'Already have an account? Sign in',
-    guestInfo: 'Guest progress not saved',
-    successReg: 'Check your email',
-    errorUserNotFound: 'Not found',
+    btnLogin: 'Sign in',
+    btnSignup: 'Create account',
+    btnGoogle: 'Continue with Google',
+    btnGuest: 'Play as guest',
+    or: 'or',
+    noAccount: 'No account?',
+    createOne: 'Create one',
+    haveAccount: 'Already have an account?',
+    signIn: 'Sign in',
+    guestInfo: 'Guest progress is not saved',
+    successReg: 'Check your email to confirm the account',
+    errorUserNotFound: 'No such player',
+    usernameTaken: 'Username taken',
+    guestDisabled: 'Guest sign-in is unavailable right now',
+    wrongCredentials: 'Wrong username or password',
+    emailNotConfirmed: 'Confirm your email first — the link is in the message',
+    alreadyRegistered: 'This email is already registered',
+    shortPassword: 'The password needs at least 6 characters',
     forgotPass: 'Forgot password?',
     resetSent: 'Reset link sent to your email',
     enterIdentifier: 'Enter your username or email above',
+    showPassword: 'Show password',
+    hidePassword: 'Hide password',
+    language: 'Language',
+  },
+  uk: {
+    titleLogin: 'Вхід',
+    titleSignup: 'Реєстрація',
+    subLogin: 'Увійдіть, щоб грати з друзями',
+    subSignup: 'Акаунт зберігає статистику, досягнення й аватарки',
+    identifierLabel: 'Ім’я або email',
+    usernameLabel: 'Ім’я користувача',
+    emailLabel: 'Email',
+    passLabel: 'Пароль',
+    btnLogin: 'Увійти',
+    btnSignup: 'Створити акаунт',
+    btnGoogle: 'Увійти через Google',
+    btnGuest: 'Грати як гість',
+    or: 'або',
+    noAccount: 'Немає акаунта?',
+    createOne: 'Створити',
+    haveAccount: 'Уже є акаунт?',
+    signIn: 'Увійти',
+    guestInfo: 'Прогрес гостя не зберігається',
+    successReg: 'Перевірте пошту, щоб підтвердити акаунт',
+    errorUserNotFound: 'Такого гравця не знайдено',
+    usernameTaken: 'Ім’я зайняте',
+    guestDisabled: 'Гостьовий вхід зараз недоступний',
+    wrongCredentials: 'Неправильне ім’я або пароль',
+    emailNotConfirmed: 'Підтвердьте пошту — посилання в листі',
+    alreadyRegistered: 'Цей email уже зареєстровано',
+    shortPassword: 'Пароль — не коротший за 6 символів',
+    forgotPass: 'Забули пароль?',
+    resetSent: 'Посилання для скидання надіслано на пошту',
+    enterIdentifier: 'Введіть ім’я або email вище',
+    showPassword: 'Показати пароль',
+    hidePassword: 'Сховати пароль',
+    language: 'Мова',
   }
 };
 
-export default function AuthForm() {
-  const router = useRouter(); 
-  const searchParams = useSearchParams(); 
+type AuthText = typeof translations.en;
+
+/** Supabase answers in English; the common cases get the player's language. */
+function authError(message: string, t: AuthText): string {
+  if (message === 'Invalid login credentials') return t.wrongCredentials;
+  if (message === 'Email not confirmed') return t.emailNotConfirmed;
+  if (message === 'User already registered') return t.alreadyRegistered;
+  if (message.startsWith('Password should be at least')) return t.shortPassword;
+  return message;
+}
+
+const INPUT =
+  'w-full bg-page border border-gray-200 focus:bg-surface focus:border-ink rounded-xl py-3 pl-11 pr-4 font-bold text-ink outline-none transition-all placeholder:text-gray-400 text-base sm:text-sm';
+const INPUT_ICON =
+  'absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-ink transition-colors pointer-events-none';
+
+/**
+ * The sign-in card. `defaultLang` is the language of the page it sits on, so
+ * /ru greets a newcomer in Russian; a language picked here or in the settings
+ * wins over it.
+ */
+export default function AuthForm({ defaultLang = 'en' }: { defaultLang?: Lang }) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const returnUrl = searchParams.get('returnUrl');
 
-  const { lang, setLang } = useLang('en');
+  const { lang, setLang } = useLang(defaultLang);
   const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -67,8 +155,6 @@ export default function AuthForm() {
   const [password, setPassword] = useState('');
 
   const t = translations[lang];
-
-  const changeLang = setLang;
 
   const getRedirectUrl = () => {
     // Always return to the origin we signed in from (works on any port/domain)
@@ -107,8 +193,9 @@ export default function AuthForm() {
 
     try {
       if (isSignUp) {
-        const { data: existingUser } = await supabase.from('profiles').select('username').eq('username', username).single();
-        if (existingUser) throw new Error(lang === 'ru' ? 'Имя занято' : 'Username taken');
+        // Registered players only, any case — guests share names like "Player"
+        const { data: taken } = await supabase.rpc('username_taken', { p_username: username.trim() });
+        if (taken) throw new Error(t.usernameTaken);
 
         const randomAvatar = defaultAvatar(Math.random().toString(36).substring(7));
 
@@ -131,7 +218,7 @@ export default function AuthForm() {
         handleSuccessLogin();
       }
     } catch (error: unknown) {
-      setErrorMsg(errorMessage(error));
+      setErrorMsg(authError(errorMessage(error), t));
     } finally {
       setLoading(false);
     }
@@ -166,7 +253,7 @@ export default function AuthForm() {
       if (error) throw error;
       setSuccessMsg(t.resetSent);
     } catch (error: unknown) {
-      setErrorMsg(errorMessage(error));
+      setErrorMsg(authError(errorMessage(error), t));
     } finally {
       setLoading(false);
     }
@@ -191,155 +278,200 @@ export default function AuthForm() {
       }
 
       handleSuccessLogin();
-    } catch { setErrorMsg("Guest disabled"); setLoading(false); }
+    } catch { setErrorMsg(t.guestDisabled); setLoading(false); }
+  };
+
+  const switchMode = () => {
+    setIsSignUp(!isSignUp);
+    setErrorMsg(null);
+    setSuccessMsg(null);
   };
 
   return (
-    <div className="w-full max-w-[360px] mx-auto bg-white border border-[#E6E1DC] p-6 sm:p-10 rounded-[32px] sm:rounded-[40px] shadow-2xl shadow-[#1A1F26]/5 relative font-sans transition-all hover:shadow-[#9e1316]/5">
+    <div className="w-full max-w-[400px] mx-auto font-sans">
 
-      <button
-        onClick={() => changeLang(lang === 'ru' ? 'en' : 'ru')}
-        className="absolute top-6 right-6 sm:top-8 sm:right-8 p-2 rounded-full hover:bg-[#F5F5F0] text-[#8A9099] hover:text-[#1A1F26] transition-colors flex items-center gap-1 text-2xs font-bold uppercase tracking-widest z-10"
-      >
-        <Globe className="w-4 h-4" />
-        {lang.toUpperCase()}
-      </button>
-
-      <div className="mb-8 sm:mb-10">
-        <div className="flex items-center gap-3 mb-2">
-           <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white rounded-2xl flex items-center justify-center shadow-lg shadow-[#1A1F26]/10 border border-[#E6E1DC] overflow-hidden p-1.5 sm:p-1">
-             <Image src="/logo512.png" alt="DG Logo" width={48} height={48} className="w-full h-full object-contain" />
-           </div>
-           <h1 className="text-xl sm:text-2xl font-black text-[#1A1F26] tracking-tight leading-none">
-             Darhaal<br/><span className="text-[#9e1316]">Games</span>
-           </h1>
+      {/* Brand, as the main menu header draws it — one line at any width */}
+      <div className="flex items-center justify-center gap-3 mb-6">
+        <div className="w-11 h-11 bg-surface border border-line rounded-xl flex items-center justify-center shadow-sm shrink-0">
+          <Image src="/logo512.png" alt="" width={28} height={28} className="w-7 h-7 object-contain" />
         </div>
-        <p className="text-xs font-bold text-[#8A9099] uppercase tracking-wider pl-1">{isSignUp ? t.titleSignup : t.titleLogin}</p>
+        <span className="text-2xl font-black tracking-tighter leading-none text-ink whitespace-nowrap">
+          Darhaal <span className="text-accent">Games</span>
+        </span>
       </div>
 
-      <form onSubmit={handleAuth} className="space-y-4 sm:space-y-5">
-        <div className="space-y-2">
-          <label className="text-2xs font-bold text-[#8A9099] uppercase tracking-wider ml-1">
-             {isSignUp ? t.usernameLabel : (lang === 'ru' ? 'Имя или Email' : 'Username or Email')}
-          </label>
-          <div className="relative group">
-            <User className="absolute left-4 top-3.5 w-5 h-5 text-[#8A9099] group-focus-within:text-[#9e1316] transition-colors" />
-            <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="w-full bg-[#F8FAFC] border border-[#E6E1DC] rounded-2xl py-3 pl-12 pr-4 text-[#1A1F26] font-bold text-sm focus:outline-none focus:bg-white focus:border-[#9e1316] focus:ring-4 focus:ring-[#9e1316]/5 transition-all placeholder:text-[#8A9099]/50"
-              required
-            />
+      <div className="bg-surface border border-line rounded-3xl shadow-2xl shadow-shade/5 p-6 sm:p-8">
+
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="min-w-0 text-2xl font-black text-ink tracking-tight leading-tight">
+            {isSignUp ? t.titleSignup : t.titleLogin}
+          </h2>
+
+          <div role="group" aria-label={t.language} className="flex shrink-0 p-0.5 bg-page border border-line rounded-lg">
+            {LANGUAGE_LINKS.map(({ locale: code, short, name }) => (
+              <button
+                key={code}
+                type="button"
+                onClick={() => setLang(code)}
+                aria-pressed={lang === code}
+                aria-label={name}
+                title={name}
+                className={`px-2 py-1 rounded-md text-2xs font-black uppercase tracking-widest transition-all ${
+                  lang === code ? 'bg-surface text-ink shadow-sm' : 'text-muted hover:text-ink'
+                }`}
+              >
+                {short}
+              </button>
+            ))}
           </div>
         </div>
+        <p className="mt-1.5 mb-6 text-sm font-medium text-muted leading-snug">
+          {isSignUp ? t.subSignup : t.subLogin}
+        </p>
 
-        {isSignUp && (
-          <div className="space-y-2 animate-in fade-in slide-in-from-top-4 duration-300">
-            <label className="text-2xs font-bold text-[#8A9099] uppercase tracking-wider ml-1">{t.emailLabel}</label>
+        <form onSubmit={handleAuth} className="space-y-4">
+          <div className="space-y-1.5">
+            <label htmlFor="auth-identifier" className={`${LABEL} block`}>
+              {isSignUp ? t.usernameLabel : t.identifierLabel}
+            </label>
             <div className="relative group">
-              <Mail className="absolute left-4 top-3.5 w-5 h-5 text-[#8A9099] group-focus-within:text-[#9e1316] transition-colors" />
+              <User className={INPUT_ICON} />
               <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-[#F8FAFC] border border-[#E6E1DC] rounded-2xl py-3 pl-12 pr-4 text-[#1A1F26] font-bold text-sm focus:outline-none focus:bg-white focus:border-[#9e1316] focus:ring-4 focus:ring-[#9e1316]/5 transition-all placeholder:text-[#8A9099]/50"
-                required={isSignUp}
+                id="auth-identifier"
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                autoComplete="username"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                className={INPUT}
+                required
               />
             </div>
           </div>
-        )}
 
-        <div className="space-y-2">
-          <label className="text-2xs font-bold text-[#8A9099] uppercase tracking-wider ml-1">{t.passLabel}</label>
-          <div className="relative group">
-            <Lock className="absolute left-4 top-3.5 w-5 h-5 text-[#8A9099] group-focus-within:text-[#9e1316] transition-colors" />
-            <input
-              type={showPassword ? "text" : "password"}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-[#F8FAFC] border border-[#E6E1DC] rounded-2xl py-3 pl-12 pr-10 text-[#1A1F26] font-bold text-sm focus:outline-none focus:bg-white focus:border-[#9e1316] focus:ring-4 focus:ring-[#9e1316]/5 transition-all placeholder:text-[#8A9099]/50"
-              required
-            />
-            <button
+          {isSignUp && (
+            <div className="space-y-1.5 animate-in fade-in slide-in-from-top-2 duration-300">
+              <label htmlFor="auth-email" className={`${LABEL} block`}>{t.emailLabel}</label>
+              <div className="relative group">
+                <Mail className={INPUT_ICON} />
+                <input
+                  id="auth-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="email"
+                  className={INPUT}
+                  required={isSignUp}
+                />
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-1.5">
+            <div className="flex items-baseline justify-between gap-3">
+              <label htmlFor="auth-password" className={LABEL}>{t.passLabel}</label>
+              {!isSignUp && (
+                <button
+                  type="button"
+                  onClick={handleForgotPassword}
+                  disabled={loading}
+                  className="text-xs font-bold text-muted hover:text-accent transition-colors disabled:opacity-50"
+                >
+                  {t.forgotPass}
+                </button>
+              )}
+            </div>
+            <div className="relative group">
+              <Lock className={INPUT_ICON} />
+              <input
+                id="auth-password"
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete={isSignUp ? 'new-password' : 'current-password'}
+                className={`${INPUT} pr-12`}
+                required
+              />
+              <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-3.5 text-[#8A9099] hover:text-[#1A1F26] transition-colors"
-            >
-                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-            </button>
+                aria-label={showPassword ? t.hidePassword : t.showPassword}
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 p-2 rounded-lg text-gray-400 hover:text-ink transition-colors"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
           </div>
+
+          {errorMsg && (
+            <div role="alert" className="text-accent text-xs bg-accent/5 border border-accent/20 px-4 py-3 rounded-xl flex items-center gap-3 font-bold animate-in fade-in">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              {errorMsg}
+            </div>
+          )}
+
+          {successMsg && (
+            <div role="status" className="text-emerald-700 text-xs bg-emerald-50 border border-emerald-200 px-4 py-3 rounded-xl flex items-center gap-3 font-bold animate-in fade-in">
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
+              {successMsg}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className={`${BUTTON_PRIMARY} w-full py-3.5 flex justify-center items-center gap-2 hover:shadow-lg active:scale-[0.98]`}
+          >
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : (isSignUp ? t.btnSignup : t.btnLogin)}
+          </button>
+        </form>
+
+        <div className="my-5 flex items-center gap-3">
+          <div className="h-px bg-divider flex-1" />
+          <span className={LABEL}>{t.or}</span>
+          <div className="h-px bg-divider flex-1" />
         </div>
 
-        {errorMsg && (
-          <div className="text-[#9e1316] text-xs bg-[#9e1316]/5 border border-[#9e1316]/20 p-4 rounded-xl flex items-center gap-3 font-bold animate-in fade-in">
-            <AlertCircle className="w-5 h-5 shrink-0" />
-            {errorMsg}
-          </div>
-        )}
+        <div className="space-y-2.5">
+          <button
+            type="button"
+            onClick={handleGoogleLogin}
+            disabled={loading}
+            className={`${BUTTON_SECONDARY} w-full py-3 flex items-center justify-center gap-2.5 active:scale-[0.98]`}
+          >
+            <GoogleMark />
+            {t.btnGoogle}
+          </button>
 
-        {successMsg && (
-          <div className="text-emerald-600 text-xs bg-emerald-50 border border-emerald-200 p-4 rounded-xl flex items-center gap-3 font-bold animate-in fade-in">
-            <AlertCircle className="w-5 h-5 shrink-0" />
-            {successMsg}
-          </div>
-        )}
+          {!isSignUp && (
+            <>
+              <button
+                type="button"
+                onClick={handleGuestLogin}
+                disabled={loading}
+                className={`${BUTTON_SECONDARY} group w-full py-3 flex items-center justify-center gap-2.5 active:scale-[0.98]`}
+              >
+                <Ghost className="w-4 h-4 text-muted group-hover:text-accent transition-colors" />
+                {t.btnGuest}
+              </button>
+              <p className="text-center text-xs font-medium text-muted">{t.guestInfo}</p>
+            </>
+          )}
+        </div>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full bg-[#1A1F26] hover:bg-[#9e1316] text-white font-bold py-4 rounded-2xl transition-all shadow-xl shadow-[#1A1F26]/20 hover:shadow-[#9e1316]/30 active:scale-[0.98] disabled:opacity-50 flex justify-center items-center gap-2 text-xs uppercase tracking-widest mt-2"
-        >
-          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : (isSignUp ? t.btnSignup : t.btnLogin)}
-        </button>
-
-        {!isSignUp && (
-          <div className="text-center -mt-1">
-            <button
-              type="button"
-              onClick={handleForgotPassword}
-              disabled={loading}
-              className="text-2xs font-bold text-[#8A9099] hover:text-[#9e1316] uppercase tracking-widest transition-colors hover:underline underline-offset-4 disabled:opacity-50"
-            >
-              {t.forgotPass}
-            </button>
-          </div>
-        )}
-      </form>
-
-      <div className="my-6 sm:my-8 flex items-center gap-4">
-        <div className="h-px bg-[#E6E1DC] flex-1" />
-        <span className="text-[#8A9099] text-2xs uppercase font-bold tracking-widest">OR</span>
-        <div className="h-px bg-[#E6E1DC] flex-1" />
+        <p className="mt-6 pt-5 border-t border-divider text-center text-sm font-medium text-muted">
+          {isSignUp ? t.haveAccount : t.noAccount}{' '}
+          <button
+            type="button"
+            onClick={switchMode}
+            className="inline-flex items-center gap-1 font-black text-ink hover:text-accent transition-colors"
+          >
+            {isSignUp ? t.signIn : t.createOne} <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </p>
       </div>
-
-      <div className="grid grid-cols-2 gap-3 sm:gap-4">
-        <button onClick={handleGoogleLogin} disabled={loading} className="bg-white hover:bg-[#F5F5F0] border border-[#E6E1DC] text-[#8A9099] hover:text-[#1A1F26] py-3 rounded-2xl transition-all flex items-center justify-center gap-2 text-2xs font-bold uppercase tracking-wide">
-            {/* lucide v1 dropped its brand icons; the label carries the meaning */}
-            <LogIn className="w-4 h-4" />
-            <span>Google</span>
-        </button>
-
-        <button onClick={handleGuestLogin} disabled={loading} className="bg-white hover:bg-[#F5F5F0] border border-dashed border-[#E6E1DC] text-[#8A9099] hover:text-[#1A1F26] py-3 rounded-2xl transition-all flex items-center justify-center gap-2 text-2xs font-bold uppercase tracking-wide">
-            <Ghost className="w-4 h-4" />
-            <span>{t.btnGuest}</span>
-        </button>
-      </div>
-
-      <p className="mt-6 sm:mt-8 text-center text-xs text-[#8A9099] font-medium border-t border-[#E6E1DC] pt-6">
-        <button
-          onClick={() => { setIsSignUp(!isSignUp); setErrorMsg(null); setSuccessMsg(null); }}
-          className="text-[#9e1316] hover:text-[#7a0f11] transition-colors flex items-center justify-center gap-2 mx-auto hover:underline decoration-2 underline-offset-4 font-bold uppercase tracking-wide"
-        >
-          {isSignUp ? t.switchLogin : t.switchSignup} <ArrowRight className="w-3 h-3" />
-        </button>
-      </p>
-
-      {!isSignUp && (
-         <div className="mt-4 text-center">
-             <span className="text-2xs text-[#8A9099] font-bold uppercase tracking-widest">{t.guestInfo}</span>
-         </div>
-      )}
     </div>
   );
 }

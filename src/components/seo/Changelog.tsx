@@ -19,7 +19,7 @@ import JsonLd from './JsonLd';
 /** The same colours as the version timeline in the app's footer. */
 const DOT: Record<VersionType, string> = {
   init: 'bg-purple-500',
-  major: 'bg-[#9e1316]',
+  major: 'bg-accent',
   minor: 'bg-blue-500',
   patch: 'bg-emerald-500'
 };
@@ -52,16 +52,17 @@ export default function Changelog({ locale }: { locale: Locale }) {
   const lines = releaseLines(history);
   const majors = [...new Set(lines.map((l) => l.major))];
   const count = history.length;
-  const countWord = locale === 'ru' ? pluralRu(count, CHANGELOG_COPY.ru.count) : pluralEn(count, ...CHANGELOG_COPY.en.count);
+  // Russian and Ukrainian share the one / few / many pattern
+  const countWord = locale === 'en' ? pluralEn(count, ...CHANGELOG_COPY.en.count) : pluralRu(count, CHANGELOG_COPY[locale].count);
 
   return (
     <PublicShell locale={locale}>
       <JsonLd data={breadcrumbJsonLd(locale, [{ name: t.title, path: '/changelog' }])} />
 
       <article className="max-w-3xl mx-auto px-4 md:px-6 py-12 md:py-16">
-        <h1 className="text-3xl md:text-5xl font-black tracking-tighter text-[#1A1F26]">{t.title}</h1>
+        <h1 className="text-3xl md:text-5xl font-black tracking-tighter text-ink">{t.title}</h1>
         <p className="mt-4 text-base text-gray-600 leading-relaxed">{t.lead}</p>
-        <p className="mt-3 text-xs font-bold uppercase tracking-widest text-[#8A9099]">
+        <p className="mt-3 text-xs font-bold uppercase tracking-widest text-muted">
           {t.current}: {APP_VERSION} · {formatReleaseDate(history[0].date, locale)} · {count} {countWord}
         </p>
 
@@ -70,7 +71,7 @@ export default function Changelog({ locale }: { locale: Locale }) {
             <a
               key={line.key}
               href={`#${anchor(line.key)}`}
-              className="px-2.5 py-1 rounded-lg bg-white border border-[#E6E1DC] text-xs font-bold text-[#1A1F26] tabular-nums hover:border-[#9e1316]/30 hover:text-[#9e1316] transition-colors"
+              className="px-2.5 py-1 rounded-lg bg-surface border border-line text-xs font-bold text-ink tabular-nums hover:border-accent/30 hover:text-accent transition-colors"
             >
               {line.key}
             </a>
@@ -79,7 +80,7 @@ export default function Changelog({ locale }: { locale: Locale }) {
 
         {majors.map((major) => (
           <section key={major} className="mt-14">
-            <h2 className="text-2xl md:text-3xl font-black tracking-tight text-[#1A1F26]">{t.major(major)}</h2>
+            <h2 className="text-2xl md:text-3xl font-black tracking-tight text-ink">{t.major(major)}</h2>
 
             <div className="mt-6 space-y-6">
               {lines.filter((line) => line.major === major).map((line) => {
@@ -92,26 +93,26 @@ export default function Changelog({ locale }: { locale: Locale }) {
                   <section
                     key={line.key}
                     id={anchor(line.key)}
-                    className="bg-white rounded-2xl border border-[#E6E1DC] shadow-sm overflow-hidden scroll-mt-24"
+                    className="bg-surface rounded-2xl border border-line shadow-sm overflow-hidden scroll-mt-24"
                   >
-                    <header className="px-5 md:px-7 pt-5 md:pt-6 pb-4 border-b border-[#F1F5F9] flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                    <header className="px-5 md:px-7 pt-5 md:pt-6 pb-4 border-b border-divider flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
                       <div className="flex items-baseline gap-3 min-w-0">
-                        <span className="text-2xl font-black tabular-nums text-[#1A1F26]">{line.key}</span>
-                        {title && <h3 className="text-lg font-black text-[#1A1F26] truncate">{title[locale]}</h3>}
+                        <span className="text-2xl font-black tabular-nums text-ink">{line.key}</span>
+                        {title && <h3 className="text-lg font-black text-ink truncate">{title[locale]}</h3>}
                       </div>
-                      <span className="text-2xs font-black uppercase tracking-widest text-[#8A9099]">{range}</span>
+                      <span className="text-2xs font-black uppercase tracking-widest text-muted">{range}</span>
                     </header>
 
-                    <ol className="divide-y divide-[#F1F5F9]">
+                    <ol className="divide-y divide-divider">
                       {line.entries.map((log) => (
                         <li key={log.ver} id={anchor(log.ver)} className="px-5 md:px-7 py-5 scroll-mt-24">
                           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                            <span className="text-sm font-black tabular-nums text-[#1A1F26]">{log.ver}</span>
-                            <span className="inline-flex items-center gap-1.5 text-2xs font-black uppercase tracking-widest text-[#8A9099]">
+                            <span className="text-sm font-black tabular-nums text-ink">{log.ver}</span>
+                            <span className="inline-flex items-center gap-1.5 text-2xs font-black uppercase tracking-widest text-muted">
                               <span aria-hidden className={`w-1.5 h-1.5 rounded-full ${DOT[log.type]}`} />
                               {t.types[log.type]}
                             </span>
-                            <time dateTime={log.date} className="ml-auto text-2xs font-bold uppercase tracking-wider text-[#8A9099]">
+                            <time dateTime={log.date} className="ml-auto text-2xs font-bold uppercase tracking-wider text-muted">
                               {formatReleaseDate(log.date, locale)}
                             </time>
                           </div>
@@ -122,11 +123,11 @@ export default function Changelog({ locale }: { locale: Locale }) {
 
                           {log.fixes && (
                             <div className="mt-3">
-                              <div className="text-2xs font-black uppercase tracking-widest text-[#8A9099]">{t.fixed}</div>
+                              <div className="text-2xs font-black uppercase tracking-widest text-muted">{t.fixed}</div>
                               <ul className="mt-2 space-y-1.5">
                                 {log.fixes[locale].map((fix) => (
                                   <li key={fix} className="flex gap-2.5 text-sm text-gray-600 leading-relaxed">
-                                    <span aria-hidden className="mt-2 w-1 h-1 rounded-full bg-[#9e1316]/60 shrink-0" />
+                                    <span aria-hidden className="mt-2 w-1 h-1 rounded-full bg-accent/60 shrink-0" />
                                     <span>{fix}</span>
                                   </li>
                                 ))}

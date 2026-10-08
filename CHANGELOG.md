@@ -7,6 +7,118 @@ releasing.
 Format: [Semantic Versioning](https://semver.org/). Types: **major** = platform
 milestone, **minor** = new game mode / feature, **patch** = fixes & improvements.
 
+## [2.15.1] — 2026-10-08 (patch)
+
+### Added
+- **Ukrainian.** The whole site in a third language: the interface, every
+  game — 330 Spyfall locations with their 6,600 roles, 245 countries in
+  Flager (searchable in Ukrainian, with its own short forms), Coup's cards and
+  log, achievements, the rules, the in-app history of changes — and the
+  public pages under `/uk`, indexed beside English and Russian with
+  three-way hreflang. Pick it in the settings or on the sign-in card;
+  a newcomer on `/uk` starts in it. Wikiler (Wikipedia articles) and Timler
+  (photo captions) come in Russian and English only, so a Ukrainian reader
+  gets the English article and caption. WASD also works on a Ukrainian
+  keyboard (S is "і" there).
+- **A dark theme.** Light, dark, or following the system — in General
+  settings, applied before the page paints so there is no light flash. Every
+  colour of the design system became a theme token, the boards included:
+  dark cells on a lighter grid, seat colours softened toward the dark cell,
+  Coup's role colours lighter on dark cards. A contrast check compared every
+  text on the public pages, the menu, the settings and all eleven games in
+  both themes.
+- **Delete your account.** Settings → Account → Delete account, confirmed by
+  typing your name: profile, stats, match history, achievements, uploaded
+  avatars and the rooms you host go, at once. The privacy policy had promised
+  this since 2.2; now it is true.
+- **Keep a guest's progress.** A guest can add an email (and, after
+  confirming it, a password) or link Google, and the same account — stats,
+  achievements, avatar — becomes permanent instead of expiring after 30 days.
+- **Change your email** in the settings, confirmed at both addresses; the
+  settings show how you sign in (email, Google).
+- **Turn and start alerts.** When it is your move, or a match starts, while
+  the tab is in the background, its title flashes and a chime plays — and,
+  if you allow it, the system shows a notification. On by default, both
+  switchable in General settings.
+- **Turn the room chat off**, and **two volumes**: sound effects and
+  Songler's music, which now follows the settings even mid-round.
+
+### Changed
+- **The sign-in screen, redrawn for phones.** The card no longer slides
+  sideways when a field is tapped: the page around it clipped its background
+  blobs with `overflow: hidden`, which a browser still scrolls to bring a
+  focused field into view, so on a phone the whole card shifted off centre
+  (the same fix on /create, /play and /achievements). The logo sits on one
+  line above the card, the card has a real title and a line under it, a
+  language switch, and "Continue with Google" and "Play as guest" as full-width
+  buttons with Google's mark. Fields are 16 px on a phone so iOS no longer
+  zooms in on focus, and they tell the browser what they hold (username,
+  email, current or new password) for autofill. The common Supabase errors
+  — wrong password, unconfirmed email, taken email, short password — read
+  in the player's language. On /ru a newcomer gets the card, and the menu
+  after signing in, in Russian; a language already picked still wins.
+  The links under the card follow it instead of being pinned to the bottom,
+  where they slid under a tall card on a short phone.
+- **Settings, rebuilt.** A sheet from the bottom on a phone (it was a fixed
+  680 px panel, cut off on a shorter screen) and a centred panel from tablet
+  width up, with tabs as a segmented row on a phone and a side list on wider
+  screens. Profile: the avatar with a camera button, the name always
+  editable with a Save button that appears once it changes, uploads and the
+  collection as one grid with the current avatar ringed; deleting an upload
+  works on touch screens, where the hover-only button never appeared.
+  General: theme, language, the two volumes with mute buttons, alerts and
+  chat. Account: sign-in methods, email, password and deletion. The page
+  behind no longer scrolls under it, every string is in all three languages
+  (some were English only), and a failed avatar upload now says so instead
+  of failing silently.
+
+### Fixed
+- **A registered player's name is theirs.** Renaming in the settings did not
+  check whether the name was taken, and signing in by username resolved the
+  first match — so taking someone's name could send their username sign-in
+  to your address. The database now refuses a rename onto a registered
+  player's name (case-insensitive; guests sharing "Player" are not counted),
+  and sign-up with a taken Google display name adds a short suffix instead of
+  failing.
+- **The profile's email follows the account's**, so username sign-in works
+  after an email change or a guest's upgrade; clients can no longer rewrite
+  the email, id or creation date on their own profile row.
+- The privacy policy said an interrupted match is deleted after seven days;
+  since 2.14.4 it is half an hour.
+- Public game pages: Flager's last step described Wikiler's article; Wall
+  Rush still said there was no three-player game and left the three-way mode
+  out of its modes and wall counts; the Russian Coup page said the coup is
+  forced at seven coins (it is ten).
+
+### Engineering
+- `supabase/migrations/20261008000000_account_settings.sql` (applied):
+  `delete_my_account()`, `username_taken(name)`, the `profiles_unique_username`
+  trigger, `get_login_email` for registered players only, the
+  `on_auth_user_email_changed` sync, and profile UPDATE narrowed to
+  username, full name and avatar. `scripts/authz-test.mjs` covers all of it.
+- `supabase/migrations/20261008000001_advisor_fixes.sql` (applied), from
+  Supabase's advisors: signed-out visitors can call only `get_login_email` and
+  `username_taken`; the signup trigger functions are callable by nobody; RLS
+  policies read `auth.uid()` once per statement; indexes on
+  `lobbies.host_id` and `lobby_messages.user_id`. Leaked-password protection
+  needs the Pro plan and stays off.
+- Auth emails in English, Ukrainian and Russian — confirm sign-up, confirm a
+  new email (also a guest's first), reset password, password changed — from
+  `scripts/email-templates.mjs` (`--apply` pushes them); the rendered HTML is
+  in `supabase/templates/`. Manual identity linking is on (guests link
+  Google).
+- Colour tokens in `src/app/globals.css` (`page`, `surface`, `line`,
+  `divider`, `ink`/`on-ink`, `muted`, `accent`, `warm`, `scrim`, `shade`,
+  `night`), Tailwind palettes mirrored for dark; `tests/theme.test.ts` fails a
+  hard-coded design colour or a solid `bg-white`. CLAUDE.md and
+  `docs/design-system.md` describe the tokens.
+- `Lang` is `'ru' | 'en' | 'uk'` everywhere; `src/lib/locale.ts` holds the
+  Intl tags, the language links and `localizedPath`. `tests/ukrainian.test.ts`
+  fails a Ukrainian value with a Russian-only letter.
+- Settings split into `src/components/settings/` (strings, controls, one file
+  per tab); preferences in `src/lib/preferences.ts`; alerts in
+  `src/lib/attention.ts`, fired by `TurnCard` and `useLobbySync`.
+
 ## [2.15.0] — 2026-10-07 (minor) — **Name That Tune**
 
 > The eleventh game: half a second of a song, and the snippet grows with every try.

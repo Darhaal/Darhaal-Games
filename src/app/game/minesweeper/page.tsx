@@ -29,6 +29,12 @@ const UI_TEXT = {
     gameFinished: 'Game Finished',
     toMenu: 'Main Menu',
     loading: 'Loading...',
+  },
+  uk: {
+    lobbyNotFound: 'Лобі не знайдено',
+    gameFinished: 'Гру завершено',
+    toMenu: 'У меню',
+    loading: 'Завантаження...',
   }
 };
 
@@ -91,15 +97,15 @@ function MinesweeperContent() {
 
   const t = UI_TEXT[lang];
 
-  if (authLoading || loading || isLeaving) return <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]"><Loader2 className="animate-spin text-[#9e1316] w-8 h-8" /></div>;
+  if (authLoading || loading || isLeaving) return <div className="min-h-screen flex items-center justify-center bg-page"><Loader2 className="animate-spin text-accent w-8 h-8" /></div>;
 
   if (!userId) return null; // Waiting for the redirect
 
   if (lobbyDeleted) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center font-bold text-gray-400 bg-[#F8FAFC]">
-          <span className="mb-4 text-xl text-[#1A1F26] uppercase">{t.gameFinished}</span>
-          <button onClick={() => router.push('/')} className="px-6 py-3 bg-[#1A1F26] text-white rounded-xl font-bold uppercase tracking-widest hover:bg-[#9e1316] transition-colors shadow-lg">
+      <div className="min-h-screen flex flex-col items-center justify-center font-bold text-gray-400 bg-page">
+          <span className="mb-4 text-xl text-ink uppercase">{t.gameFinished}</span>
+          <button onClick={() => router.push('/')} className="px-6 py-3 bg-ink text-on-ink rounded-xl font-bold uppercase tracking-widest hover:bg-accent transition-colors shadow-lg">
               {t.toMenu}
           </button>
       </div>
@@ -174,7 +180,7 @@ function MinesweeperContent() {
 
 export default function MinesweeperPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]"><Loader2 className="animate-spin text-[#9e1316] w-8 h-8" /></div>}>
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-page"><Loader2 className="animate-spin text-accent w-8 h-8" /></div>}>
       <MinesweeperContent />
     </Suspense>
   );

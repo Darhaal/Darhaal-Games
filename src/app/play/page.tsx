@@ -110,6 +110,34 @@ const TRANSLATIONS = {
     errorNotFound: 'Game not found',
     create: 'New Game',
     footer: COPYRIGHT,
+  },
+  uk: {
+    title: 'Ігрове лобі',
+    subtitle: 'Пошук активних сесій',
+    codePlaceholder: 'Ввести код',
+    join: 'Увійти',
+    searchPlaceholder: 'Пошук за назвою...',
+    sort: 'Сортування',
+    sortNew: 'Нові',
+    sortOld: 'Старі',
+    sortPlayers: 'Люди',
+    modes: 'Категорії',
+    all: 'Усі ігри',
+    loading: 'Завантаження списку...',
+    empty: 'Список порожній',
+    emptyDesc: 'Активних ігор поки немає',
+    full: 'Повна',
+    started: 'Триває',
+    back: 'Назад',
+    private: 'Закрита гра',
+    enterPass: 'Пароль доступу',
+    confirm: 'Увійти',
+    errorPass: 'Неправильний пароль',
+    errorAuth: 'Потрібна авторизація',
+    errorFull: 'Місць немає',
+    errorNotFound: 'Гру не знайдено',
+    create: 'Нова гра',
+    footer: COPYRIGHT,
   }
 };
 
@@ -243,7 +271,7 @@ function PlayContent() {
     }
 
     if (freshLobby.status === 'finished') {
-        showToast(lang === 'ru' ? 'Игра уже закончилась' : 'Game already finished', 'info');
+        showToast({ ru: 'Игра уже закончилась', en: 'Game already finished', uk: 'Гра вже закінчилася' }[lang], 'info');
         fetchLobbies();
         return;
     }
@@ -327,40 +355,40 @@ function PlayContent() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-[#1A1F26] font-sans relative overflow-x-hidden flex flex-col selection:bg-[#9e1316] selection:text-white">
+    <div className="min-h-screen bg-page text-ink font-sans relative overflow-x-clip flex flex-col selection:bg-accent selection:text-white">
       <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-30 mix-blend-overlay pointer-events-none z-0" />
-      <div className="absolute top-0 left-0 w-full h-[60vh] bg-gradient-to-b from-white via-white/80 to-transparent pointer-events-none z-0" />
+      <div className="absolute top-0 left-0 w-full h-[60vh] bg-gradient-to-b from-surface via-surface/80 to-transparent pointer-events-none z-0" />
       <div className="absolute top-[10%] left-[5%] w-64 h-64 bg-blue-500/5 rounded-full blur-[80px] pointer-events-none" />
-      <div className="absolute bottom-[10%] right-[5%] w-96 h-96 bg-[#9e1316]/5 rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute bottom-[10%] right-[5%] w-96 h-96 bg-accent/5 rounded-full blur-[100px] pointer-events-none" />
 
-      <header className="sticky top-0 z-30 w-full bg-[#F8FAFC]/90 backdrop-blur-xl border-b border-[#E6E1DC] shadow-sm">
+      <header className="sticky top-0 z-30 w-full bg-page/90 backdrop-blur-xl border-b border-line shadow-sm">
         <div className="max-w-6xl mx-auto px-4 py-3 md:py-4 flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-4">
           <div className="flex items-center gap-3 md:gap-4 w-full md:w-auto">
-            <button onClick={() => router.push('/')} className="group p-2.5 md:p-3 bg-white border border-[#E6E1DC] rounded-xl hover:border-[#9e1316]/30 hover:shadow-sm transition-all">
-                <ArrowLeft className="w-4 h-4 md:w-5 md:h-5 text-[#8A9099] group-hover:text-[#9e1316]" />
+            <button onClick={() => router.push('/')} className="group p-2.5 md:p-3 bg-surface border border-line rounded-xl hover:border-accent/30 hover:shadow-sm transition-all">
+                <ArrowLeft className="w-4 h-4 md:w-5 md:h-5 text-muted group-hover:text-accent" />
             </button>
             <div className="flex flex-col">
-                <h1 className="text-lg md:text-xl font-bold text-[#1A1F26] tracking-tight leading-none">{t.title}</h1>
-                <p className="text-xs text-[#8A9099] font-medium hidden sm:block">{t.subtitle}</p>
+                <h1 className="text-lg md:text-xl font-bold text-ink tracking-tight leading-none">{t.title}</h1>
+                <p className="text-xs text-muted font-medium hidden sm:block">{t.subtitle}</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 bg-white p-1 rounded-xl border border-[#E6E1DC] shadow-sm w-full md:w-auto transition-colors focus-within:border-[#9e1316]/50">
+          <div className="flex items-center gap-2 bg-surface p-1 rounded-xl border border-line shadow-sm w-full md:w-auto transition-colors focus-within:border-accent/50">
              <div className="relative flex-1">
-                <KeyRound className="absolute left-3 top-2.5 w-4 h-4 text-[#9ca3af]" />
+                <KeyRound className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
                 <input
                     type="text"
                     placeholder={t.codePlaceholder}
                     value={codeQuery}
                     onChange={(e) => setCodeQuery(e.target.value.toUpperCase())}
-                    className="w-full md:w-40 h-10 pl-9 pr-3 font-mono font-bold text-sm text-[#1A1F26] placeholder:text-gray-400 focus:outline-none bg-transparent tracking-wider"
+                    className="w-full md:w-40 h-10 pl-9 pr-3 font-mono font-bold text-sm text-ink placeholder:text-gray-400 focus:outline-none bg-transparent tracking-wider"
                     maxLength={6}
                 />
              </div>
              <button
                 onClick={handleCodeJoin}
                 disabled={codeQuery.length < 6}
-                className="bg-[#1A1F26] hover:bg-[#9e1316] text-white px-4 py-2 rounded-lg font-bold text-xs uppercase tracking-wide transition-colors disabled:opacity-50 disabled:cursor-not-allowed h-8 flex items-center"
+                className="bg-ink hover:bg-accent text-on-ink px-4 py-2 rounded-lg font-bold text-xs uppercase tracking-wide transition-colors disabled:opacity-50 disabled:cursor-not-allowed h-8 flex items-center"
              >
                 {t.join}
              </button>
@@ -373,46 +401,46 @@ function PlayContent() {
       <div className="max-w-6xl mx-auto w-full relative z-10 px-4 py-4 md:py-8 flex-1">
         <div className="flex flex-col lg:flex-row gap-6 md:gap-8 items-start">
             <aside className="w-full lg:w-72 space-y-4 md:space-y-6 lg:sticky lg:top-28">
-                <div className="bg-white p-3 rounded-2xl border border-[#E6E1DC] shadow-sm group focus-within:border-[#9e1316]/30 transition-all">
+                <div className="bg-surface p-3 rounded-2xl border border-line shadow-sm group focus-within:border-accent/30 transition-all">
                     <div className="flex items-center gap-3">
-                        <Search className="w-5 h-5 text-[#9ca3af] group-focus-within:text-[#1A1F26]" />
+                        <Search className="w-5 h-5 text-gray-400 group-focus-within:text-ink" />
                         <input
                             type="text"
                             placeholder={t.searchPlaceholder}
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            className="w-full font-medium text-sm text-[#1A1F26] placeholder:text-gray-400 focus:outline-none bg-transparent"
+                            className="w-full font-medium text-sm text-ink placeholder:text-gray-400 focus:outline-none bg-transparent"
                         />
                     </div>
                 </div>
 
-                <div className="bg-white p-4 md:p-5 rounded-2xl border border-[#E6E1DC] shadow-sm">
-                    <div className="flex items-center gap-2 text-xs font-bold text-[#8A9099] uppercase tracking-wide mb-3">
+                <div className="bg-surface p-4 md:p-5 rounded-2xl border border-line shadow-sm">
+                    <div className="flex items-center gap-2 text-xs font-bold text-muted uppercase tracking-wide mb-3">
                         <Filter className="w-4 h-4" /> {t.sort}
                     </div>
                     <div className="grid grid-cols-2 gap-2">
-                        <button onClick={() => setSortBy('newest')} className={`py-2 px-3 rounded-lg text-xs font-bold transition-all ${sortBy === 'newest' ? 'bg-[#F1F5F9] text-[#1A1F26]' : 'text-gray-500 hover:bg-gray-50'}`}>{t.sortNew}</button>
-                        <button onClick={() => setSortBy('oldest')} className={`py-2 px-3 rounded-lg text-xs font-bold transition-all ${sortBy === 'oldest' ? 'bg-[#F1F5F9] text-[#1A1F26]' : 'text-gray-500 hover:bg-gray-50'}`}>{t.sortOld}</button>
-                        <button onClick={() => setSortBy('players-desc')} className={`py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 ${sortBy === 'players-desc' ? 'bg-[#F1F5F9] text-[#1A1F26]' : 'text-gray-500 hover:bg-gray-50'}`}>
+                        <button onClick={() => setSortBy('newest')} className={`py-2 px-3 rounded-lg text-xs font-bold transition-all ${sortBy === 'newest' ? 'bg-divider text-ink' : 'text-gray-500 hover:bg-gray-50'}`}>{t.sortNew}</button>
+                        <button onClick={() => setSortBy('oldest')} className={`py-2 px-3 rounded-lg text-xs font-bold transition-all ${sortBy === 'oldest' ? 'bg-divider text-ink' : 'text-gray-500 hover:bg-gray-50'}`}>{t.sortOld}</button>
+                        <button onClick={() => setSortBy('players-desc')} className={`py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 ${sortBy === 'players-desc' ? 'bg-divider text-ink' : 'text-gray-500 hover:bg-gray-50'}`}>
                             {t.sortPlayers} <SortDesc className="w-3 h-3" />
                         </button>
-                        <button onClick={() => setSortBy('players-asc')} className={`py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 ${sortBy === 'players-asc' ? 'bg-[#F1F5F9] text-[#1A1F26]' : 'text-gray-500 hover:bg-gray-50'}`}>
+                        <button onClick={() => setSortBy('players-asc')} className={`py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 ${sortBy === 'players-asc' ? 'bg-divider text-ink' : 'text-gray-500 hover:bg-gray-50'}`}>
                             {t.sortPlayers} <SortAsc className="w-3 h-3" />
                         </button>
                     </div>
                 </div>
 
-                <div className="bg-white p-4 md:p-5 rounded-2xl border border-[#E6E1DC] shadow-sm">
-                    <div className="flex items-center gap-2 text-xs font-bold text-[#8A9099] uppercase tracking-wide mb-3">
+                <div className="bg-surface p-4 md:p-5 rounded-2xl border border-line shadow-sm">
+                    <div className="flex items-center gap-2 text-xs font-bold text-muted uppercase tracking-wide mb-3">
                         <LayoutGrid className="w-4 h-4" /> {t.modes}
                     </div>
                     <div className="flex flex-wrap lg:flex-col gap-1.5 -mx-1 lg:mx-0">
                         {MODES_LIST.map(mode => (
-                            <label key={mode.id} className={`flex items-center gap-3 cursor-pointer group hover:bg-[#F8FAFC] px-3 py-2 rounded-lg transition-colors ${filterMode === mode.id ? 'bg-[#F1F5F9]' : ''}`}>
-                                <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${filterMode === mode.id ? 'bg-[#1A1F26] border-[#1A1F26]' : 'border-gray-300 bg-white'}`}>
-                                    {filterMode === mode.id && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
+                            <label key={mode.id} className={`flex items-center gap-3 cursor-pointer group hover:bg-page px-3 py-2 rounded-lg transition-colors ${filterMode === mode.id ? 'bg-divider' : ''}`}>
+                                <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${filterMode === mode.id ? 'bg-ink border-ink' : 'border-gray-300 bg-surface'}`}>
+                                    {filterMode === mode.id && <div className="w-1.5 h-1.5 bg-surface rounded-full" />}
                                 </div>
-                                <span className={`font-medium text-sm transition-colors ${filterMode === mode.id ? 'text-[#1A1F26]' : 'text-gray-600'}`}>
+                                <span className={`font-medium text-sm transition-colors ${filterMode === mode.id ? 'text-ink' : 'text-gray-600'}`}>
                                     {mode.label}
                                 </span>
                                 <input type="radio" name="mode" className="hidden" checked={filterMode === mode.id} onChange={() => setFilterMode(mode.id)} />
@@ -425,17 +453,17 @@ function PlayContent() {
             <div className="flex-1 w-full min-h-[50vh]">
                 {loading ? (
                     <div className="flex flex-col items-center justify-center py-20 opacity-50">
-                        <Loader2 className="w-8 h-8 animate-spin text-[#9e1316] mb-3" />
+                        <Loader2 className="w-8 h-8 animate-spin text-accent mb-3" />
                         <span className="text-xs font-medium uppercase tracking-wide text-gray-400">{t.loading}</span>
                     </div>
                 ) : processedLobbies.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-20 border-2 border-dashed border-[#E6E1DC] rounded-3xl bg-white/50">
-                        <div className="w-14 h-14 bg-[#F1F5F9] rounded-full flex items-center justify-center mb-3">
+                    <div className="flex flex-col items-center justify-center py-20 border-2 border-dashed border-line rounded-3xl bg-surface/50">
+                        <div className="w-14 h-14 bg-divider rounded-full flex items-center justify-center mb-3">
                             <Search className="w-6 h-6 text-gray-400" />
                         </div>
-                        <div className="text-[#1A1F26] font-bold text-base mb-1">{t.empty}</div>
+                        <div className="text-ink font-bold text-base mb-1">{t.empty}</div>
                         <div className="text-gray-500 text-xs font-medium">{t.emptyDesc}</div>
-                        <button onClick={() => router.push('/create')} className="mt-5 px-5 py-2.5 bg-[#1A1F26] text-white rounded-xl font-bold text-xs hover:bg-[#9e1316] transition-colors shadow-sm">
+                        <button onClick={() => router.push('/create')} className="mt-5 px-5 py-2.5 bg-ink text-on-ink rounded-xl font-bold text-xs hover:bg-accent transition-colors shadow-sm">
                             {t.create}
                         </button>
                     </div>
@@ -452,8 +480,8 @@ function PlayContent() {
                             const isAlreadyIn = players.some((p) => p.id === currentUserId || p.userId === currentUserId);
 
                             return (
-                                <div key={lobby.id} className={`group bg-white border border-[#E6E1DC] p-4 rounded-2xl flex flex-col sm:flex-row items-center gap-4 hover:shadow-lg hover:border-[#9e1316]/20 transition-all duration-300 relative overflow-hidden ${isAlreadyIn ? 'ring-1 ring-emerald-500/50 border-emerald-500/20' : ''}`}>
-                                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-[#F5F5F0] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                                <div key={lobby.id} className={`group bg-surface border border-line p-4 rounded-2xl flex flex-col sm:flex-row items-center gap-4 hover:shadow-lg hover:border-accent/20 transition-all duration-300 relative overflow-hidden ${isAlreadyIn ? 'ring-1 ring-emerald-500/50 border-emerald-500/20' : ''}`}>
+                                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-warm opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
 
                                     {/* Unknown game type keeps the neutral chip rather than
                                         borrowing another game's colours — a row written by a
@@ -464,20 +492,20 @@ function PlayContent() {
 
                                     <div className="flex-1 text-center sm:text-left z-10 min-w-0 w-full">
                                         <div className="flex items-center justify-center sm:justify-start gap-2 mb-1">
-                                            <h3 className="font-bold text-base text-[#1A1F26] truncate">{lobby.name}</h3>
+                                            <h3 className="font-bold text-base text-ink truncate">{lobby.name}</h3>
                                             {lobby.is_private && <Lock className="w-3.5 h-3.5 text-gray-400 shrink-0" />}
                                         </div>
 
                                         <div className="flex items-center justify-center sm:justify-start gap-3 text-xs font-medium text-gray-500 flex-wrap">
                                             {hostPlayer && (
-                                                <div className="flex items-center gap-1.5 bg-[#F8FAFC] px-2 py-1 rounded-md">
+                                                <div className="flex items-center gap-1.5 bg-page px-2 py-1 rounded-md">
                                                     <Crown className="w-3 h-3 text-amber-500 fill-current shrink-0" />
-                                                    <span className="truncate max-w-[100px] text-[#1A1F26]">{hostPlayer.name}</span>
+                                                    <span className="truncate max-w-[100px] text-ink">{hostPlayer.name}</span>
                                                 </div>
                                             )}
                                             <span className="flex items-center gap-1 shrink-0">
                                                 <Users className="w-3.5 h-3.5" />
-                                                <span className={isFull ? 'text-[#9e1316] font-bold' : 'text-emerald-600 font-bold'}>
+                                                <span className={isFull ? 'text-accent font-bold' : 'text-emerald-600 font-bold'}>
                                                     {players.length}/{maxPlayers}
                                                 </span>
                                             </span>
@@ -494,7 +522,7 @@ function PlayContent() {
                                                     ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
                                                     : (isFull || isPlaying)
                                                         ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                                                        : 'bg-[#1A1F26] text-white hover:bg-[#9e1316] shadow-sm active:scale-95'
+                                                        : 'bg-ink text-on-ink hover:bg-accent shadow-sm active:scale-95'
                                                 }
                                             `}
                                         >
@@ -512,19 +540,19 @@ function PlayContent() {
 
         {/* Private Room Modal */}
         {selectedLobby && (
-          <div className="fixed inset-0 bg-[#1A1F26]/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200" onClick={() => setSelectedLobby(null)}>
-            <div className="bg-white p-6 rounded-[24px] w-full max-w-sm relative shadow-2xl border border-[#E6E1DC] animate-in zoom-in-95" onClick={(e) => e.stopPropagation()}>
-              <button onClick={() => setSelectedLobby(null)} className="absolute top-4 right-4 text-gray-400 hover:text-[#1A1F26] transition-colors"><X className="w-5 h-5" /></button>
-              <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-[#1A1F26]">
+          <div className="fixed inset-0 bg-scrim/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200" onClick={() => setSelectedLobby(null)}>
+            <div className="bg-surface p-6 rounded-[24px] w-full max-w-sm relative shadow-2xl border border-line animate-in zoom-in-95" onClick={(e) => e.stopPropagation()}>
+              <button onClick={() => setSelectedLobby(null)} className="absolute top-4 right-4 text-gray-400 hover:text-ink transition-colors"><X className="w-5 h-5" /></button>
+              <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-ink">
                   <Lock className="w-6 h-6" />
               </div>
-              <h3 className="text-lg font-bold mb-1 text-center text-[#1A1F26]">{selectedLobby.name}</h3>
+              <h3 className="text-lg font-bold mb-1 text-center text-ink">{selectedLobby.name}</h3>
               <p className="text-xs text-center text-gray-500 font-medium mb-6">{t.private}</p>
               <div className="space-y-3">
                   <input
                     type="password"
                     placeholder={t.enterPass}
-                    className="w-full bg-[#F8FAFC] border border-gray-200 focus:bg-white focus:border-[#1A1F26] rounded-xl py-3 px-4 text-center text-[#1A1F26] font-bold text-base transition-all outline-none placeholder:text-gray-400"
+                    className="w-full bg-page border border-gray-200 focus:bg-surface focus:border-ink rounded-xl py-3 px-4 text-center text-ink font-bold text-base transition-all outline-none placeholder:text-gray-400"
                     value={passwordInput}
                     onChange={e => setPasswordInput(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter') handleJoin(selectedLobby, passwordInput); }}
@@ -532,7 +560,7 @@ function PlayContent() {
                   />
                   <button
                     onClick={() => handleJoin(selectedLobby, passwordInput)}
-                    className="w-full bg-[#1A1F26] text-white py-3 rounded-xl font-bold text-sm hover:bg-[#9e1316] transition-colors shadow-md active:scale-95"
+                    className="w-full bg-ink text-on-ink py-3 rounded-xl font-bold text-sm hover:bg-accent transition-colors shadow-md active:scale-95"
                   >
                     {t.confirm}
                   </button>
@@ -547,7 +575,7 @@ function PlayContent() {
 
 export default function PlayPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]"><Loader2 className="w-10 h-10 animate-spin text-[#9e1316]" /></div>}>
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-page"><Loader2 className="w-10 h-10 animate-spin text-accent" /></div>}>
       <PlayContent />
     </Suspense>
   );

@@ -21,7 +21,7 @@ const markStyle = (seat: number): React.CSSProperties =>
   seat % 4 === 2 ? { clipPath: 'polygon(50% 0%, 100% 100%, 0% 100%)' } : {};
 
 export default function PlayerToken({
-  color, seat, mine, className = '', markClassName = 'bg-white/85'
+  color, seat, mine, className = '', markClassName = 'bg-white/85' /* keep-white: a mark on a seat colour, light in both themes */
 }: {
   color: string;
   seat: number;
@@ -38,7 +38,7 @@ export default function PlayerToken({
       className={`rounded-full flex items-center justify-center shrink-0 ${className}`}
       style={{
         backgroundColor: color,
-        boxShadow: mine ? '0 0 0 2px #FFFFFF, 0 0 0 4px #1A1F26' : 'none'
+        boxShadow: mine ? '0 0 0 2px var(--surface), 0 0 0 4px var(--ink)' : 'none'
       }}
     >
       <span

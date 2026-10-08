@@ -112,7 +112,7 @@ Board keys go through `useGameKeys` (`src/hooks/useGameKeys.ts`), which ignores
 any press made in a text field or a dialog and any press with Ctrl, Alt or Cmd
 held — so typing in the chat never moves a piece, and browser shortcuts stay
 the browser's. Keys are read by physical position with the character as a
-fallback (`src/lib/keys.ts`), so WASD works on a Russian layout too.
+fallback (`src/lib/keys.ts`), so WASD works on a Russian or Ukrainian layout too.
 
 ## Adding a new game (high-level)
 

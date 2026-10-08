@@ -137,7 +137,8 @@ const byMedium = (photos: Lines | null, paintings: Lines | null) => (values: Opt
   const parts = medium === 'photos' ? [photos] : medium === 'paintings' ? [paintings] : [photos, paintings];
   return {
     ru: parts.flatMap((p) => p?.ru ?? []),
-    en: parts.flatMap((p) => p?.en ?? [])
+    en: parts.flatMap((p) => p?.en ?? []),
+    uk: parts.flatMap((p) => p?.uk ?? [])
   };
 };
 
@@ -150,15 +151,15 @@ const timlerEra = (value: TimlerEra, emoji: string, label: Record<Locale, string
   showWhen: (values: OptionValues) => eraFits(value, timlerMedium(values))
 });
 
-const minutes = { ru: 'мин', en: 'm' };
-const seconds = { ru: 'сек', en: 's' };
+const minutes = { ru: 'мин', en: 'm', uk: 'хв' };
+const seconds = { ru: 'сек', en: 's', uk: 'с' };
 
 export const GAME_OPTIONS: Record<GameId, GameOption[]> = {
   spyfall: [
     {
       kind: 'slider',
       key: 'roundMinutes',
-      label: { ru: 'Время хода', en: 'Turn Time' },
+      label: { ru: 'Время хода', en: 'Turn Time', uk: 'Час ходу' },
       icon: Clock,
       min: 3,
       max: 15,
@@ -169,17 +170,18 @@ export const GAME_OPTIONS: Record<GameId, GameOption[]> = {
     {
       kind: 'choice',
       key: 'packId',
-      label: { ru: 'Набор локаций', en: 'Location Pack' },
+      label: { ru: 'Набор локаций', en: 'Location Pack', uk: 'Набір локацій' },
       icon: Layers,
       default: SPYFALL_PACKS[0].id,
-      previewLabel: { ru: 'Локации в наборе', en: 'Locations in pack' },
+      previewLabel: { ru: 'Локации в наборе', en: 'Locations in pack', uk: 'Локації в наборі' },
       choices: SPYFALL_PACKS.map((pack) => ({
         value: pack.id,
         emoji: pack.emoji,
         label: pack.name,
         preview: {
           ru: pack.locations.map((l) => l.name.ru),
-          en: pack.locations.map((l) => l.name.en)
+          en: pack.locations.map((l) => l.name.en),
+          uk: pack.locations.map((l) => l.name.uk)
         }
       }))
     }
@@ -189,7 +191,7 @@ export const GAME_OPTIONS: Record<GameId, GameOption[]> = {
     {
       kind: 'slider',
       key: 'size',
-      label: { ru: 'Размер поля', en: 'Grid Size' },
+      label: { ru: 'Размер поля', en: 'Grid Size', uk: 'Розмір поля' },
       icon: Grid,
       min: 10,
       max: 100,
@@ -200,7 +202,7 @@ export const GAME_OPTIONS: Record<GameId, GameOption[]> = {
     {
       kind: 'slider',
       key: 'mineDensity',
-      label: { ru: 'Плотность мин', en: 'Mine Density' },
+      label: { ru: 'Плотность мин', en: 'Mine Density', uk: 'Щільність мін' },
       icon: Bomb,
       min: 10,
       max: 40,
@@ -210,15 +212,17 @@ export const GAME_OPTIONS: Record<GameId, GameOption[]> = {
       note: (values, locale) => {
         const cells = num(values, 'size', 20) ** 2;
         const mines = Math.floor(cells * (num(values, 'mineDensity', 15) / 100));
-        return locale === 'ru'
-          ? `Клеток: ${cells} · Всего мин: ${mines}`
-          : `Cells: ${cells} · Total mines: ${mines}`;
+        return {
+          ru: `Клеток: ${cells} · Всего мин: ${mines}`,
+          en: `Cells: ${cells} · Total mines: ${mines}`,
+          uk: `Клітинок: ${cells} · Усього мін: ${mines}`
+        }[locale];
       }
     },
     {
       kind: 'slider',
       key: 'timeLimitMinutes',
-      label: { ru: 'Лимит времени', en: 'Time Limit' },
+      label: { ru: 'Лимит времени', en: 'Time Limit', uk: 'Ліміт часу' },
       icon: Clock,
       min: 1,
       max: 180,
@@ -232,7 +236,7 @@ export const GAME_OPTIONS: Record<GameId, GameOption[]> = {
     {
       kind: 'slider',
       key: 'rounds',
-      label: { ru: 'Раунды', en: 'Rounds' },
+      label: { ru: 'Раунды', en: 'Rounds', uk: 'Раунди' },
       icon: Flag,
       min: 1,
       max: 20,
@@ -242,7 +246,7 @@ export const GAME_OPTIONS: Record<GameId, GameOption[]> = {
     {
       kind: 'slider',
       key: 'roundSeconds',
-      label: { ru: 'Время хода', en: 'Turn Time' },
+      label: { ru: 'Время хода', en: 'Turn Time', uk: 'Час ходу' },
       icon: Clock,
       min: 15,
       max: 300,
@@ -259,7 +263,7 @@ export const GAME_OPTIONS: Record<GameId, GameOption[]> = {
     {
       kind: 'slider',
       key: 'size',
-      label: { ru: 'Размер поля', en: 'Grid Size' },
+      label: { ru: 'Размер поля', en: 'Grid Size', uk: 'Розмір поля' },
       icon: Grid,
       min: MIN_SIZE,
       max: MAX_SIZE,
@@ -268,15 +272,13 @@ export const GAME_OPTIONS: Record<GameId, GameOption[]> = {
       format: (value) => `${value} × ${value}`,
       note: (values, locale) => {
         const size = num(values, 'size', DEFAULT_SIZE);
-        return locale === 'ru'
-          ? `Квадратов: ${boxCount(size)}`
-          : `Boxes: ${boxCount(size)}`;
+        return { ru: `Квадратов: ${boxCount(size)}`, en: `Boxes: ${boxCount(size)}`, uk: `Квадратів: ${boxCount(size)}` }[locale];
       }
     },
     {
       kind: 'slider',
       key: 'turnSeconds',
-      label: { ru: 'Время хода', en: 'Turn Time' },
+      label: { ru: 'Время хода', en: 'Turn Time', uk: 'Час ходу' },
       icon: Clock,
       min: 10,
       max: 60,
@@ -290,7 +292,7 @@ export const GAME_OPTIONS: Record<GameId, GameOption[]> = {
     {
       kind: 'slider',
       key: 'turnSeconds',
-      label: { ru: 'Время хода', en: 'Turn Time' },
+      label: { ru: 'Время хода', en: 'Turn Time', uk: 'Час ходу' },
       icon: Clock,
       min: 15,
       max: 120,
@@ -304,15 +306,15 @@ export const GAME_OPTIONS: Record<GameId, GameOption[]> = {
     {
       kind: 'choice',
       key: 'mode',
-      label: { ru: 'Режим', en: 'Mode' },
+      label: { ru: 'Режим', en: 'Mode', uk: 'Режим' },
       icon: Swords,
       default: 'duel',
-      previewLabel: { ru: 'Как это играется', en: 'How it plays' },
+      previewLabel: { ru: 'Как это играется', en: 'How it plays', uk: 'Як це грається' },
       choices: [
         {
           value: 'duel',
           emoji: '⚔️',
-          label: { ru: '1 на 1', en: '1v1' },
+          label: { ru: '1 на 1', en: '1v1', uk: '1 на 1' },
           players: PLAYERS_FOR_MODE.duel,
           preview: {
             ru: [
@@ -324,13 +326,18 @@ export const GAME_OPTIONS: Record<GameId, GameOption[]> = {
               'Two players, face to face',
               `${WALLS_FOR_MODE.duel} walls each`,
               'First to the far side wins'
+            ],
+            uk: [
+              'Двоє одне навпроти одного',
+              `По ${WALLS_FOR_MODE.duel} стін кожному`,
+              'Дійшов до краю — переміг'
             ]
           }
         },
         {
           value: 'trio',
           emoji: '🔺',
-          label: { ru: 'Трое', en: 'Three-way' },
+          label: { ru: 'Трое', en: 'Three-way', uk: 'Троє' },
           players: PLAYERS_FOR_MODE.trio,
           preview: {
             ru: [
@@ -342,13 +349,18 @@ export const GAME_OPTIONS: Record<GameId, GameOption[]> = {
               'Three players, three sides, everyone for themselves',
               `${WALLS_FOR_MODE.trio} walls each`,
               'All racing for the middle; first one there wins'
+            ],
+            uk: [
+              'Троє з трьох боків, кожен сам за себе',
+              `По ${WALLS_FOR_MODE.trio} стін кожному`,
+              'Біжать у центр — хто перший, той і виграв'
             ]
           }
         },
         {
           value: 'teams',
           emoji: '🤝',
-          label: { ru: '2 на 2', en: '2v2' },
+          label: { ru: '2 на 2', en: '2v2', uk: '2 на 2' },
           players: PLAYERS_FOR_MODE.teams,
           preview: {
             ru: [
@@ -360,13 +372,18 @@ export const GAME_OPTIONS: Record<GameId, GameOption[]> = {
               'Four players, partners facing each other',
               `${WALLS_FOR_MODE.teams} walls each`,
               'Either partner home wins it for both'
+            ],
+            uk: [
+              'Четверо, партнери одне навпроти одного',
+              `По ${WALLS_FOR_MODE.teams} стін кожному`,
+              'Дійшов один — виграла пара'
             ]
           }
         },
         {
           value: 'ffa',
           emoji: '🎯',
-          label: { ru: 'Вчетвером', en: 'Four at a table' },
+          label: { ru: 'Вчетвером', en: 'Four at a table', uk: 'Учотирьох' },
           players: PLAYERS_FOR_MODE.ffa,
           preview: {
             ru: [
@@ -380,6 +397,12 @@ export const GAME_OPTIONS: Record<GameId, GameOption[]> = {
               `${BOARD_FOR_MODE.ffa}x${BOARD_FOR_MODE.ffa} board, ${WALLS_FOR_MODE.ffa} walls each`,
               'Everyone races for the golden centre square',
               'One winner, three losers'
+            ],
+            uk: [
+              'Четверо, по одному з кожного боку',
+              `Поле ${BOARD_FOR_MODE.ffa}×${BOARD_FOR_MODE.ffa}, по ${WALLS_FOR_MODE.ffa} стін`,
+              'Усі біжать до золотої клітинки в центрі',
+              'Перемагає один, троє програють'
             ]
           }
         }
@@ -388,7 +411,7 @@ export const GAME_OPTIONS: Record<GameId, GameOption[]> = {
     {
       kind: 'slider',
       key: 'turnSeconds',
-      label: { ru: 'Время хода', en: 'Turn Time' },
+      label: { ru: 'Время хода', en: 'Turn Time', uk: 'Час ходу' },
       icon: Clock,
       min: 15,
       max: 120,
@@ -403,44 +426,44 @@ export const GAME_OPTIONS: Record<GameId, GameOption[]> = {
     {
       kind: 'choice',
       key: 'topic',
-      label: { ru: 'Тема', en: 'Topic' },
+      label: { ru: 'Тема', en: 'Topic', uk: 'Тема' },
       icon: BookOpenText,
       default: 'random',
       display: 'select',
-      previewLabel: { ru: 'Откуда статьи', en: 'Where articles come from' },
+      previewLabel: { ru: 'Откуда статьи', en: 'Where articles come from', uk: 'Звідки статті' },
       choices: WIKILER_TOPICS.map((topic) => ({
         value: topic,
         emoji: TOPICS[topic].emoji,
         label: TOPICS[topic].label,
         group: TOPICS[topic].group,
         preview: topic === 'random'
-          ? { ru: ['Любая статья Википедии, достаточно длинная и читаемая'], en: ['Any Wikipedia article that is long enough and read'] }
-          : { ru: ['Из статей первостепенной важности Википедии'], en: ['From Wikipedia’s vital articles'] }
+          ? { ru: ['Любая статья Википедии, достаточно длинная и читаемая'], en: ['Any Wikipedia article that is long enough and read'], uk: ['Будь-яка стаття Вікіпедії, досить довга й популярна'] }
+          : { ru: ['Из статей первостепенной важности Википедии'], en: ['From Wikipedia’s vital articles'], uk: ['Зі статей першочергової важливості Вікіпедії'] }
       }))
     },
     {
       kind: 'choice',
       key: 'difficulty',
-      label: { ru: 'Сложность', en: 'Difficulty' },
+      label: { ru: 'Сложность', en: 'Difficulty', uk: 'Складність' },
       icon: Gauge,
       default: 'any',
-      previewLabel: { ru: 'Какие статьи', en: 'Which articles' },
+      previewLabel: { ru: 'Какие статьи', en: 'Which articles', uk: 'Які статті' },
       choices: WIKILER_DIFFICULTIES.map((level) => ({
         value: level,
         emoji: DIFFICULTIES[level].emoji,
         label: DIFFICULTIES[level].label,
         preview: {
-          any: { ru: ['Все статьи темы вперемешку'], en: ['Every article of the topic, mixed'] },
-          easy: { ru: ['Самая читаемая треть темы — то, что знают все'], en: ['The most read third of the topic — what everyone knows'] },
-          medium: { ru: ['Средняя треть: известное, но не самое'], en: ['The middle third: known, but not the most'] },
-          hard: { ru: ['Наименее читаемая треть темы — для знатоков'], en: ['The least read third of the topic — for experts'] }
+          any: { ru: ['Все статьи темы вперемешку'], en: ['Every article of the topic, mixed'], uk: ['Усі статті теми впереміш'] },
+          easy: { ru: ['Самая читаемая треть темы — то, что знают все'], en: ['The most read third of the topic — what everyone knows'], uk: ['Найпопулярніша третина теми — те, що знають усі'] },
+          medium: { ru: ['Средняя треть: известное, но не самое'], en: ['The middle third: known, but not the most'], uk: ['Середня третина: відоме, але не найбільше'] },
+          hard: { ru: ['Наименее читаемая треть темы — для знатоков'], en: ['The least read third of the topic — for experts'], uk: ['Найменш популярна третина теми — для знавців'] }
         }[level]
       }))
     },
     {
       kind: 'slider',
       key: 'rounds',
-      label: { ru: 'Раунды', en: 'Rounds' },
+      label: { ru: 'Раунды', en: 'Rounds', uk: 'Раунди' },
       icon: Layers,
       min: 1,
       max: 20,
@@ -450,7 +473,7 @@ export const GAME_OPTIONS: Record<GameId, GameOption[]> = {
     {
       kind: 'slider',
       key: 'roundMinutes',
-      label: { ru: 'Время раунда', en: 'Round time' },
+      label: { ru: 'Время раунда', en: 'Round time', uk: 'Час раунду' },
       icon: Clock,
       min: 1,
       max: 15,
@@ -461,63 +484,65 @@ export const GAME_OPTIONS: Record<GameId, GameOption[]> = {
     {
       kind: 'choice',
       key: 'letters',
-      label: { ru: 'Число букв', en: 'Letter count' },
+      label: { ru: 'Число букв', en: 'Letter count', uk: 'Кількість літер' },
       icon: Hash,
       default: 'shown',
       advanced: true,
-      previewLabel: { ru: 'На скрытых словах', en: 'On hidden words' },
+      previewLabel: { ru: 'На скрытых словах', en: 'On hidden words', uk: 'На прихованих словах' },
       choices: [
         {
           value: 'shown',
           emoji: '🔢',
-          label: { ru: 'Видно', en: 'Shown' },
-          preview: { ru: ['На каждой плашке — сколько в слове букв'], en: ['Each block shows how many letters the word has'] }
+          label: { ru: 'Видно', en: 'Shown', uk: 'Видно' },
+          preview: { ru: ['На каждой плашке — сколько в слове букв'], en: ['Each block shows how many letters the word has'], uk: ['На кожній плашці — скільки в слові літер'] }
         },
         {
           value: 'hidden',
           emoji: '▭',
-          label: { ru: 'По нажатию', en: 'On tap' },
-          preview: { ru: ['Только длина плашки; число — если нажать'], en: ['Only the block’s length; the number when tapped'] }
+          label: { ru: 'По нажатию', en: 'On tap', uk: 'Після натискання' },
+          preview: { ru: ['Только длина плашки; число — если нажать'], en: ['Only the block’s length; the number when tapped'], uk: ['Лише довжина плашки; число — якщо натиснути'] }
         }
       ]
     },
     {
       kind: 'slider',
       key: 'hidden',
-      label: { ru: 'Скрыто слов', en: 'Words hidden' },
+      label: { ru: 'Скрыто слов', en: 'Words hidden', uk: 'Приховано слів' },
       icon: EyeOff,
       advanced: true,
       min: HIDDEN_MIN,
       max: HIDDEN_MAX,
       step: 5,
       default: HIDDEN_DEFAULT,
-      unit: { ru: '%', en: '%' }
+      unit: { ru: '%', en: '%', uk: '%' }
     },
     {
       kind: 'choice',
       key: 'mode',
-      label: { ru: 'Попытки', en: 'Attempts' },
+      label: { ru: 'Попытки', en: 'Attempts', uk: 'Спроби' },
       icon: Swords,
       default: 'unlimited',
       advanced: true,
-      previewLabel: { ru: 'Как это играется', en: 'How it plays' },
+      previewLabel: { ru: 'Как это играется', en: 'How it plays', uk: 'Як це грається' },
       choices: [
         {
           value: 'unlimited',
           emoji: '♾️',
-          label: { ru: 'Без ограничений', en: 'Unlimited' },
+          label: { ru: 'Без ограничений', en: 'Unlimited', uk: 'Без обмежень' },
           preview: {
             ru: ['Пробуйте сколько угодно — держат только очки и время'],
-            en: ['Guess as much as you like — only the score and the clock hold you back']
+            en: ['Guess as much as you like — only the score and the clock hold you back'],
+            uk: ['Пробуйте скільки завгодно — тримають лише очки й час']
           }
         },
         {
           value: 'limited',
           emoji: '🎯',
-          label: { ru: 'Ограниченные', en: 'Limited' },
+          label: { ru: 'Ограниченные', en: 'Limited', uk: 'Обмежені' },
           preview: {
             ru: ['Каждое слово и каждое название тратит попытку', 'Кончились — раунд не угадан'],
-            en: ['Every word and every title spends an attempt', 'Run out and the round is lost']
+            en: ['Every word and every title spends an attempt', 'Run out and the round is lost'],
+            uk: ['Кожне слово й кожна назва витрачає спробу', 'Скінчилися — раунд не вгадано']
           }
         }
       ]
@@ -525,7 +550,7 @@ export const GAME_OPTIONS: Record<GameId, GameOption[]> = {
     {
       kind: 'slider',
       key: 'attempts',
-      label: { ru: 'Попыток на раунд', en: 'Attempts per round' },
+      label: { ru: 'Попыток на раунд', en: 'Attempts per round', uk: 'Спроб на раунд' },
       icon: Swords,
       min: 1,
       max: 50,
@@ -537,28 +562,30 @@ export const GAME_OPTIONS: Record<GameId, GameOption[]> = {
     {
       kind: 'choice',
       key: 'articleLang',
-      label: { ru: 'Язык статей', en: 'Article language' },
+      label: { ru: 'Язык статей', en: 'Article language', uk: 'Мова статей' },
       icon: Languages,
       default: 'own',
       advanced: true,
-      previewLabel: { ru: 'Как это играется', en: 'How it plays' },
+      previewLabel: { ru: 'Как это играется', en: 'How it plays', uk: 'Як це грається' },
       choices: [
         {
           value: 'own',
           emoji: '🌐',
-          label: { ru: 'Свой у каждого', en: 'Each their own' },
+          label: { ru: 'Свой у каждого', en: 'Each their own', uk: 'У кожного своя' },
           preview: {
             ru: ['Статья одна, но каждый читает её на языке своего интерфейса', 'Версии на разных языках написаны разными авторами и немного отличаются'],
-            en: ['One article, each reading it in their own interface language', 'The language versions are written by different people and differ a little']
+            en: ['One article, each reading it in their own interface language', 'The language versions are written by different people and differ a little'],
+            uk: ['Стаття одна, але кожен читає її мовою свого інтерфейсу', 'Версії різними мовами написали різні автори, і вони трохи відрізняються']
           }
         },
         {
           value: 'host',
           emoji: '📖',
-          label: { ru: 'Как у хоста', en: 'The host’s' },
+          label: { ru: 'Как у хоста', en: 'The host’s', uk: 'Як у хоста' },
           preview: {
             ru: ['Все читают один и тот же текст на языке хоста — счёт полностью равный'],
-            en: ['Everyone reads the same text in the host’s language — a perfectly even score']
+            en: ['Everyone reads the same text in the host’s language — a perfectly even score'],
+            uk: ['Усі читають той самий текст мовою хоста — рахунок цілком рівний']
           }
         }
       ]
@@ -570,94 +597,95 @@ export const GAME_OPTIONS: Record<GameId, GameOption[]> = {
     {
       kind: 'choice',
       key: 'medium',
-      label: { ru: 'Что угадываем', en: 'What to date' },
+      label: { ru: 'Что угадываем', en: 'What to date', uk: 'Що вгадуємо' },
       icon: Images,
       default: 'photos',
-      previewLabel: { ru: 'Что попадётся', en: 'What comes up' },
+      previewLabel: { ru: 'Что попадётся', en: 'What comes up', uk: 'Що трапиться' },
       choices: [
         {
           value: 'photos',
           emoji: '📷',
-          label: { ru: 'Фото', en: 'Photos' },
-          preview: { ru: ['Фотографии с 1839 года до наших дней'], en: ['Photographs from 1839 to this year'] }
+          label: { ru: 'Фото', en: 'Photos', uk: 'Фото' },
+          preview: { ru: ['Фотографии с 1839 года до наших дней'], en: ['Photographs from 1839 to this year'], uk: ['Фотографії з 1839 року до наших днів'] }
         },
         {
           value: 'paintings',
           emoji: '🖼️',
-          label: { ru: 'Живопись', en: 'Paintings' },
+          label: { ru: 'Живопись', en: 'Paintings', uk: 'Живопис' },
           preview: {
             ru: ['Картины с XIV века по 1945 год', 'Возрождение, барокко, импрессионизм, авангард'],
-            en: ['Paintings from the 14th century to 1945', 'Renaissance, Baroque, Impressionism, the avant-garde']
+            en: ['Paintings from the 14th century to 1945', 'Renaissance, Baroque, Impressionism, the avant-garde'],
+            uk: ['Картини з XIV століття до 1945 року', 'Відродження, бароко, імпресіонізм, авангард']
           }
         },
         {
           value: 'both',
           emoji: '🎨',
-          label: { ru: 'Всё вместе', en: 'Both' },
-          preview: { ru: ['Каждый раунд — фото или картина, поровну'], en: ['Each round a photo or a painting, half and half'] }
+          label: { ru: 'Всё вместе', en: 'Both', uk: 'Усе разом' },
+          preview: { ru: ['Каждый раунд — фото или картина, поровну'], en: ['Each round a photo or a painting, half and half'], uk: ['Кожен раунд — фото або картина, порівну'] }
         }
       ]
     },
     {
       kind: 'choice',
       key: 'era',
-      label: { ru: 'Эпоха', en: 'Era' },
+      label: { ru: 'Эпоха', en: 'Era', uk: 'Епоха' },
       icon: CalendarRange,
       default: 'all',
-      previewLabel: { ru: 'Что попадётся', en: 'What comes up' },
+      previewLabel: { ru: 'Что попадётся', en: 'What comes up', uk: 'Що трапиться' },
       choices: [
-        timlerEra('all', '🕰️', { ru: 'Всё время', en: 'All time' }, (values) => ({
-          photos: { ru: ['1839–сегодня: каждый раунд — из случайной эпохи'], en: ['1839 to today: each round from a random era'] },
-          paintings: { ru: ['XIV век–1945: каждый раунд — из случайной эпохи'], en: ['The 14th century to 1945: each round from a random era'] },
-          both: { ru: ['От XIV века до сегодня: каждый раунд — из случайной эпохи'], en: ['The 14th century to today: each round from a random era'] }
+        timlerEra('all', '🕰️', { ru: 'Всё время', en: 'All time', uk: 'Увесь час' }, (values) => ({
+          photos: { ru: ['1839–сегодня: каждый раунд — из случайной эпохи'], en: ['1839 to today: each round from a random era'], uk: ['1839–сьогодні: кожен раунд — з випадкової епохи'] },
+          paintings: { ru: ['XIV век–1945: каждый раунд — из случайной эпохи'], en: ['The 14th century to 1945: each round from a random era'], uk: ['XIV століття–1945: кожен раунд — з випадкової епохи'] },
+          both: { ru: ['От XIV века до сегодня: каждый раунд — из случайной эпохи'], en: ['The 14th century to today: each round from a random era'], uk: ['Від XIV століття до сьогодні: кожен раунд — з випадкової епохи'] }
         })[timlerMedium(values)]),
-        timlerEra('before1600', '🏰', { ru: 'До 1600', en: 'Before 1600' }, byMedium(null, {
-          ru: ['Средневековье и Возрождение'], en: ['The Middle Ages and the Renaissance']
+        timlerEra('before1600', '🏰', { ru: 'До 1600', en: 'Before 1600', uk: 'До 1600' }, byMedium(null, {
+          ru: ['Средневековье и Возрождение'], en: ['The Middle Ages and the Renaissance'], uk: ['Середньовіччя й Відродження']
         })),
-        timlerEra('1600-1799', '🎻', { ru: '1600–1799', en: '1600–1799' }, byMedium(null, {
-          ru: ['Барокко, рококо, Просвещение'], en: ['Baroque, Rococo, the Enlightenment']
+        timlerEra('1600-1799', '🎻', { ru: '1600–1799', en: '1600–1799', uk: '1600–1799' }, byMedium(null, {
+          ru: ['Барокко, рококо, Просвещение'], en: ['Baroque, Rococo, the Enlightenment'], uk: ['Бароко, рококо, Просвітництво']
         })),
-        timlerEra('1800-1899', '🎩', { ru: '1800–1899', en: '1800–1899' }, byMedium(
-          { ru: ['Первые фотографии: дагеротипы, с 1839 года'], en: ['The first photographs: daguerreotypes, from 1839'] },
-          { ru: ['Романтизм, реализм, импрессионизм'], en: ['Romanticism, Realism, Impressionism'] }
+        timlerEra('1800-1899', '🎩', { ru: '1800–1899', en: '1800–1899', uk: '1800–1899' }, byMedium(
+          { ru: ['Первые фотографии: дагеротипы, с 1839 года'], en: ['The first photographs: daguerreotypes, from 1839'], uk: ['Перші фотографії: дагеротипи, з 1839 року'] },
+          { ru: ['Романтизм, реализм, импрессионизм'], en: ['Romanticism, Realism, Impressionism'], uk: ['Романтизм, реалізм, імпресіонізм'] }
         )),
-        timlerEra('1900-1945', '📻', { ru: '1900–1945', en: '1900–1945' }, byMedium(
-          { ru: ['Начало века, две мировые войны'], en: ['The turn of the century and two world wars'] },
-          { ru: ['Модерн и авангард'], en: ['Art Nouveau and the avant-garde'] }
+        timlerEra('1900-1945', '📻', { ru: '1900–1945', en: '1900–1945', uk: '1900–1945' }, byMedium(
+          { ru: ['Начало века, две мировые войны'], en: ['The turn of the century and two world wars'], uk: ['Початок століття, дві світові війни'] },
+          { ru: ['Модерн и авангард'], en: ['Art Nouveau and the avant-garde'], uk: ['Модерн і авангард'] }
         )),
-        timlerEra('1946-2000', '📺', { ru: '1946–2000', en: '1946–2000' }, byMedium(
-          { ru: ['Послевоенный мир, космос, конец века'], en: ['The post-war world, space, the end of the century'] },
-          { ru: ['Только фото: картин этих лет на свободных лицензиях почти нет'], en: ['Photos only: hardly any paintings this recent are free to show'] }
+        timlerEra('1946-2000', '📺', { ru: '1946–2000', en: '1946–2000', uk: '1946–2000' }, byMedium(
+          { ru: ['Послевоенный мир, космос, конец века'], en: ['The post-war world, space, the end of the century'], uk: ['Повоєнний світ, космос, кінець століття'] },
+          { ru: ['Только фото: картин этих лет на свободных лицензиях почти нет'], en: ['Photos only: hardly any paintings this recent are free to show'], uk: ['Лише фото: картин цих років на вільних ліцензіях майже немає'] }
         )),
-        timlerEra('since2001', '📱', { ru: 'С 2001', en: 'Since 2001' }, byMedium(
-          { ru: ['XXI век, вплоть до этого года'], en: ['The 21st century, up to this year'] },
-          { ru: ['Только фото'], en: ['Photos only'] }
+        timlerEra('since2001', '📱', { ru: 'С 2001', en: 'Since 2001', uk: 'З 2001' }, byMedium(
+          { ru: ['XXI век, вплоть до этого года'], en: ['The 21st century, up to this year'], uk: ['XXI століття, аж до цього року'] },
+          { ru: ['Только фото'], en: ['Photos only'], uk: ['Лише фото'] }
         ))
       ]
     },
     {
       kind: 'choice',
       key: 'difficulty',
-      label: { ru: 'Сложность', en: 'Difficulty' },
+      label: { ru: 'Сложность', en: 'Difficulty', uk: 'Складність' },
       icon: Gauge,
       default: 'any',
-      previewLabel: { ru: 'Что попадётся', en: 'What comes up' },
+      previewLabel: { ru: 'Что попадётся', en: 'What comes up', uk: 'Що трапиться' },
       choices: WIKILER_DIFFICULTIES.map((level) => ({
         value: level,
         emoji: DIFFICULTIES[level].emoji,
         label: DIFFICULTIES[level].label,
         preview: {
-          any: { ru: ['Всё из эпохи вперемешку'], en: ['Everything from the era, mixed'] },
-          easy: { ru: ['Самая известная треть: то, что видел каждый'], en: ['The best known third: what everyone has seen'] },
-          medium: { ru: ['Средняя треть: известное, но не самое'], en: ['The middle third: known, but not the most'] },
-          hard: { ru: ['Наименее известная треть — для знатоков'], en: ['The least known third — for experts'] }
+          any: { ru: ['Всё из эпохи вперемешку'], en: ['Everything from the era, mixed'], uk: ['Усе з епохи впереміш'] },
+          easy: { ru: ['Самая известная треть: то, что видел каждый'], en: ['The best known third: what everyone has seen'], uk: ['Найвідоміша третина: те, що бачив кожен'] },
+          medium: { ru: ['Средняя треть: известное, но не самое'], en: ['The middle third: known, but not the most'], uk: ['Середня третина: відоме, але не найбільше'] },
+          hard: { ru: ['Наименее известная треть — для знатоков'], en: ['The least known third — for experts'], uk: ['Найменш відома третина — для знавців'] }
         }[level]
       }))
     },
     {
       kind: 'slider',
       key: 'rounds',
-      label: { ru: 'Раунды', en: 'Rounds' },
+      label: { ru: 'Раунды', en: 'Rounds', uk: 'Раунди' },
       icon: Layers,
       min: 1,
       max: 20,
@@ -667,7 +695,7 @@ export const GAME_OPTIONS: Record<GameId, GameOption[]> = {
     {
       kind: 'slider',
       key: 'roundSeconds',
-      label: { ru: 'Время раунда', en: 'Round time' },
+      label: { ru: 'Время раунда', en: 'Round time', uk: 'Час раунду' },
       icon: Clock,
       min: 15,
       max: 180,
@@ -680,48 +708,52 @@ export const GAME_OPTIONS: Record<GameId, GameOption[]> = {
     {
       kind: 'choice',
       key: 'adult',
-      label: { ru: 'Режим 18+', en: '18+ mode' },
+      label: { ru: 'Режим 18+', en: '18+ mode', uk: 'Режим 18+' },
       icon: ShieldAlert,
       default: 'off',
       advanced: true,
-      previewLabel: { ru: 'Что попадётся', en: 'What comes up' },
+      previewLabel: { ru: 'Что попадётся', en: 'What comes up', uk: 'Що трапиться' },
       choices: [
         {
           value: 'off',
           emoji: '🙂',
-          label: { ru: 'Выключен', en: 'Off' },
+          label: { ru: 'Выключен', en: 'Off', uk: 'Вимкнено' },
           preview: byMedium(
-            { ru: ['Без войны, катастроф и обнажённой натуры'], en: ['No war, disasters or nudity'] },
-            { ru: ['Без битв, смерти и обнажённой натуры'], en: ['No battles, death or nudes'] }
+            { ru: ['Без войны, катастроф и обнажённой натуры'], en: ['No war, disasters or nudity'], uk: ['Без війни, катастроф і оголеної натури'] },
+            { ru: ['Без битв, смерти и обнажённой натуры'], en: ['No battles, death or nudes'], uk: ['Без битв, смерті й оголеної натури'] }
           )
         },
         {
           value: 'on',
           emoji: '🔞',
-          label: { ru: 'Включён', en: 'On' },
+          label: { ru: 'Включён', en: 'On', uk: 'Увімкнено' },
           preview: byMedium(
             {
               ru: ['Добавляются бои, катастрофы, концлагеря, обнажённая натура в фотоискусстве', 'Тел погибших, казней и крови нет и здесь'],
-              en: ['Adds battles, disasters, concentration camps, nudes in fine-art photography', 'No bodies, executions or blood even here']
+              en: ['Adds battles, disasters, concentration camps, nudes in fine-art photography', 'No bodies, executions or blood even here'],
+              uk: ['Додаються бої, катастрофи, концтабори, оголена натура у фотомистецтві', 'Тіл загиблих, страт і крові немає й тут']
             },
             {
               ru: ['В живописи — обнажённая натура, битвы, распятия, мученики, казни', 'Крови, пыток и отрубленных голов нет и здесь'],
-              en: ['In paintings: nudes, battles, crucifixions, martyrs, executions', 'No blood, torture or severed heads even here']
+              en: ['In paintings: nudes, battles, crucifixions, martyrs, executions', 'No blood, torture or severed heads even here'],
+              uk: ['У живописі — оголена натура, битви, розп’яття, мученики, страти', 'Крові, тортур і відрубаних голів немає й тут']
             }
           )
         },
         {
           value: 'only',
           emoji: '🔥',
-          label: { ru: 'Только 18+', en: '18+ only' },
+          label: { ru: 'Только 18+', en: '18+ only', uk: 'Лише 18+' },
           preview: byMedium(
             {
               ru: ['Только бои, катастрофы, концлагеря и обнажённая натура в фотоискусстве', 'Тел погибших, казней и крови нет и здесь'],
-              en: ['Only battles, disasters, concentration camps and nudes in fine-art photography', 'No bodies, executions or blood even here']
+              en: ['Only battles, disasters, concentration camps and nudes in fine-art photography', 'No bodies, executions or blood even here'],
+              uk: ['Лише бої, катастрофи, концтабори й оголена натура у фотомистецтві', 'Тіл загиблих, страт і крові немає й тут']
             },
             {
               ru: ['Только обнажённая натура, битвы, распятия, мученики и казни', 'Крови, пыток и отрубленных голов нет и здесь'],
-              en: ['Only nudes, battles, crucifixions, martyrs and executions', 'No blood, torture or severed heads even here']
+              en: ['Only nudes, battles, crucifixions, martyrs and executions', 'No blood, torture or severed heads even here'],
+              uk: ['Лише оголена натура, битви, розп’яття, мученики й страти', 'Крові, тортур і відрубаних голів немає й тут']
             }
           )
         }
@@ -734,42 +766,42 @@ export const GAME_OPTIONS: Record<GameId, GameOption[]> = {
     {
       kind: 'choice',
       key: 'category',
-      label: { ru: 'Категория', en: 'Category' },
+      label: { ru: 'Категория', en: 'Category', uk: 'Категорія' },
       icon: Disc3,
       default: 'all',
       display: 'select',
-      previewLabel: { ru: 'Что попадётся', en: 'What comes up' },
+      previewLabel: { ru: 'Что попадётся', en: 'What comes up', uk: 'Що трапиться' },
       choices: SONGLER_CATEGORIES.map((id) => ({
         value: id,
         emoji: SONG_CATEGORIES[id].emoji,
         label: SONG_CATEGORIES[id].label,
         group: SONG_CATEGORIES[id].group,
-        ...(id === 'all' ? { preview: { ru: ['Любая песня из всех категорий'], en: ['Any song from every category'] } } : {})
+        ...(id === 'all' ? { preview: { ru: ['Любая песня из всех категорий'], en: ['Any song from every category'], uk: ['Будь-яка пісня з усіх категорій'] } } : {})
       }))
     },
     {
       kind: 'choice',
       key: 'difficulty',
-      label: { ru: 'Сложность', en: 'Difficulty' },
+      label: { ru: 'Сложность', en: 'Difficulty', uk: 'Складність' },
       icon: Gauge,
       default: 'any',
-      previewLabel: { ru: 'Что попадётся', en: 'What comes up' },
+      previewLabel: { ru: 'Что попадётся', en: 'What comes up', uk: 'Що трапиться' },
       choices: WIKILER_DIFFICULTIES.map((level) => ({
         value: level,
         emoji: DIFFICULTIES[level].emoji,
         label: DIFFICULTIES[level].label,
         preview: {
-          any: { ru: ['Все песни категории вперемешку'], en: ['Every song of the category, mixed'] },
-          easy: { ru: ['Самая популярная треть: то, что знают все'], en: ['The most played third: songs everyone knows'] },
-          medium: { ru: ['Средняя треть: известное, но не самое'], en: ['The middle third: known, but not the most'] },
-          hard: { ru: ['Наименее популярная треть — для меломанов'], en: ['The least played third — for music buffs'] }
+          any: { ru: ['Все песни категории вперемешку'], en: ['Every song of the category, mixed'], uk: ['Усі пісні категорії впереміш'] },
+          easy: { ru: ['Самая популярная треть: то, что знают все'], en: ['The most played third: songs everyone knows'], uk: ['Найпопулярніша третина: те, що знають усі'] },
+          medium: { ru: ['Средняя треть: известное, но не самое'], en: ['The middle third: known, but not the most'], uk: ['Середня третина: відоме, але не найбільше'] },
+          hard: { ru: ['Наименее популярная треть — для меломанов'], en: ['The least played third — for music buffs'], uk: ['Найменш популярна третина — для меломанів'] }
         }[level]
       }))
     },
     {
       kind: 'slider',
       key: 'rounds',
-      label: { ru: 'Раунды', en: 'Rounds' },
+      label: { ru: 'Раунды', en: 'Rounds', uk: 'Раунди' },
       icon: Layers,
       min: 1,
       max: 20,
@@ -779,7 +811,7 @@ export const GAME_OPTIONS: Record<GameId, GameOption[]> = {
     {
       kind: 'slider',
       key: 'roundSeconds',
-      label: { ru: 'Время раунда', en: 'Round time' },
+      label: { ru: 'Время раунда', en: 'Round time', uk: 'Час раунду' },
       icon: Clock,
       min: 15,
       max: 180,

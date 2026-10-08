@@ -75,15 +75,41 @@ const DICTIONARY = {
         setupHint: 'Pick a ship and tap a square, or drag it onto the board. R or Space turns it.',
         afloat: (n: number) => `${n} ${pluralEn(n, 'ship', 'ships')} afloat`,
         ships: { battleship: 'Battleship', cruiser: 'Cruiser', destroyer: 'Destroyer', submarine: 'Submarine' } as Record<ShipType, string>
+    },
+    uk: {
+        fleet: 'Верф',
+        auto: 'Авто',
+        ready: 'Готово',
+        waiting: 'Очікування…',
+        readyStatus: 'готовий до бою',
+        placingStatus: 'розставляє флот…',
+        waitingOpponent: 'чекаємо на суперника…',
+        victory: 'Перемога',
+        defeat: 'Поразка',
+        winMsg: 'Ворожий флот знищено',
+        loseMsg: 'Наш флот пішов на дно',
+        surrenderMsg: 'Суперник залишив бій',
+        zoneEnemy: 'Радар',
+        zoneMe: 'Мій флот',
+        enemy: 'Суперник',
+        clear: 'Скинути',
+        horizontal: 'Горизонтально',
+        vertical: 'Вертикально',
+        stats: 'Стан флоту',
+        fireHint: 'Стріляйте по радару. Влучили — стріляєте ще раз',
+        thinking: 'обирає ціль',
+        setupHint: 'Оберіть корабель і натисніть на клітинку або перетягніть його на поле. R або пробіл — повернути.',
+        afloat: (n: number) => `${n} ${pluralRu(n, ['корабель', 'кораблі', 'кораблів'])} на плаву`,
+        ships: { battleship: 'Лінкор', cruiser: 'Крейсер', destroyer: 'Есмінець', submarine: 'Підводний човен' } as Record<ShipType, string>
     }
 };
 
 const getShipColor = (type: ShipType) => {
     switch (type) {
-        case 'battleship': return 'bg-[#1A1F26]';
+        case 'battleship': return 'bg-ink';
         case 'cruiser': return 'bg-[#4B5563]';
         case 'destroyer': return 'bg-[#6B7280]';
-        case 'submarine': return 'bg-[#9CA3AF]';
+        case 'submarine': return 'bg-gray-400';
     }
 };
 
@@ -108,16 +134,16 @@ const GridCell = memo(({
     const isSmall = size === 'small';
     let content = null;
 
-    let bgClass = "bg-white";
+    let bgClass = "bg-surface";
     let borderClass = "";
 
     if (status === 'miss') {
-        content = <div className={`${isSmall ? 'w-1.5 h-1.5' : 'w-2 h-2'} rounded-full bg-[#8A9099]/40`} />;
+        content = <div className={`${isSmall ? 'w-1.5 h-1.5' : 'w-2 h-2'} rounded-full bg-muted/40`} />;
     } else if (status === 'hit') {
         bgClass = "bg-red-50";
-        content = <span className={`${isSmall ? 'text-2xs' : 'text-xl'} text-[#9e1316] font-black leading-none`}>✕</span>;
+        content = <span className={`${isSmall ? 'text-2xs' : 'text-xl'} text-accent font-black leading-none`}>✕</span>;
     } else if (status === 'killed') {
-        bgClass = "bg-[#1A1F26]";
+        bgClass = "bg-night";
         content = <span className={`${isSmall ? 'text-[8px]' : 'text-sm'} text-white font-bold`}>☠</span>;
     } else if (shipPart) {
         if (status === 'empty') {
@@ -170,8 +196,8 @@ const FleetStatusList = ({ ships, isEnemy = false, names }: { ships: Ship[], isE
             {groups.map(g => (
                 <div key={g.type} className="flex items-center justify-between text-xs">
                     <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${isEnemy ? 'bg-[#9e1316]' : 'bg-[#1A1F26]'}`} />
-                        <span className="font-bold text-[#8A9099] w-20 truncate">{names[g.type]}</span>
+                        <div className={`w-2 h-2 rounded-full ${isEnemy ? 'bg-accent' : 'bg-ink'}`} />
+                        <span className="font-bold text-muted w-20 truncate">{names[g.type]}</span>
                     </div>
 
                     <div className="flex gap-1">
@@ -181,13 +207,13 @@ const FleetStatusList = ({ ships, isEnemy = false, names }: { ships: Ship[], isE
 
                             if (isEnemy) {
                                 return (
-                                    <div key={i} className={`w-8 h-2 rounded-sm border ${isDead ? 'bg-[#9e1316]/20 border-[#9e1316]' : 'bg-[#F5F5F0] border-[#E6E1DC]'}`}>
-                                        {isDead && <div className="absolute inset-0 flex items-center justify-center text-[8px] text-[#9e1316] font-bold">✕</div>}
+                                    <div key={i} className={`w-8 h-2 rounded-sm border ${isDead ? 'bg-accent/20 border-accent' : 'bg-warm border-line'}`}>
+                                        {isDead && <div className="absolute inset-0 flex items-center justify-center text-[8px] text-accent font-bold">✕</div>}
                                     </div>
                                 );
                             } else {
                                 return (
-                                    <div key={i} className={`w-8 h-2 rounded-sm border border-[#E6E1DC] overflow-hidden relative ${isDead ? 'bg-[#9e1316]' : 'bg-[#F5F5F0]'}`}>
+                                    <div key={i} className={`w-8 h-2 rounded-sm border border-line overflow-hidden relative ${isDead ? 'bg-accent' : 'bg-warm'}`}>
                                         {!isDead && (
                                             <div
                                                 className={`absolute top-0 left-0 h-full transition-all duration-500 ${hpPercent < 50 ? 'bg-orange-400' : 'bg-emerald-500'}`}
@@ -221,7 +247,7 @@ interface BattleshipGameProps {
     fireShot: (x: number, y: number) => void;
     leaveGame: () => void;
     handleTimeout: () => void;
-    lang: 'ru' | 'en';
+    lang: 'ru' | 'en' | 'uk';
 }
 
 export default function BattleshipGame({
@@ -382,7 +408,7 @@ export default function BattleshipGame({
     );
 
     /** The grid, in the board style every game shares: white squares on grey. */
-    const gridClass = 'grid grid-cols-10 gap-px bg-[#E6E1DC] p-px w-fit mx-auto';
+    const gridClass = 'grid grid-cols-10 gap-px bg-line p-px w-fit mx-auto';
 
     const radar = (
         <div>
@@ -423,7 +449,7 @@ export default function BattleshipGame({
             <GameRulesModal
                 isOpen={showRules}
                 onClose={() => setShowRules(false)}
-                rules={GAME_RULES[lang as 'ru' | 'en'].battleship}
+                rules={GAME_RULES[lang as 'ru' | 'en' | 'uk'].battleship}
             />
 
             {phase === 'setup' && (
@@ -463,17 +489,17 @@ export default function BattleshipGame({
                                                 disabled={isFull}
                                                 className={`w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl border transition-all ${
                                                     isSelected
-                                                        ? 'bg-[#1A1F26] text-white border-[#1A1F26]'
+                                                        ? 'bg-ink text-on-ink border-ink'
                                                         : isFull
-                                                            ? 'bg-[#F8FAFC] border-transparent text-[#B5B3AD] cursor-default'
-                                                            : 'bg-white border-[#E6E1DC] hover:border-[#9e1316]/30 hover:shadow-sm cursor-pointer'
+                                                            ? 'bg-page border-transparent text-faded cursor-default'
+                                                            : 'bg-surface border-line hover:border-accent/30 hover:shadow-sm cursor-pointer'
                                                 }`}
                                             >
                                                 <span className="flex items-center gap-3 min-w-0">
                                                     {/* The ship drawn at its length, one square per deck. */}
                                                     <span className="flex gap-[2px] shrink-0">
                                                         {Array.from({ length: ship.size }).map((_, i) => (
-                                                            <span key={i} className={`w-2.5 h-2.5 ${isSelected ? 'bg-white' : isFull ? 'bg-[#DAD7D1]' : 'bg-[#1A1F26]'}`} />
+                                                            <span key={i} className={`w-2.5 h-2.5 ${isSelected ? 'bg-surface' : isFull ? 'bg-[#DAD7D1] dark:bg-[#3A414B]' : 'bg-ink'}`} />
                                                         ))}
                                                     </span>
                                                     <span className="text-sm font-bold truncate">{shipName(ship.type)}</span>
@@ -493,9 +519,9 @@ export default function BattleshipGame({
                                     </button>
                                 </div>
 
-                                <p className="mt-3 text-xs font-medium text-[#8A9099] leading-snug">{t.setupHint}</p>
+                                <p className="mt-3 text-xs font-medium text-muted leading-snug">{t.setupHint}</p>
 
-                                <div className="flex gap-2 mt-4 pt-4 border-t border-[#F1F5F9]">
+                                <div className="flex gap-2 mt-4 pt-4 border-t border-divider">
                                     <button onClick={autoPlaceShips} className={`flex-1 flex items-center justify-center gap-2 py-3 ${BUTTON_SECONDARY}`}>
                                         <Shuffle className="w-4 h-4" /> {t.auto}
                                     </button>
@@ -565,12 +591,12 @@ export default function BattleshipGame({
                             <GameCard label={t.stats}>
                                 <div className="space-y-4">
                                     <div>
-                                        <div className="text-3xs font-bold uppercase tracking-wider text-[#8A9099] mb-2">{t.zoneMe}</div>
+                                        <div className="text-3xs font-bold uppercase tracking-wider text-muted mb-2">{t.zoneMe}</div>
                                         <FleetStatusList ships={myShips} names={t.ships} />
                                     </div>
-                                    <div className="h-px bg-[#F1F5F9]" />
+                                    <div className="h-px bg-divider" />
                                     <div>
-                                        <div className="text-3xs font-bold uppercase tracking-wider text-[#8A9099] mb-2">{t.enemy}</div>
+                                        <div className="text-3xs font-bold uppercase tracking-wider text-muted mb-2">{t.enemy}</div>
                                         <FleetStatusList ships={opponent?.ships || []} isEnemy={true} names={t.ships} />
                                     </div>
                                 </div>

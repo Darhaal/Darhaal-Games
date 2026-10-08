@@ -2,7 +2,7 @@
 
 import { useCallback, useSyncExternalStore } from 'react';
 
-export type Lang = 'ru' | 'en';
+export type Lang = 'ru' | 'en' | 'uk';
 
 const LANG_KEY = 'dg_lang';
 const LANG_EVENT = 'dg:lang';
@@ -32,7 +32,7 @@ export function useLang(defaultLang: Lang = 'en') {
     subscribe,
     () => {
       const v = localStorage.getItem(LANG_KEY);
-      return v === 'en' || v === 'ru' ? v : defaultLang;
+      return v === 'en' || v === 'ru' || v === 'uk' ? v : defaultLang;
     },
     () => defaultLang
   );

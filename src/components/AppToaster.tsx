@@ -29,6 +29,7 @@ const STYLES: Record<ToastItem['type'], string> = {
 const SYNC_MSG = {
   ru: 'Действие не применилось — состояние обновлено',
   en: 'Action did not apply — state re-synced',
+  uk: 'Дія не застосувалася — стан оновлено',
 };
 
 /**

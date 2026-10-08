@@ -179,7 +179,7 @@ describe('Flager — leaving', () => {
     await play(() => b.current.leaveGame());
 
     expect(stored().status).toBe('round_end');
-    expect(stored().notifications?.at(-1)?.message).toEqual({ ru: 'B покинул игру', en: 'B left the game' });
+    expect(stored().notifications?.at(-1)?.message).toEqual({ ru: 'B покинул игру', en: 'B left the game', uk: 'B залишив гру' });
   });
 
   it('a player who leaves between rounds does not strand those who are ready', async () => {

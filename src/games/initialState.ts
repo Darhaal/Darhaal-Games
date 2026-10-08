@@ -287,7 +287,8 @@ const FACTORIES: { [K in GameId]: (args: FactoryArgs) => GameStateByType[K] } = 
   wikiler: ({ maxPlayers, values, now, base }) => {
     const topic = str(values, 'topic', 'random');
     const difficulty = str(values, 'difficulty', 'any');
-    const lang: WikilerLang = str(values, 'locale', 'ru') === 'en' ? 'en' : 'ru';
+    // Russian or English Wikipedia; a Ukrainian host reads English
+    const lang: WikilerLang = str(values, 'locale', 'ru') === 'ru' ? 'ru' : 'en';
     return {
       players: [newWikilerPlayer({ ...base, lang })],
       status: 'waiting',

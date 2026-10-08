@@ -33,29 +33,29 @@ export default function ArticlePreview({ wikiLang, title, label, openLabel, comp
   const thumb = summary?.thumbnail;
 
   return (
-    <div className="p-4 rounded-xl border border-[#E6E1DC] bg-[#F8FAFC] flex gap-4 animate-in fade-in duration-300">
+    <div className="p-4 rounded-xl border border-line bg-page flex gap-4 animate-in fade-in duration-300">
       {thumb && (
         // A picture straight from Wikimedia Commons, of unknown size; next/image would proxy it through us.
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={thumb.source}
           alt=""
-          className={`${compact ? 'w-16 h-16' : 'w-20 h-20 md:w-24 md:h-24'} shrink-0 rounded-lg object-cover border border-[#E6E1DC] bg-white`}
+          className={`${compact ? 'w-16 h-16' : 'w-20 h-20 md:w-24 md:h-24'} shrink-0 rounded-lg object-cover border border-line bg-surface`}
           loading="lazy"
         />
       )}
       <div className="min-w-0">
-        <div className="text-2xs font-black text-[#8A9099] uppercase tracking-widest">{label}</div>
-        <div className="text-xl font-black text-[#1A1F26] leading-tight mt-1">{summary?.title ?? title}</div>
-        {summary?.description && <div className="text-xs font-bold text-[#8A9099] mt-0.5">{summary.description}</div>}
+        <div className="text-2xs font-black text-muted uppercase tracking-widest">{label}</div>
+        <div className="text-xl font-black text-ink leading-tight mt-1">{summary?.title ?? title}</div>
+        {summary?.description && <div className="text-xs font-bold text-muted mt-0.5">{summary.description}</div>}
         {summary?.extract && (
-          <p className={`text-sm text-[#1A1F26] leading-relaxed mt-2 ${compact ? 'line-clamp-3' : 'line-clamp-4'}`}>{summary.extract}</p>
+          <p className={`text-sm text-ink leading-relaxed mt-2 ${compact ? 'line-clamp-3' : 'line-clamp-4'}`}>{summary.extract}</p>
         )}
         <a
           href={articleUrl(wikiLang, title)}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 mt-2 text-xs font-bold text-[#8A9099] hover:text-[#9e1316] transition-colors"
+          className="inline-flex items-center gap-1 mt-2 text-xs font-bold text-muted hover:text-accent transition-colors"
         >
           <ExternalLink className="w-3.5 h-3.5" /> {openLabel}
         </a>

@@ -399,7 +399,7 @@ describe('Coup — leaving mid-match', () => {
 
     await play(() => c.current.leaveGame());
 
-    expect(stored().logs[0].action).toEqual({ ru: 'C покинул матч', en: 'C left the match' });
+    expect(stored().logs[0].action).toEqual({ ru: 'C покинул матч', en: 'C left the match', uk: 'C залишив матч' });
   });
 
   it('a challenger who leaves owing a card does not undo the proven claim', async () => {

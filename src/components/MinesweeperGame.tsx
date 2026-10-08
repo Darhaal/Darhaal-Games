@@ -23,10 +23,10 @@ import { directionOf, isSpace, isZoomIn, isZoomOut, isZoomReset } from '@/lib/ke
 // Closed tiles are the grid grey, raised; opened ones are white — the same
 // white-on-grey every board uses.
 const COLORS = {
-  hidden: "bg-[#E6E1DC] border-b-4 border-r-4 border-[#CFC8BA] hover:brightness-95 active:border-b-0 active:border-r-0 active:border-t-2 active:border-l-2",
-  open: "bg-white",
-  flagged: "bg-[#E6E1DC] border-b-4 border-r-4 border-[#CFC8BA]",
-  mine: "bg-[#9e1316] text-white border-none shadow-inner",
+  hidden: "bg-line border-b-4 border-r-4 border-[#CFC8BA] dark:border-[#1B2027] hover:brightness-95 active:border-b-0 active:border-r-0 active:border-t-2 active:border-l-2",
+  open: "bg-surface",
+  flagged: "bg-line border-b-4 border-r-4 border-[#CFC8BA] dark:border-[#1B2027]",
+  mine: "bg-accent text-white border-none shadow-inner",
   numbers: [
     "",
     "text-blue-600", "text-emerald-600", "text-red-600", "text-indigo-700",
@@ -94,6 +94,36 @@ const UI_TEXT = {
     winnerLabel: 'Winner',
     nobody: 'Nobody cleared the field',
     minesLeft: 'mines left'
+  },
+  uk: {
+    title: 'MINESWEEPER',
+    pro: 'by Darhaal',
+    mines: 'МІНИ',
+    time: 'ЧАС',
+    victory: 'ПЕРЕМОГА',
+    defeat: 'ВИБУХ',
+    leave: 'ВИЙТИ',
+    start: 'ПОЧАТИ',
+    waiting: 'ОЧІКУВАННЯ...',
+    you: '(Ви)',
+    results: 'РЕЗУЛЬТАТИ',
+    player: 'Гравець',
+    status: 'Статус',
+    progress: 'Прогрес',
+    timeStat: 'Час',
+    dig: 'Копати',
+    flag: 'Прапорець',
+    won: 'ПЕРЕМОГА',
+    dead: 'ПІДІРВАВСЯ',
+    alive: 'У ГРІ',
+    left: 'ВИЙШОВ',
+    viewBoard: 'ДИВИТИСЯ МАПУ',
+    showResults: 'Підсумки',
+    matchClock: 'матч',
+    youWin: 'Перемога',
+    winnerLabel: 'Переможець',
+    nobody: 'Поле ніхто не пройшов',
+    minesLeft: 'мін залишилося'
   }
 };
 
@@ -107,7 +137,7 @@ interface MinesweeperGameProps {
   leaveGame: () => void;
   handleTimeout?: () => void;
   forceTimeUp?: () => void;
-  lang: 'ru' | 'en';
+  lang: 'ru' | 'en' | 'uk';
 }
 
 const CellComponent = memo(({
@@ -133,7 +163,7 @@ const CellComponent = memo(({
     }
   } else if (cell.isFlagged) {
     styleClass = COLORS.flagged;
-    content = <Flag className="w-3/5 h-3/5 text-[#9e1316] fill-[#9e1316]" />;
+    content = <Flag className="w-3/5 h-3/5 text-accent fill-accent" />;
   }
 
   return (
@@ -393,21 +423,21 @@ const BoardView = ({ player, statusText, isMe, onReveal, onFlag, onChord, isTouc
   const statusChip =
     player.status === 'won' ? { text: statusText.won, cls: 'bg-emerald-50 text-emerald-700 border-emerald-100', Icon: Trophy }
     : player.status === 'lost' ? { text: statusText.dead, cls: 'bg-red-50 text-red-600 border-red-100', Icon: Skull }
-    : player.status === 'left' ? { text: statusText.left, cls: 'bg-[#F1F5F9] text-[#8A9099] border-[#E6E1DC]', Icon: UserX }
+    : player.status === 'left' ? { text: statusText.left, cls: 'bg-divider text-muted border-line', Icon: UserX }
     : null;
 
   return (
-    <div className={`relative flex flex-col h-full bg-white rounded-2xl border border-[#E6E1DC] overflow-hidden shadow-sm ${player.status === 'left' ? 'grayscale opacity-75' : ''}`}>
-        <div className="shrink-0 p-3 border-b border-[#F1F5F9] flex justify-between items-center gap-3 bg-white z-20">
+    <div className={`relative flex flex-col h-full bg-surface rounded-2xl border border-line overflow-hidden shadow-sm ${player.status === 'left' ? 'grayscale opacity-75' : ''}`}>
+        <div className="shrink-0 p-3 border-b border-divider flex justify-between items-center gap-3 bg-surface z-20">
             <div className="flex items-center gap-3 min-w-0">
-                <Image src={player.avatarUrl} alt="" width={36} height={36} className="w-9 h-9 rounded-full object-cover bg-[#F8FAFC] shrink-0" />
+                <Image src={player.avatarUrl} alt="" width={36} height={36} className="w-9 h-9 rounded-full object-cover bg-page shrink-0" />
                 <div className="flex flex-col min-w-0">
-                    <span className="text-sm font-bold text-[#1A1F26] truncate">
+                    <span className="text-sm font-bold text-ink truncate">
                         {player.name}
-                        {isMe && <span className="ml-1.5 text-3xs font-bold uppercase tracking-wider text-[#8A9099]">{youLabel}</span>}
+                        {isMe && <span className="ml-1.5 text-3xs font-bold uppercase tracking-wider text-muted">{youLabel}</span>}
                     </span>
-                    <span className="flex items-center gap-1 text-2xs font-bold text-[#8A9099] tabular-nums">
-                        <Flag className="w-3 h-3 text-[#9e1316]" /> {player.minesLeft}
+                    <span className="flex items-center gap-1 text-2xs font-bold text-muted tabular-nums">
+                        <Flag className="w-3 h-3 text-accent" /> {player.minesLeft}
                     </span>
                 </div>
                 {statusChip && (
@@ -418,15 +448,15 @@ const BoardView = ({ player, statusText, isMe, onReveal, onFlag, onChord, isTouc
             </div>
             {isMe && (
                 <div className="flex gap-1 shrink-0">
-                    <button onClick={() => setZoom(z => Math.min(4, z + 0.5))} className="p-2 bg-white border border-[#E6E1DC] rounded-lg hover:border-[#9e1316]/30 transition-all" aria-label="zoom in"><ZoomIn className="w-4 h-4 text-[#8A9099]"/></button>
-                    <button onClick={() => setZoom(z => Math.max(0.5, z - 0.5))} className="p-2 bg-white border border-[#E6E1DC] rounded-lg hover:border-[#9e1316]/30 transition-all" aria-label="zoom out"><ZoomOut className="w-4 h-4 text-[#8A9099]"/></button>
+                    <button onClick={() => setZoom(z => Math.min(4, z + 0.5))} className="p-2 bg-surface border border-line rounded-lg hover:border-accent/30 transition-all" aria-label="zoom in"><ZoomIn className="w-4 h-4 text-muted"/></button>
+                    <button onClick={() => setZoom(z => Math.max(0.5, z - 0.5))} className="p-2 bg-surface border border-line rounded-lg hover:border-accent/30 transition-all" aria-label="zoom out"><ZoomOut className="w-4 h-4 text-muted"/></button>
                 </div>
             )}
         </div>
 
         <div
             ref={containerRef}
-            className="flex-1 overflow-hidden relative bg-[#F8FAFC] cursor-grab active:cursor-grabbing touch-none select-none"
+            className="flex-1 overflow-hidden relative bg-page cursor-grab active:cursor-grabbing touch-none select-none"
             onPointerDown={onContainerPointerDown}
             onPointerMove={onContainerPointerMove}
             onPointerLeave={() => { lastPointer.current = null; }}
@@ -442,7 +472,7 @@ const BoardView = ({ player, statusText, isMe, onReveal, onFlag, onChord, isTouc
                 }}
             >
                 <div ref={gridRef}
-                     className="inline-grid gap-[2px] bg-[#B8AF9F] p-[3px] rounded-md shadow-[0_2px_8px_-2px_rgba(26,31,38,0.25)]"
+                     className="inline-grid gap-[2px] bg-[#B8AF9F] dark:bg-[#3A414B] p-[3px] rounded-md shadow-[0_2px_8px_-2px_rgba(26,31,38,0.25)]"
                      style={{ gridTemplateColumns: `repeat(${player.board[0]?.length || 10}, min-content)` }}>
                     {player.board.map((row: Cell[], y: number) => row.map((cell: Cell, x: number) => (
                         <CellComponent
@@ -522,15 +552,15 @@ export default function MinesweeperGame({ gameState, userId, revealCell, toggleF
   const resultTitle = iWon ? t.youWin : gameState.winner ? t.winnerLabel : t.nobody;
   const statusText = { won: t.won, dead: t.dead, left: t.left };
 
-  if (!me) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin text-[#9e1316]" /></div>;
+  if (!me) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin text-accent" /></div>;
 
   return (
-    <div className="h-screen bg-[#F8FAFC] text-[#1A1F26] flex flex-col font-sans overflow-hidden">
+    <div className="h-screen bg-page text-ink flex flex-col font-sans overflow-hidden">
 
         <GameRulesModal
             isOpen={showRules}
             onClose={() => setShowRules(false)}
-            rules={GAME_RULES[lang as 'ru' | 'en'].minesweeper}
+            rules={GAME_RULES[lang as 'ru' | 'en' | 'uk'].minesweeper}
             themeColor="text-red-600"
         />
 
@@ -551,12 +581,12 @@ export default function MinesweeperGame({ gameState, userId, revealCell, toggleF
         {/* LOBBY CONTROLS */}
         <div className="flex justify-center pb-4 z-20 relative px-4 gap-4 mt-4">
              {gameState.status === 'waiting' && me.isHost && (
-                <button onClick={startGame} className="bg-[#1A1F26] text-white px-8 py-3 rounded-2xl font-black uppercase text-xs hover:bg-[#9e1316] transition-all shadow-lg hover:shadow-[#9e1316]/20 flex items-center gap-2">
+                <button onClick={startGame} className="bg-ink text-on-ink px-8 py-3 rounded-2xl font-black uppercase text-xs hover:bg-accent transition-all shadow-lg hover:shadow-accent/20 flex items-center gap-2">
                     <Zap className="w-4 h-4" /> {t.start}
                 </button>
             )}
             {gameState.status === 'waiting' && !me.isHost && (
-                <div className="px-6 py-3 bg-[#F5F5F0] text-[#8A9099] font-bold text-xs uppercase rounded-2xl animate-pulse tracking-widest border border-[#E6E1DC]">
+                <div className="px-6 py-3 bg-warm text-muted font-bold text-xs uppercase rounded-2xl animate-pulse tracking-widest border border-line">
                     {t.waiting}
                 </div>
             )}
@@ -568,7 +598,7 @@ export default function MinesweeperGame({ gameState, userId, revealCell, toggleF
             {/* TOUCH MODE TOGGLE */}
             <button
                   onClick={() => setIsTouchModeFlag(!isTouchModeFlag)}
-                  className={`flex sm:hidden items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold uppercase transition-all border shadow-sm ${isTouchModeFlag ? 'bg-[#1A1F26] text-white border-[#1A1F26]' : 'bg-white text-[#1A1F26] border-[#E6E1DC]'}`}
+                  className={`flex sm:hidden items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold uppercase transition-all border shadow-sm ${isTouchModeFlag ? 'bg-ink text-on-ink border-ink' : 'bg-surface text-ink border-line'}`}
               >
                   {isTouchModeFlag ? <Flag className="w-4 h-4" /> : <MousePointer2 className="w-4 h-4" />}
                   <span>{isTouchModeFlag ? t.flag : t.dig}</span>
@@ -617,13 +647,13 @@ export default function MinesweeperGame({ gameState, userId, revealCell, toggleF
             onMenu={leaveGame}
             wide
         >
-            <div className="divide-y divide-[#F1F5F9] border-y border-[#F1F5F9]">
+            <div className="divide-y divide-divider border-y border-divider">
                 {getSortedPlayers().map((p) => (
                     <div key={p.id} className="flex items-center gap-3 py-3">
-                        <Image src={p.avatarUrl} alt="" width={32} height={32} className="w-8 h-8 rounded-full object-cover bg-[#F8FAFC] shrink-0" />
+                        <Image src={p.avatarUrl} alt="" width={32} height={32} className="w-8 h-8 rounded-full object-cover bg-page shrink-0" />
                         <div className="min-w-0 flex-1">
                             <div className="text-sm font-bold truncate">{p.name}</div>
-                            <div className="text-2xs font-bold uppercase tracking-wider text-[#8A9099]">
+                            <div className="text-2xs font-bold uppercase tracking-wider text-muted">
                                 {p.status === 'won' ? t.won : p.status === 'lost' ? t.dead : p.status === 'left' ? t.left : t.alive}
                             </div>
                         </div>
@@ -631,8 +661,8 @@ export default function MinesweeperGame({ gameState, userId, revealCell, toggleF
                             {p.score ? `${Math.floor(p.score / 60)}:${(p.score % 60).toString().padStart(2, '0')}` : '—'}
                         </div>
                         <div className="flex items-center gap-2 w-24 justify-end">
-                            <div className="w-12 h-1.5 bg-[#F1F5F9] rounded-full overflow-hidden">
-                                <div className={`h-full rounded-full ${p.status === 'lost' ? 'bg-red-500' : 'bg-[#1A1F26]'}`} style={{ width: `${getProgress(p)}%` }} />
+                            <div className="w-12 h-1.5 bg-divider rounded-full overflow-hidden">
+                                <div className={`h-full rounded-full ${p.status === 'lost' ? 'bg-red-500' : 'bg-ink'}`} style={{ width: `${getProgress(p)}%` }} />
                             </div>
                             <span className="text-xs font-black tabular-nums">{getProgress(p)}%</span>
                         </div>

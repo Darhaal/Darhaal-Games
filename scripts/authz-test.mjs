@@ -167,12 +167,42 @@ if (!lobby) process.exit(1);
   pass('nobody inserts into achievement_unlocks directly', !!direct, direct?.code ?? 'INSERT SUCCEEDED');
 }
 
-// --- clean up: remove both throwaway guests ---
+// --- profiles: clients write their name and avatar, nothing else ---
+{
+  const { error: emailErr } = await A.from('profiles').update({ email: 'forged@test.invalid' }).eq('id', aId);
+  pass('nobody rewrites their profile email', !!emailErr, emailErr?.code ?? 'UPDATE SUCCEEDED');
+
+  const { error: nameErr } = await A.from('profiles').update({ username: `authz-${aId.slice(0, 6)}` }).eq('id', aId);
+  pass('a player can rename themselves', !nameErr, nameErr?.message ?? '');
+
+  const { data: guestsName, error: takenErr } = await B.rpc('username_taken', { p_username: 'player' });
+  pass('a guest name does not count as taken', guestsName === false, takenErr?.message ?? `returned ${guestsName}`);
+}
+
+// --- delete_my_account: B removes itself, A's room stays untouched ---
+let bDeleted = false;
+{
+  const { data: room } = await A.from('lobbies')
+    .insert({ code: code(), name: 'authz-test', host_id: aId, is_private: false, status: 'waiting', game_state: baseState })
+    .select('id').single();
+  const { error } = await B.rpc('delete_my_account');
+  const { data: profile } = await A.from('profiles').select('id').eq('id', bId).maybeSingle();
+  const { data: stillThere } = await A.from('lobbies').select('id').eq('id', room?.id).maybeSingle();
+  bDeleted = !error && !profile;
+  pass('delete_my_account removes the caller', bDeleted, error?.message ?? (profile ? 'profile still there' : ''));
+  pass('… and only the caller', !!stillThere, stillThere ? '' : 'A\'s room was deleted');
+  const { error: hostErr } = await A.rpc('delete_my_account');
+  const { data: roomAfter } = await A.from('lobbies').select('id').eq('id', room?.id).maybeSingle();
+  pass('a host deleting the account takes its rooms along', !hostErr && !roomAfter, hostErr?.message ?? (roomAfter ? 'room left behind' : ''));
+}
+
+// --- clean up: remove the throwaway guests that are left ---
 // profiles, player_stats, match_results and achievement_unlocks follow via ON DELETE CASCADE.
 const admin = createClient(URL, env.SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false }
 });
-for (const id of [aId, bId]) {
+const { data: aLeft } = await admin.auth.admin.getUserById(aId);
+for (const id of [aLeft?.user ? aId : null, bDeleted ? null : bId].filter(Boolean)) {
   const { error } = await admin.auth.admin.deleteUser(id);
   if (error) console.log(`  cleanup failed for ${id}: ${error.message}`);
 }

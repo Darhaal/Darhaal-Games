@@ -19,7 +19,7 @@ export const COMPANY_URL = 'https://okhtengroup.com';
  * data; `lib/seo.ts` reuses its ids so search engines join the two.
  */
 export const AUTHOR = {
-  name: { ru: 'Артем Охтень', en: 'Artem Okhten' },
+  name: { ru: 'Артем Охтень', en: 'Artem Okhten', uk: 'Артем Охтень' },
   handle: 'Darhaal',
   url: 'https://okhten.com',
   github: 'https://github.com/Darhaal',
@@ -45,7 +45,8 @@ export const SITE_URL =
 /** Short brand tagline — the default meta description and OG subtitle */
 export const APP_TAGLINE = {
   ru: 'Настольные и логические игры онлайн с друзьями — бесплатно и без установки.',
-  en: 'Board and logic games online with friends — free, no download.'
+  en: 'Board and logic games online with friends — free, no download.',
+  uk: 'Настільні та логічні ігри онлайн із друзями — безкоштовно й без встановлення.'
 } as const;
 
 /** Locale served at the bare path; Russian lives under /ru */

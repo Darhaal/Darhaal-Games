@@ -9,6 +9,7 @@
  */
 export interface GameNotification {
   id: number;
-  message: { ru: string; en: string };
+  /** `uk` is optional: a message from a client older than Ukrainian falls back to English. */
+  message: { ru: string; en: string; uk?: string };
   type: 'info' | 'join' | 'leave' | 'alert';
 }

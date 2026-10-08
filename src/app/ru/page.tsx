@@ -7,5 +7,5 @@ export const metadata: Metadata = homeMetadata('ru');
 
 /** The domain root in Russian — the same app entry as `/`, with the landing in Russian. */
 export default function HomeRu() {
-  return <HomeClient landing={<HomeLanding locale="ru" />} />;
+  return <HomeClient locale="ru" landing={<HomeLanding locale="ru" />} />;
 }

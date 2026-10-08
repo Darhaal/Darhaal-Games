@@ -16,6 +16,11 @@ const RU_NUMERALS = [
   'семь', 'восемь', 'девять', 'десять', 'одиннадцать', 'двенадцать'
 ];
 
+const UK_NUMERALS = [
+  'нуль', 'одна', 'дві', 'три', 'чотири', 'п’ять', 'шість',
+  'сім', 'вісім', 'дев’ять', 'десять', 'одинадцять', 'дванадцять'
+];
+
 const EN_NUMERALS = [
   'zero', 'one', 'two', 'three', 'four', 'five', 'six',
   'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve'
@@ -32,7 +37,7 @@ const numeral = (words: string[], n: number) => capitalize(word(words, n));
 /** Google stops printing the snippet somewhere around here. */
 const SNIPPET_LIMIT = 160;
 
-const MORE: Record<Locale, string> = { ru: ' и другие', en: ' and more' };
+const MORE: Record<Locale, string> = { ru: ' и другие', en: ' and more', uk: ' та інші' };
 
 /**
  * The search snippet: every game named, as long as they fit.
@@ -108,6 +113,50 @@ const ru = (n: number) => {
   };
 };
 
+/** Ukrainian declines the same way: one, two-to-four and five-plus forms. */
+const uk = (n: number) => {
+  const count = numeral(UK_NUMERALS, n);
+
+  return {
+    heroLead:
+      `${count} ${pluralRu(n, [
+        'настільна й логічна гра',
+        'настільні й логічні гри',
+        'настільних і логічних ігор'
+      ])} для компанії. Створіть кімнату, надішліть посилання — і грайте. ` +
+      'Нічого завантажувати не треба, реєстрація не обов’язкова.',
+
+    gamesLead:
+      `${count} ${pluralRu(n, ['гра', 'гри', 'ігор'])}: від розмовної дедукції ` +
+      'на всю компанію до дуелі на двох і логіки наодинці.',
+
+    hubLead:
+      `${count} ${pluralRu(n, [
+        'гра, у яку',
+        'гри, у які',
+        'ігор, у які'
+      ])} можна грати просто в браузері — удвох або великою компанією. ` +
+      'Створіть кімнату, надішліть друзям посилання й починайте: нічого ' +
+      'встановлювати не треба, реєстрація не обов’язкова.',
+
+    hubIntro:
+      `${pluralRu(n, [
+        'Єдина гра працює',
+        `Усі ${word(UK_NUMERALS, n)} гри працюють`,
+        `Усі ${word(UK_NUMERALS, n)} ігор працюють`
+      ])} за одним принципом: хост створює кімнату, решта заходять за ` +
+      'посиланням або кодом. Відрізняються вони тим, скільки треба людей, скільки ' +
+      'триває партія і що саме від вас вимагається — уважно слухати, ' +
+      'швидко рахувати чи блефувати з незворушним обличчям.',
+
+    hubDescription: snippet(
+      'uk',
+      `${count} ${pluralRu(n, ['гра', 'гри', 'ігор'])} для компанії просто в браузері: `,
+      '. Створіть кімнату й грайте безкоштовно.'
+    )
+  };
+};
+
 const en = (n: number) => {
   const count = numeral(EN_NUMERALS, n);
   const games = n === 1 ? 'game' : 'games';
@@ -143,5 +192,6 @@ const en = (n: number) => {
 
 export const GAME_COUNT_COPY: Record<Locale, ReturnType<typeof ru>> = {
   ru: ru(GAME_COUNT),
-  en: en(GAME_COUNT)
+  en: en(GAME_COUNT),
+  uk: uk(GAME_COUNT)
 };

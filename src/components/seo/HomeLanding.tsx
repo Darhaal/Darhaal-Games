@@ -4,6 +4,7 @@ import { GAMES_CONTENT, HOME_CONTENT, type Locale } from '@/content/games';
 import { APP_NAME, AUTHOR, COPYRIGHT, SOURCE_URL } from '@/constants/app';
 import { faqPageJsonLd, localizedPath } from '@/lib/seo';
 import JsonLd from './JsonLd';
+import { LANGUAGE_LINKS } from '@/lib/locale';
 
 /**
  * Server-rendered content for the domain root.
@@ -25,15 +26,15 @@ export default function HomeLanding({ locale = 'en' }: { locale?: Locale }) {
   const copy = HOME_CONTENT[locale];
 
   return (
-    <div lang={locale} className="w-full bg-[#F8FAFC] text-gray-900 font-sans">
+    <div lang={locale} className="w-full bg-page text-gray-900 font-sans">
       <JsonLd data={faqPageJsonLd(copy.faq)} />
 
       <section className="max-w-5xl mx-auto px-4 md:px-6 pt-16 md:pt-24 pb-10 text-center">
-        <div className="w-12 h-12 mx-auto bg-white border border-gray-200 rounded-2xl flex items-center justify-center shadow-sm">
+        <div className="w-12 h-12 mx-auto bg-surface border border-gray-200 rounded-2xl flex items-center justify-center shadow-sm">
           <Image src="/logo512.png" alt="" width={28} height={28} className="w-7 h-7 object-contain" />
         </div>
 
-        <p className="mt-6 text-2xs font-black uppercase tracking-widest text-[#8A9099]">
+        <p className="mt-6 text-2xs font-black uppercase tracking-widest text-muted">
           {APP_NAME}
         </p>
         <h1 className="mt-3 text-4xl md:text-6xl font-black tracking-tighter leading-[1.05] text-gray-900">
@@ -71,7 +72,7 @@ export default function HomeLanding({ locale = 'en' }: { locale?: Locale }) {
             return (
               <article
                 key={game.slug}
-                className="group relative bg-white border border-gray-200 rounded-[24px] p-6 flex flex-col transition-all duration-300 hover:border-[#9e1316]/30 hover:shadow-xl hover:shadow-[#9e1316]/5 hover:-translate-y-1"
+                className="group relative bg-surface border border-gray-200 rounded-[24px] p-6 flex flex-col transition-all duration-300 hover:border-accent/30 hover:shadow-xl hover:shadow-accent/5 hover:-translate-y-1"
               >
                 <div
                   className="w-10 h-1.5 rounded-full mb-5"
@@ -90,7 +91,7 @@ export default function HomeLanding({ locale = 'en' }: { locale?: Locale }) {
                   {g.tagline}
                 </p>
                 <div className="mt-4 text-2xs font-bold uppercase tracking-wider text-gray-400">
-                  {range} · ~{game.playtimeMinutes} {locale === 'ru' ? 'мин' : 'min'}
+                  {range} · ~{game.playtimeMinutes} {{ ru: 'мин', en: 'min', uk: 'хв' }[locale]}
                 </div>
               </article>
             );
@@ -101,8 +102,8 @@ export default function HomeLanding({ locale = 'en' }: { locale?: Locale }) {
       <section className="max-w-5xl mx-auto px-4 md:px-6 pt-14">
         <ol className="grid gap-4 md:grid-cols-3">
           {copy.steps.map((step, i) => (
-            <li key={i} className="bg-white border border-gray-200 rounded-[24px] p-6">
-              <div className="w-7 h-7 rounded-full bg-[#1A1F26] text-white text-xs font-black flex items-center justify-center">
+            <li key={i} className="bg-surface border border-gray-200 rounded-[24px] p-6">
+              <div className="w-7 h-7 rounded-full bg-ink text-on-ink text-xs font-black flex items-center justify-center">
                 {i + 1}
               </div>
               <h3 className="mt-4 text-lg font-black tracking-tight text-gray-900">{step.title}</h3>
@@ -124,16 +125,16 @@ export default function HomeLanding({ locale = 'en' }: { locale?: Locale }) {
       </section>
 
       <section className="max-w-5xl mx-auto px-4 md:px-6 pt-14 pb-6">
-        <div className="bg-[#1A1F26] rounded-[28px] px-8 py-10 md:px-12 md:py-14 text-center">
+        <div className="bg-night rounded-[28px] px-8 py-10 md:px-12 md:py-14 text-center">
           <h2 className="text-2xl md:text-4xl font-black tracking-tighter text-white">
             {copy.ctaTitle}
           </h2>
-          <p className="mt-3 text-sm md:text-base text-gray-400 font-medium max-w-xl mx-auto">
+          <p className="mt-3 text-sm md:text-base text-white/60 font-medium max-w-xl mx-auto">
             {copy.ctaText}
           </p>
           <Link
             href={localizedPath(locale, '/games')}
-            className="inline-block mt-7 bg-[#9e1316] text-white text-xs font-bold uppercase tracking-widest px-8 py-4 rounded-full hover:bg-white hover:text-[#1A1F26] transition-colors"
+            className="inline-block mt-7 bg-accent text-white text-xs font-bold uppercase tracking-widest px-8 py-4 rounded-full hover:bg-surface hover:text-ink transition-colors"
           >
             {copy.ctaButton}
           </Link>
@@ -145,19 +146,22 @@ export default function HomeLanding({ locale = 'en' }: { locale?: Locale }) {
           {COPYRIGHT}
         </span>
         <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
-          <a href={AUTHOR.url} rel="author" className="text-2xs font-bold uppercase tracking-wider text-gray-400 hover:text-[#9e1316] transition-colors">
+          <a href={AUTHOR.url} rel="author" className="text-2xs font-bold uppercase tracking-wider text-gray-400 hover:text-accent transition-colors">
             {AUTHOR.name[locale]}
           </a>
-          <a href={SOURCE_URL} className="text-2xs font-bold uppercase tracking-wider text-gray-400 hover:text-[#9e1316] transition-colors">
+          <a href={SOURCE_URL} className="text-2xs font-bold uppercase tracking-wider text-gray-400 hover:text-accent transition-colors">
             GitHub
           </a>
-          <Link
-            href={localizedPath(locale === 'ru' ? 'en' : 'ru', '/')}
-            hrefLang={locale === 'ru' ? 'en' : 'ru'}
-            className="text-2xs font-bold uppercase tracking-wider text-gray-400 hover:text-[#9e1316] transition-colors"
-          >
-            {locale === 'ru' ? 'English' : 'Русский'}
-          </Link>
+          {LANGUAGE_LINKS.filter((l) => l.locale !== locale).map((l) => (
+            <Link
+              key={l.locale}
+              href={localizedPath(l.locale, '/')}
+              hrefLang={l.locale}
+              className="text-2xs font-bold uppercase tracking-wider text-gray-400 hover:text-accent transition-colors"
+            >
+              {l.name}
+            </Link>
+          ))}
         </div>
       </footer>
     </div>

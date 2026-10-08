@@ -10,7 +10,8 @@ import type { GameId } from '@/games/registry';
 
 const TEXT = {
   ru: { again: 'Ещё раз', join: 'Присоединиться' },
-  en: { again: 'Play again', join: 'Join rematch' }
+  en: { again: 'Play again', join: 'Join rematch' },
+  uk: { again: 'Ще раз', join: 'Приєднатися' }
 };
 
 /**
@@ -30,7 +31,7 @@ export default function RematchButton<T extends GameId>({
 }: {
   gameId: T;
   parentState: GameStateByType[T];
-  lang: 'ru' | 'en';
+  lang: 'ru' | 'en' | 'uk';
   className?: string;
 }) {
   const router = useRouter();

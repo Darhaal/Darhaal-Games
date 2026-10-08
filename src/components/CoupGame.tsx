@@ -222,7 +222,7 @@ export default function CoupGame({
             {/* THE TABLE — everyone else, and the targets when an action asks for one */}
             <div className={`${LABEL} flex items-center justify-between`}>
               <span>{t.table}</span>
-              {targetMode && <span className="text-[#9e1316] normal-case tracking-normal font-bold text-xs">{t.pickTarget}</span>}
+              {targetMode && <span className="text-accent normal-case tracking-normal font-bold text-xs">{t.pickTarget}</span>}
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {players.map((p, index) => {
@@ -235,28 +235,28 @@ export default function CoupGame({
                     key={p.id}
                     disabled={!targetable}
                     onClick={() => targetable && handleTarget(p.id)}
-                    className={`relative text-left bg-white rounded-2xl border p-3 transition-all ${
+                    className={`relative text-left bg-surface rounded-2xl border p-3 transition-all ${
                       targetable
-                        ? 'border-[#9e1316]/40 shadow-md hover:shadow-lg hover:-translate-y-0.5 cursor-pointer'
-                        : isCurr ? 'border-[#E6E1DC] shadow-sm bg-[#F8FAFC]' : 'border-[#E6E1DC] shadow-sm'
+                        ? 'border-accent/40 shadow-md hover:shadow-lg hover:-translate-y-0.5 cursor-pointer'
+                        : isCurr ? 'border-line shadow-sm bg-page' : 'border-line shadow-sm'
                     } ${p.isDead ? 'opacity-50' : ''}`}
                   >
-                    {isCurr && <span aria-hidden className="absolute left-1 top-3 bottom-3 w-1 rounded-full bg-[#1A1F26]" />}
+                    {isCurr && <span aria-hidden className="absolute left-1 top-3 bottom-3 w-1 rounded-full bg-ink" />}
                     <div className="flex items-center gap-3 pl-1.5">
                       <Image
                         src={p.avatarUrl || defaultAvatar(p.id)}
                         alt=""
                         width={36}
                         height={36}
-                        className={`w-9 h-9 rounded-full object-cover bg-[#F8FAFC] shrink-0 ${p.isDead ? 'grayscale' : ''}`}
+                        className={`w-9 h-9 rounded-full object-cover bg-page shrink-0 ${p.isDead ? 'grayscale' : ''}`}
                       />
                       <div className="min-w-0">
-                        <div className={`text-sm font-bold truncate ${p.isDead ? 'line-through text-[#B5B3AD]' : ''}`}>{p.name}</div>
+                        <div className={`text-sm font-bold truncate ${p.isDead ? 'line-through text-faded' : ''}`}>{p.name}</div>
                         <div className="flex items-center gap-2 mt-1">
                           {/* Influence: a card back for each still hidden, red once shown. */}
                           <span className="flex gap-1">
                             {p.cards.map((c, i) => (
-                              <span key={i} className={`w-2.5 h-3.5 rounded-[2px] ${c.revealed ? 'bg-red-200' : 'bg-[#1A1F26]'}`} />
+                              <span key={i} className={`w-2.5 h-3.5 rounded-[2px] ${c.revealed ? 'bg-red-200' : 'bg-ink'}`} />
                             ))}
                           </span>
                           <span className="flex items-center gap-1 text-2xs font-bold text-amber-600 tabular-nums">
@@ -273,7 +273,7 @@ export default function CoupGame({
             {/* ANSWER — challenge, block or let it pass */}
             {shouldShowReactionPanel && (
               <GameCard label={t.responseLabel} className="animate-in fade-in slide-in-from-bottom-2">
-                <div className="text-sm font-black text-[#1A1F26] mb-3">
+                <div className="text-sm font-black text-ink mb-3">
                   {isActor && phase === 'waiting_for_block_challenges'
                     ? t.actionBlocked
                     : (gameState.currentAction?.player === userId ? t.waitingForResponse : actionName(gameState.currentAction?.type))}
@@ -319,15 +319,15 @@ export default function CoupGame({
             <GameCard label={t.logs}>
               <div className="max-h-72 overflow-y-auto custom-scrollbar -mx-1 px-1 space-y-2">
                 {gameState.logs.length === 0 && (
-                  <div className="text-xs text-[#8A9099] font-medium">{t.noLogs}</div>
+                  <div className="text-xs text-muted font-medium">{t.noLogs}</div>
                 )}
                 {gameState.logs.map((log, i) => (
                   <div key={i} className="text-xs leading-snug">
                     <div className="flex justify-between gap-2">
-                      <span className="font-bold text-[#1A1F26] truncate">{logUser(log.user, lang)}</span>
-                      <span className="text-3xs text-[#B5B3AD] tabular-nums shrink-0">{log.time}</span>
+                      <span className="font-bold text-ink truncate">{logUser(log.user, lang)}</span>
+                      <span className="text-3xs text-faded tabular-nums shrink-0">{log.time}</span>
                     </div>
-                    <div className="text-[#8A9099]">{logText(log.action, lang)}</div>
+                    <div className="text-muted">{logText(log.action, lang)}</div>
                   </div>
                 ))}
               </div>
@@ -342,7 +342,7 @@ export default function CoupGame({
       {/* YOUR HAND — pinned to the bottom, the one place Coup's actions live */}
       {me && !isFinished && (
         <div className="fixed bottom-0 left-0 right-0 p-2 sm:p-4 z-40">
-          <div className="max-w-4xl mx-auto bg-white border border-[#E6E1DC] rounded-[24px] p-4 sm:p-5 shadow-2xl">
+          <div className="max-w-4xl mx-auto bg-surface border border-line rounded-[24px] p-4 sm:p-5 shadow-2xl">
             {(isLosing || isExchanging) && (
               <div className={`mb-3 text-xs font-black uppercase tracking-widest text-center ${isLosing ? 'text-red-600' : 'text-emerald-700'}`}>
                 {isLosing ? t.loseInfluence : t.exchange}
@@ -359,7 +359,7 @@ export default function CoupGame({
               <div className="flex-1 w-full max-w-lg">
                 <div className="flex items-center gap-2 mb-3 justify-center md:justify-start">
                   <span className={LABEL}>{t.coins}</span>
-                  <span className="flex items-center gap-1.5 bg-[#F8FAFC] px-2.5 py-1 rounded-lg border border-[#E6E1DC]">
+                  <span className="flex items-center gap-1.5 bg-page px-2.5 py-1 rounded-lg border border-line">
                     <Coins className="w-4 h-4 text-amber-600" />
                     <span className="text-lg font-black tabular-nums">{me.coins}</span>
                   </span>
@@ -367,8 +367,8 @@ export default function CoupGame({
 
                 {!me.isDead && isMyTurn && phase === 'choosing_action' && (
                   targetMode ? (
-                    <div className="text-center p-4 bg-[#F8FAFC] rounded-xl border border-dashed border-[#E6E1DC]">
-                      <div className="text-sm font-bold mb-3 text-[#9e1316]">{actionName(targetMode)} — {t.pickTarget}</div>
+                    <div className="text-center p-4 bg-page rounded-xl border border-dashed border-line">
+                      <div className="text-sm font-bold mb-3 text-accent">{actionName(targetMode)} — {t.pickTarget}</div>
                       <button onClick={() => setTargetMode(null)} className={`px-5 py-2 ${BUTTON_SECONDARY}`}>{t.cancel}</button>
                     </div>
                   ) : (
@@ -378,8 +378,8 @@ export default function CoupGame({
                       <ActionBtn label={actionsT.tax} onClick={() => handleAction('tax')} color="bg-purple-50 border-purple-200" icon={Crown} />
                       <ActionBtn label={actionsT.steal} onClick={() => handleAction('steal')} color="bg-blue-50 border-blue-200" icon={Swords} />
                       <ActionBtn label={actionsT.exchange} onClick={() => handleAction('exchange')} color="bg-green-50 border-green-200" icon={RefreshCw} />
-                      <ActionBtn label={actionsT.assassinate} onClick={() => handleAction('assassinate')} disabled={me.coins < 3} color="bg-gray-800 border-black text-white" icon={Skull} />
-                      <button onClick={() => handleAction('coup')} disabled={me.coins < 7} className={`col-span-3 sm:col-span-2 p-3 flex items-center justify-center gap-2 ${BUTTON_PRIMARY} !bg-[#9e1316] hover:!bg-[#1A1F26]`}>
+                      <ActionBtn label={actionsT.assassinate} onClick={() => handleAction('assassinate')} disabled={me.coins < 3} color="bg-gray-800 border-black text-on-ink" icon={Skull} />
+                      <button onClick={() => handleAction('coup')} disabled={me.coins < 7} className={`col-span-3 sm:col-span-2 p-3 flex items-center justify-center gap-2 ${BUTTON_PRIMARY} !bg-accent hover:!bg-ink`}>
                         <AlertTriangle className="w-4 h-4" /> {actionsT.coup}
                       </button>
                     </div>
@@ -396,13 +396,13 @@ export default function CoupGame({
         <div role="dialog" aria-modal="true" aria-label={t.exchange} className={DIALOG_OVERLAY}>
           <div className={`${DIALOG_PANEL} max-w-2xl flex flex-col items-center`}>
             <div className={`${LABEL} mb-1`}>{t.exchange}</div>
-            <p className="text-sm font-medium text-[#8A9099] mb-6 text-center">{t.exchangeHint}</p>
+            <p className="text-sm font-medium text-muted mb-6 text-center">{t.exchangeHint}</p>
             <div className="flex flex-wrap justify-center gap-2 sm:gap-4 mb-8">
               {gameState.exchangeBuffer.map((role, i) => (
-                <div key={i} className={`relative transition-all duration-300 ${selectedExchangeIndices.includes(i) ? 'ring-4 ring-[#1A1F26] rounded-2xl scale-105 z-10 shadow-xl' : 'opacity-80 hover:opacity-100'}`}>
+                <div key={i} className={`relative transition-all duration-300 ${selectedExchangeIndices.includes(i) ? 'ring-4 ring-ink rounded-2xl scale-105 z-10 shadow-xl' : 'opacity-80 hover:opacity-100'}`}>
                   <RoleCard role={role} revealed={false} isMe={true} lang={lang} onClick={() => handleExchangeToggle(i)} />
                   {selectedExchangeIndices.includes(i) && (
-                    <div className="absolute -top-2 -right-2 bg-[#1A1F26] text-white rounded-full p-1 shadow-lg">
+                    <div className="absolute -top-2 -right-2 bg-ink text-on-ink rounded-full p-1 shadow-lg">
                       <CheckCircle className="w-4 h-4" />
                     </div>
                   )}
