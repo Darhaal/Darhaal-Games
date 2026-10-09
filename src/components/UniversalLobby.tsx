@@ -117,6 +117,7 @@ export default function UniversalLobby({
       linkCopied: 'Ссылка скопирована',
       minPlayers: `Нужно ${minPlayers}+ игроков`,
       host: 'Хост',
+      player: 'Игрок',
       you: 'Вы',
       playersTitle: 'Игроки',
       joined: 'присоединился',
@@ -142,6 +143,7 @@ export default function UniversalLobby({
       linkCopied: 'Link copied',
       minPlayers: `Need ${minPlayers}+ players`,
       host: 'Host',
+      player: 'Player',
       you: 'You',
       playersTitle: 'Players',
       joined: 'joined',
@@ -167,6 +169,7 @@ export default function UniversalLobby({
       linkCopied: 'Посилання скопійовано',
       minPlayers: `Потрібно ${minPlayers}+ гравців`,
       host: 'Хост',
+      player: 'Гравець',
       you: 'Ви',
       playersTitle: 'Гравці',
       joined: 'приєднався',
@@ -579,7 +582,7 @@ export default function UniversalLobby({
                           <div className="font-black text-ink text-sm truncate">{p.name}</div>
                           <div className="flex items-center gap-2">
                             <div className="text-2xs font-bold text-muted uppercase tracking-wider">
-                                {isMe ? <span className="text-accent">{t.you}</span> : (p.isHost ? t.host : 'Player')}
+                                {isMe ? <span className="text-accent">{t.you}</span> : (p.isHost ? t.host : t.player)}
                             </div>
                             {!isOnline && (
                                 <span className="text-3xs font-bold text-red-500 uppercase tracking-wider flex items-center gap-1 animate-pulse">

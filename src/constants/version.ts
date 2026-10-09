@@ -1,4 +1,4 @@
-export const APP_VERSION = '2.15.1';
+export const APP_VERSION = '2.15.2';
 
 export type VersionType = 'major' | 'minor' | 'patch' | 'init';
 
@@ -61,6 +61,37 @@ export function formatReleaseRange(from: string, to: string, lang: 'ru' | 'en' |
  */
 export const VERSION_HISTORY: VersionLog[] = [
   /* ===================== 2.15.x ===================== */
+
+  {
+    ver: '2.15.2',
+    date: '2026-10-09',
+    type: 'patch',
+    desc: {
+      ru: 'Wikiler по-украински: с украинским интерфейсом статьи берутся с украинской Википедии, а не с английской. Формы слов узнаются по-украински, слово с апострофом считается одним словом, каким бы апострофом его ни набрали, и у всех 34 тем есть украинские статьи. Окна и уведомления теперь плавно появляются; если в системе включено «уменьшить движение» — без анимации.',
+      en: 'Wikiler in Ukrainian: a Ukrainian interface reads articles from Ukrainian Wikipedia instead of English. Word forms are recognised the Ukrainian way, a word with an apostrophe is one word whichever apostrophe you type, and all 34 topics have Ukrainian articles. Dialogs and toasts now fade in; with reduced motion set in the system, they simply appear.',
+      uk: 'Wikiler українською: з українським інтерфейсом статті беруться з української Вікіпедії, а не з англійської. Форми слів розпізнаються по-українськи, слово з апострофом вважається одним словом, яким би апострофом його не набрали, і всі 34 теми мають українські статті. Вікна й сповіщення тепер плавно з’являються; якщо в системі ввімкнено «зменшити рух» — без анімації.'
+    },
+    fixes: {
+      ru: [
+        'Случайная статья в Wikiler пропускала большую часть Википедии: просмотры приходили лишь для части статей, а остальные считались непрочитанными.',
+        'Долгий матч Wikiler на небольшой теме мог зависнуть между раундами, когда кончались статьи выбранной сложности, — теперь он продолжается остальными статьями темы.',
+        'В лобби под игроками было написано «Player» по-английски на любом языке.',
+        'Описание установленного приложения было на русском для всех — теперь оно на английском, как сайт.'
+      ],
+      en: [
+        'Wikiler\'s random article skipped most of Wikipedia: views came back for only part of the articles, and the rest read as unread.',
+        'A long Wikiler match on a small topic could stall between rounds once its difficulty ran out of articles — it now goes on with the rest of the topic.',
+        'The lobby said "Player" in English under the players, whatever the language.',
+        'The installed app\'s description was Russian for everyone — it is English now, like the site.'
+      ],
+      uk: [
+        'Випадкова стаття у Wikiler пропускала більшу частину Вікіпедії: перегляди надходили лише для частини статей, а решта вважалася непрочитаною.',
+        'Довгий матч Wikiler на невеликій темі міг зависнути між раундами, коли закінчувалися статті обраної складності, — тепер він триває рештою статей теми.',
+        'У лобі під гравцями було написано «Player» англійською будь-якою мовою.',
+        'Опис встановленого застосунку був російською для всіх — тепер він англійською, як сайт.'
+      ]
+    }
+  },
 
   {
     ver: '2.15.1',

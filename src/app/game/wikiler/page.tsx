@@ -61,8 +61,8 @@ function WikilerContent() {
   const [isLeaving, setIsLeaving] = useState(false);
   const [starting, setStarting] = useState(false);
   const { lang } = useLang();
-  // Wikiler has Russian and English Wikipedia; a Ukrainian interface reads English
-  const wikiLang = lang === 'ru' ? 'ru' : 'en';
+  // Every interface language has its Wikipedia: the reader's article is in it
+  const wikiLang = lang;
 
   useEffect(() => {
     const checkUser = async () => {

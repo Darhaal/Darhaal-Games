@@ -61,11 +61,13 @@ export function byDifficulty(entries: readonly PoolEntry[], lang: WikilerLang, d
 /**
  * Views in the last 30 days a random article needs for a difficulty, from–to.
  * A random article is read far less than a vital one, so these are set apart
- * from the pool's thirds; Russian Wikipedia is read about a fifth as much.
+ * from the pool's thirds; Russian Wikipedia is read about a fifth as much per
+ * article, Ukrainian about a seventh as much as Russian.
  */
 export const RANDOM_BANDS: Record<WikilerLang, Record<WikilerDifficulty, readonly [number, number]>> = {
   en: { any: [0, Infinity], easy: [20_000, Infinity], medium: [3_000, 20_000], hard: [0, 3_000] },
-  ru: { any: [0, Infinity], easy: [5_000, Infinity], medium: [800, 5_000], hard: [0, 800] }
+  ru: { any: [0, Infinity], easy: [5_000, Infinity], medium: [800, 5_000], hard: [0, 800] },
+  uk: { any: [0, Infinity], easy: [700, Infinity], medium: [120, 700], hard: [0, 120] }
 };
 
 async function poolEntries(topic: Exclude<WikilerTopic, 'random'>): Promise<PoolEntry[]> {
@@ -112,7 +114,12 @@ export async function pickArticle(
   also: readonly WikilerLang[] = [],
   difficulty: WikilerDifficulty = 'any'
 ): Promise<WikilerArticleRef | null> {
-  if (topic !== 'random') return fromPool(lang, topic, played, also, difficulty);
+  if (topic !== 'random') {
+    // A third of a small topic can run out in a long match (20 rounds, 13 hard
+    // Ukrainian sports figures): the rest of the topic beats a round that never comes.
+    return (await fromPool(lang, topic, played, also, difficulty))
+      ?? (difficulty === 'any' ? null : fromPool(lang, topic, played, also, 'any'));
+  }
 
   try {
     const ref = await pickRandomArticle(lang, played, also, RANDOM_BANDS[lang][difficulty]);

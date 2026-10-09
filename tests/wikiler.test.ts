@@ -10,7 +10,7 @@ import {
  * in the test names).
  */
 
-const words = (text: string, lang: 'ru' | 'en') =>
+const words = (text: string, lang: 'ru' | 'en' | 'uk') =>
   tokenize(text, lang).filter((t): t is WordToken => t.kind === 'word');
 
 describe('words and their groups (6)', () => {
@@ -46,6 +46,38 @@ describe('words and their groups (6)', () => {
   it('counts letters for the hint on a hidden word', () => {
     expect(letterCount('Newton')).toBe(6);
     expect(letterCount('Я́блоко')).toBe(6);
+  });
+});
+
+describe('Ukrainian articles', () => {
+  it('grammatical forms of a word share a group', () => {
+    const city = wordKey('місто', 'uk');
+    expect(['міста', 'містом', 'Містами'].map((w) => wordKey(w, 'uk'))).toEqual([city, city, city]);
+  });
+
+  it('a word with an apostrophe is one word, however the apostrophe is written', () => {
+    expect(words("м'яч", 'uk').map((w) => w.text)).toEqual(["м'яч"]);
+    const ball = wordKey("м'яч", 'uk');
+    expect(['м’яча', 'мʼячем', "М'яч"].map((w) => wordKey(w, 'uk'))).toEqual([ball, ball, ball]);
+  });
+
+  it('an apostrophe still parts words in Russian and English', () => {
+    expect(words("Newton's", 'en').map((w) => w.text)).toEqual(['Newton', 's']);
+  });
+
+  it('function words are shown from the start, never guessed', () => {
+    for (const w of ['і', 'та', 'що', 'який', 'її', 'вже', 'був']) expect(wordKey(w, 'uk'), w).toBeNull();
+  });
+
+  it('ї, є and ґ stay letters of their own', () => {
+    expect(wordKey('їжак', 'uk')).not.toBe(wordKey('іжак', 'uk'));
+    expect(wordKey('ґанок', 'uk')).not.toBe(wordKey('ганок', 'uk'));
+  });
+
+  it('a typed title matches with any apostrophe, in any word order', () => {
+    expect(titleGuessMatches("Сім'я", 'Сімʼя', 'uk')).toBe(true);
+    expect(titleGuessMatches('Ньютон Ісаак', 'Ісаак Ньютон', 'uk')).toBe(true);
+    expect(titleGuessMatches('Ньютон', 'Ісаак Ньютон', 'uk')).toBe(false);
   });
 });
 

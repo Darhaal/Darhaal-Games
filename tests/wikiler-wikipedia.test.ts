@@ -3,6 +3,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
   extractParagraphs, fetchArticle, otherVersions, pickRandomArticle, resolveTitle, WIKI_HEADERS, WikipediaError
 } from '@/lib/wikiler/wikipedia';
+import { pickArticle } from '@/lib/wikiler/pick';
 import { buildArticle, initialReveal, wordKey } from '@/lib/gameLogic/wikiler';
 
 /**
@@ -173,26 +174,51 @@ describe('the network', () => {
     const long = Array.from({ length: 520 }, (_, i) => `word${String.fromCharCode(97 + (i % 26))}${String.fromCharCode(97 + ((i / 26) % 26))}`).join(' ');
     const playable = `<html about="//en.wikipedia.org/wiki/Special:Redirect/revision/42"><head><title>Long One</title></head><body><p>${long}</p></body></html>`;
     const batch = (pages: object[]) => answer({ query: { pages } });
+    type Page = { title: string; length: number; views: number };
+    /** The random batch, then the views of the titles asked for — the two requests a pick makes. */
+    const wiki = (pages: Page[]) => (url: string) => {
+      if (url.includes('generator=random')) return batch(pages.map(({ title, length }) => ({ title, length })));
+      if (url.includes('prop=pageviews')) {
+        const asked = new URLSearchParams(url.split('?')[1]).get('titles')!.split('|');
+        return batch(pages.filter((p) => asked.includes(p.title)).map((p) => ({ title: p.title, pageviews: { a: p.views, b: null } })));
+      }
+      return null;
+    };
 
     it('skips the short and the unread, and returns the first playable one', async () => {
+      const random = wiki([
+        { title: 'Stub', length: 900, views: 5000 },
+        { title: 'Nobody Reads', length: 40_000, views: 10 },
+        { title: 'Long One', length: 30_000, views: 400 }
+      ]);
+      const fetchMock = vi.fn(async (url: string) => random(url) ?? answer(playable));
+      vi.stubGlobal('fetch', fetchMock);
+
+      expect(await pickRandomArticle('en')).toMatchObject({ title: 'Long One', revision: 42 });
+      expect(fetchMock.mock.calls.filter(([url]) => String(url).includes('page/html'))).toHaveLength(1);
+      // Views are asked for the long pages only.
+      const viewsUrl = String(fetchMock.mock.calls.find(([url]) => String(url).includes('prop=pageviews'))![0]);
+      expect(new URLSearchParams(viewsUrl.split('?')[1]).get('titles')).toBe('Nobody Reads|Long One');
+    });
+
+    it('follows the continuation for views the first answer left out', async () => {
+      // What Wikipedia does: views for part of the titles, a continue for the rest.
       const fetchMock = vi.fn(async (url: string) => {
-        if (url.includes('generator=random')) {
-          return batch([
-            { title: 'Stub', length: 900, pageviews: { a: 5000 } },
-            { title: 'Nobody Reads', length: 40_000, pageviews: { a: 10, b: null } },
-            { title: 'Long One', length: 30_000, pageviews: { a: 400 } }
-          ]);
+        if (url.includes('generator=random')) return batch([{ title: 'Long One', length: 30_000 }]);
+        if (url.includes('prop=pageviews')) {
+          return url.includes('pvipcontinue')
+            ? batch([{ title: 'Long One', pageviews: { a: 400 } }])
+            : answer({ query: { pages: [{ title: 'Long One' }] }, continue: { pvipcontinue: 'x', continue: '||' } });
         }
         return answer(playable);
       });
       vi.stubGlobal('fetch', fetchMock);
 
-      expect(await pickRandomArticle('en')).toMatchObject({ title: 'Long One', revision: 42 });
-      expect(fetchMock.mock.calls.filter(([url]) => String(url).includes('page/html'))).toHaveLength(1);
+      expect(await pickRandomArticle('en')).toMatchObject({ title: 'Long One' });
     });
 
     it('gives up after three batches so the pool can take over', async () => {
-      const fetchMock = vi.fn(async () => batch([{ title: 'Stub', length: 900, pageviews: { a: 5 } }]));
+      const fetchMock = vi.fn(async () => batch([{ title: 'Stub', length: 900 }]));
       vi.stubGlobal('fetch', fetchMock);
 
       expect(await pickRandomArticle('en')).toBeNull();
@@ -200,24 +226,21 @@ describe('the network', () => {
     });
 
     it('never repeats an article already played in the match', async () => {
-      vi.stubGlobal('fetch', vi.fn(async (url: string) =>
-        url.includes('generator=random')
-          ? batch([{ title: 'Long One', length: 30_000, pageviews: { a: 400 } }])
-          : answer(playable)
-      ));
+      const random = wiki([{ title: 'Long One', length: 30_000, views: 400 }]);
+      vi.stubGlobal('fetch', vi.fn(async (url: string) => random(url) ?? answer(playable)));
 
       expect(await pickRandomArticle('en', new Set(['Long One']))).toBeNull();
     });
 
     it('when players read Russian too, takes one that is playable in Russian as well', async () => {
       const russian = playable.replace('en.wikipedia.org', 'ru.wikipedia.org').replace('revision/42', 'revision/77').replace('Long One', 'Длинная');
+      const random = wiki([
+        { title: 'No Russian', length: 50_000, views: 900 },
+        { title: 'Long One', length: 30_000, views: 400 }
+      ]);
       const fetchMock = vi.fn(async (url: string) => {
-        if (url.includes('generator=random')) {
-          return batch([
-            { title: 'No Russian', length: 50_000, pageviews: { a: 900 } },
-            { title: 'Long One', length: 30_000, pageviews: { a: 400 } }
-          ]);
-        }
+        const answered = random(url);
+        if (answered) return answered;
         if (url.includes('prop=langlinks')) {
           return answer({ query: { pages: [{ langlinks: url.includes('Long%20One') ? [{ lang: 'de', title: 'Lang' }, { lang: 'ru', title: 'Длинная' }] : [] }] } });
         }
@@ -257,6 +280,21 @@ describe('the network', () => {
 
       expect(await otherVersions('ru', 'Любая', [])).toEqual({});
       expect(fetchMock).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('a topic', () => {
+    const long = Array.from({ length: 520 }, (_, i) => `word${String.fromCharCode(97 + (i % 26))}${String.fromCharCode(97 + ((i / 26) % 26))}`).join(' ');
+    const html = (title: string) => `<html about="//en.wikipedia.org/wiki/Special:Redirect/revision/1"><head><title>${title}</title></head><body><p>${long}</p></body></html>`;
+    // Six articles by how much they are read: the hard third is E and F.
+    const pool = { langs: ['en'], articles: [['A', 600], ['B', 500], ['C', 400], ['D', 300], ['E', 200], ['F', 100]] };
+
+    it('draws from the rest of the topic once a difficulty runs out', async () => {
+      vi.stubGlobal('fetch', vi.fn(async (url: string) =>
+        url.startsWith('/wikiler/') ? answer(pool) : answer(html(decodeURIComponent(/page\/html\/([^/?]+)/.exec(url)![1])))));
+
+      expect((await pickArticle('en', 'history', new Set(), [], 'hard'))?.title).toMatch(/^[EF]$/);
+      expect((await pickArticle('en', 'history', new Set(['E', 'F']), [], 'hard'))?.title).toMatch(/^[A-D]$/);
     });
   });
 });

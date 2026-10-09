@@ -1550,7 +1550,7 @@ export const GAMES_CONTENT: GameContent[] = [
           'После всех раундов сравните итоговые очки с соперниками.'
         ],
         features: [
-          'Настоящие статьи Википедии: каждый читает свою на русском или английском',
+          'Настоящие статьи Википедии: каждый читает свою на украинском, русском или английском',
           'Случайная статья или одна из 34 тем: люди, история, география, наука… — легко, средне или сложно',
           'Грамматические формы слова открываются вместе',
           'Соло и мультиплеер до двадцати игроков',
@@ -1571,7 +1571,7 @@ export const GAMES_CONTENT: GameContent[] = [
         faq: [
           {
             q: 'Откуда берутся статьи?',
-            a: 'Прямо из Википедии: браузер загружает их с ru.wikipedia.org или en.wikipedia.org — каждому на языке его интерфейса, или всем на языке хоста, если он так выбрал. Тексты статей написаны авторами Википедии и распространяются по лицензии CC BY-SA 4.0 — после каждого раунда видна ссылка на статью и список её авторов.'
+            a: 'Прямо из Википедии: браузер загружает их с uk.wikipedia.org, ru.wikipedia.org или en.wikipedia.org — каждому на языке его интерфейса, или всем на языке хоста, если он так выбрал. Тексты статей написаны авторами Википедии и распространяются по лицензии CC BY-SA 4.0 — после каждого раунда видна ссылка на статью и список её авторов.'
           },
           {
             q: 'Как считаются очки?',
@@ -1606,7 +1606,7 @@ export const GAMES_CONTENT: GameContent[] = [
           'After the final round, compare your total with everyone else.'
         ],
         features: [
-          'Real Wikipedia articles: each player reads theirs in English or Russian',
+          'Real Wikipedia articles: each player reads theirs in English, Ukrainian or Russian',
           'A random article or one of 34 topics: people, history, geography, science… — easy, medium or hard',
           'Grammatical forms of a word open together',
           'Solo and multiplayer for up to twenty',
@@ -1627,7 +1627,7 @@ export const GAMES_CONTENT: GameContent[] = [
         faq: [
           {
             q: 'Where do the articles come from?',
-            a: 'Straight from Wikipedia: your browser loads them from en.wikipedia.org or ru.wikipedia.org — each player in their interface language, or everyone in the host’s if the host chose so. The articles are written by Wikipedia’s authors and available under CC BY-SA 4.0 — after each round you get a link to the article and its list of authors.'
+            a: 'Straight from Wikipedia: your browser loads them from en.wikipedia.org, uk.wikipedia.org or ru.wikipedia.org — each player in their interface language, or everyone in the host’s if the host chose so. The articles are written by Wikipedia’s authors and available under CC BY-SA 4.0 — after each round you get a link to the article and its list of authors.'
           },
           {
             q: 'How is the score calculated?',
@@ -1662,7 +1662,7 @@ export const GAMES_CONTENT: GameContent[] = [
           'Після всіх раундів порівняйте підсумкові очки із суперниками.'
         ],
         features: [
-          'Справжні статті Вікіпедії: кожен читає свою англійською або російською',
+          'Справжні статті Вікіпедії: кожен читає свою українською, російською або англійською',
           'Випадкова стаття або одна з 34 тем: люди, історія, географія, наука… — легко, середньо чи складно',
           'Граматичні форми слова відкриваються разом',
           'Соло й мультиплеєр до двадцяти гравців',
@@ -1683,7 +1683,7 @@ export const GAMES_CONTENT: GameContent[] = [
         faq: [
           {
             q: 'Звідки беруться статті?',
-            a: 'Просто з Вікіпедії: браузер завантажує їх з ru.wikipedia.org або en.wikipedia.org — кожному мовою його інтерфейсу (з українським інтерфейсом — англійською), або всім мовою хоста, якщо він так обрав. Тексти статей написали автори Вікіпедії, і вони поширюються за ліцензією CC BY-SA 4.0 — після кожного раунду видно посилання на статтю й список її авторів.'
+            a: 'Просто з Вікіпедії: браузер завантажує їх з uk.wikipedia.org, ru.wikipedia.org або en.wikipedia.org — кожному мовою його інтерфейсу, або всім мовою хоста, якщо він так обрав. Тексти статей написали автори Вікіпедії, і вони поширюються за ліцензією CC BY-SA 4.0 — після кожного раунду видно посилання на статтю й список її авторів.'
           },
           {
             q: 'Як рахуються очки?',

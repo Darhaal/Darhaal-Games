@@ -13,8 +13,15 @@ import { byDifficulty, readPool, type PoolEntry } from '@/lib/wikiler/pick';
 
 /** Fewer titles than this and a ten-round match would feel repetitive. */
 const MIN_TITLES = 40;
-/** And a difficulty — a third of a topic — needs at least this many. */
-const MIN_PER_DIFFICULTY = 15;
+/**
+ * And a difficulty — a third of a topic — needs at least this many. Ukrainian
+ * Wikipedia lacks a third of some narrow sections (43 of 63 sports figures),
+ * so it is held to the smallest third MIN_TITLES itself allows; a match that
+ * outruns its third goes on with the rest of the topic.
+ */
+const MIN_PER_DIFFICULTY: Record<WikilerLang, number> = {
+  en: 15, ru: 15, uk: MIN_TITLES - 2 * Math.ceil(MIN_TITLES / 3)
+};
 
 const pool = (topic: string): PoolEntry[] =>
   readPool(JSON.parse(fs.readFileSync(path.join('public', 'wikiler', `${topic}.json`), 'utf8')));
@@ -40,8 +47,8 @@ describe('the topic pool (5)', () => {
   });
 
   // A room where each reads their own language draws from the rows that
-  // have both — there must be enough of them.
-  it('every topic has enough articles in both languages at once', () => {
+  // have all of them — there must be enough even with every language at once.
+  it('every topic has enough articles in every language at once', () => {
     for (const topic of POOL_TOPICS) {
       const both = pool(topic).filter((e) => WIKILER_LANGS.every((l) => e.titles[l]));
       expect(both.length, topic).toBeGreaterThanOrEqual(MIN_TITLES);
@@ -54,7 +61,7 @@ describe('the topic pool (5)', () => {
       const read = entries.filter((e) => e.titles[lang]);
       expect(read.every((e) => typeof e.views[lang] === 'number'), `${lang}/${topic} views`).toBe(true);
       for (const level of ['easy', 'medium', 'hard'] as const) {
-        expect(byDifficulty(entries, lang, level).length, `${lang}/${topic}/${level}`).toBeGreaterThanOrEqual(MIN_PER_DIFFICULTY);
+        expect(byDifficulty(entries, lang, level).length, `${lang}/${topic}/${level}`).toBeGreaterThanOrEqual(MIN_PER_DIFFICULTY[lang]);
       }
     }
   });

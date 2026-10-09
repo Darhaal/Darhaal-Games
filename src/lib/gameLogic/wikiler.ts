@@ -1,5 +1,6 @@
 import { stemmer as stemEnglish } from '@orama/stemmers/english';
 import { stemmer as stemRussian } from '@orama/stemmers/russian';
+import { stemmer as stemUkrainian } from '@orama/stemmers/ukrainian';
 import { STOP_WORDS } from '@/data/wikiler/stopwords';
 import type { WikilerArticleLang, WikilerArticleRef, WikilerVersion } from '@/types/wikiler';
 
@@ -12,7 +13,7 @@ import type { WikilerArticleLang, WikilerArticleRef, WikilerVersion } from '@/ty
 // ------------------------------------------------------------ languages --
 
 /** Languages whose articles can be played. Adding one: stop words + a stemmer here. */
-export const WIKILER_LANGS = ['ru', 'en'] as const;
+export const WIKILER_LANGS = ['ru', 'en', 'uk'] as const;
 export type WikilerLang = (typeof WIKILER_LANGS)[number];
 
 interface Language {
@@ -25,7 +26,9 @@ interface Language {
 const LANGUAGES: Record<WikilerLang, Language> = {
   en: { stem: stemEnglish, foldDiacritics: true, locale: 'en' },
   // Diacritics carry letters here — й is not и — so only stress marks go.
-  ru: { stem: stemRussian, foldDiacritics: false, locale: 'ru' }
+  ru: { stem: stemRussian, foldDiacritics: false, locale: 'ru' },
+  // The same for ї, й, ґ.
+  uk: { stem: stemUkrainian, foldDiacritics: false, locale: 'uk' }
 };
 
 // ---------------------------------------------------------------- words --
@@ -35,18 +38,28 @@ const STRESS = /[̀́]/g;
 const MARKS = /\p{M}/gu;
 /** A word is a run of letters; hyphens, apostrophes and digits separate words. */
 const WORD = /[\p{L}\p{M}]+/gu;
+/**
+ * In Ukrainian the apostrophe is inside the word — «м'яч», «сім'я» — and is
+ * written three ways: ', ’ and ʼ. There it joins the letters instead of
+ * parting them.
+ */
+const UK_WORD = /[\p{L}\p{M}]+(?:['’ʼ][\p{L}\p{M}]+)*/gu;
+const wordPattern = (lang: WikilerLang) => (lang === 'uk' ? UK_WORD : WORD);
 
-/** Case, stress marks and ё folded — the form a word is compared in. */
+/** Case, stress marks and ё folded, the Ukrainian apostrophe to one form — how a word is compared. */
 function clean(word: string, lang: WikilerLang): string {
   const lower = word.normalize('NFD').replace(STRESS, '').normalize('NFC').toLocaleLowerCase(LANGUAGES[lang].locale);
-  return lang === 'ru' ? lower.replace(/ё/g, 'е') : lower;
+  if (lang === 'ru') return lower.replace(/ё/g, 'е');
+  if (lang === 'uk') return lower.replace(/[’ʼ]/g, "'");
+  return lower;
 }
 
 const fold = (s: string) => s.normalize('NFD').replace(MARKS, '').normalize('NFC');
 
 const STOPS: Record<WikilerLang, Set<string>> = {
   en: new Set([...STOP_WORDS.en].map((w) => clean(w, 'en'))),
-  ru: new Set([...STOP_WORDS.ru].map((w) => clean(w, 'ru')))
+  ru: new Set([...STOP_WORDS.ru].map((w) => clean(w, 'ru'))),
+  uk: new Set([...STOP_WORDS.uk].map((w) => clean(w, 'uk')))
 };
 
 /**
@@ -90,7 +103,7 @@ export type Token = WordToken | SepToken;
 export function tokenize(text: string, lang: WikilerLang): Token[] {
   const tokens: Token[] = [];
   let last = 0;
-  for (const match of text.matchAll(WORD)) {
+  for (const match of text.matchAll(wordPattern(lang))) {
     const at = match.index ?? 0;
     if (at > last) tokens.push({ kind: 'sep', text: text.slice(last, at) });
     tokens.push({ kind: 'word', text: match[0], key: wordKey(match[0], lang) });
@@ -246,7 +259,7 @@ export function titleSolved(article: Article, revealed: ReadonlySet<string>): bo
 
 /** A title reduced to its words, compared exactly — no stemming for a title guess. */
 function titleWords(text: string, lang: WikilerLang): string[] {
-  return (text.match(WORD) ?? []).map((w) => fold(clean(w, lang)));
+  return (text.match(wordPattern(lang)) ?? []).map((w) => fold(clean(w, lang)));
 }
 
 const same = (a: readonly string[], b: readonly string[]) => a.length === b.length && a.every((x, i) => x === b[i]);

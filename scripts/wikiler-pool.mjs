@@ -15,7 +15,8 @@
  * the last 30 days, which set the difficulty (the most read third of a topic
  * is easy, the least read third hard):
  *
- *   { "langs": ["en", "ru"], "articles": [["Isaac Newton", "Ньютон, Исаак", 312004, 61877], …] }
+ *   { "langs": ["en", "ru", "uk"],
+ *     "articles": [["Isaac Newton", "Ньютон, Исаак", "Ісаак Ньютон", 312004, 61877, 6120], …] }
  *
  * Only the host of a room fetches one, when a round starts.
  *
@@ -26,7 +27,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const UA = 'DarhaalGames-Wikiler/1.0 (https://games.okhten.com; topic pool builder)';
-const LANGS = ['en', 'ru'];
+/** English first: the vital-articles lists are English Wikipedia's, the rest are found through its links. */
+const LANGS = ['en', 'ru', 'uk'];
 /** Byte length an article needs to have enough prose — the same bar as the random pick. */
 const MIN_BYTES = 12_000;
 const PAUSE_MS = 400;
@@ -53,7 +55,15 @@ async function api(lang, params) {
   for (let attempt = 0; attempt < 6; attempt++) {
     await sleep(PAUSE_MS);
     requests++;
-    const res = await fetch(url, { headers: { 'User-Agent': UA } });
+    // A run takes most of an hour: a dropped connection or a DNS blip is waited
+    // out like a 5xx instead of throwing the whole run away.
+    const res = await fetch(url, { headers: { 'User-Agent': UA } }).catch((err) => err);
+    if (res instanceof Error) {
+      const wait = 5000 * 2 ** attempt;
+      console.log(`  ${res.cause?.code ?? res.message} — waiting ${wait / 1000}s`);
+      await sleep(wait);
+      continue;
+    }
     const retryAfter = Number(res.headers.get('retry-after')) || 0;
     if (res.status === 429 || res.status >= 500) {
       const wait = Math.max(retryAfter * 1000, 5000 * 2 ** attempt);
@@ -84,14 +94,12 @@ async function linkedArticles(page) {
   do {
     const body = await api('en', {
       action: 'query', generator: 'links', titles: `${VITAL}/${page}`, gplnamespace: '0', gpllimit: 'max',
-      prop: 'info|langlinks', lllimit: 'max', lllang: 'ru', redirects: '1', ...cont
+      prop: 'info', redirects: '1', ...cont
     });
     for (const r of body.query?.redirects ?? []) redirects.set(r.from, r.to);
     for (const p of body.query?.pages ?? []) {
       if (p.missing) continue;
-      const entry = found.get(p.title) ?? { en: p.title, enBytes: p.length ?? 0, ru: null };
-      const ru = p.langlinks?.find((l) => l.lang === 'ru');
-      if (ru) entry.ru = ru.title;
+      const entry = found.get(p.title) ?? { en: p.title, enBytes: p.length ?? 0 };
       if (p.length) entry.enBytes = p.length;
       found.set(p.title, entry);
     }
@@ -109,6 +117,25 @@ async function sectionTitles(page, heading) {
   if (!section) throw new Error(`no section "${heading}" on ${page}`);
   const body = await api('en', { action: 'parse', page: `${VITAL}/${page}`, section: section.index, prop: 'links' });
   return body.parse.links.filter((l) => l.ns === 0).map((l) => l.title);
+}
+
+/** Each English title's article in `lang`, through the interlanguage links, fifty at a time. */
+async function langlinksFor(lang, titles) {
+  const out = new Map();
+  for (let i = 0; i < titles.length; i += 50) {
+    const batch = titles.slice(i, i + 50);
+    let cont = {};
+    do {
+      const body = await api('en', { action: 'query', titles: batch.join('|'), prop: 'langlinks', lllang: lang, lllimit: 'max', ...cont });
+      for (const p of body.query?.pages ?? []) {
+        const link = p.langlinks?.find((l) => l.lang === lang);
+        if (link) out.set(p.title, link.title);
+      }
+      cont = body.continue ?? null;
+    } while (cont);
+    if ((i / 50) % 40 === 0) console.log(`  ${lang} links: ${Math.min(i + 50, titles.length)}/${titles.length}`);
+  }
+  return out;
 }
 
 /** Byte lengths of titles on one wiki, fifty at a time, redirects followed. */
@@ -205,17 +232,32 @@ for (const source of sources) {
   bySource.set(source, picked);
 }
 
-const allRu = [...new Set([...byPage.values()].flatMap((p) => [...p.entries.values()]).map((e) => e.ru).filter(Boolean))];
-console.log(`ru lengths for ${allRu.length} titles`);
-const ruLengths = await lengths('ru', allRu);
+// Every other language: the English article's link there, then that article's length.
+const allEntries = [...new Set([...byPage.values()].flatMap((p) => [...p.entries.values()]))];
+const allEn = [...new Set(allEntries.map((e) => e.en))];
+const linked = {};
+const lengthsIn = {};
+for (const lang of LANGS.slice(1)) {
+  console.log(`${lang}: links for ${allEn.length} titles`);
+  linked[lang] = await langlinksFor(lang, allEn);
+  const titles = [...new Set(linked[lang].values())];
+  console.log(`${lang}: lengths for ${titles.length} titles`);
+  lengthsIn[lang] = await lengths(lang, titles);
+}
 
 // Views of every title that makes it into a pool, per language.
-const enTitles = [...new Set([...byPage.values()].flatMap((p) => [...p.entries.values()]).filter((e) => e.enBytes >= MIN_BYTES).map((e) => e.en))];
-const ruTitles = [...new Set([...ruLengths.values()].filter((x) => x.bytes >= MIN_BYTES).map((x) => x.title))];
-console.log(`views for ${enTitles.length} en and ${ruTitles.length} ru titles`);
-const views = { en: await monthlyViews('en', enTitles), ru: await monthlyViews('ru', ruTitles) };
-await fillMissingViews('en', enTitles, views.en);
-await fillMissingViews('ru', ruTitles, views.ru);
+const titlesIn = {
+  en: [...new Set(allEntries.filter((e) => e.enBytes >= MIN_BYTES).map((e) => e.en))]
+};
+for (const lang of LANGS.slice(1)) {
+  titlesIn[lang] = [...new Set([...lengthsIn[lang].values()].filter((x) => x.bytes >= MIN_BYTES).map((x) => x.title))];
+}
+const views = {};
+for (const lang of LANGS) {
+  console.log(`${lang}: views for ${titlesIn[lang].length} titles`);
+  views[lang] = await monthlyViews(lang, titlesIn[lang]);
+  await fillMissingViews(lang, titlesIn[lang], views[lang]);
+}
 
 const dir = path.join('public', 'wikiler');
 fs.rmSync(dir, { recursive: true, force: true });
@@ -225,17 +267,20 @@ for (const [topic, topicSources] of Object.entries(TOPICS)) {
   for (const source of topicSources) for (const e of bySource.get(source)) entries.set(e.en, e);
   const all = [...entries.values()];
   const rows = [];
-  const seenRu = new Set();
+  // Two English articles can link the same article elsewhere; it is drawn once.
+  const seen = Object.fromEntries(LANGS.map((l) => [l, new Set()]));
   for (const e of all.sort((a, b) => a.en.localeCompare(b.en, 'en'))) {
-    const en = e.enBytes >= MIN_BYTES ? e.en : null;
-    const ruPage = e.ru && ruLengths.get(e.ru);
-    // Two English articles can link the same Russian one; it is drawn once.
-    let ru = ruPage && ruPage.bytes >= MIN_BYTES && !seenRu.has(ruPage.title) ? ruPage.title : null;
-    if (ru) seenRu.add(ru);
-    if (en || ru) rows.push([en, ru, en ? views.en.get(en) ?? 0 : null, ru ? views.ru.get(ru) ?? 0 : null]);
+    const titles = LANGS.map((lang) => {
+      if (lang === 'en') return e.enBytes >= MIN_BYTES ? e.en : null;
+      const page = lengthsIn[lang].get(linked[lang].get(e.en));
+      if (!page || page.bytes < MIN_BYTES || seen[lang].has(page.title)) return null;
+      seen[lang].add(page.title);
+      return page.title;
+    });
+    if (titles.some(Boolean)) rows.push([...titles, ...titles.map((t, i) => (t ? views[LANGS[i]].get(t) ?? 0 : null))]);
   }
   const count = (i) => rows.filter((r) => r[i]).length;
-  console.log(`${topic}: linked ${all.length} · en ${count(0)} · ru ${count(1)} · both ${rows.filter((r) => r[0] && r[1]).length}`);
+  console.log(`${topic}: linked ${all.length} · ${LANGS.map((l, i) => `${l} ${count(i)}`).join(' · ')} · all ${rows.filter((r) => LANGS.every((_, i) => r[i])).length}`);
   fs.writeFileSync(path.join(dir, `${topic}.json`), JSON.stringify({ langs: LANGS, articles: rows }));
 }
 console.log(`done — ${requests} requests`);

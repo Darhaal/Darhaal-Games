@@ -1,4 +1,7 @@
 @import "tailwindcss";
+/* animate-in / fade-in / zoom-in-95 / slide-in-from-*: used across the app for entrances,
+   and they did nothing until this was imported. */
+@import "tw-animate-css";
 
 /**
  * Two sizes below Tailwind's smallest, named rather than written as
@@ -171,3 +174,11 @@ body {
   color: var(--ink);
 }
 
+
+/* Entrances are decoration: someone who asked the system for less motion gets none. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-in,
+  .animate-out {
+    animation: none !important;
+  }
+}

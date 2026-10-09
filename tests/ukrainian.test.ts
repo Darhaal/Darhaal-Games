@@ -44,7 +44,8 @@ function ukTexts(file: string): { line: number; text: string }[] {
   return found;
 }
 
-describe('Ukrainian text', () => {
+// Both cases parse every source file: seconds on a busy machine, past the 5 s default.
+describe('Ukrainian text', { timeout: 30_000 }, () => {
   it('has no Russian-only letters', () => {
     const offenders = sources(path.join(ROOT, 'src')).flatMap((file) =>
       ukTexts(file)

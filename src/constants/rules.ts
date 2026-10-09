@@ -454,7 +454,7 @@ export const GAME_RULES: Record<Locale, Record<GameId, GameRulesData>> = {
         {
           title: 'Откуда статьи',
           icon: Eye,
-          content: 'Статьи загружаются прямо с сайта Википедии (ru.wikipedia.org или en.wikipedia.org). Тему выбирает хост: любая статья или одна из 34 тем, и сложность: «Легко» — самая читаемая треть темы, «Средне» — средняя, «Сложно» — наименее читаемая. Статья у всех одна, но каждый читает её на языке своего интерфейса — версии на разных языках немного отличаются; в дополнительных настройках хост может дать всем один текст на своём языке. Тексты написаны авторами Википедии и доступны по лицензии CC BY-SA 4.0 — после раунда видны ссылка на статью, лицензию и список авторов. Wikiler не связан с Википедией и фондом Викимедиа.',
+          content: 'Статьи загружаются прямо с сайта Википедии (uk.wikipedia.org, ru.wikipedia.org или en.wikipedia.org). Тему выбирает хост: любая статья или одна из 34 тем, и сложность: «Легко» — самая читаемая треть темы, «Средне» — средняя, «Сложно» — наименее читаемая. Статья у всех одна, но каждый читает её на языке своего интерфейса — версии на разных языках немного отличаются; в дополнительных настройках хост может дать всем один текст на своём языке. Тексты написаны авторами Википедии и доступны по лицензии CC BY-SA 4.0 — после раунда видны ссылка на статью, лицензию и список авторов. Wikiler не связан с Википедией и фондом Викимедиа.',
           type: 'text'
         }
       ]
@@ -1025,7 +1025,7 @@ export const GAME_RULES: Record<Locale, Record<GameId, GameRulesData>> = {
         {
           title: 'Where the articles come from',
           icon: Eye,
-          content: 'Articles load straight from Wikipedia (ru.wikipedia.org or en.wikipedia.org). The host picks the topic — any article or one of 34 topics — and the difficulty: Easy is the most read third of the topic, Medium the middle one, Hard the least read. Everyone gets the same article, each reading it in their own interface language — the language versions differ a little; in the advanced settings the host can give everyone one text in the host’s language. The text is written by Wikipedia’s authors and available under CC BY-SA 4.0 — after each round you get a link to the article, the licence and the list of authors. Wikiler is not affiliated with Wikipedia or the Wikimedia Foundation.',
+          content: 'Articles load straight from Wikipedia (en.wikipedia.org, uk.wikipedia.org or ru.wikipedia.org). The host picks the topic — any article or one of 34 topics — and the difficulty: Easy is the most read third of the topic, Medium the middle one, Hard the least read. Everyone gets the same article, each reading it in their own interface language — the language versions differ a little; in the advanced settings the host can give everyone one text in the host’s language. The text is written by Wikipedia’s authors and available under CC BY-SA 4.0 — after each round you get a link to the article, the licence and the list of authors. Wikiler is not affiliated with Wikipedia or the Wikimedia Foundation.',
           type: 'text'
         }
       ]
@@ -1598,7 +1598,7 @@ export const GAME_RULES: Record<Locale, Record<GameId, GameRulesData>> = {
         {
           title: 'Звідки статті',
           icon: Eye,
-          content: 'Статті завантажуються просто із сайту Вікіпедії (ru.wikipedia.org або en.wikipedia.org). Тему обирає хост: будь-яка стаття або одна з 34 тем, і складність: «Легко» — найпопулярніша третина теми, «Середньо» — середня, «Складно» — найменш популярна. Стаття в усіх одна, але кожен читає її мовою свого інтерфейсу (з українським інтерфейсом — англійською), а версії різними мовами трохи відрізняються; у додаткових налаштуваннях хост може дати всім один текст своєю мовою. Тексти написали автори Вікіпедії, вони доступні за ліцензією CC BY-SA 4.0 — після раунду видно посилання на статтю, ліцензію й список авторів. Wikiler не пов’язаний із Вікіпедією та фондом Вікімедіа.',
+          content: 'Статті завантажуються просто із сайту Вікіпедії (uk.wikipedia.org, ru.wikipedia.org або en.wikipedia.org). Тему обирає хост: будь-яка стаття або одна з 34 тем, і складність: «Легко» — найпопулярніша третина теми, «Середньо» — середня, «Складно» — найменш популярна. Стаття в усіх одна, але кожен читає її мовою свого інтерфейсу, а версії різними мовами трохи відрізняються; у додаткових налаштуваннях хост може дати всім один текст своєю мовою. Тексти написали автори Вікіпедії, вони доступні за ліцензією CC BY-SA 4.0 — після раунду видно посилання на статтю, ліцензію й список авторів. Wikiler не пов’язаний із Вікіпедією та фондом Вікімедіа.',
           type: 'text'
         }
       ]

@@ -364,7 +364,7 @@ One pattern for every game:
 
 ## Behaviour that is part of the look
 
-- Every string exists in Russian and English, kept in a local `T` / `UI_TEXT`
+- Every string exists in Russian, English and Ukrainian, kept in a local `T` / `UI_TEXT`
   object next to the component. Code and comments are English.
 - Icon-only buttons have an `aria-label`.
 - Keyboard shortcuts go through `useGameKeys` and are written in the game's

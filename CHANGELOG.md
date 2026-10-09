@@ -7,6 +7,40 @@ releasing.
 Format: [Semantic Versioning](https://semver.org/). Types: **major** = platform
 milestone, **minor** = new game mode / feature, **patch** = fixes & improvements.
 
+## [2.15.2] — 2026-10-09 (patch)
+
+### Added
+- **Wikiler in Ukrainian.** A Ukrainian interface now reads uk.wikipedia.org
+  instead of the English article. Word forms are grouped by a Ukrainian
+  stemmer; a word with an apostrophe (м'ясо, сім'я) is one word whichever
+  apostrophe is typed; Ukrainian function words are open from the start and
+  its reference sections are skipped. The topic pool carries Ukrainian titles
+  and views, and the random difficulty bands are set for Ukrainian readership — an
+  article there is read about a seventh as much as in Russian.
+
+### Fixed
+- **Wikiler's random article skipped most of Wikipedia.** Views were asked
+  in the same request as the random batch, and Wikipedia fills them in for
+  only part of it, leaving the rest to a continuation the code never
+  followed — so most long articles read as unread and were passed over
+  (Ukrainian ones nearly all, so a Ukrainian round never started). Views are
+  now asked for the long candidates themselves, continuation followed.
+- **A long Wikiler match on a small topic could stall.** Once a difficulty's
+  third of the topic was played out, the next round was never drawn; it now
+  goes on with the rest of the topic.
+- **Entrance animations did nothing.** Dialogs, toasts and panels carried
+  `animate-in` / `fade-in` / `zoom-in` classes from a plugin that was never
+  installed; tw-animate-css is in now. A system set to reduce motion gets
+  none.
+- **The lobby said "Player" in English** under every player but the host,
+  whatever the language.
+- **The installed app's description** (the PWA manifest) was Russian for
+  everyone; it is English now, like the site at bare paths.
+
+### Changed
+- The Wikiler pool builder takes any list of languages, and waits out a
+  dropped connection instead of losing an hour's run.
+
 ## [2.15.1] — 2026-10-08 (patch)
 
 ### Added

@@ -23,6 +23,7 @@ import ArticlePreview from './wikiler/ArticlePreview';
 import { pluralEn, pluralRu } from '@/lib/plural';
 import { playSfx } from '@/lib/sound';
 import type { WikilerRoundResult, WikilerState } from '@/types/wikiler';
+import { LANGUAGE_LINKS } from '@/lib/locale';
 
 /**
  * Wikiler's screen — docs/wikiler-spec.md, section 7. The article is the
@@ -704,7 +705,7 @@ export default function WikilerGame({
                   <span>{t.alsoIn}:</span>
                   {otherVersions.map((v) => (
                     <a key={v.lang} href={articleUrl(v.lang, v.title)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 bg-page border border-line px-2 py-1 rounded-md hover:border-accent/30 hover:text-accent transition-colors">
-                      <span className="text-2xs font-black uppercase">{v.lang}</span>
+                      <span className="text-2xs font-black uppercase">{LANGUAGE_LINKS.find((l) => l.locale === v.lang)?.short ?? v.lang}</span>
                       <span className="text-ink">{v.title}</span>
                     </a>
                   ))}

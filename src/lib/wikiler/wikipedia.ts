@@ -36,7 +36,8 @@ export const CC_BY_SA_URL = {
 
 export const WIKIMEDIA_PRIVACY_URL = {
   ru: 'https://foundation.wikimedia.org/wiki/Policy:Privacy_policy/ru',
-  en: 'https://foundation.wikimedia.org/wiki/Policy:Privacy_policy'
+  en: 'https://foundation.wikimedia.org/wiki/Policy:Privacy_policy',
+  uk: 'https://foundation.wikimedia.org/wiki/Policy:Privacy_policy/uk'
 } as const;
 
 /**
@@ -69,7 +70,9 @@ const SKIPPED_SECTIONS: Record<WikilerLang, string[]> = {
   ru: ['примечания', 'литература', 'ссылки', 'см. также', 'источники', 'комментарии', 'галерея',
     'библиография', 'сочинения', 'труды', 'публикации', 'фильмография', 'дискография', 'награды'],
   en: ['references', 'notes', 'see also', 'external links', 'further reading', 'bibliography', 'sources',
-    'citations', 'footnotes', 'gallery', 'works', 'publications', 'filmography', 'discography', 'awards']
+    'citations', 'footnotes', 'gallery', 'works', 'publications', 'filmography', 'discography', 'awards'],
+  uk: ['примітки', 'література', 'посилання', 'див. також', 'джерела', 'коментарі', 'галерея', 'виноски',
+    'бібліографія', 'зовнішні посилання', 'твори', 'праці', 'публікації', 'фільмографія', 'дискографія', 'нагороди']
 };
 
 /**
@@ -318,7 +321,12 @@ export async function fetchSummary(lang: WikilerLang, title: string): Promise<Ar
 
 /** How much a random article must have to be worth drawing (section 5). */
 const MIN_BYTES = 12_000;
-const MIN_MONTHLY_VIEWS = 300;
+/**
+ * Views in 30 days below which nobody reads it. Ukrainian Wikipedia is read
+ * about a tenth as much as Russian (52 M views a month against 533 M,
+ * September 2026), so the bar there is lower in proportion per article.
+ */
+const MIN_MONTHLY_VIEWS: Record<WikilerLang, number> = { en: 300, ru: 300, uk: 50 };
 /** Batches of random articles tried before giving up — Wikipedia rate-limits. */
 const RANDOM_BATCHES = 3;
 const BATCH_SIZE = 50;
@@ -326,10 +334,35 @@ const BATCH_SIZE = 50;
 interface RandomPage {
   title: string;
   length?: number;
-  pageviews?: Record<string, number | null>;
 }
 
-const views = (p: RandomPage) => Object.values(p.pageviews ?? {}).reduce<number>((a, b) => a + (b ?? 0), 0);
+/**
+ * Views in the last 30 days of each title, continuation followed. Asked for
+ * the titles themselves: on a random generator the API fills in views for
+ * only part of the batch and leaves the rest to a continuation, so most
+ * pages used to read as unread — Ukrainian ones almost all of them.
+ */
+async function pageViews(lang: WikilerLang, titles: readonly string[]): Promise<Map<string, number>> {
+  const out = new Map<string, number>();
+  let cont: Record<string, string> | null = {};
+  while (cont) {
+    const url: string = `${host(lang)}/w/api.php?` + new URLSearchParams({
+      action: 'query', titles: titles.join('|'), prop: 'pageviews', pvipdays: '30',
+      format: 'json', formatversion: '2', origin: '*', ...cont
+    });
+    const data = await (await get(url)).json() as {
+      query?: { pages?: Array<{ title: string; pageviews?: Record<string, number | null> }> };
+      continue?: Record<string, string>;
+    };
+    for (const p of data.query?.pages ?? []) {
+      if (!p.pageviews) continue;
+      const sum = Object.values(p.pageviews).reduce<number>((a, b) => a + (b ?? 0), 0);
+      out.set(p.title, (out.get(p.title) ?? 0) + sum);
+    }
+    cont = data.continue ?? null;
+  }
+  return out;
+}
 
 /**
  * A random article from all of Wikipedia that is long enough and read by
@@ -343,14 +376,18 @@ export async function pickRandomArticle(
   exclude: ReadonlySet<string> = new Set(),
   also: readonly WikilerLang[] = [],
   /** Views in the last 30 days it must have, from–to: a difficulty's band. */
-  band: readonly [number, number] = [MIN_MONTHLY_VIEWS, Infinity]
+  band: readonly [number, number] = [MIN_MONTHLY_VIEWS[lang], Infinity]
 ): Promise<WikilerArticleRef | null> {
   for (let batch = 0; batch < RANDOM_BATCHES; batch++) {
     const url = `${host(lang)}/w/api.php?action=query&generator=random&grnnamespace=0&grnlimit=${BATCH_SIZE}` +
-      '&prop=info%7Cpageviews&pvipdays=30&format=json&formatversion=2&origin=*';
+      '&prop=info&format=json&formatversion=2&origin=*';
     const data = await (await get(url)).json() as { query?: { pages?: RandomPage[] } };
-    const candidates = (data.query?.pages ?? [])
-      .filter((p) => (p.length ?? 0) >= MIN_BYTES && views(p) >= Math.max(MIN_MONTHLY_VIEWS, band[0]) && views(p) < band[1] && !exclude.has(p.title))
+    const long = (data.query?.pages ?? []).filter((p) => (p.length ?? 0) >= MIN_BYTES && !exclude.has(p.title));
+    if (long.length === 0) continue;
+    const viewsOf = await pageViews(lang, long.map((p) => p.title));
+    const views = (p: RandomPage) => viewsOf.get(p.title) ?? 0;
+    const candidates = long
+      .filter((p) => views(p) >= Math.max(MIN_MONTHLY_VIEWS[lang], band[0]) && views(p) < band[1])
       .sort((a, b) => views(b) - views(a))
       .slice(0, 2);
     for (const c of candidates) {
