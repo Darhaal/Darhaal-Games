@@ -29,8 +29,11 @@ export const AUTHOR = {
 /** The public, read-only copy of the source */
 export const SOURCE_URL = 'https://github.com/Darhaal/Darhaal-Games';
 
-/** Copyright line used in footers */
-export const COPYRIGHT = `© 2026 ${COMPANY_NAME}`;
+/**
+ * The studio's page in a language. Its root answers with a temporary
+ * redirect to /en, so a link names the page itself.
+ */
+export const companyPage = (locale: 'ru' | 'en' | 'uk') => `${COMPANY_URL}/${locale}`;
 
 /** Contact for commercial licensing (see LICENSE) */
 export const CONTACT_EMAIL = 'artem@okhten.com';

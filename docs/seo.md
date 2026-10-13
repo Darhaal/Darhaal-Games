@@ -139,7 +139,11 @@ person as `creator`; every `VideoGame` names the person as `author`.
 The visible half matters as much for AI answers, which read the page rather
 than the markup: the home FAQ answers "Who makes Darhaal Games?" in both
 languages, and every public footer links to okhten.com (`rel="author"`) and
-the GitHub repository.
+the GitHub repository. The copyright line in every footer, the app's too,
+links Okhten Group LLC to the studio's site in the page's language
+(`companyPage`, `components/Copyright.tsx`) — a plain followed link, aimed at
+`/en`, `/uk` or `/ru` because okhtengroup.com itself answers with a temporary
+redirect.
 
 Why (2026-10-05): "darhaal games" was corrected to "darfall games", `site:`
 showed six English game pages and no home page, and Google's AI answer

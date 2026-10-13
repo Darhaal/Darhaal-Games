@@ -1,4 +1,4 @@
-export const APP_VERSION = '2.15.2';
+export const APP_VERSION = '2.15.3';
 
 export type VersionType = 'major' | 'minor' | 'patch' | 'init';
 
@@ -61,6 +61,17 @@ export function formatReleaseRange(from: string, to: string, lang: 'ru' | 'en' |
  */
 export const VERSION_HISTORY: VersionLog[] = [
   /* ===================== 2.15.x ===================== */
+
+  {
+    ver: '2.15.3',
+    date: '2026-10-13',
+    type: 'patch',
+    desc: {
+      ru: 'Строка «© 2026 Okhten Group LLC» внизу страниц теперь ведёт на сайт студии — на языке страницы.',
+      en: 'The "© 2026 Okhten Group LLC" line at the foot of the pages now links to the studio\'s site, in the page\'s language.',
+      uk: 'Рядок «© 2026 Okhten Group LLC» унизу сторінок тепер веде на сайт студії — мовою сторінки.'
+    }
+  },
 
   {
     ver: '2.15.2',

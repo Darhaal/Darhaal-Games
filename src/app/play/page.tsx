@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useLang } from '@/hooks/useLang';
 import { showToast } from '@/lib/toast';
-import { COPYRIGHT } from '@/constants/app';
 import SettingsButton from '@/components/SettingsButton';
 import { useEscape } from '@/hooks/useEscape';
 import {
@@ -81,7 +80,6 @@ const TRANSLATIONS = {
     errorFull: 'Мест нет',
     errorNotFound: 'Игра не найдена',
     create: 'Новая игра',
-    footer: COPYRIGHT,
   },
   en: {
     title: 'Game Lobby',
@@ -109,7 +107,6 @@ const TRANSLATIONS = {
     errorFull: 'Room full',
     errorNotFound: 'Game not found',
     create: 'New Game',
-    footer: COPYRIGHT,
   },
   uk: {
     title: 'Ігрове лобі',
@@ -137,7 +134,6 @@ const TRANSLATIONS = {
     errorFull: 'Місць немає',
     errorNotFound: 'Гру не знайдено',
     create: 'Нова гра',
-    footer: COPYRIGHT,
   }
 };
 

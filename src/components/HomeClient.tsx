@@ -24,7 +24,7 @@ import Settings from '@/components/Settings';
 import WelcomeSetup, { needsWelcomeSetup } from '@/components/WelcomeSetup';
 import { APP_VERSION, VERSION_HISTORY, VersionType, formatReleaseDate } from '@/constants/version';
 import { useLang, type Lang } from '@/hooks/useLang';
-import { COPYRIGHT } from '@/constants/app';
+import Copyright from '@/components/Copyright';
 import type { UiUser } from '@/types/user';
 import { localizedPath } from '@/lib/locale';
 
@@ -82,7 +82,6 @@ function HomeContent({ landing, locale = 'en' }: HomeProps) {
         achievements: { title: 'ПРОГРЕСС', sub: 'Статистика', desc: 'Твой путь' },
         settings: { title: 'СИСТЕМА', sub: 'Настройки', desc: 'Опции' }
       },
-      footer: COPYRIGHT,
       changelog: 'Хронология',
       fixed: 'Исправлено',
       fullChangelog: 'Вся история изменений',
@@ -98,7 +97,6 @@ function HomeContent({ landing, locale = 'en' }: HomeProps) {
         achievements: { title: 'PROGRESS', sub: 'Stats', desc: 'Your Path' },
         settings: { title: 'SYSTEM', sub: 'Settings', desc: 'Options' }
       },
-      footer: COPYRIGHT,
       changelog: 'Timeline',
       fixed: 'Fixed',
       fullChangelog: 'Full changelog',
@@ -114,7 +112,6 @@ function HomeContent({ landing, locale = 'en' }: HomeProps) {
         achievements: { title: 'ПРОГРЕС', sub: 'Статистика', desc: 'Твій шлях' },
         settings: { title: 'СИСТЕМА', sub: 'Налаштування', desc: 'Опції' }
       },
-      footer: COPYRIGHT,
       changelog: 'Хронологія',
       fixed: 'Виправлено',
       fullChangelog: 'Уся історія змін',
@@ -479,7 +476,7 @@ function HomeContent({ landing, locale = 'en' }: HomeProps) {
         </div>
 
         <p className="text-gray-900 text-2xs font-black tracking-[0.3em] cursor-default flex items-center justify-center gap-2">
-            <Image src="/logo512.png" alt="Logo" width={16} height={16} className="w-4 h-4 object-contain" /> {t.footer}
+            <Image src="/logo512.png" alt="Logo" width={16} height={16} className="w-4 h-4 object-contain" /> <Copyright locale={lang} />
         </p>
       </footer>
     </main>

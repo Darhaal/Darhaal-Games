@@ -7,6 +7,13 @@ releasing.
 Format: [Semantic Versioning](https://semver.org/). Types: **major** = platform
 milestone, **minor** = new game mode / feature, **patch** = fixes & improvements.
 
+## [2.15.3] — 2026-10-13 (patch)
+
+### Changed
+- **The footer credits the studio with a link.** "© 2026 Okhten Group LLC"
+  in every footer — the public pages, the main menu, the create screen — links
+  the company to okhtengroup.com in the page's language.
+
 ## [2.15.2] — 2026-10-09 (patch)
 
 ### Added

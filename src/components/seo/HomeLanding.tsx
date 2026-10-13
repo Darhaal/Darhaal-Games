@@ -1,7 +1,8 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { GAMES_CONTENT, HOME_CONTENT, type Locale } from '@/content/games';
-import { APP_NAME, AUTHOR, COPYRIGHT, SOURCE_URL } from '@/constants/app';
+import { APP_NAME, AUTHOR, SOURCE_URL } from '@/constants/app';
+import Copyright from '@/components/Copyright';
 import { faqPageJsonLd, localizedPath } from '@/lib/seo';
 import JsonLd from './JsonLd';
 import { LANGUAGE_LINKS } from '@/lib/locale';
@@ -143,7 +144,7 @@ export default function HomeLanding({ locale = 'en' }: { locale?: Locale }) {
 
       <footer className="max-w-5xl mx-auto px-4 md:px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-3">
         <span className="text-2xs font-black tracking-[0.2em] uppercase text-gray-500">
-          {COPYRIGHT}
+          <Copyright locale={locale} />
         </span>
         <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
           <a href={AUTHOR.url} rel="author" className="text-2xs font-bold uppercase tracking-wider text-gray-400 hover:text-accent transition-colors">

@@ -7,7 +7,8 @@ import type { User } from '@supabase/supabase-js';
 import { useLang } from '@/hooks/useLang';
 import { errorMessage } from '@/lib/errors';
 import { showToast } from '@/lib/toast';
-import { COPYRIGHT, defaultAvatar, generateRoomCode } from '@/constants/app';
+import { defaultAvatar, generateRoomCode } from '@/constants/app';
+import Copyright from '@/components/Copyright';
 import SettingsButton from '@/components/SettingsButton';
 import {
   ArrowLeft, Users, Lock, Unlock, ChevronDown, SlidersHorizontal,
@@ -40,7 +41,6 @@ const TRANSLATIONS = {
     lobbySuffix: 'Лобби',
     advanced: 'Дополнительно',
     changed: (n: number) => `изменено: ${n}`,
-    footer: COPYRIGHT
   },
   en: {
     select: 'Select Game',
@@ -58,7 +58,6 @@ const TRANSLATIONS = {
     lobbySuffix: 'Lobby',
     advanced: 'Advanced settings',
     changed: (n: number) => `${n} changed`,
-    footer: COPYRIGHT
   },
   uk: {
     select: 'Вибір гри',
@@ -76,7 +75,6 @@ const TRANSLATIONS = {
     lobbySuffix: 'Лобі',
     advanced: 'Додатково',
     changed: (n: number) => `змінено: ${n}`,
-    footer: COPYRIGHT
   }
 };
 
@@ -585,7 +583,7 @@ export default function CreatePage() {
 
       <footer className="w-full p-8 text-center z-10 opacity-40 hover:opacity-100 transition-opacity">
         <p className="text-ink text-2xs font-black uppercase tracking-[0.3em] cursor-default flex items-center justify-center gap-2">
-            <Zap className="w-3 h-3 text-accent" /> {t.footer}
+            <Zap className="w-3 h-3 text-accent" /> <Copyright locale={lang} />
         </p>
       </footer>
     </div>
