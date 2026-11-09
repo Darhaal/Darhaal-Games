@@ -229,4 +229,11 @@ describe('the home page', () => {
     expect(homeMetadata('en').alternates?.canonical).toBe('https://games.okhten.com/');
     expect(homeMetadata('ru').alternates?.canonical).toBe('https://games.okhten.com/ru');
   });
+
+  it('accents a phrase that is in the headline, in every language', () => {
+    for (const copy of Object.values(HOME_CONTENT)) {
+      expect(copy.heroAccent).not.toBe('');
+      expect(copy.heroTitle).toContain(copy.heroAccent);
+    }
+  });
 });

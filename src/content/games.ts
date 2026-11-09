@@ -2104,6 +2104,8 @@ export interface PageSection {
 
 export interface HomeCopy {
   heroTitle: string;
+  /** The part of heroTitle shown in the accent colour. */
+  heroAccent: string;
   heroLead: string;
   about: string[];
   steps: PageSection[];
@@ -2125,6 +2127,7 @@ export interface HubCopy {
 export const HOME_CONTENT: Record<Locale, HomeCopy> = {
   ru: {
     heroTitle: 'Игры с друзьями прямо в браузере',
+    heroAccent: 'с друзьями',
     heroLead: GAME_COUNT_COPY.ru.heroLead,
     about: [
       'Darhaal Games — платформа для тех вечеров, когда все в разных городах, а поиграть вместе хочется. Здесь нет лаунчеров, установки и обязательных аккаунтов: игра живёт по ссылке, которую можно просто кинуть в чат.',
@@ -2179,6 +2182,7 @@ export const HOME_CONTENT: Record<Locale, HomeCopy> = {
   },
   en: {
     heroTitle: 'Play with friends right in the browser',
+    heroAccent: 'with friends',
     heroLead: GAME_COUNT_COPY.en.heroLead,
     about: [
       'Darhaal Games is for the evenings when everyone is in a different city and you still want to play together. No launchers, no installs, no mandatory accounts: a game lives behind a link you can paste into a chat.',
@@ -2233,6 +2237,7 @@ export const HOME_CONTENT: Record<Locale, HomeCopy> = {
   },
   uk: {
     heroTitle: 'Ігри з друзями просто в браузері',
+    heroAccent: 'з друзями',
     heroLead: GAME_COUNT_COPY.uk.heroLead,
     about: [
       'Darhaal Games — платформа для тих вечорів, коли всі в різних містах, а пограти разом хочеться. Тут немає лаунчерів, встановлення й обов’язкових акаунтів: гра живе за посиланням, яке можна просто кинути в чат.',

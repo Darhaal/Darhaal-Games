@@ -44,3 +44,18 @@ export function useLang(defaultLang: Lang = 'en') {
 
   return { lang, setLang };
 }
+
+/**
+ * Keeps `l` as the language unless the player has already chosen one. For a
+ * newcomer who starts playing from a page in that language: without it,
+ * someone who came in on /ru signed in and landed in the English app.
+ */
+export function adoptLang(l: Lang) {
+  try {
+    if (localStorage.getItem(LANG_KEY)) return;
+    localStorage.setItem(LANG_KEY, l);
+    window.dispatchEvent(new Event(LANG_EVENT));
+  } catch {
+    // Blocked storage: the page default stays, as before.
+  }
+}

@@ -7,6 +7,43 @@ releasing.
 Format: [Semantic Versioning](https://semver.org/). Types: **major** = platform
 milestone, **minor** = new game mode / feature, **patch** = fixes & improvements.
 
+## [2.15.4] — 2026-11-09 (patch)
+
+### Changed
+- **The home page is the landing, not a sign-in screen.** A signed-out
+  visitor (and Google, which renders the page) used to get a full-height
+  sign-in card in front of the description. The landing now stays the page:
+  the hero has "Play as guest" as its main button and "Sign in" opens the
+  form in a dialog.
+- **"Play" on a game page opens that game's room.** The button used to lead
+  to the English home page whatever the page's language, and the game had to
+  be picked again after signing in. Now it signs the visitor in (or lets
+  them play as a guest) in the page's own language and opens the create
+  screen with that game's settings, one tap from a room and its invite link.
+- **The public pages have their red back.** The home page, the games list
+  and the game pages were black and grey text: now a phrase of each
+  headline, the section headings' marks, the facts' labels and the step
+  numbers are red, "Play as guest" and the header's "Play" are red buttons,
+  and the closing "Play" panel is light with a red tint instead of a dark
+  slab.
+- **A newcomer keeps the page's language.** Someone who starts playing from
+  `/ru` or `/uk` gets the app in that language unless they had already
+  picked one in the settings.
+
+### Security
+- **Next.js 16.4.5.** `npm audit` flagged 16.3.8 as critical: remote code
+  execution through the image optimizer with SVG files
+  (GHSA-2464-fhr4-w9xw) and through `use cache` functions returning typed
+  arrays (GHSA-673q-mjm6-r5xr), and a Server Actions denial of service
+  (GHSA-p3m5-59mp-jv5r). `eslint-config-next` follows.
+
+### Fixed
+- **"Open the platform" on the games list led to the English home page**
+  whatever language the list was read in; it now opens the home page in
+  that language.
+- **The sign-in redirect accepts only paths on this site.** `returnUrl` could
+  name another site, which the sign-in form then opened.
+
 ## [2.15.3] — 2026-10-13 (patch)
 
 ### Changed

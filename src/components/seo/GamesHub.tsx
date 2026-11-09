@@ -4,6 +4,7 @@ import { GAME_COUNT_COPY } from '@/content/gameCount';
 import { breadcrumbJsonLd, faqPageJsonLd, gameListJsonLd, localizedPath } from '@/lib/seo';
 import JsonLd from './JsonLd';
 import PublicShell from './PublicShell';
+import { Accented, CtaPanel, SectionMark } from './accent';
 
 /**
  * The /games hub — a crawlable collection page linking to every game.
@@ -14,6 +15,7 @@ import PublicShell from './PublicShell';
 const T = {
   ru: {
     h1: 'Игры онлайн с друзьями',
+    h1Accent: 'с друзьями',
     lead: GAME_COUNT_COPY.ru.hubLead,
     players: 'игроков',
     player: 'игрока',
@@ -27,6 +29,7 @@ const T = {
   },
   en: {
     h1: 'Online games to play with friends',
+    h1Accent: 'with friends',
     lead: GAME_COUNT_COPY.en.hubLead,
     players: 'players',
     player: 'players',
@@ -40,6 +43,7 @@ const T = {
   },
   uk: {
     h1: 'Ігри онлайн із друзями',
+    h1Accent: 'із друзями',
     lead: GAME_COUNT_COPY.uk.hubLead,
     players: 'гравців',
     player: 'гравці',
@@ -67,7 +71,7 @@ export default function GamesHub({ locale }: { locale: Locale }) {
 
       <section className="max-w-6xl mx-auto px-4 md:px-6 pt-14 md:pt-20 pb-10">
         <h1 className="text-4xl md:text-6xl font-black tracking-tighter leading-[1.05] text-gray-900 max-w-3xl">
-          {t.h1}
+          <Accented text={t.h1} phrase={t.h1Accent} />
         </h1>
         <p className="mt-6 text-base md:text-lg text-gray-500 font-medium leading-relaxed max-w-2xl">
           {t.lead}
@@ -139,6 +143,7 @@ export default function GamesHub({ locale }: { locale: Locale }) {
 
       <section className="max-w-6xl mx-auto px-4 md:px-6 pt-12">
         <h2 className="text-2xl md:text-4xl font-black tracking-tighter text-gray-900">
+          <SectionMark />
           {hub.chooseTitle}
         </h2>
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
@@ -152,7 +157,10 @@ export default function GamesHub({ locale }: { locale: Locale }) {
       </section>
 
       <section className="max-w-3xl mx-auto px-4 md:px-6 pt-14">
-        <h2 className="text-2xl md:text-4xl font-black tracking-tighter text-gray-900">{t.faqTitle}</h2>
+        <h2 className="text-2xl md:text-4xl font-black tracking-tighter text-gray-900">
+          <SectionMark />
+          {t.faqTitle}
+        </h2>
         <div className="mt-6 divide-y divide-gray-200 border-y border-gray-200">
           {hub.faq.map((item, i) => (
             <div key={i} className="py-5">
@@ -164,20 +172,9 @@ export default function GamesHub({ locale }: { locale: Locale }) {
       </section>
 
       <section className="max-w-6xl mx-auto px-4 md:px-6 pt-14">
-        <div className="bg-night rounded-[28px] px-8 py-10 md:px-12 md:py-14 text-center">
-          <h2 className="text-2xl md:text-4xl font-black tracking-tighter text-white">
-            {t.ctaTitle}
-          </h2>
-          <p className="mt-3 text-sm md:text-base text-white/60 font-medium max-w-xl mx-auto">
-            {t.ctaText}
-          </p>
-          <Link
-            href="/"
-            className="inline-block mt-7 bg-accent text-white text-xs font-bold uppercase tracking-widest px-8 py-4 rounded-full hover:bg-surface hover:text-ink transition-colors"
-          >
-            {t.ctaButton}
-          </Link>
-        </div>
+        {/* The home page in this language: it used to be "/" — the English
+            one — whatever language the hub was read in. */}
+        <CtaPanel title={t.ctaTitle} text={t.ctaText} href={localizedPath(locale, '/')} button={t.ctaButton} />
       </section>
     </PublicShell>
   );

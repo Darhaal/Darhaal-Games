@@ -1,4 +1,4 @@
-export const APP_VERSION = '2.15.3';
+export const APP_VERSION = '2.15.4';
 
 export type VersionType = 'major' | 'minor' | 'patch' | 'init';
 
@@ -61,6 +61,34 @@ export function formatReleaseRange(from: string, to: string, lang: 'ru' | 'en' |
  */
 export const VERSION_HISTORY: VersionLog[] = [
   /* ===================== 2.15.x ===================== */
+
+  {
+    ver: '2.15.4',
+    date: '2026-11-09',
+    type: 'patch',
+    desc: {
+      ru: 'Главная больше не встречает формой входа: сначала рассказ о платформе и кнопка «Играть как гость», а вход открывается в окне. «Играть» на странице игры сразу открывает настройки этой игры на языке страницы. На публичных страницах снова есть красный акцент.',
+      en: 'The home page no longer greets you with a sign-in form: it tells you what the platform is, with a "Play as guest" button, and signing in opens in a dialog. "Play" on a game page opens that game\'s settings straight away, in the page\'s language. The public pages have their red accent back.',
+      uk: 'Головна більше не зустрічає формою входу: спершу розповідь про платформу й кнопка «Грати як гість», а вхід відкривається у вікні. «Грати» на сторінці гри одразу відкриває налаштування цієї гри мовою сторінки. На публічних сторінках знову є червоний акцент.'
+    },
+    fixes: {
+      ru: [
+        'Новичок с русской или украинской страницы после входа попадал в английское приложение.',
+        'Кнопка «Открыть платформу» в списке игр вела на английскую главную на любом языке.',
+        'Подставная ссылка на вход могла после входа увести на чужой сайт.'
+      ],
+      en: [
+        'A newcomer from a Russian or Ukrainian page landed in the English app after signing in.',
+        '"Open the platform" on the games list led to the English home page whatever the language.',
+        'A crafted sign-in link could send you to another site after signing in.'
+      ],
+      uk: [
+        'Новачок з російської чи української сторінки після входу потрапляв до англійського застосунку.',
+        'Кнопка «Відкрити платформу» у списку ігор вела на англійську головну будь-якою мовою.',
+        'Підроблене посилання на вхід могло після входу повести на чужий сайт.'
+      ]
+    }
+  },
 
   {
     ver: '2.15.3',

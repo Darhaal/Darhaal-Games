@@ -1,6 +1,6 @@
 # Darhaal Games
 
-![Version](https://img.shields.io/badge/version-2.15.3-blue.svg) ![License](https://img.shields.io/badge/license-View%20%26%20Study%20Only-red.svg) ![Tests](https://img.shields.io/badge/tests-1163-brightgreen.svg)
+![Version](https://img.shields.io/badge/version-2.15.4-blue.svg) ![License](https://img.shields.io/badge/license-View%20%26%20Study%20Only-red.svg) ![Tests](https://img.shields.io/badge/tests-1164-brightgreen.svg)
 
 Eleven board, logic and quiz games you can play with friends in a browser. One person
 creates a room, shares the link, everyone else joins — no install, no account

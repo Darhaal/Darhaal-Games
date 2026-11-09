@@ -1,6 +1,7 @@
 import { SPYFALL_PACKS } from '@/data/spyfall/locations';
 import type { Locale } from '@/content/games';
 import { pluralEn, pluralRu } from '@/lib/plural';
+import { SectionMark } from './accent';
 
 /**
  * Every Spyfall location, by pack, on the game's public page — a server
@@ -36,7 +37,10 @@ export default function SpyfallLocations({ locale }: { locale: Locale }) {
 
   return (
     <section className="mt-12">
-      <h2 className="text-2xl md:text-3xl font-black tracking-tighter text-gray-900">{t.title}</h2>
+      <h2 className="text-2xl md:text-3xl font-black tracking-tighter text-gray-900">
+        <SectionMark />
+        {t.title}
+      </h2>
       <p className="mt-3 text-sm text-gray-600 leading-relaxed">{t.lead(total, SPYFALL_PACKS.length)}</p>
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
         {SPYFALL_PACKS.map((pack) => (

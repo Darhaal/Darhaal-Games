@@ -9,6 +9,7 @@ import {
 } from '@/lib/seo';
 import JsonLd from './JsonLd';
 import PublicShell from './PublicShell';
+import { Accented, CtaPanel, SectionMark } from './accent';
 import SpyfallLocations from './SpyfallLocations';
 
 /**
@@ -32,7 +33,7 @@ const T = {
     faq: 'Частые вопросы',
     play: 'Играть в',
     playButton: 'Играть',
-    playNote: 'Откроется платформа — создайте комнату и позовите друзей по ссылке.',
+    playNote: 'Войдите или играйте как гость — сразу откроется комната для этой игры: нажмите «Создать» и позовите друзей по ссылке.',
     other: 'Другие игры'
   },
   en: {
@@ -48,7 +49,7 @@ const T = {
     faq: 'Frequently asked questions',
     play: 'Play',
     playButton: 'Play now',
-    playNote: 'Opens the platform — create a room and invite friends with a link.',
+    playNote: 'Sign in or play as a guest — this game\'s room opens straight away: press Create and invite friends with the link.',
     other: 'More games'
   },
   uk: {
@@ -64,7 +65,7 @@ const T = {
     faq: 'Часті запитання',
     play: 'Грати в',
     playButton: 'Грати',
-    playNote: 'Відкриється платформа — створіть кімнату й покличте друзів за посиланням.',
+    playNote: 'Увійдіть або грайте як гість — одразу відкриється кімната для цієї гри: натисніть «Створити» й покличте друзів за посиланням.',
     other: 'Інші ігри'
   }
 } as const;
@@ -120,17 +121,17 @@ export default function GameDetail({
 
         <dl className="mt-8 grid grid-cols-3 gap-3 border-y border-gray-200 py-5">
           <div>
-            <dt className="text-2xs font-bold uppercase tracking-wider text-gray-400">{t.players}</dt>
+            <dt className="text-2xs font-bold uppercase tracking-wider text-accent">{t.players}</dt>
             <dd className="mt-1 text-lg font-black tracking-tight text-gray-900">{range}</dd>
           </div>
           <div>
-            <dt className="text-2xs font-bold uppercase tracking-wider text-gray-400">{t.duration}</dt>
+            <dt className="text-2xs font-bold uppercase tracking-wider text-accent">{t.duration}</dt>
             <dd className="mt-1 text-lg font-black tracking-tight text-gray-900">
               ~{game.playtimeMinutes} {t.minutes}
             </dd>
           </div>
           <div>
-            <dt className="text-2xs font-bold uppercase tracking-wider text-gray-400">{t.genre}</dt>
+            <dt className="text-2xs font-bold uppercase tracking-wider text-accent">{t.genre}</dt>
             <dd className="mt-1 text-sm font-black tracking-tight text-gray-900 leading-tight pt-1">
               {game.genre[locale]}
             </dd>
@@ -146,11 +147,14 @@ export default function GameDetail({
         </div>
 
         <section className="mt-12">
-          <h2 className="text-2xl md:text-3xl font-black tracking-tighter text-gray-900">{t.howTo}</h2>
+          <h2 className="text-2xl md:text-3xl font-black tracking-tighter text-gray-900">
+            <SectionMark />
+            {t.howTo}
+          </h2>
           <ol className="mt-5 space-y-3">
             {copy.howToPlay.map((step, i) => (
               <li key={i} className="flex gap-4">
-                <span className="shrink-0 w-7 h-7 rounded-full bg-ink text-on-ink text-xs font-black flex items-center justify-center mt-0.5">
+                <span className="shrink-0 w-7 h-7 rounded-full bg-accent text-white text-xs font-black flex items-center justify-center mt-0.5">
                   {i + 1}
                 </span>
                 <span className="text-base text-gray-600 leading-relaxed pt-0.5">{step}</span>
@@ -160,7 +164,10 @@ export default function GameDetail({
         </section>
 
         <section className="mt-12">
-          <h2 className="text-2xl md:text-3xl font-black tracking-tighter text-gray-900">{t.features}</h2>
+          <h2 className="text-2xl md:text-3xl font-black tracking-tighter text-gray-900">
+            <SectionMark />
+            {t.features}
+          </h2>
           <ul className="mt-5 grid gap-2.5 sm:grid-cols-2">
             {copy.features.map((feature, i) => (
               <li
@@ -174,7 +181,10 @@ export default function GameDetail({
         </section>
 
         <section className="mt-12">
-          <h2 className="text-2xl md:text-3xl font-black tracking-tighter text-gray-900">{t.strategy}</h2>
+          <h2 className="text-2xl md:text-3xl font-black tracking-tighter text-gray-900">
+            <SectionMark />
+            {t.strategy}
+          </h2>
           <ul className="mt-5 space-y-3">
             {copy.strategy.map((tip, i) => (
               <li key={i} className="flex gap-4">
@@ -190,7 +200,10 @@ export default function GameDetail({
         </section>
 
         <section className="mt-12">
-          <h2 className="text-2xl md:text-3xl font-black tracking-tighter text-gray-900">{t.mistakes}</h2>
+          <h2 className="text-2xl md:text-3xl font-black tracking-tighter text-gray-900">
+            <SectionMark />
+            {t.mistakes}
+          </h2>
           <ul className="mt-5 space-y-2.5">
             {copy.mistakes.map((item, i) => (
               <li
@@ -206,7 +219,10 @@ export default function GameDetail({
         {game.slug === 'spyfall' && <SpyfallLocations locale={locale} />}
 
         <section className="mt-12">
-          <h2 className="text-2xl md:text-3xl font-black tracking-tighter text-gray-900">{t.faq}</h2>
+          <h2 className="text-2xl md:text-3xl font-black tracking-tighter text-gray-900">
+            <SectionMark />
+            {t.faq}
+          </h2>
           <div className="mt-5 divide-y divide-gray-200 border-y border-gray-200">
             {copy.faq.map((item, i) => (
               <div key={i} className="py-5">
@@ -218,22 +234,20 @@ export default function GameDetail({
         </section>
 
         <section className="mt-12">
-          <div className="bg-night rounded-[28px] px-8 py-10 text-center">
-            <h2 className="text-2xl md:text-3xl font-black tracking-tighter text-white">
-              {playLabel}
-            </h2>
-            <p className="mt-3 text-sm text-white/60 font-medium max-w-md mx-auto">{t.playNote}</p>
-            <Link
-              href="/"
-              className="inline-block mt-7 bg-accent text-white text-xs font-bold uppercase tracking-widest px-8 py-4 rounded-full hover:bg-surface hover:text-ink transition-colors"
-            >
-              {t.playButton}
-            </Link>
-          </div>
+          {/* Straight to this game's room: the home page in this language
+              signs the visitor in (or as a guest) and hands over to
+              /create?game=. nofollow keeps the parameter URLs out of the crawl. */}
+          <CtaPanel
+            title={<Accented text={playLabel} phrase={copy.name} />}
+            text={t.playNote}
+            href={`${localizedPath(locale, '/')}?returnUrl=${encodeURIComponent(`/create?game=${game.slug}`)}`}
+            button={t.playButton}
+            nofollow
+          />
         </section>
 
         <section className="mt-14">
-          <h2 className="text-sm font-black uppercase tracking-widest text-gray-400">{t.other}</h2>
+          <h2 className="text-sm font-black uppercase tracking-widest text-accent">{t.other}</h2>
           <div className="mt-4 flex flex-wrap gap-2">
             {others.map((other) => (
               <Link

@@ -254,6 +254,12 @@ export default function CreatePage() {
         const { data } = await supabase.auth.getUser();
         if (data.user) {
             setUser(data.user);
+            // A game page's "Play" button arrives with ?game=<id>: straight to its settings.
+            const preset = GAMES.find((g) => g.id === new URLSearchParams(window.location.search).get('game'));
+            if (preset) {
+                setSelectedGame(preset);
+                setStep('settings');
+            }
         } else {
             const currentPath = window.location.pathname + window.location.search;
             router.push(`/?returnUrl=${encodeURIComponent(currentPath)}`);

@@ -89,7 +89,7 @@ export default function PublicShell({
             ))}
             <Link
               href={localizedPath(locale, '/')}
-              className="bg-ink text-on-ink text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-full hover:bg-accent transition-colors"
+              className="bg-accent text-white text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-full shadow-md shadow-accent/20 hover:bg-ink hover:text-on-ink transition-colors"
             >
               {t.play}
             </Link>

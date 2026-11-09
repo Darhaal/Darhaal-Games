@@ -3,6 +3,8 @@ import Link from 'next/link';
 import { GAMES_CONTENT, HOME_CONTENT, type Locale } from '@/content/games';
 import { APP_NAME, AUTHOR, SOURCE_URL } from '@/constants/app';
 import Copyright from '@/components/Copyright';
+import LandingActions from '@/components/LandingActions';
+import { Accented, CtaPanel, SectionMark } from './accent';
 import { faqPageJsonLd, localizedPath } from '@/lib/seo';
 import JsonLd from './JsonLd';
 import { LANGUAGE_LINKS } from '@/lib/locale';
@@ -15,9 +17,10 @@ import { LANGUAGE_LINKS } from '@/lib/locale';
  * crawler used to receive seven words and not a single outbound link. Every
  * public page was reachable only through the sitemap.
  *
- * This renders in the initial HTML regardless of auth state. `HomeClient`
- * hides it before paint for a visitor who already has a session, so a
- * returning player never sees it flash.
+ * This renders in the initial HTML regardless of auth state, and it stays
+ * the page for everyone signed out — the hero's `LandingActions` is the way
+ * in. `HomeClient` hides it before paint for a visitor who already has a
+ * session, so a returning player never sees it flash.
  *
  * The copy deliberately does not repeat `/games`: this page explains the
  * platform, the hub helps you choose between the five. Saying the same thing
@@ -35,15 +38,16 @@ export default function HomeLanding({ locale = 'en' }: { locale?: Locale }) {
           <Image src="/logo512.png" alt="" width={28} height={28} className="w-7 h-7 object-contain" />
         </div>
 
-        <p className="mt-6 text-2xs font-black uppercase tracking-widest text-muted">
+        <p className="mt-6 text-2xs font-black uppercase tracking-widest text-accent">
           {APP_NAME}
         </p>
         <h1 className="mt-3 text-4xl md:text-6xl font-black tracking-tighter leading-[1.05] text-gray-900">
-          {copy.heroTitle}
+          <Accented text={copy.heroTitle} phrase={copy.heroAccent} />
         </h1>
         <p className="mt-6 text-base md:text-lg text-gray-500 font-medium leading-relaxed max-w-2xl mx-auto">
           {copy.heroLead}
         </p>
+        <LandingActions locale={locale} />
       </section>
 
       <section className="max-w-3xl mx-auto px-4 md:px-6 pb-4 space-y-4">
@@ -56,6 +60,7 @@ export default function HomeLanding({ locale = 'en' }: { locale?: Locale }) {
 
       <section className="max-w-5xl mx-auto px-4 md:px-6 pt-12">
         <h2 className="text-2xl md:text-4xl font-black tracking-tighter text-gray-900">
+          <SectionMark />
           {copy.gamesTitle}
         </h2>
         <p className="mt-3 text-sm md:text-base text-gray-500 font-medium max-w-2xl">
@@ -104,7 +109,7 @@ export default function HomeLanding({ locale = 'en' }: { locale?: Locale }) {
         <ol className="grid gap-4 md:grid-cols-3">
           {copy.steps.map((step, i) => (
             <li key={i} className="bg-surface border border-gray-200 rounded-[24px] p-6">
-              <div className="w-7 h-7 rounded-full bg-ink text-on-ink text-xs font-black flex items-center justify-center">
+              <div className="w-7 h-7 rounded-full bg-accent text-white text-xs font-black flex items-center justify-center">
                 {i + 1}
               </div>
               <h3 className="mt-4 text-lg font-black tracking-tight text-gray-900">{step.title}</h3>
@@ -126,20 +131,12 @@ export default function HomeLanding({ locale = 'en' }: { locale?: Locale }) {
       </section>
 
       <section className="max-w-5xl mx-auto px-4 md:px-6 pt-14 pb-6">
-        <div className="bg-night rounded-[28px] px-8 py-10 md:px-12 md:py-14 text-center">
-          <h2 className="text-2xl md:text-4xl font-black tracking-tighter text-white">
-            {copy.ctaTitle}
-          </h2>
-          <p className="mt-3 text-sm md:text-base text-white/60 font-medium max-w-xl mx-auto">
-            {copy.ctaText}
-          </p>
-          <Link
-            href={localizedPath(locale, '/games')}
-            className="inline-block mt-7 bg-accent text-white text-xs font-bold uppercase tracking-widest px-8 py-4 rounded-full hover:bg-surface hover:text-ink transition-colors"
-          >
-            {copy.ctaButton}
-          </Link>
-        </div>
+        <CtaPanel
+          title={copy.ctaTitle}
+          text={copy.ctaText}
+          href={localizedPath(locale, '/games')}
+          button={copy.ctaButton}
+        />
       </section>
 
       <footer className="max-w-5xl mx-auto px-4 md:px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-3">

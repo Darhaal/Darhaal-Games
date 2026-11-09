@@ -7,6 +7,8 @@ import { Mail, Lock, User, Ghost, Loader2, AlertCircle, CheckCircle2, ArrowRight
 import { supabase } from '@/lib/supabase';
 import { useLang, type Lang } from '@/hooks/useLang';
 import { errorMessage } from '@/lib/errors';
+import { signInAsGuest } from '@/lib/guest';
+import { safeReturnUrl } from '@/lib/returnUrl';
 import { SITE_URL, defaultAvatar } from '@/constants/app';
 import { BUTTON_PRIMARY, BUTTON_SECONDARY, LABEL } from '@/components/game/ui';
 import GoogleMark from '@/components/GoogleMark';
@@ -141,7 +143,7 @@ const INPUT_ICON =
 export default function AuthForm({ defaultLang = 'en' }: { defaultLang?: Lang }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const returnUrl = searchParams.get('returnUrl');
+  const returnUrl = safeReturnUrl(searchParams.toString());
 
   const { lang, setLang } = useLang(defaultLang);
   const [isSignUp, setIsSignUp] = useState(false);
@@ -262,21 +264,7 @@ export default function AuthForm({ defaultLang = 'en' }: { defaultLang?: Lang })
   const handleGuestLogin = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase.auth.signInAnonymously();
-      if (error) throw error;
-
-      // Seed the guest's metadata with the SAME deterministic avatar the signup
-      // trigger already wrote into profiles — a random seed here would leave
-      // the two disagreeing, which is how guests ended up looking avatar-less.
-      if (data.user) {
-          await supabase.auth.updateUser({
-              data: {
-                  username: 'Player',
-                  avatar_url: defaultAvatar(data.user.id)
-              }
-          });
-      }
-
+      await signInAsGuest();
       handleSuccessLogin();
     } catch { setErrorMsg(t.guestDisabled); setLoading(false); }
   };

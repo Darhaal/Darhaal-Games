@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import React, { useState, useEffect, useLayoutEffect, Suspense } from 'react';
+import React, { useState, useEffect, useLayoutEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -19,7 +19,6 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { User as AuthUser } from '@supabase/supabase-js';
-import AuthForm from '@/components/AuthForm';
 import Settings from '@/components/Settings';
 import WelcomeSetup, { needsWelcomeSetup } from '@/components/WelcomeSetup';
 import { APP_VERSION, VERSION_HISTORY, VersionType, formatReleaseDate } from '@/constants/version';
@@ -27,6 +26,7 @@ import { useLang, type Lang } from '@/hooks/useLang';
 import Copyright from '@/components/Copyright';
 import type { UiUser } from '@/types/user';
 import { localizedPath } from '@/lib/locale';
+import { safeReturnUrl } from '@/lib/returnUrl';
 
 /**
  * True when a Supabase session is already stored locally.
@@ -85,7 +85,6 @@ function HomeContent({ landing, locale = 'en' }: HomeProps) {
       changelog: 'Хронология',
       fixed: 'Исправлено',
       fullChangelog: 'Вся история изменений',
-      catalogue: 'Все игры и правила',
       latest: 'Последнее'
     },
     en: {
@@ -100,7 +99,6 @@ function HomeContent({ landing, locale = 'en' }: HomeProps) {
       changelog: 'Timeline',
       fixed: 'Fixed',
       fullChangelog: 'Full changelog',
-      catalogue: 'All games and rules',
       latest: 'Latest'
     },
     uk: {
@@ -115,7 +113,6 @@ function HomeContent({ landing, locale = 'en' }: HomeProps) {
       changelog: 'Хронологія',
       fixed: 'Виправлено',
       fullChangelog: 'Уся історія змін',
-      catalogue: 'Усі ігри та правила',
       latest: 'Останнє'
     }
   }[lang];
@@ -138,6 +135,13 @@ function HomeContent({ landing, locale = 'en' }: HomeProps) {
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
+        // A game page's "Play" while already signed in: go on to where it
+        // pointed; the spinner stays up meanwhile.
+        const next = safeReturnUrl(window.location.search);
+        if (next) {
+          router.replace(next);
+          return;
+        }
         updateLocalUser(session.user);
       } else {
         setUser(null);
@@ -152,8 +156,7 @@ function HomeContent({ landing, locale = 'en' }: HomeProps) {
     });
 
     return () => subscription.unsubscribe();
-     
-  }, []);
+  }, [router]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -184,8 +187,8 @@ function HomeContent({ landing, locale = 'en' }: HomeProps) {
   };
 
   if (loading) {
-    // A known-returning player gets a spinner; everyone else — including every
-    // crawler, which never runs the effect — gets the server-rendered landing.
+    // A known-returning player gets a spinner; everyone else gets the
+    // server-rendered landing.
     return sessionHint ? (
       <div className="min-h-screen bg-page flex items-center justify-center text-gray-400">
         <Loader2 className="w-10 h-10 animate-spin text-accent" />
@@ -195,44 +198,10 @@ function HomeContent({ landing, locale = 'en' }: HomeProps) {
     );
   }
 
-  if (!user) {
-    return (
-      <>
-      <main className="min-h-[100svh] bg-page text-gray-900 flex flex-col items-center justify-center gap-8 relative overflow-clip font-sans px-4 py-10">
-        <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-40 mix-blend-overlay pointer-events-none" />
-        <div className="absolute top-[-20%] left-[-10%] w-[800px] h-[800px] bg-accent/5 rounded-full blur-[120px] animate-pulse pointer-events-none" />
-        <div className="absolute bottom-[-20%] right-[-10%] w-[600px] h-[600px] bg-blue-500/5 rounded-full blur-[100px] animate-pulse pointer-events-none delay-1000" />
-
-        <div className="relative z-10 w-full flex justify-center">
-           {/* AuthForm reads useSearchParams, so it needs its own boundary.
-               Wrapping the whole screen instead made the landing render twice:
-               once as the fallback and once as the resolved content. */}
-           <Suspense fallback={<div className="w-full max-w-[400px] h-[600px]" />}>
-             <AuthForm defaultLang={locale} />
-           </Suspense>
-        </div>
-
-        {/* In the flow, not pinned to the bottom: on a short phone a pinned
-            footer slid under the card. */}
-        <div className="relative z-10 flex flex-col items-center gap-3">
-           <Link
-             href="/games"
-             className="text-2xs font-bold uppercase tracking-widest text-gray-400 hover:text-accent transition-colors"
-           >
-             {t.catalogue}
-           </Link>
-           <div className="text-gray-400 text-2xs font-bold uppercase tracking-widest opacity-50 flex items-center gap-2">
-             <GitCommit className="w-3 h-3" /> v{APP_VERSION} Stable
-           </div>
-        </div>
-      </main>
-
-      {/* The same server-rendered content sits below the sign-in card, so a
-          visitor can read what this is before deciding to create an account. */}
-      {landing}
-      </>
-    );
-  }
+  // Signed out, the landing is the page and its hero holds the way in
+  // (LandingActions). Google renders JavaScript: a full-screen sign-in card
+  // here was what it indexed the home page as.
+  if (!user) return <>{landing}</>;
 
   return (
     <main className="min-h-screen bg-page text-gray-900 flex flex-col items-center relative overflow-clip font-sans selection:bg-accent selection:text-white">
