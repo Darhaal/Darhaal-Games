@@ -11,9 +11,36 @@ script tag, no Google cookie.
 page  ──POST──▶  /api/analytics  ──▶  GA4 Measurement Protocol
 ```
 
-The page posts `{ name, clientId, path, params }` to this site's own route
-handler. The handler validates it, cleans it again, builds the page address
-itself and forwards it to Google.
+The page posts `{ name, clientId, sessionId, path, params, engagementMs,
+referrer }` to this site's own route handler. The handler validates it,
+cleans it again, builds the page address itself and forwards it to Google.
+
+## Sessions, engagement, new visitors, source
+
+What the Measurement Protocol needs, and what it will not do (fixed
+2026-11-09, after a week of GA4 reporting zeros):
+
+- **`session_id` is the visit's start in Unix seconds.** GA4 accepts only a
+  positive integer. It used to be a UUID, so no session was ever counted.
+- **`engagement_time_msec` is real.** The page measures visible time since
+  the previous event (a hidden tab does not count) and sends the last page's
+  share as `page_engagement` when the tab is hidden. It was a constant 1 ms.
+- **New visitors are the `new_visitor` event**, sent once per browser id.
+  `first_visit`, `session_start` and `user_engagement` are reserved names GA4
+  refuses over this protocol, so the built-in "New users" stays at zero.
+- **The channel is a `campaign_details` event** sent ahead of a visit's
+  first event (the client marks it `entry`). The protocol may not send
+  gtag's `session_start`, which is where gtag puts source/medium, so every
+  session read "Unassigned"; `campaign_details` is the protocol's documented
+  substitute. The server decides it in gtag's order: `utm_source` /
+  `utm_medium` / `utm_campaign` on the landing address (plain labels only),
+  else the referrer — a search engine is `google` / `organic` and so on, any
+  other site is its host / `referral` — else `(direct)` / `(none)`.
+- **`page_referrer` is an origin only** (`https://www.google.com/`), on a
+  visit's first event, never a path or a search query.
+- **Realtime's "First user …" cards** come from `first_visit`, which this
+  protocol cannot send, so they may stay "(not set)". The channel shows in
+  *Traffic acquisition* (session default channel group).
 
 ## Why, and not as a preference
 

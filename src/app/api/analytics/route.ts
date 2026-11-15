@@ -71,6 +71,99 @@ const cleanClientId = (input: unknown): string | null =>
   typeof input === 'string' && /^[0-9a-f-]{36}$/i.test(input) ? input : null;
 
 /**
+ * A session id is the visit's start in Unix seconds.
+ *
+ * GA4 wants a positive integer here. Until 2.15.5 this was a UUID, which GA
+ * could not group by — every session-based figure (sessions, engaged
+ * sessions, engagement time) read zero.
+ */
+const cleanSessionId = (input: unknown): number | null =>
+  typeof input === 'string' && /^[1-9]\d{0,11}$/.test(input) ? Number(input) : null;
+
+/** The longest stretch one event may claim: GA's own session window. */
+const MAX_ENGAGEMENT_MS = 30 * 60 * 1000;
+
+/**
+ * Visible time since the visitor's previous event, as the page measured it.
+ * At least 1 ms: GA counts a visitor as active only with some engagement.
+ */
+const cleanEngagement = (input: unknown): number =>
+  typeof input === 'number' && Number.isFinite(input)
+    ? Math.min(Math.max(Math.round(input), 1), MAX_ENGAGEMENT_MS)
+    : 1;
+
+const SITE_HOST = 'games.okhten.com';
+
+/**
+ * Where the visit came from — an origin such as `https://www.google.com/`,
+ * never a path or a query, and nothing from this site itself.
+ */
+function cleanReferrer(input: unknown): string | null {
+  if (typeof input !== 'string') return null;
+  try {
+    const url = new URL(input);
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') return null;
+    if (url.hostname === SITE_HOST) return null;
+    return `${url.protocol}//${url.hostname}/`;
+  } catch {
+    return null;
+  }
+}
+
+/** GA's own spelling of the engines it files under Organic Search. */
+const SEARCH_ENGINES: readonly [RegExp, string][] = [
+  [/(^|\.)google\./, 'google'],
+  [/(^|\.)bing\.com$/, 'bing'],
+  [/(^|\.)(yandex\.[a-z.]+|ya\.ru)$/, 'yandex'],
+  [/(^|\.)duckduckgo\.com$/, 'duckduckgo'],
+  [/(^|\.)yahoo\./, 'yahoo'],
+  [/(^|\.)baidu\.com$/, 'baidu'],
+  [/(^|\.)ecosia\.org$/, 'ecosia'],
+  [/^search\.brave\.com$/, 'brave'],
+  [/(^|\.)qwant\.com$/, 'qwant'],
+  [/(^|\.)startpage\.com$/, 'startpage']
+];
+
+/** A campaign label from the landing address: short, no spaces or markup. */
+const cleanTag = (value: string | null): string | null =>
+  value && /^[\w.+-]{1,100}$/.test(value) ? value : null;
+
+type TrafficSource = { source: string; medium: string; campaign?: string };
+
+/**
+ * Where a visit came from, in GA's terms, on its first event only.
+ *
+ * gtag works this out itself from the landing address and the referrer and
+ * puts it on its own session_start, which this protocol may not send — so for
+ * every visit read "Unassigned". `campaign_details` is the
+ * protocol's documented way to say it instead. The order is gtag's: campaign
+ * tags on the landing address, then the referring site (a search engine is
+ * organic, anything else a referral), and with neither, direct.
+ */
+function trafficSource(entry: unknown, referrer: string | null, path: string): TrafficSource | null {
+  if (entry !== true) return null;
+
+  const query = new URL(path, 'https://placeholder.invalid').searchParams;
+  const tagged = cleanTag(query.get('utm_source'));
+  if (tagged) {
+    const campaign = cleanTag(query.get('utm_campaign'));
+    return {
+      source: tagged,
+      medium: cleanTag(query.get('utm_medium')) ?? '(not set)',
+      ...(campaign ? { campaign } : {})
+    };
+  }
+
+  if (referrer) {
+    const host = new URL(referrer).hostname.replace(/^www\./, '');
+    const engine = SEARCH_ENGINES.find(([pattern]) => pattern.test(host));
+    return engine ? { source: engine[1], medium: 'organic' } : { source: host, medium: 'referral' };
+  }
+
+  return { source: '(direct)', medium: '(none)' };
+}
+
+/**
  * Is this deployment collecting anything?
  *
  * The POST answers 204 to everything on purpose, which left no way at all to
@@ -91,22 +184,30 @@ const cleanClientId = (input: unknown): string | null =>
 function buildPayload(
   name: string,
   clientId: string,
-  sessionId: string,
+  sessionId: number,
   path: string,
-  params: unknown
+  params: unknown,
+  engagementMs = 1,
+  referrer: string | null = null,
+  traffic: TrafficSource | null = null
 ) {
   return {
     client_id: clientId,
     events: [
+      // Applies to the events sent with it and after it, so it goes first.
+      ...(traffic ? [{ name: 'campaign_details', params: traffic }] : []),
       {
         name,
         params: {
           ...cleanParams(params),
-          page_location: `https://games.okhten.com${path}`,
+          page_location: `https://${SITE_HOST}${path}`,
           page_path: path,
-          // Without this GA treats every event as its own session.
-          engagement_time_msec: 1,
-          session_id: sessionId
+          // Both are needed for GA to count sessions and engagement.
+          engagement_time_msec: engagementMs,
+          session_id: sessionId,
+          // The standard "Page referrer" dimension, next to the channel
+          // that campaign_details gives the session.
+          ...(referrer ? { page_referrer: referrer } : {})
         }
       }
     ]
@@ -126,9 +227,12 @@ async function validate(apiSecret: string) {
   const probe = buildPayload(
     'page_view',
     '00000000-0000-4000-8000-000000000000',
-    '00000000-0000-4000-8000-000000000001',
+    1700000000,
     '/health-check',
-    { game: 'validation' }
+    { game: 'validation' },
+    1,
+    'https://www.google.com/',
+    { source: 'google', medium: 'organic' }
   );
 
   const res = await fetch(
@@ -176,7 +280,8 @@ export async function POST(request: Request) {
     return ok();
   }
 
-  const { name, clientId, sessionId, path, params } = (payload ?? {}) as Record<string, unknown>;
+  const { name, clientId, sessionId, path, params, engagementMs, referrer, entry } =
+    (payload ?? {}) as Record<string, unknown>;
 
   if (typeof name !== 'string' || !KNOWN_EVENTS.has(name)) return ok();
 
@@ -185,11 +290,15 @@ export async function POST(request: Request) {
 
   // A visit without a usable session id is counted as its own visit rather
   // than folded into the browser's, which is what the first version did.
-  const session = cleanClientId(sessionId) ?? id;
+  const session = cleanSessionId(sessionId) ?? Math.floor(Date.now() / 1000);
 
   const cleanedPath = cleanPath(path);
+  const cleanedReferrer = cleanReferrer(referrer);
 
-  const body = buildPayload(name, id, session, cleanedPath, params);
+  const body = buildPayload(
+    name, id, session, cleanedPath, params, cleanEngagement(engagementMs), cleanedReferrer,
+    trafficSource(entry, cleanedReferrer, cleanedPath)
+  );
 
   try {
     await fetch(

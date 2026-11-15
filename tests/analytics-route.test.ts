@@ -23,7 +23,7 @@ const post = (payload: unknown) =>
 const ROOM = 'a6a7ac96-f617-4b55-ba3a-8c9fb76c651a';
 const CLIENT = '00000000-0000-4000-8000-000000000000';
 
-const SESSION = '11111111-1111-4111-8111-111111111111';
+const SESSION = '1762700000';
 
 const validEvent = (over: Record<string, unknown> = {}) => ({
   name: 'lobby_created',
@@ -174,24 +174,106 @@ describe('sessions', () => {
     // never count a second visit.
     await post(validEvent());
 
-    const params = (sent[0].body as { events: { params: Record<string, string> }[] })
+    const params = (sent[0].body as { events: { params: Record<string, unknown> }[] })
       .events[0].params;
-    expect(params.session_id).toBe(SESSION);
+    // GA4 takes a positive integer here; a UUID left every session uncounted.
+    expect(params.session_id).toBe(Number(SESSION));
     expect(params.session_id).not.toBe(CLIENT);
   });
 
-  it('falls back to the browser id when no session is offered', async () => {
+  const sessionSent = () =>
+    (sent[0].body as { events: { params: Record<string, unknown> }[] }).events[0].params.session_id;
+
+  it('starts a visit of its own when no session is offered', async () => {
     await post(validEvent({ sessionId: undefined }));
 
-    const body = sent[0].body as { events: { params: Record<string, string> }[] };
-    expect(body.events[0].params.session_id).toBe(CLIENT);
+    expect(Number.isInteger(sessionSent())).toBe(true);
+    expect(sessionSent()).toBeGreaterThan(0);
   });
 
   it('refuses a session id that is not one we would have made', async () => {
-    await post(validEvent({ sessionId: '; drop table lobbies' }));
+    for (const bad of ['; drop table lobbies', '11111111-1111-4111-8111-111111111111', '0', '-5']) {
+      sent = [];
+      await post(validEvent({ sessionId: bad }));
+      expect(sessionSent()).not.toBe(bad);
+      expect(Number.isInteger(sessionSent())).toBe(true);
+    }
+  });
+});
 
-    const body = sent[0].body as { events: { params: Record<string, string> }[] };
-    expect(body.events[0].params.session_id).toBe(CLIENT);
+describe('engagement and source', () => {
+  const params = () =>
+    (sent[0].body as { events: { params: Record<string, unknown> }[] }).events[0].params;
+
+  it('passes the visible time the page measured', async () => {
+    await post(validEvent({ engagementMs: 42_000 }));
+    expect(params().engagement_time_msec).toBe(42_000);
+  });
+
+  it('keeps it between 1 ms and half an hour', async () => {
+    await post(validEvent({ engagementMs: 10 * 60 * 60 * 1000 }));
+    expect(params().engagement_time_msec).toBe(30 * 60 * 1000);
+    sent = [];
+    await post(validEvent({ engagementMs: 'lots' }));
+    expect(params().engagement_time_msec).toBe(1);
+  });
+
+  it('reports where the visit came from as an origin only', async () => {
+    await post(validEvent({ referrer: 'https://www.google.com/search?q=spyfall+online' }));
+    expect(params().page_referrer).toBe('https://www.google.com/');
+    expect(everythingSent()).not.toContain('spyfall+online');
+  });
+
+  it('says nothing about a move within the site or a strange referrer', async () => {
+    for (const referrer of ['https://games.okhten.com/ru', 'javascript:alert(1)', 'not a url']) {
+      sent = [];
+      await post(validEvent({ referrer }));
+      expect(params().page_referrer).toBeUndefined();
+    }
+  });
+});
+
+// Without a channel every visit read "Unassigned": the protocol may not send
+// gtag's session_start, and campaign_details is its documented substitute.
+describe('the channel of a visit', () => {
+  const events = () => (sent[0].body as { events: { name: string; params: Record<string, unknown> }[] }).events;
+  const channel = () => events().find((e) => e.name === 'campaign_details')?.params;
+
+  it('files a search engine as organic, before the event it applies to', async () => {
+    await post(validEvent({ entry: true, referrer: 'https://www.google.com.ua/search?q=coup' }));
+    expect(events()[0].name).toBe('campaign_details');
+    expect(channel()).toEqual({ source: 'google', medium: 'organic' });
+    expect(events()[1].name).toBe('lobby_created');
+  });
+
+  it('files another site as a referral, by its host alone', async () => {
+    await post(validEvent({ entry: true, referrer: 'https://okhten.com/projects?ref=x' }));
+    expect(channel()).toEqual({ source: 'okhten.com', medium: 'referral' });
+  });
+
+  it('calls a visit with no referrer direct', async () => {
+    await post(validEvent({ entry: true }));
+    expect(channel()).toEqual({ source: '(direct)', medium: '(none)' });
+  });
+
+  it('prefers campaign tags on the landing address', async () => {
+    await post(validEvent({
+      entry: true,
+      referrer: 'https://www.google.com/',
+      path: '/?utm_source=okhten&utm_medium=site&utm_campaign=launch'
+    }));
+    expect(channel()).toEqual({ source: 'okhten', medium: 'site', campaign: 'launch' });
+  });
+
+  it('drops a campaign tag that is not a plain label', async () => {
+    await post(validEvent({ entry: true, path: '/?utm_source=%3Cscript%3E' }));
+    expect(channel()).toEqual({ source: '(direct)', medium: '(none)' });
+  });
+
+  it('names the channel only on a visit\'s first event', async () => {
+    await post(validEvent({ referrer: 'https://www.google.com/' }));
+    expect(channel()).toBeUndefined();
+    expect(events()).toHaveLength(1);
   });
 });
 
@@ -238,9 +320,13 @@ describe('the health check', () => {
     expect(body.accepted).toBe(true);
     expect(sent[0].url).toContain('/debug/mp/collect');
     // The probe must go through the same builder as a real event, or it
-    // proves only that the probe works.
+    // proves only that the probe works. It carries a channel too, so Google
+    // checks campaign_details as well.
     expect(sent[0].body).toMatchObject({
-      events: [{ name: 'page_view', params: { page_path: '/health-check' } }]
+      events: [
+        { name: 'campaign_details', params: { source: 'google', medium: 'organic' } },
+        { name: 'page_view', params: { page_path: '/health-check' } }
+      ]
     });
   });
 

@@ -2,7 +2,6 @@ import type { MetadataRoute } from 'next';
 import { CONTENT_REVISION, GAMES_CONTENT } from '@/content/games';
 import { INDEXED_LOCALES, absoluteUrl, localizedPath } from '@/lib/seo';
 import { POLICY_UPDATED } from '@/content/privacy';
-import { VERSION_HISTORY } from '@/constants/version';
 
 /**
  * Only genuinely public, indexable URLs belong here — the app screens are
@@ -11,6 +10,11 @@ import { VERSION_HISTORY } from '@/constants/version';
  * Only the indexed locales are listed (`INDEXED_LOCALES`); once there is more
  * than one, every entry carries its hreflang pair so search engines treat the
  * versions as translations rather than duplicates.
+ *
+ * The changelog is left out on purpose (SEO audit, 2026-11-09): it is
+ * crawlable through the footer, but listed here its date moved with every
+ * release and asked Google to spend its small crawl budget for this site on
+ * release notes instead of the game pages.
  */
 export default function sitemap(): MetadataRoute.Sitemap {
   // A fixed content-revision date, never a build timestamp — see the note on
@@ -45,15 +49,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     ...withAlternates('/privacy')
   }));
 
-  // Changes with every release, so it carries the latest one's day.
-  const changelog: MetadataRoute.Sitemap = INDEXED_LOCALES.map((locale) => ({
-    url: absoluteUrl(localizedPath(locale, '/changelog')),
-    lastModified: VERSION_HISTORY[0].date,
-    changeFrequency: 'weekly',
-    priority: 0.4,
-    ...withAlternates('/changelog')
-  }));
-
   const details: MetadataRoute.Sitemap = GAMES_CONTENT.flatMap((game) =>
     INDEXED_LOCALES.map((locale) => ({
       url: absoluteUrl(localizedPath(locale, `/games/${game.slug}`)),
@@ -76,7 +71,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     ...home,
     ...hub,
     ...details,
-    ...privacy,
-    ...changelog
+    ...privacy
   ];
 }

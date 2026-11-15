@@ -27,7 +27,7 @@ export interface PolicyCopy {
 }
 
 /** Changed by hand when the policy changes — never a build timestamp. */
-export const POLICY_UPDATED = '2026-10-07';
+export const POLICY_UPDATED = '2026-11-09';
 
 export const PRIVACY_CONTENT: Record<Locale, PolicyCopy> = {
   ru: {
@@ -66,7 +66,7 @@ export const PRIVACY_CONTENT: Record<Locale, PolicyCopy> = {
           'Мы считаем, во что играют и что ломается. Сбор не начинается, пока вы не нажали «Разрешить».',
           'Google Analytics не загружается в ваш браузер. Скрипты Google на страницах отсутствуют, cookie Google не ставятся. Страница отправляет событие на наш собственный адрес, а дальше его передаём мы, со своего сервера.',
           'Поэтому ваш IP-адрес в Google не попадает: с их стороны виден адрес нашего сервера, а не ваш.',
-          'Что отправляется: какая игра, сколько игроков, сколько длилась партия, какая ошибка произошла, и на какой странице это было. Список допустимых полей фиксирован в коде, всё остальное сервер отбрасывает, не передавая. Ваш идентификатор, никнейм, почта и содержимое партии не отправляются.',
+          'Что отправляется: какая игра, сколько игроков, сколько длилась партия, какая ошибка произошла, на какой странице это было, сколько страница была открыта на экране и с какого сайта вы пришли (только его адрес, например google.com, без поискового запроса). Список допустимых полей фиксирован в коде, всё остальное сервер отбрасывает, не передавая. Ваш идентификатор, никнейм, почта и содержимое партии не отправляются.',
           'Отдельно про ссылки: ссылка на комнату — это приглашение, а у приватной комнаты она единственное, что отделяет её от посторонних. Идентификаторы комнат вырезаются из адреса дважды — в браузере и ещё раз на сервере, который не доверяет пришедшему. Сам адрес страницы для Google собирает наш сервер, а не браузер.',
           'Чтобы отличать одного посетителя от другого, при согласии создаётся случайный идентификатор и хранится в вашем браузере. Он ни из чего не выводится, ничего о вас не значит и исчезает, когда вы очищаете данные сайта. При отказе он удаляется.'
         ]
@@ -137,7 +137,7 @@ export const PRIVACY_CONTENT: Record<Locale, PolicyCopy> = {
           'We count what people play and what breaks. Nothing is collected until you have pressed "Allow".',
           'Google Analytics does not load in your browser. There is no Google script on these pages and no Google cookie is set. The page sends an event to an address of our own, and we forward it from our server.',
           'Your IP address therefore does not reach Google: what they see is our server’s address, not yours.',
-          'What is sent: which game, how many players, how long a match ran, which error occurred, and which page it happened on. The list of permitted fields is fixed in the code and the server discards anything else rather than passing it on. Your identifier, nickname, email and anything from the match itself are not sent.',
+          'What is sent: which game, how many players, how long a match ran, which error occurred, which page it happened on, how long the page was on screen, and which site you came from (only its address, such as google.com, never the search). The list of permitted fields is fixed in the code and the server discards anything else rather than passing it on. Your identifier, nickname, email and anything from the match itself are not sent.',
           'One thing in particular: a room link is an invitation, and for a private room it is the only thing standing between it and a stranger. Room identifiers are stripped from the address twice — in the browser and again on the server, which does not trust what arrived. The page address Google receives is assembled by our server, not taken from your browser.',
           'To tell one visitor’s events from another’s, a random identifier is created when you consent and kept in your browser. It is derived from nothing, means nothing about you, and goes when you clear the site data. Declining deletes it.'
         ]
@@ -208,7 +208,7 @@ export const PRIVACY_CONTENT: Record<Locale, PolicyCopy> = {
           'Ми рахуємо, у що грають і що ламається. Збір не починається, доки ви не натиснули «Дозволити».',
           'Google Analytics не завантажується у ваш браузер. Скриптів Google на сторінках немає, cookie Google не встановлюються. Сторінка надсилає подію на нашу власну адресу, а далі її передаємо ми, зі свого сервера.',
           'Тому ваша IP-адреса до Google не потрапляє: з їхнього боку видно адресу нашого сервера, а не вашу.',
-          'Що надсилається: яка гра, скільки гравців, скільки тривала партія, яка помилка сталася і на якій сторінці це було. Перелік допустимих полів зафіксовано в коді, усе інше сервер відкидає, не передаючи. Ваш ідентифікатор, нікнейм, пошта й вміст партії не надсилаються.',
+          'Що надсилається: яка гра, скільки гравців, скільки тривала партія, яка помилка сталася, на якій сторінці це було, скільки сторінка була відкрита на екрані та з якого сайту ви прийшли (лише його адреса, наприклад google.com, без пошукового запиту). Перелік допустимих полів зафіксовано в коді, усе інше сервер відкидає, не передаючи. Ваш ідентифікатор, нікнейм, пошта й вміст партії не надсилаються.',
           'Окремо про посилання: посилання на кімнату — це запрошення, а для приватної кімнати воно єдине, що відділяє її від сторонніх. Ідентифікатори кімнат вирізаються з адреси двічі — у браузері та ще раз на сервері, який не довіряє тому, що прийшло. Саму адресу сторінки для Google збирає наш сервер, а не браузер.',
           'Щоб відрізняти одного відвідувача від іншого, за згоди створюється випадковий ідентифікатор і зберігається у вашому браузері. Він ні з чого не виводиться, нічого про вас не означає і зникає, коли ви очищаєте дані сайту. У разі відмови його буде видалено.'
         ]

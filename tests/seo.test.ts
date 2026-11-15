@@ -93,6 +93,10 @@ describe('indexed locales', () => {
     const spyfall = entries.find((e) => e.url === 'https://games.okhten.com/ru/games/spyfall');
     expect(spyfall?.alternates?.languages).toMatchObject({ en: 'https://games.okhten.com/games/spyfall' });
   });
+
+  it('leaves the changelog out of the sitemap', () => {
+    expect(sitemap().filter((entry) => entry.url.includes('/changelog'))).toEqual([]);
+  });
 });
 
 describe('game content integrity', () => {

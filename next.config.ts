@@ -1,14 +1,23 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  reactCompiler: true,
-  // English moved from /en to the bare path on 2026-10-05; Google had already
+  reactCompiler: true,  // English moved from /en to the bare path on 2026-10-05; Google had already
   // indexed the /en game pages, so they redirect permanently rather than 404.
   async redirects() {
     return [
       { source: "/en", destination: "/", permanent: true },
       { source: "/en/:path*", destination: "/:path*", permanent: true },
     ];
+  },
+  // The document language for crawlers that read the header rather than run
+  // the script that sets <html lang> (Bing, Yandex). See src/app/layout.tsx.
+  async headers() {
+    return ["ru", "uk"].flatMap((lang) =>
+      [`/${lang}`, `/${lang}/:path*`].map((source) => ({
+        source,
+        headers: [{ key: "Content-Language", value: lang }],
+      })),
+    );
   },
   images: {
     remotePatterns: [

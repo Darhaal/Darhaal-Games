@@ -5,6 +5,8 @@ import AchievementToaster from "@/components/AchievementToaster";
 import Analytics from "@/components/Analytics";
 import ConsentBanner from "@/components/ConsentBanner";
 import ThemeController, { THEME_SCRIPT } from "@/components/ThemeController";
+import DocumentLang from "@/components/DocumentLang";
+import { LANG_SCRIPT } from "@/lib/locale";
 import { Suspense } from "react";
 import JsonLd from "@/components/seo/JsonLd";
 import { APP_NAME, APP_TAGLINE, COMPANY_NAME, SITE_URL } from "@/constants/app";
@@ -25,11 +27,11 @@ const geistMono = Geist_Mono({
 
 /**
  * English is the default locale and is served from the bare path, so the
- * document language is `en`. The Russian subtree under /ru overrides it with a
- * `lang="ru"` wrapper on its own content (valid HTML: the nearest ancestor
- * `lang` wins). Reading the pathname here instead would require `headers()`,
- * which opts the entire app out of static generation — not worth it for one
- * attribute.
+ * server writes `lang="en"`. On /ru and /uk, `LANG_SCRIPT` corrects it before
+ * the first paint and `DocumentLang` after client navigation; their content
+ * also carries its own `lang` wrapper, and next.config sends
+ * `Content-Language`. Reading the pathname here instead would require
+ * `headers()`, which opts the entire app out of static generation.
  */
 /**
  * Search-engine ownership tokens, rendered as meta tags when present.
@@ -88,7 +90,7 @@ export const metadata: Metadata = {
     description: APP_TAGLINE.en,
     url: SITE_URL,
     locale: "en_US",
-    alternateLocale: ["ru_RU"],
+    alternateLocale: ["ru_RU", "uk_UA"],
   },
   twitter: {
     card: "summary_large_image",
@@ -131,11 +133,13 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: LANG_SCRIPT }} />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-page text-ink`}
       >
         <ThemeController />
+        <DocumentLang />
         <JsonLd data={organizationJsonLd()} />
         <JsonLd data={websiteJsonLd()} />
         {children}

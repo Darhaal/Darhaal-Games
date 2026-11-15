@@ -74,7 +74,15 @@ export const GA_EVENTS = {
   matchFinished: 'match_finished',
   rematchStarted: 'rematch_started',
   roomClosed: 'room_closed',
-  appError: 'app_error'
+  appError: 'app_error',
+  /**
+   * A browser seen for the first time. GA4 refuses its own `first_visit`
+   * over the Measurement Protocol (a reserved name), so "new users" there
+   * stays at zero; this event's count is the number instead.
+   */
+  newVisitor: 'new_visitor',
+  /** Carries the last page's visible time when the tab is hidden or closed. */
+  pageEngagement: 'page_engagement'
 } as const;
 
 export type GaEvent = (typeof GA_EVENTS)[keyof typeof GA_EVENTS];

@@ -7,6 +7,39 @@ releasing.
 Format: [Semantic Versioning](https://semver.org/). Types: **major** = platform
 milestone, **minor** = new game mode / feature, **patch** = fixes & improvements.
 
+## [Unreleased]
+
+## [2.15.5] — 2026-11-15 (patch)
+
+### Fixed
+- **Analytics counted no sessions, no engagement and no new visitors.** The
+  session id was a UUID where GA4 takes only a number, and every event
+  claimed 1 ms of engagement. A visit is now numbered by its start, the page
+  reports the time it was actually on screen (the last page's share when the
+  tab is hidden), a new browser sends `new_visitor` (GA4 refuses its own
+  `first_visit` over this protocol), and a visit's first event carries the
+  referring site as an origin.
+- **Every visit read "Unassigned" in GA4.** A visit's first event now sends
+  `campaign_details` with its source and medium, worked out as gtag would:
+  campaign tags on the landing address, else the referring site (search
+  engines as organic, other sites as referrals), else direct.
+- **Russian and Ukrainian pages said they were English.** `<html lang>` now
+  follows the path before the first paint and after client navigation, and
+  `/ru` and `/uk` answer with `Content-Language`.
+- **The consent banner covered the first paragraph on a phone.** It is one
+  short line with two small, equal buttons there, and it speaks the page's
+  language on /ru and /uk to someone who has not picked one.
+- **Accepting analytics could blank the page in older browsers.** Without
+  `crypto.randomUUID` (Safari before 15.4, plain-http pages) making the
+  browser id threw out of the page's effect; the id now has a fallback, and
+  nothing in analytics can throw into the page.
+
+### Changed
+- The privacy policy lists the two new analytics fields (time on screen,
+  the referring site's address). The changelog is no longer in the sitemap
+  (still linked from every footer), and Open Graph names Ukrainian among
+  the alternate locales.
+
 ## [2.15.4] — 2026-11-09 (patch)
 
 ### Changed

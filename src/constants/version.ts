@@ -1,4 +1,4 @@
-export const APP_VERSION = '2.15.4';
+export const APP_VERSION = '2.15.5';
 
 export type VersionType = 'major' | 'minor' | 'patch' | 'init';
 
@@ -61,6 +61,31 @@ export function formatReleaseRange(from: string, to: string, lang: 'ru' | 'en' |
  */
 export const VERSION_HISTORY: VersionLog[] = [
   /* ===================== 2.15.x ===================== */
+
+  {
+    ver: '2.15.5',
+    date: '2026-11-15',
+    type: 'patch',
+    desc: {
+      ru: 'Статистика посещений снова считается правильно: визиты, время на странице, новые посетители и откуда они пришли. Баннер согласия на телефоне стал одной строкой и говорит на языке страницы. Русские и украинские страницы теперь сообщают браузеру и поисковикам свой язык.',
+      en: 'Visit statistics are counted properly again: visits, time on the page, new visitors and where they came from. On a phone the consent banner is a single line, and it speaks the page\'s language. Russian and Ukrainian pages now tell browsers and search engines their language.',
+      uk: 'Статистика відвідувань знову рахується правильно: візити, час на сторінці, нові відвідувачі й звідки вони прийшли. Банер згоди на телефоні став одним рядком і говорить мовою сторінки. Російські й українські сторінки тепер повідомляють браузеру й пошуковикам свою мову.'
+    },
+    fixes: {
+      ru: [
+        'После согласия на статистику в старых браузерах страница могла перестать открываться.',
+        'Баннер согласия на телефоне закрывал первый экран.'
+      ],
+      en: [
+        'Accepting the statistics could stop the page from loading in older browsers.',
+        'On a phone the consent banner covered the first screen.'
+      ],
+      uk: [
+        'Після згоди на статистику в старих браузерах сторінка могла перестати відкриватися.',
+        'Банер згоди на телефоні закривав перший екран.'
+      ]
+    }
+  },
 
   {
     ver: '2.15.4',

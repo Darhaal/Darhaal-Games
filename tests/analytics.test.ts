@@ -179,10 +179,73 @@ describe('nothing is sent before consent', () => {
     writeConsent('granted');
     track(GA_EVENTS.lobbyCreated, { game: 'coup' });
 
-    expect(posted).toEqual(['/api/analytics']);
+    // A first visit sends new_visitor along with the event itself.
+    expect(posted).toEqual(['/api/analytics', '/api/analytics']);
     // The browser must never address Google directly — that is the whole
     // reason this arrangement exists.
     expect(posted.some((u) => u.includes('google'))).toBe(false);
+  });
+
+  it('announces a new browser once, not on every event', async () => {
+    const { track, writeConsent } = await import('@/lib/analytics');
+    writeConsent('granted');
+    track(GA_EVENTS.lobbyCreated, { game: 'coup' });
+    track(GA_EVENTS.lobbyJoined, { game: 'coup' });
+
+    expect(posted).toHaveLength(3);
+  });
+
+  it('marks only a visit\'s first events as its entry, for the channel', async () => {
+    const bodies: Record<string, unknown>[] = [];
+    vi.stubGlobal('navigator', {
+      sendBeacon: (_url: string, blob: { parts: string[] }) => { bodies.push(JSON.parse(blob.parts[0])); return true; }
+    });
+    const { track, writeConsent } = await import('@/lib/analytics');
+    writeConsent('granted');
+    track(GA_EVENTS.lobbyCreated, { game: 'coup' });
+    track(GA_EVENTS.lobbyJoined, { game: 'coup' });
+
+    expect(bodies.map((b) => b.entry)).toEqual([true, true, undefined]);
+  });
+
+  it('numbers the visit by its start in seconds, as GA4 requires', async () => {
+    const { track, writeConsent } = await import('@/lib/analytics');
+    writeConsent('granted');
+    track(GA_EVENTS.lobbyCreated, { game: 'coup' });
+
+    const session = JSON.parse(store.get('darhaal.analytics-session.v1') ?? '{}') as { id?: string };
+    expect(session.id).toMatch(/^[1-9]\d{9}$/);
+  });
+
+  it('starts a new visit over a session id the old version stored', async () => {
+    const { track, writeConsent } = await import('@/lib/analytics');
+    writeConsent('granted');
+    store.set('darhaal.analytics-session.v1', JSON.stringify({
+      id: '11111111-1111-4111-8111-111111111111', seen: Date.now()
+    }));
+    track(GA_EVENTS.lobbyCreated, { game: 'coup' });
+
+    const session = JSON.parse(store.get('darhaal.analytics-session.v1') ?? '{}') as { id?: string };
+    expect(session.id).toMatch(/^[1-9]\d{9}$/);
+  });
+
+  // randomUUID is missing on plain-http pages and before Safari 15.4; it used
+  // to throw out of track() and blank the whole page.
+  it('makes its own browser id where crypto.randomUUID is missing', async () => {
+    vi.stubGlobal('crypto', { getRandomValues: (a: Uint8Array) => a.fill(171) });
+    const { track, writeConsent } = await import('@/lib/analytics');
+    writeConsent('granted');
+
+    expect(() => track(GA_EVENTS.lobbyCreated, { game: 'coup' })).not.toThrow();
+    expect(store.get('darhaal.analytics-client.v1')).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+  });
+
+  it('never throws into the caller', async () => {
+    vi.stubGlobal('crypto', {});
+    const { track, writeConsent } = await import('@/lib/analytics');
+    writeConsent('granted');
+
+    expect(() => track(GA_EVENTS.lobbyCreated, { game: 'coup' })).not.toThrow();
   });
 });
 
