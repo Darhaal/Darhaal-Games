@@ -28,10 +28,10 @@ Then edit `.env.local`:
 
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-public-key
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_your-key
 ```
 
-Both values come from **Supabase Dashboard → Project Settings → API**.
+Both values come from **Supabase Dashboard → Project Settings → API Keys**.
 See [Environment Variables](environment.md) for full details.
 
 > `.env.local` is git-ignored and must never be committed. The app will throw a

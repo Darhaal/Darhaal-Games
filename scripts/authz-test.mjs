@@ -20,7 +20,7 @@ const env = Object.fromEntries(
 );
 
 const URL = env.NEXT_PUBLIC_SUPABASE_URL;
-const ANON = env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const ANON = env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 const client = () => createClient(URL, ANON, { auth: { persistSession: false, autoRefreshToken: false } });
 
 let failures = 0;
@@ -198,7 +198,7 @@ let bDeleted = false;
 
 // --- clean up: remove the throwaway guests that are left ---
 // profiles, player_stats, match_results and achievement_unlocks follow via ON DELETE CASCADE.
-const admin = createClient(URL, env.SUPABASE_SERVICE_ROLE_KEY, {
+const admin = createClient(URL, env.SUPABASE_SECRET_KEY, {
   auth: { persistSession: false, autoRefreshToken: false }
 });
 const { data: aLeft } = await admin.auth.admin.getUserById(aId);

@@ -9,6 +9,14 @@ milestone, **minor** = new game mode / feature, **patch** = fixes & improvements
 
 ## [Unreleased]
 
+## [2.15.6] — 2026-11-16 (patch)
+
+### Changed
+- **Supabase's new API keys.** The app reads
+  `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (`sb_publishable_…`) and the local
+  authz test `SUPABASE_SECRET_KEY` (`sb_secret_…`) instead of the JWT
+  `anon` / `service_role` keys, which Supabase retires in 2027.
+
 ## [2.15.5] — 2026-11-15 (patch)
 
 ### Fixed

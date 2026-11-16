@@ -30,7 +30,7 @@ host that supports Next.js 16 will also work.
 2. In Vercel, **Import** the repository (framework auto-detected as Next.js).
 3. Add the environment variables under **Settings → Environment Variables**:
    - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 4. Deploy. Vercel runs `npm install` and `npm run build` automatically.
 
 See [Environment Variables](environment.md) for details on each value.

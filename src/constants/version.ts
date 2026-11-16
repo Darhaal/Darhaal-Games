@@ -1,4 +1,4 @@
-export const APP_VERSION = '2.15.5';
+export const APP_VERSION = '2.15.6';
 
 export type VersionType = 'major' | 'minor' | 'patch' | 'init';
 
@@ -61,6 +61,17 @@ export function formatReleaseRange(from: string, to: string, lang: 'ru' | 'en' |
  */
 export const VERSION_HISTORY: VersionLog[] = [
   /* ===================== 2.15.x ===================== */
+
+  {
+    ver: '2.15.6',
+    date: '2026-11-16',
+    type: 'patch',
+    desc: {
+      ru: 'Сайт перешёл на новые ключи доступа к базе данных: старые Supabase отключает в 2027 году. Для игроков ничего не меняется.',
+      en: 'The site has moved to the new database access keys, as Supabase switches the old ones off in 2027. Nothing changes for players.',
+      uk: 'Сайт перейшов на нові ключі доступу до бази даних: старі Supabase вимикає у 2027 році. Для гравців нічого не змінюється.'
+    }
+  },
 
   {
     ver: '2.15.5',

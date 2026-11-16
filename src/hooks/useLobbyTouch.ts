@@ -50,7 +50,7 @@ export function useLobbyTouch(lobbyId: string | null | undefined, enabled: boole
     // `keepalive` lets the request outlive the page; supabase-js cannot ask for it.
     const leaving = () => {
       const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-      const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+      const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
       if (!url || !key || !accessToken) return;
       fetch(`${url}/rest/v1/rpc/touch_lobby`, {
         method: 'POST',
